@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/skills/shared/output-schema.json",
+  "title": "Preemptive Exposure Analysis — Output Bundle",
+  "description": "五平台共用的輸出格式。每個區塊都必須帶 confidence、basis、missing_inputs、requires_human。所有攻擊路徑的 status 固定為 hypothesis，除非另有已授權驗證結果。",
+  "type": "object",
+  "required": ["meta", "data_quality", "exposure_priorities", "attack_path_hypotheses", "remediation", "validation_plan", "executive_summary", "metrics", "human_review_points"],
+  "$defs": {
+    "confidence": { "type": "string", "enum": ["高", "中", "低"] },
+    "priority": { "type": "string", "enum": ["P1", "P2", "P3", "P4"] },
+    "block": {
+      "type": "object",
+      "required": ["confidence", "basis", "missing_inputs", "requires_human"],
+      "properties": {
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "basis": { "type": "string" },
+        "missing_inputs": { "type": "array", "items": { "type": "string" } },
+        "requires_human": { "type": "boolean" }
+      }
+    }
+  },
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["organization", "analysis_date", "generated_by", "scope_reference", "scoring_rules", "disclaimer"],
+      "properties": {
+        "organization": { "type": "string" },
+        "analysis_date": { "type": "string" },
+        "generated_by": { "type": "string", "description": "平台／模型名稱與 skill 版本" },
+        "scope_reference": { "type": "string" },
+        "scoring_rules": { "type": "string", "description": "實際使用的評分規則說明（預設為本專案附錄 A 示範規則）" },
+        "disclaimer": { "type": "string", "description": "必須聲明：語言模型未驗證實際曝險；所有路徑為假設；主動測試需授權" }
+      }
+    },
+    "data_quality": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": {
+        "files": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "records": { "type": "integer" }, "missing_fields": { "type": "array", "items": { "type": "string" } }, "anomalies": { "type": "array", "items": { "type": "string" } } } } },
+        "out_of_scope_excluded": { "type": "array", "items": { "type": "string" } },
+        "inventory_completeness_estimate": { "type": ["number", "null"] }
+      }
+    },
+    "exposure_priorities": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "object", "required": ["finding_id", "asset_id", "asset_name", "vuln_id", "priority", "score", "likelihood", "impact", "factors", "confidence"], "properties": { "finding_id": { "type": "string" }, "asset_id": { "type": "string" }, "asset_name": { "type": "string" }, "vuln_id": { "type": "string" }, "title": { "type": "string" }, "priority": { "$ref": "#/$defs/priority" }, "score": { "type": "number" }, "likelihood": { "type": "number" }, "impact": { "type": "number" }, "factors": { "type": "array", "items": { "type": "string" } }, "missing": { "type": "array", "items": { "type": "string" } }, "confidence": { "$ref": "#/$defs/confidence" } } } },
+        "thresholds": { "type": "object" }
+      }
+    },
+    "attack_path_hypotheses": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "object", "required": ["id", "entry", "target", "nodes", "edges", "feasibility", "status"], "properties": { "id": { "type": "string" }, "entry": { "type": "string" }, "target": { "type": "string" }, "nodes": { "type": "array", "items": { "type": "string" } }, "edges": { "type": "array", "items": { "type": "string" } }, "feasibility": { "type": "number", "minimum": 0, "maximum": 10 }, "blocking_controls": { "type": "array", "items": { "type": "string" } }, "status": { "type": "string", "enum": ["hypothesis", "validated-feasible", "validated-blocked"] } } } }
+      }
+    },
+    "remediation": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "object", "required": ["finding_id", "priority", "action", "owner", "effort", "verify", "approval_level"], "properties": { "finding_id": { "type": "string" }, "priority": { "$ref": "#/$defs/priority" }, "action": { "type": "string" }, "owner": { "type": "string" }, "effort": { "type": "string" }, "verify": { "type": "string" }, "approval_level": { "type": "string" } } } },
+        "compensating_controls": { "type": "array", "items": { "type": "object", "properties": { "control": { "type": "string" }, "gaps": { "type": "string" }, "note": { "type": "string" } } } }
+      }
+    },
+    "validation_plan": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "object", "required": ["id", "hypothesis", "method", "authorization_required", "success_criteria"], "properties": { "id": { "type": "string" }, "hypothesis": { "type": "string" }, "method": { "type": "string" }, "authorization_required": { "type": "string" }, "scope_exclusions": { "type": "array", "items": { "type": "string" } }, "success_criteria": { "type": "string" } } } }
+      }
+    },
+    "executive_summary": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": { "audience": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string", "maxLength": 1200 }, "decisions_requested": { "type": "array", "items": { "type": "string" } } }
+    },
+    "metrics": {
+      "allOf": [{ "$ref": "#/$defs/block" }],
+      "properties": { "items": { "type": "array", "items": { "type": "object", "required": ["name", "value", "target"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
+    },
+    "human_review_points": {
+      "type": "array",
+      "items": { "type": "object", "required": ["stage", "who", "what"], "properties": { "stage": { "type": "string" }, "who": { "type": "string" }, "what": { "type": "string" }, "status": { "type": "string", "enum": ["pending", "approved", "rejected"] } } }
+    }
+  }
+}

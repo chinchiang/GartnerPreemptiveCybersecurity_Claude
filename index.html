@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>先制型資安 Playbook · Gartner Preemptive Cybersecurity 研究與五平台 Skills</title>
+  <meta name="description" content="研究 Gartner Preemptive Cybersecurity（先制型資安）方法論，拆解輸入、流程與輸出，並提供 ChatGPT、Claude、Grok、GLM、DeepSeek 的 skills 或等效工作流程、安裝教學與合成案例。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b5fa8'/%3E%3Cpath d='M32 12 L50 20 V34 C50 46 40 52 32 54 C24 52 14 46 14 34 V20 Z' fill='%23fff'/%3E%3Cpath d='M22 32 l8 8 l14 -16' stroke='%230b5fa8' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要內容</a>
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menu-btn" aria-label="開啟導覽選單" aria-expanded="false" aria-controls="sidebar">☰</button>
+    <a class="brand" href="#/"><span class="badge">PCS</span><span class="title">先制型資安 Playbook</span></a>
+    <div class="search-box" role="search">
+      <label for="search" class="sr-only">全站搜尋</label>
+      <input type="search" id="search" placeholder="搜尋研究、inputs/outputs、skills、來源…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+      <div class="search-results" id="search-results" role="listbox" aria-label="搜尋結果"></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="theme-btn" aria-label="切換色彩主題">◐ 主題</button>
+    <a class="icon-btn" href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener" aria-label="GitHub 儲存庫">GitHub</a>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="主要導覽"><nav></nav></aside>
+    <main id="main" tabindex="-1" aria-live="polite"></main>
+  </div>
+  <footer class="site-footer">
+    本站內容以正體中文撰寫，保留必要英文專有名詞。Gartner 為 Gartner, Inc. 之商標；本站與 Gartner 無關，引用僅限公開資料並標示來源。所有示範資料皆為合成。
+    儲存庫：<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">chinchiang/GartnerPreemptiveCybersecurity_Claude</a>
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/md.js"></script>
+  <script src="assets/demo.js"></script>
+  <script src="data/manifest.js"></script>
+  <script src="data/research.js"></script>
+  <script src="data/guides.js"></script>
+  <script src="data/skills.js"></script>
+  <script src="data/case.js"></script>
+  <script src="data/process.js"></script>
+  <script src="data/io.js"></script>
+  <script src="data/platforms.js"></script>
+  <script src="data/sources.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

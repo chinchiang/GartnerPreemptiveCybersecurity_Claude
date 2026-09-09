@@ -1,0 +1,7 @@
+{
+  "_note": "Claude Code 使用 GLM（Z.ai）作為模型後端的設定範例。狀態：PARTIALLY VERIFIED —— ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic 與 ANTHROPIC_AUTH_TOKEN 的用法來自第三方引述的 docs.z.ai DevPack 文件，本專案撰寫時無法直接讀取官方頁面，請先至 docs.z.ai 確認端點、模型 ID 與 GLM Coding Plan 使用條款（第三方引述：Coding Plan 額度僅限在 Z.ai 認可的 coding 工具內使用）。使用方式：把本檔複製為 ~/.claude/settings.json（使用者層級）或專案的 .claude/settings.local.json，填入 token。ANTHROPIC_AUTH_TOKEN 是機敏資料，絕對不可提交到 git；建議把 .claude/settings.local.json 加入 .gitignore，或改以 shell 環境變數提供。設定完成後，本專案的 SKILL.md（skills/glm/claude-code-skill/）放進 .claude/skills/preemptive-exposure-analysis/ 即可在 Claude Code 內以 /preemptive-exposure-analysis 使用，skill 內容與模型後端無關。",
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "<在此貼上，勿提交到 git>"
+  }
+}

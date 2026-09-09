@@ -1,0 +1,22 @@
+{
+  "_note": "合成分析範圍設定。所有分析必須在此授權範圍內進行；任何主動測試須另行核准。",
+  "organization": "Northwind Precision（虛構）",
+  "analysis_date": "2026-09-08",
+  "authorized_scope": {
+    "in_scope_assets": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12"],
+    "excluded": ["產線 PLC 與 HMI（僅可讀取 MES 相關資料，不得對 OT 提出主動測試）"],
+    "active_testing_authorized": false,
+    "external_scanning_authorized": false,
+    "authorizer": "CISO（合成）",
+    "authorization_reference": "SYN-AUTH-2026-09"
+  },
+  "risk_appetite": {
+    "max_tolerable_outage_hours": { "A06": 4, "A07": 2, "A05": 8 },
+    "regulatory_context": ["合成：個資法", "合成：客戶合約資安條款"]
+  },
+  "reporting": {
+    "audience": ["CISO", "IT 主管", "廠務主管"],
+    "language": "zh-TW",
+    "cadence": "weekly"
+  }
+}

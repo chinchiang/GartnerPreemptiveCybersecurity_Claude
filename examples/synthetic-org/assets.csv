@@ -1,0 +1,13 @@
+asset_id,name,type,environment,owner,business_criticality,data_classification,internet_exposed,os_or_platform,notes
+A01,vpn-gw-01,VPN Gateway,DMZ,Network Team,4,Internal,true,Synthetic VPN Appliance 9.2,員工遠端存取入口
+A02,web-portal-01,Customer Web Portal,DMZ,Digital Team,4,Confidential,true,Ubuntu 22.04 / Nginx / SynthCMS 3.1,客戶訂單查詢入口
+A03,mail-gw-01,Mail Gateway,DMZ,IT Ops,3,Internal,true,Synthetic Mail Gateway 7,SMTP/IMAP 對外
+A04,ad-dc-01,Active Directory Domain Controller,Core,IT Ops,5,Restricted,false,Windows Server 2019,主網域控制站
+A05,erp-app-01,ERP Application Server,Core,ERP Team,5,Restricted,false,Windows Server 2022 / SynthERP 12,訂單、財務、BOM
+A06,erp-db-01,ERP Database,Core,DBA Team,5,Restricted,false,RHEL 9 / PostgreSQL 15,ERP 核心資料庫（crown jewel）
+A07,mes-srv-01,Manufacturing Execution System,OT-DMZ,Plant IT,5,Restricted,false,Windows Server 2016 / SynthMES 5,連接產線 PLC
+A08,file-srv-01,File Server,Core,IT Ops,3,Confidential,false,Windows Server 2019,設計圖與合約
+A09,jump-host-01,Admin Jump Host,Core,IT Ops,4,Internal,false,Windows Server 2022,管理員跳板機
+A10,s3-backup-bucket,Cloud Object Storage (Backup),Cloud,IT Ops,4,Restricted,true,SynthCloud Object Storage,每日備份
+A11,ci-runner-01,CI/CD Runner,Cloud,Platform Team,3,Internal,true,Ubuntu 24.04 / SynthCI Runner,建置與部署管線
+A12,hr-saas-sso,HR SaaS (SSO-integrated),SaaS,HR,3,Confidential,true,Synthetic HR SaaS,透過 SSO 整合

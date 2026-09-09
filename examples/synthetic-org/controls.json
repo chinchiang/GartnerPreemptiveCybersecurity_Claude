@@ -1,0 +1,14 @@
+{
+  "_note": "合成資料。描述既有控制措施的覆蓋範圍，供分析時評估『既有控制是否已降低曝險』。",
+  "as_of": "2026-09-01",
+  "controls": [
+    { "control_id": "K01", "name": "EDR", "coverage_assets": ["A02", "A04", "A05", "A08", "A09"], "gaps": ["A01", "A03", "A06", "A07", "A11"], "maturity": "managed", "notes": "VPN/郵件閘道與 OT 主機無 EDR" },
+    { "control_id": "K02", "name": "WAF", "coverage_assets": ["A02"], "gaps": [], "maturity": "basic", "notes": "僅偵測模式，未啟用阻擋" },
+    { "control_id": "K03", "name": "Network segmentation", "coverage_assets": ["A06"], "gaps": ["A07"], "maturity": "partial", "notes": "ERP DB 已隔離；OT-DMZ 與產線網段未隔離" },
+    { "control_id": "K04", "name": "MFA", "coverage_assets": ["A09", "A12"], "gaps": ["A01", "A07"], "maturity": "partial", "notes": "VPN 群組 12% 未啟用；OT 共用帳號無 MFA" },
+    { "control_id": "K05", "name": "Immutable backups", "coverage_assets": [], "gaps": ["A10"], "maturity": "none", "notes": "備份儲存桶未啟用物件鎖定／版本控管" },
+    { "control_id": "K06", "name": "Central logging / SIEM", "coverage_assets": ["A01", "A02", "A04", "A05", "A09"], "gaps": ["A03", "A06", "A07", "A10", "A11"], "maturity": "managed", "notes": "" },
+    { "control_id": "K07", "name": "Deception (honey accounts/tokens)", "coverage_assets": [], "gaps": ["A04", "A06", "A08"], "maturity": "none", "notes": "尚未部署" },
+    { "control_id": "K08", "name": "Patch SLA", "coverage_assets": ["A02", "A04", "A05", "A08", "A09", "A11"], "gaps": ["A01", "A03", "A07"], "maturity": "partial", "notes": "網路設備與 OT 由不同團隊負責，無 SLA" }
+  ]
+}

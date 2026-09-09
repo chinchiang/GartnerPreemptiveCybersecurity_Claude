@@ -1,0 +1,13 @@
+{
+  "_note": "合成 EASM（外部攻擊面管理）輸出。IP 使用文件保留位址（TEST-NET）。",
+  "as_of": "2026-09-03",
+  "exposures": [
+    { "asset_id": "A01", "hostname": "vpn.northwind-synthetic.example", "ip": "203.0.113.10", "ports": [443], "fingerprint": "Synthetic VPN Appliance 9.2", "tls_expiry": "2026-11-30", "issues": ["outdated-firmware", "legacy-tls"] },
+    { "asset_id": "A02", "hostname": "portal.northwind-synthetic.example", "ip": "203.0.113.20", "ports": [80, 443], "fingerprint": "nginx/1.18 SynthCMS 3.1", "tls_expiry": "2026-10-15", "issues": ["outdated-cms", "http-redirect-missing"] },
+    { "asset_id": "A03", "hostname": "mail.northwind-synthetic.example", "ip": "203.0.113.30", "ports": [25, 587, 993], "fingerprint": "Synthetic Mail Gateway 7", "tls_expiry": "2027-01-10", "issues": ["auth-bypass-advisory"] },
+    { "asset_id": "A10", "hostname": "backup-nw-synth.objects.example", "ip": null, "ports": [443], "fingerprint": "SynthCloud Object Storage", "tls_expiry": null, "issues": ["anonymous-list"] },
+    { "asset_id": "A11", "hostname": "ci.northwind-synthetic.example", "ip": "203.0.113.40", "ports": [443], "fingerprint": "SynthCI Runner", "tls_expiry": "2026-12-01", "issues": [] },
+    { "asset_id": "A12", "hostname": "hr.synthetic-saas.example", "ip": null, "ports": [443], "fingerprint": "Synthetic HR SaaS", "tls_expiry": null, "issues": ["admin-mfa-not-enforced"] },
+    { "asset_id": null, "hostname": "old-test.northwind-synthetic.example", "ip": "203.0.113.50", "ports": [8080], "fingerprint": "Unknown / Tomcat-like banner", "tls_expiry": null, "issues": ["unknown-asset", "not-in-inventory"] }
+  ]
+}
