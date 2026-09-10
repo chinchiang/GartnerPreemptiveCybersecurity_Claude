@@ -109,9 +109,9 @@ function buildZip(entries) {
   // entries: [{name, data:Buffer}]
   const local = [], central = [];
   let offset = 0;
-  const now = new Date();
-  const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xffff;
-  const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xffff;
+  // 固定時間戳，讓每次建置產生完全相同的 ZIP（可重現建置，避免重建就弄髒 git 工作樹）
+  const dosTime = 0;                                    // 00:00:00
+  const dosDate = (((2026 - 1980) << 9) | (1 << 5) | 1) & 0xffff; // 2026-01-01
   for (const e of entries) {
     const name = Buffer.from(e.name, 'utf8');
     const data = e.data;
