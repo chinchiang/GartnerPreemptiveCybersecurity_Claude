@@ -1,0 +1,38 @@
+{
+  "_note": "合成威脅情資。行為者名稱、活動與弱點編號皆為虛構，用於示範『情資如何影響優先序』。",
+  "as_of": "2026-09-05",
+  "sector": "Discrete manufacturing (Taiwan / APAC)",
+  "actors": [
+    {
+      "actor_id": "T01",
+      "name": "SYNTHETIC-GROUP-ALPHA",
+      "motivation": "ransomware / extortion",
+      "targets_sector": true,
+      "confidence": "medium",
+      "ttps": ["initial-access:exploit-public-facing-vpn", "credential-access:kerberoasting", "lateral:smb-relay", "impact:encrypt-and-delete-backups"],
+      "exploits_vuln_ids": ["SYN-2026-0101", "SYN-2025-0500"],
+      "recent_activity": "2026-08 起針對 APAC 製造業 VPN 設備進行大規模掃描與利用（合成）"
+    },
+    {
+      "actor_id": "T02",
+      "name": "SYNTHETIC-GROUP-BETA",
+      "motivation": "espionage / IP theft",
+      "targets_sector": true,
+      "confidence": "low",
+      "ttps": ["initial-access:phishing-via-mail-gateway", "persistence:oauth-app-consent", "collection:file-share-crawl"],
+      "exploits_vuln_ids": ["SYN-2026-0150"],
+      "recent_activity": "針對設計圖與供應鏈合約（合成）"
+    },
+    {
+      "actor_id": "T03",
+      "name": "SYNTHETIC-OT-CAMPAIGN",
+      "motivation": "disruption",
+      "targets_sector": true,
+      "confidence": "low",
+      "ttps": ["initial-access:it-to-ot-pivot", "impact:mes-manipulation"],
+      "exploits_vuln_ids": ["SYN-2023-0044"],
+      "recent_activity": "公開報告提及 MES API 濫用（合成）"
+    }
+  ],
+  "trending_weakness_classes": ["edge-device-rce", "identity-mfa-gaps", "backup-tampering", "ci-secrets-leak"]
+}

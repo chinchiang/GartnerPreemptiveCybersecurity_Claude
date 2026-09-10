@@ -1,0 +1,9 @@
+identity_id,account,type,privilege_level,mfa_enabled,last_login_days,linked_assets,notes
+I01,svc-erp-sync,service,domain_admin,false,1,"A04;A05;A06",ERP 同步服務帳號具網域管理員權限（過度授權）
+I02,adm-jsmith,human,domain_admin,true,2,"A04;A09",
+I03,adm-legacy01,human,domain_admin,false,190,"A04",190 天未登入的管理員帳號
+I04,svc-backup,service,local_admin,false,1,"A06;A08;A10",備份服務帳號可寫入備份儲存桶
+I05,ci-deploy-bot,service,deploy,false,1,"A11;A02",CI 部署帳號持有 web-portal 部署金鑰
+I06,vpn-user-group,group,user,partial,0,"A01",VPN 群組中 12% 使用者未啟用 MFA
+I07,mes-operator,human,local_admin,false,1,"A07",產線操作員共用帳號
+I08,hr-admin-role,role,app_admin,false,3,"A12",HR SaaS 管理角色未強制 MFA

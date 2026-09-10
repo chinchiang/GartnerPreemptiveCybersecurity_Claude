@@ -1,0 +1,60 @@
+// 平台比較（查證日期 2026-09-09）。status: verified | partial | unverified（整體）
+window.PLATFORMS = [
+  { id: 'chatgpt', name: 'ChatGPT', vendor: 'OpenAI', status: 'partial', sources: ['P-O1', 'P-O2', 'P-O3', 'P-O4', 'P-O5', 'P-AS1'],
+    models: 'GPT-5.x；官方 SDK README 範例 `gpt-5.5`（已查證）。ChatGPT 選單顯示名稱：待驗證。',
+    hosting: '**ChatGPT 應用**（Custom Instructions、Projects、Custom GPTs）；**Codex**（CLI／IDE／桌面／雲端）；**OpenAI API**（Responses API）。',
+    mechanism: 'Codex 支援 **Agent Skills 開放標準**（`.agents/skills`、`$HOME/.agents/skills`；`$skill-name` 叫用；`openai/skills` 已改指向 `openai/plugins`）。ChatGPT 應用無 SKILL.md 證據：以 Custom GPT 指令 + Knowledge、Project 指令承載。',
+    skillFormat: '`codex-skill/SKILL.md`（標準格式）；`custom-gpt-instructions.md`；`project-instructions.md`；`api-workflow.py`（Responses API，含 `--dry-run`）。',
+    tools: 'Custom GPT Actions（預設不啟用）；Codex 本機檔案讀寫；API function calling。本任務不需要對外連線。',
+    files: 'Custom GPT Knowledge：每個 GPT 20 檔、單檔 512 MB／2M tokens（部分查證）；Projects 上限待驗證。',
+    limits: '應用層限制多為部分查證或待驗證；Custom GPT 分享範圍等於資料分享範圍。',
+    notes: 'Codex 相關（標準、repo）已查證；`.agents/skills` 路徑部分查證；應用功能部分／待驗證。',
+    summary: '三種承載：Custom GPT／Project（貼指令 + 上傳檔案）、Codex（標準 SKILL.md）、API 腳本。' },
+  { id: 'claude', name: 'Claude', vendor: 'Anthropic', status: 'verified', sources: ['P-C1', 'P-C2', 'P-C3', 'P-C4', 'P-C5', 'P-AS1'],
+    models: 'Claude Fable 5.1（`claude-fable-5-1`）、Opus 5、Sonnet 5（1M context）、Haiku 4.5（已查證）。',
+    hosting: 'claude.ai（網頁／桌面／行動）、Claude Code（終端／IDE／桌面／瀏覽器）、Claude Developer Platform（Messages API + Skills API）、Claude Agent SDK。',
+    mechanism: '**原生 Agent Skills**：`SKILL.md` + `scripts/`、`references/`、`assets/`；三層漸進式載入；claude.ai 上傳 zip（Pro/Max/Team/Enterprise + code execution）、API `/v1/skills`、Claude Code `~/.claude/skills`／`.claude/skills`、Agent SDK `settingSources`。',
+    skillFormat: '`preemptive-exposure-analysis/SKILL.md`（六個跨介面欄位）+ references + scripts。',
+    tools: 'Claude Code 檔案讀寫；MCP 連接器（Messages API beta）；code execution 工具（Skills 需要）。',
+    files: 'Files API：500 MB／檔、1 TB／組織；claude.ai 對話附檔。',
+    limits: '「Custom Skills do not sync across surfaces」；上傳 claude.ai／API 只有 `name`、`description`、`license`、`compatibility`、`metadata`、`allowed-tools` 有效；Projects 細節待驗證。',
+    notes: '模型、Skills、API、Claude Code 文件皆已讀全文。',
+    summary: '單一 SKILL.md 可用於 Claude Code、claude.ai（zip）與 Skills API。' },
+  { id: 'grok', name: 'Grok', vendor: 'xAI', status: 'partial', sources: ['P-X1', 'P-X2', 'P-AS1'],
+    models: 'Grok 4.x；官方 SDK 範例 `grok-4.6`、`grok-4.20`（已查證）。Grok 5：待驗證。',
+    hosting: '**xAI API**（`xai_sdk`；function calling、structured outputs、伺服器端 Agent Tools：`web_search`、`x_search`、`code_execution`）；grok.com／Grok 應用；Grok in X。',
+    mechanism: '**無**原生 skills／SKILL.md（agentskills.io 清單無 xAI）。grok.com 的自訂指令／Workspaces／Custom Agents／Tasks：待驗證。',
+    skillFormat: '`system-prompt.md`；`api-workflow.py`（xai_sdk，含 `--dry-run`、`--compat`）；`tool-definitions.json`（客戶端 function calling）。',
+    tools: '伺服器端工具**預設關閉**（會把資料送往額外處理流程）；客戶端工具由自建 harness 執行。',
+    files: 'grok.com 附檔限制待驗證；API 以文字傳入。',
+    limits: '沒有原生技能格式；應用功能全部待驗證；OpenAI 相容端點待驗證；「SpaceXAI」更名待確認。',
+    notes: 'API 能力已查證（GitHub SDK）；docs.x.ai 與 grok.com 無法開啟。',
+    summary: 'system prompt + function calling + API 腳本；grok.com 端貼提示詞。' },
+  { id: 'glm', name: 'GLM', vendor: 'Zhipu AI / Z.ai', status: 'partial', sources: ['P-Z1', 'P-Z2', 'P-Z3', 'P-AS1'],
+    models: 'GLM-5／5.1／5.2／5.3（744B-A40B）、GLM-5.3-Flash（320B-A18B）；GLM-5.2 1M context（已查證，GitHub README）。GLM-4.6／4.7：待驗證。',
+    hosting: 'Z.ai API Platform（docs.z.ai）／BigModel（open.bigmodel.cn）；chat.z.ai／智谱清言；**GLM Coding Plan + Claude Code**（官方外掛市集 `zai-org/zai-coding-plugins`；Anthropic 相容端點 `api.z.ai/api/anthropic` 部分查證）。',
+    mechanism: 'Z.ai 以 **SKILL.md 格式發布** skill（`glm-master-skill`，發布者角色）；聊天應用能否載入 SKILL.md 未查證；智能体／知識庫待驗證。',
+    skillFormat: '`claude-code-skill/SKILL.md`（在 Claude Code 內以 GLM 為後端）；`system-prompt.md`；`api-workflow.py`（OpenAI 相容／`--anthropic-compatible`）；`claude-code-settings.example.json`。',
+    tools: 'API function calling（官方文件無法開啟，待驗證）；Claude Code 工具由宿主提供。',
+    files: '聊天應用檔案上限待驗證；API 以文字傳入。',
+    limits: 'base URL 與模型 ID 需以官方文件確認；資料出境評估（中國大陸公司營運）。',
+    notes: '模型與 Claude Code 整合已查證；API 細節部分查證；應用待驗證。',
+    summary: '同一份標準 SKILL.md 在 Claude Code 內以 GLM 為後端；或 system prompt + API。' },
+  { id: 'deepseek', name: 'DeepSeek', vendor: 'DeepSeek', status: 'partial', sources: ['P-D1', 'P-D2', 'P-D3', 'P-AS1'],
+    models: 'DeepSeek-V4-Pro／V4-Flash（V4 Preview 2026-04-24；V4-Pro GA 2026-08-13；1M context、384K 輸出）：官方 URL 與摘錄 + GitHub 命名佐證（部分查證）。`deepseek-chat`／`deepseek-reasoner` 於 2026-07-24 退役（部分查證）。',
+    hosting: 'DeepSeek API（OpenAI ChatCompletions 與 Anthropic 相容介面；JSON Output、Tool Calls）；chat.deepseek.com；`deepseek-harness`（plugin 架構，已查證）。',
+    mechanism: '**無第一方 skills**。skills-capable 第三方 host：OpenClaw、Deep Code（列於 agentskills.io）；Claude Code 經 Anthropic 相容介面（設定方式待驗證）。聊天應用自訂指令／專案：待驗證。',
+    skillFormat: '`host-skill/SKILL.md`；`system-prompt.md`；`api-workflow.py`（版本無關：模型 ID 由環境變數指定；`response_format json_object`）。',
+    tools: 'API Tool Calls（部分查證）；strict 工具呼叫待驗證。',
+    files: '聊天應用附檔格式與大小待驗證；API 以文字傳入。',
+    limits: '模型授權條款待驗證；資料出境評估（中國大陸公司營運）。',
+    notes: 'V4 存在性為部分查證 + GitHub 佐證；不依賴特定版本的設計可降低風險。',
+    summary: '版本無關的 API 腳本；標準 SKILL.md 放入 skills-capable host；聊天端貼提示詞。' }
+];
+
+window.PLATFORM_COMMON = `1. **單一來源**：\`skills/shared/task-spec.md\` 與 \`core-prompt.md\` 定義任務、證據要求與人工核准邊界；各平台檔案只處理載入方式、工具與檔案。
+2. **同一份 SKILL.md 跨宿主**：Claude Code、Codex，以及以 GLM／DeepSeek 為後端的 Claude Code／OpenClaw／Deep Code，都使用 Agent Skills 開放標準。
+3. **無原生技能的平台**（Grok、GLM 與 DeepSeek 的聊天應用）：system prompt + API 腳本；所有腳本支援 \`--dry-run\`，無 API key 也能驗證提示詞組裝。
+4. **安全邊界一致**：對外掃描、主動驗證、正式環境變更只能提案；缺 scope 拒絕分析；攻擊路徑一律假設；管理摘要預設遮罩。
+5. **資料治理**：任何平台都會把輸入資料送到供應商 API；示範只用合成資料；GLM 與 DeepSeek 需評估資料出境政策。
+6. **待驗證項目**列入「證據與來源」頁，並附驗證方式。`;

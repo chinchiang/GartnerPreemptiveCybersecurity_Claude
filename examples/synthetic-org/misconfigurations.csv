@@ -1,0 +1,10 @@
+config_id,asset_id,benchmark,control,status,severity,notes
+C01,A01,Vendor hardening guide,Disable legacy TLS 1.0/1.1,fail,medium,
+C02,A02,CIS Ubuntu 22.04,Web server runs as root,fail,high,
+C03,A04,CIS Windows Server 2019,Enforce SMB signing,fail,medium,
+C04,A06,CIS PostgreSQL,pg_hba trust auth from app subnet,fail,high,
+C05,A07,IEC 62443 zone/conduit,OT-DMZ to plant network unrestricted,fail,high,
+C06,A09,CIS Windows Server 2022,RDP NLA enforced,pass,low,
+C07,A10,Cloud storage baseline,Block public access,fail,high,
+C08,A11,CI baseline,Secrets masked in logs,fail,high,
+C09,A12,SaaS baseline,Admin roles require phishing-resistant MFA,fail,medium,

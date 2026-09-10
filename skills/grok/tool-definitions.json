@@ -1,0 +1,58 @@
+{
+  "_note": "供自建 harness（xAI API function calling）使用的客戶端工具定義。模型只能『請求』呼叫；實際執行由你的程式完成。三個工具都不連網、不掃描、不變更任何系統。request_human_approval 只記錄核准請求，永遠不會執行測試。",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "load_input_bundle",
+        "description": "從授權的本機資料夾讀入輸入檔（scope.json、assets.csv、vulnerabilities.csv、exposures.json、identities.csv、misconfigurations.csv、controls.json、threat-intel.json、topology.json），回傳每個檔案的筆數、缺欄位、異常值與範圍外資產。缺少 scope.json 時回傳錯誤，不得繼續分析。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "input_dir": { "type": "string", "description": "本機資料夾路徑（只讀）" }
+          },
+          "required": ["input_dir"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "score_findings",
+        "description": "依 skills/shared/task-spec.md 附錄 A 的示範規則，對所有發現進行確定性評分（likelihood、impact、score、P1–P4）並產生攻擊路徑假設的可行性分數。回傳每項 factors[] 以便回溯。若使用者提供自訂權重則採用之。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "risk_appetite": { "type": "string", "enum": ["strict", "balanced", "tolerant"], "default": "balanced" },
+            "weights": {
+              "type": "object",
+              "description": "可選的權重覆寫",
+              "properties": {
+                "exposure": { "type": "number" }, "exploit": { "type": "number" }, "identity": { "type": "number" },
+                "control": { "type": "number" }, "intel": { "type": "number" }, "impact": { "type": "number" }
+              }
+            },
+            "exclude_inputs": { "type": "array", "items": { "type": "string", "enum": ["exposures", "epss", "identities", "misconfigurations", "controls", "threat_intel", "topology"] }, "description": "模擬缺漏：排除的輸入類別" }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "request_human_approval",
+        "description": "記錄一項需要人工核准的請求（例如：授權外部驗證、核准 P1 修補排程、OT 變更）。此工具只把請求寫入待辦清單並回傳 pending 狀態；它永遠不會執行任何測試、掃描或變更。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "stage": { "type": "string", "description": "S1–S8 之一" },
+            "approver_role": { "type": "string", "description": "例如 CISO、系統擁有者、變更委員會" },
+            "request": { "type": "string", "description": "請求內容" },
+            "scope_exclusions": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["stage", "approver_role", "request"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+finding_id,asset_id,vuln_id,title,cvss_base,exploit_public,epss_sim,kev_sim,first_seen,patch_available,notes
+F001,A01,SYN-2026-0101,VPN appliance pre-auth RCE (synthetic),9.8,true,0.91,true,2026-08-20,true,廠商已釋出修補；模擬「近期被大量利用」情境
+F002,A01,SYN-2025-0342,VPN admin panel weak session handling (synthetic),6.5,false,0.08,false,2026-05-11,true,
+F003,A02,SYN-2026-0210,SynthCMS file upload leads to RCE (synthetic),8.8,true,0.62,false,2026-08-28,true,
+F004,A02,SYN-2025-0977,Nginx outdated version (synthetic),5.3,false,0.03,false,2026-03-02,true,
+F005,A03,SYN-2026-0150,Mail gateway auth bypass (synthetic),9.1,true,0.45,false,2026-07-30,false,尚無修補，僅有緩解建議
+F006,A04,SYN-2025-0500,Kerberos ticket handling weakness (synthetic),8.1,true,0.30,false,2026-01-15,true,需重開機，維護窗口受限
+F007,A05,SYN-2026-0333,SynthERP deserialization RCE (synthetic),9.0,false,0.12,false,2026-08-05,true,
+F008,A06,SYN-2024-0810,PostgreSQL privilege escalation (synthetic),7.8,true,0.20,false,2025-11-20,true,
+F009,A07,SYN-2023-0044,SynthMES unauthenticated API (synthetic),9.4,true,0.55,false,2025-06-01,false,OT 廠商不支援升級；需補償控制
+F010,A08,SYN-2025-0620,SMB signing not enforced (synthetic),5.9,true,0.10,false,2026-02-10,true,
+F011,A09,SYN-2026-0015,RDP exposed to user VLAN without MFA (synthetic),7.5,false,0.05,false,2026-06-18,true,設定議題，非軟體漏洞
+F012,A10,SYN-2026-0402,Object storage bucket policy allows anonymous list (synthetic),7.5,false,0.30,false,2026-09-01,true,設定議題
+F013,A11,SYN-2026-0388,CI runner exposes token in build logs (synthetic),8.2,false,0.15,false,2026-08-25,true,
+F014,A12,SYN-2026-0290,SSO app lacks MFA enforcement for admins (synthetic),7.2,false,0.06,false,2026-07-12,true,設定議題

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build data files and downloads
+        run: node scripts/build-data.mjs
+      - name: Static verification (data, sources, schema, demo acceptance, secrets scan)
+        run: node scripts/verify.mjs --static
+      - name: Generated files are up to date
+        run: |
+          git status --porcelain -- data/ | grep -v '^ M data/manifest.js$' | tee /tmp/dirty.txt
+          test ! -s /tmp/dirty.txt || { echo "data/ 與來源不一致，請執行 node scripts/build-data.mjs 後提交"; exit 1; }
+      - name: Python skills compile and dry-run (no API keys)
+        run: |
+          python3 -m py_compile skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
+          for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run >/dev/null; done
+          python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
+      - name: Demo engine acceptance snapshot
+        run: node scripts/run-demo.mjs | head -5

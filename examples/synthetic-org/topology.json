@@ -1,0 +1,25 @@
+{
+  "_note": "合成網路可達性與信任關係。edge 表示『若攻擊者控制 from，可嘗試觸及 to』，供攻擊路徑假設使用；並非實際驗證結果。",
+  "crown_jewels": ["A06", "A07"],
+  "edges": [
+    { "from": "internet", "to": "A01", "via": "VPN 443/tcp", "trust": "exposed" },
+    { "from": "internet", "to": "A02", "via": "HTTPS 443/tcp", "trust": "exposed" },
+    { "from": "internet", "to": "A03", "via": "SMTP/IMAP", "trust": "exposed" },
+    { "from": "internet", "to": "A10", "via": "Object storage API", "trust": "exposed" },
+    { "from": "internet", "to": "A11", "via": "CI webhook", "trust": "exposed" },
+    { "from": "internet", "to": "A12", "via": "SaaS login", "trust": "exposed" },
+    { "from": "A01", "to": "A04", "via": "VPN 使用者網段可達 DC (LDAP/Kerberos/SMB)", "trust": "network" },
+    { "from": "A01", "to": "A09", "via": "RDP 3389 無 MFA", "trust": "network" },
+    { "from": "A02", "to": "A05", "via": "應用 API 8443", "trust": "app-trust" },
+    { "from": "A03", "to": "A08", "via": "釣魚後使用者工作站 → SMB", "trust": "user-pivot" },
+    { "from": "A04", "to": "A05", "via": "網域信任 / svc-erp-sync 網域管理員", "trust": "identity" },
+    { "from": "A04", "to": "A06", "via": "svc-erp-sync 憑證", "trust": "identity" },
+    { "from": "A04", "to": "A08", "via": "網域管理員", "trust": "identity" },
+    { "from": "A05", "to": "A06", "via": "pg_hba trust 認證", "trust": "misconfig" },
+    { "from": "A08", "to": "A07", "via": "OT-DMZ 未隔離 / SMB", "trust": "network" },
+    { "from": "A09", "to": "A07", "via": "跳板機可達 OT-DMZ", "trust": "network" },
+    { "from": "A09", "to": "A06", "via": "DBA 由跳板機管理", "trust": "network" },
+    { "from": "A11", "to": "A02", "via": "ci-deploy-bot 部署金鑰", "trust": "identity" },
+    { "from": "A10", "to": "A06", "via": "備份內含 DB dump（資料外洩路徑）", "trust": "data" }
+  ]
+}
