@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "builtAt": "2026-09-09T23:24:16.271Z",
+ "builtAt": "2026-09-12T12:20:32.908Z",
  "research": [
   {
    "id": "00-method",
