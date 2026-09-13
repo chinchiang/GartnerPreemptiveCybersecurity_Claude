@@ -6,7 +6,7 @@
 
 ## 網站
 
-- 部署後網址（需在 Settings → Pages 啟用 GitHub Actions 來源）：`https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`
+- 網站網址（已由 GitHub Actions 部署，2026-09-13 確認可用）：`https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`
 - 本機預覽：`node scripts/build-data.mjs && npx http-server -p 8080 .`，或直接開啟 `index.html`。
 
 網站包含：方法論導覽（8 章研究文件全文）、可執行流程（8 步驟互動）、Inputs／Outputs 對照（可篩選）、平台比較、Skills 專區（一鍵複製／下載／ZIP）、安裝與使用教學（切換平台）、案例互動展示（合成資料，可切換輸入與權重）、證據與來源（含待驗證清單）、部署與維護。支援桌面與行動裝置、淺／深色主題、全站搜尋、基本無障礙。

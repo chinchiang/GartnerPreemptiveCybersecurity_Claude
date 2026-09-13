@@ -42,7 +42,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 
 工作流程 `.github/workflows/pages.yml` 會在推送到 `main` 時：安裝 Node 22 → `node scripts/build-data.mjs` → `node scripts/verify.mjs --static` → 上傳整個儲存庫為 Pages artifact → 部署。
 
-**需要人工完成一次**：儲存庫 Settings → Pages → Build and deployment → Source 選 **GitHub Actions**。完成後網址通常為 `https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`。
+**已完成的一次性設定**（2026-09-13）：儲存庫 Settings → Pages → Build and deployment → Source 選 **GitHub Actions**；預設分支設為 `main`；`github-pages` 環境的部署分支規則允許 `main`。目前網址為 `https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`，部署工作流程已成功執行並經人工確認。若新建 fork 或搬移儲存庫，需重做這三項設定。
 
 若偏好「Deploy from a branch」，也可以直接選 `main` 分支根目錄（因為 `data/` 與 `downloads/` 已提交），但建議用 Actions 以確保建置一致。
 
