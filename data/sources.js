@@ -72,7 +72,7 @@ window.TODO_ITEMS = [
   { item: 'DeepSeek V4：授權條款、strict tool calling、chat.deepseek.com 的自訂指令／專案、Anthropic 相容介面在 Claude Code 的設定方式', why: 'api-docs.deepseek.com、huggingface.co 無法開啟', how: '開啟 P-D2、P-D3；實測 api-workflow.py' },
   { item: '使用者提供之 AI 生成報告引用的數字（例如 Verizon 2026 DBIR「31% 初始入侵為漏洞利用」「KEV 修補率 26%」、IBM 2024 breach cost）', why: '本研究未核對原始報告', how: '開啟 Verizon DBIR 2026 與 IBM 報告原文' },
   { item: '各平台 skill 在真實模型上的驗收結果', why: '研究環境無 API 金鑰，僅完成 --dry-run 與確定性示範引擎驗證', how: '依各平台教學第 9 節執行 7 項驗收並記錄' },
-  { item: 'GitHub Pages 部署', why: '需在儲存庫設定中把 Pages 來源設為 GitHub Actions，本 session 無此權限', how: 'Settings → Pages → Build and deployment → Source: GitHub Actions；合併 PR 後工作流程自動部署' }
+  { item: '（已完成）GitHub Pages 部署', why: '2026-09-13 已由 pages.yml 工作流程部署成功，網址 https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/ ，使用者已確認網站可用。保留此項作為紀錄。', how: '若儲存庫改為公開，重跑 node scripts/verify.mjs --links 以更新 U1、U2 的 404 結果' }
 ];
 
 window.LINK_CHECK_NOTE = `- **2026-09-09 實際結果**（\`node scripts/verify.mjs --links\`，輸出 \`link-check.md\`）：57 個 URL 中，**13 個回應 200**（github.com 的 7 個官方 repo、platform.claude.com 與 code.claude.com 的 5 頁、agentskills 標準 repo），**42 個回應 403**（研究環境的出口 proxy 政策封鎖：gartner.com、openai.com、help.openai.com、developers.openai.com、docs.x.ai、docs.z.ai、api-docs.deepseek.com、huggingface.co、媒體與廠商網域），**2 個回應 404**（U1、U2 指向本儲存庫，因儲存庫尚未公開；使用者提供的兩份 AI 生成報告未放入儲存庫）。
