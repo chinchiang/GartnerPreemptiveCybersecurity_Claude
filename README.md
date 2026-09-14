@@ -24,7 +24,7 @@ examples/synthetic-org/           合成範例資料（9 檔）；expected-outpu
 scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs、check-acceptance.mjs（驗收真實模型輸出）
 downloads/                        建置產生的 ZIP 下載包
 backend/                          選用的模型 API 代理範例（預設不需要、無金鑰）
-.github/workflows/                pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收，手動）
+.github/workflows/                pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收，手動）、quarterly-review.yml（季度查證提醒）
 ```
 
 ## 快速使用 Skills

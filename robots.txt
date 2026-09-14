@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# 本站是 hash 路由的單頁應用程式，實際只有一個 URL；各頁面在 # 之後，爬蟲不會索引片段。
+Sitemap: https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/sitemap.xml

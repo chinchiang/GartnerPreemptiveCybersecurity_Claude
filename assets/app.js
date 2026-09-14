@@ -11,7 +11,7 @@
     manifest: window.BUILD_MANIFEST || {}
   };
   // 儲存庫為 private、Pages 站點為公開時，任何指向 repo 的連結對訪客都是 404。
-  // 儲存庫轉為公開後把 REPO_PUBLIC 改成 true，topbar 的 GitHub 按鈕就會顯示。
+  // 儲存庫轉為公開後把 REPO_PUBLIC 改成 true，topbar 的 GitHub 按鈕與頁尾的儲存庫連結就會顯示。
   const REPO_PUBLIC = false;
   const PLATFORM_META = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', glm: 'GLM', deepseek: 'DeepSeek', shared: '共用規格' };
   const PLATFORM_ORDER = ['shared', 'chatgpt', 'claude', 'grok', 'glm', 'deepseek'];
@@ -456,7 +456,7 @@
   // ---------- 初始化 ----------
   function init() {
     $('.sidebar nav').innerHTML = NAV.map(([g, items]) => `<div class="group">${g}</div>${items.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}`).join('');
-    if (REPO_PUBLIC) { const repoLink = $('#repo-link'); if (repoLink) repoLink.hidden = false; }
+    if (REPO_PUBLIC) for (const id of ['#repo-link', '#repo-footer']) { const n = $(id); if (n) n.hidden = false; }
     $('#menu-btn').addEventListener('click', () => { const s = $('.sidebar'); s.classList.toggle('open'); $('#menu-btn').setAttribute('aria-expanded', s.classList.contains('open')); });
     const themeBtn = $('#theme-btn');
     const applyTheme = (t) => { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); themeBtn.textContent = t === 'dark' ? '☀︎ 淺色' : t === 'light' ? '☾ 深色' : '◐ 主題'; };

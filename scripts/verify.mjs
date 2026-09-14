@@ -83,6 +83,17 @@ function staticChecks() {
   };
   ok('驗收腳本對合成夾具全部通過（baseline）', runChecker([]) === 0);
   ok('驗收腳本能區分 no-intel 變體（同一夾具應失敗）', runChecker(['--variant', 'no-intel']) === 1);
+  // 站點層級檔案與 index.html 的 head
+  const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
+    /http-equiv="Content-Security-Policy"/.test(html) && /style-src [^"]*'unsafe-inline'/.test(html));
+  ok('index.html 有 OG／Twitter 卡片與 canonical', ['og:title', 'og:url', 'twitter:card', 'rel="canonical"'].every(k => html.includes(k)));
+  for (const f of ['robots.txt', 'sitemap.xml', '.nojekyll']) ok(`站點檔案存在 ${f}`, existsSync(join(ROOT, f)));
+  const SITE = 'https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/';
+  ok('canonical、og:url、sitemap.xml、robots.txt 的網址一致',
+    html.includes(`rel="canonical" href="${SITE}"`) && html.includes(`content="${SITE}"`)
+    && readFileSync(join(ROOT, 'sitemap.xml'), 'utf8').includes(`<loc>${SITE}</loc>`)
+    && readFileSync(join(ROOT, 'robots.txt'), 'utf8').includes(`${SITE}sitemap.xml`));
   // 下載檔案
   for (const d of w.BUILD_MANIFEST.downloads) ok(`下載檔存在 ${d}`, existsSync(join(ROOT, d)));
   // 機敏字串掃描

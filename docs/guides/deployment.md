@@ -23,7 +23,11 @@ scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-accepta
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
 .gitattributes        強制文字檔使用 LF（見第 7 節）
-.github/workflows/    pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收）
+robots.txt            允許索引，指向 sitemap
+sitemap.xml           只有一個 URL（hash 路由的 SPA，片段不被索引）
+.nojekyll             關閉 GitHub Pages 的 Jekyll 處理
+.github/workflows/    pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收）、quarterly-review.yml（季度查證提醒）
+.github/dependabot.yml  只追蹤 GitHub Actions 版本
 ```
 
 內容以 `docs/` 與 `skills/` 為單一來源；**修改後務必執行** `npm run build` 重新產生 `data/` 與 `downloads/`，否則網站不會更新。
@@ -104,12 +108,16 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 
 `data/` 與 `downloads/` 是建置產物但**有進版控**（為了讓 `file://` 與「Deploy from a branch」都能用）。CI 會執行 `git diff --exit-code -- data/ downloads/`，忘記重建就會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
 
-建議每季重新查證：Gartner 新文件（尤其 Impact Radar 與 Hype Cycle 更新）、五個平台的模型與功能變動（見待驗證清單）。
+建議每季重新查證：Gartner 新文件（尤其 Impact Radar 與 Hype Cycle 更新）、五個平台的模型與功能變動（見待驗證清單）。這件事已由 `.github/workflows/quarterly-review.yml` 每季（1／4／7／10 月 1 日）自動開一個 issue，內容是 `data/sources.js` 中 `status: 'pending'` 的項目所組成的勾選清單（`node scripts/todo-checklist.mjs` 可在本機預覽）。查證完成後把該項改成 `status: 'done'` 並填 `resolvedAt`——`verify:static` 會檢查 `pending` 項目都寫出了下一步、`done` 項目都有日期。
+
+`sitemap.xml` 的 `<lastmod>` 是手寫的，內容有較大幅度更新時順手改一下即可（刻意不由建置產生：那會讓 `data/` 的一致性檢查每天都失敗）。
 
 ## 6. 安全與隱私
 
 - 儲存庫與網站不含任何 API 金鑰、憑證或真實資料；`verify.mjs` 會掃描金鑰樣式字串。
 - 網站不使用 cookie、不連外部服務；主題偏好只存於 `localStorage`。
+- `index.html` 有 CSP meta：`default-src 'self'`、`object-src 'none'`、`form-action 'none'`。`style-src` 必須保留 `'unsafe-inline'`（`assets/app.js` 有 18 處 `style="…"` 屬性），`img-src` 必須保留 `data:`（favicon 是內嵌 SVG）。**加入任何外部資源前先改這一行**，否則瀏覽器會靜默擋掉；`npm run verify` 會把 CSP 違規當成 console error 而失敗。
+- 儲存庫目前為 private 而 Pages 站點公開，因此指向儲存庫的連結（topbar 按鈕與頁尾）預設隱藏，由 `assets/app.js` 的 `REPO_PUBLIC` 控制；轉為公開後改成 `true`。
 - 若啟用 `backend/` 代理，金鑰只在伺服器端，並限制來源與速率。
 
 ## 7. 在 Windows 上開發

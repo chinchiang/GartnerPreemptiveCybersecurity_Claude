@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-09-14T01:19:57.353Z
+執行時間：2026-09-14T01:28:38.543Z
 模式：full
-結果：69/69 通過
+結果：75/75 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -35,6 +35,12 @@
 | 示範引擎輸出與 examples/demo-snapshot.txt 一致 | ✅ | 42 行 |
 | 驗收腳本對合成夾具全部通過（baseline） | ✅ |  |
 | 驗收腳本能區分 no-intel 變體（同一夾具應失敗） | ✅ |  |
+| index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性） | ✅ |  |
+| index.html 有 OG／Twitter 卡片與 canonical | ✅ |  |
+| 站點檔案存在 robots.txt | ✅ |  |
+| 站點檔案存在 sitemap.xml | ✅ |  |
+| 站點檔案存在 .nojekyll | ✅ |  |
+| canonical、og:url、sitemap.xml、robots.txt 的網址一致 | ✅ |  |
 | 下載檔存在 downloads/skills-chatgpt.zip | ✅ |  |
 | 下載檔存在 downloads/skills-claude.zip | ✅ |  |
 | 下載檔存在 downloads/skills-deepseek.zip | ✅ |  |
