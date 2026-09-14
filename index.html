@@ -37,9 +37,10 @@
     </div>
     <div class="spacer"></div>
     <button class="icon-btn" id="theme-btn" aria-label="切換色彩主題">◐ 主題</button>
-    <!-- 儲存庫目前為 private，Pages 站點是公開的：對訪客而言此連結是 404，因此預設隱藏。
-         儲存庫轉為公開後，把 assets/app.js 的 REPO_PUBLIC 改成 true 即會顯示。 -->
-    <a class="icon-btn" id="repo-link" hidden href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener" aria-label="GitHub 儲存庫">GitHub</a>
+    <!-- 儲存庫為公開，因此此連結預設顯示。
+         若日後改回 private，把 assets/app.js 的 REPO_PUBLIC 改成 false，這個按鈕與頁尾的
+         儲存庫連結就會隱藏——Pages 站點是公開的，指向 private 儲存庫的連結對訪客是 404。 -->
+    <a class="icon-btn" id="repo-link" href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener" aria-label="GitHub 儲存庫">GitHub</a>
   </header>
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="主要導覽"><nav></nav></aside>
@@ -47,9 +48,8 @@
   </div>
   <footer class="site-footer">
     本站內容以正體中文撰寫，保留必要英文專有名詞。Gartner 為 Gartner, Inc. 之商標；本站與 Gartner 無關，引用僅限公開資料並標示來源。所有示範資料皆為合成。
-    <!-- 與 topbar 的 GitHub 按鈕同理：儲存庫為 private 時，這個連結對訪客是 404，因此預設隱藏。
-         由 assets/app.js 的 REPO_PUBLIC 控制。 -->
-    <span id="repo-footer" hidden>儲存庫：<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">chinchiang/GartnerPreemptiveCybersecurity_Claude</a></span>
+    <!-- 與 topbar 的 GitHub 按鈕同受 assets/app.js 的 REPO_PUBLIC 控制。 -->
+    <span id="repo-footer">儲存庫：<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">chinchiang/GartnerPreemptiveCybersecurity_Claude</a></span>
   </footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

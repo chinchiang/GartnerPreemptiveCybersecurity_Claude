@@ -10,9 +10,10 @@
     stages: window.PROCESS_STAGES || [], io: window.IO_ITEMS || [], platforms: window.PLATFORMS || [], sources: window.SOURCES || [], todo: window.TODO_ITEMS || [],
     manifest: window.BUILD_MANIFEST || {}
   };
-  // 儲存庫為 private、Pages 站點為公開時，任何指向 repo 的連結對訪客都是 404。
-  // 儲存庫轉為公開後把 REPO_PUBLIC 改成 true，topbar 的 GitHub 按鈕與頁尾的儲存庫連結就會顯示。
-  const REPO_PUBLIC = false;
+  // 儲存庫已於 2026-09-14 轉為公開，因此指向 repo 的連結（topbar 按鈕、頁尾）預設顯示。
+  // 若改回 private，把這裡改成 false 即會隱藏——Pages 站點是公開的，指向 private 儲存庫的
+  // 連結對訪客一律是 404。預設值放在 HTML（可見），JS 只負責隱藏，這樣 JS 失效時連結仍在。
+  const REPO_PUBLIC = true;
   const PLATFORM_META = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', glm: 'GLM', deepseek: 'DeepSeek', shared: '共用規格' };
   const PLATFORM_ORDER = ['shared', 'chatgpt', 'claude', 'grok', 'glm', 'deepseek'];
   const TAG = { fact: '<span class="pill fact">Gartner 明確陳述</span>', third: '<span class="pill">其他來源</span>', infer: '<span class="pill infer">本專案推論</span>', rec: '<span class="pill rec">建議</span>', todo: '<span class="pill todo">待驗證</span>' };
@@ -456,7 +457,7 @@
   // ---------- 初始化 ----------
   function init() {
     $('.sidebar nav').innerHTML = NAV.map(([g, items]) => `<div class="group">${g}</div>${items.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}`).join('');
-    if (REPO_PUBLIC) for (const id of ['#repo-link', '#repo-footer']) { const n = $(id); if (n) n.hidden = false; }
+    if (!REPO_PUBLIC) for (const id of ['#repo-link', '#repo-footer']) { const n = $(id); if (n) n.hidden = true; }
     $('#menu-btn').addEventListener('click', () => { const s = $('.sidebar'); s.classList.toggle('open'); $('#menu-btn').setAttribute('aria-expanded', s.classList.contains('open')); });
     const themeBtn = $('#theme-btn');
     const applyTheme = (t) => { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); themeBtn.textContent = t === 'dark' ? '☀︎ 淺色' : t === 'light' ? '☾ 深色' : '◐ 主題'; };

@@ -204,6 +204,11 @@ async function browserChecks() {
   // 無障礙基礎
   await page.goto(base + '#/'); await page.waitForTimeout(100);
   ok('無障礙：skip link、lang、aria-current', (await page.$('.skip-link')) && (await page.getAttribute('html', 'lang')) === 'zh-Hant' && (await page.$('.sidebar nav a[aria-current="page"]')) !== null);
+  // 儲存庫連結的顯示狀態必須與 assets/app.js 的 REPO_PUBLIC 一致。
+  // 儲存庫若為 private，這些連結對站點訪客是 404，而維護者自己看不出來（有權限）。
+  const repoPublic = /const REPO_PUBLIC = true/.test(readFileSync(join(ROOT, 'assets/app.js'), 'utf8'));
+  const repoVisible = await page.evaluate(() => ['#repo-link', '#repo-footer'].every(s => { const n = document.querySelector(s); return n && !n.hidden; }));
+  ok(`儲存庫連結顯示狀態符合 REPO_PUBLIC=${repoPublic}`, repoVisible === repoPublic, `實際 ${repoVisible ? '顯示' : '隱藏'}`);
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }

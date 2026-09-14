@@ -117,7 +117,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 - 儲存庫與網站不含任何 API 金鑰、憑證或真實資料；`verify.mjs` 會掃描金鑰樣式字串。
 - 網站不使用 cookie、不連外部服務；主題偏好只存於 `localStorage`。
 - `index.html` 有 CSP meta：`default-src 'self'`、`object-src 'none'`、`form-action 'none'`。`style-src` 必須保留 `'unsafe-inline'`（`assets/app.js` 有 18 處 `style="…"` 屬性），`img-src` 必須保留 `data:`（favicon 是內嵌 SVG）。**加入任何外部資源前先改這一行**，否則瀏覽器會靜默擋掉；`npm run verify` 會把 CSP 違規當成 console error 而失敗。
-- 儲存庫目前為 private 而 Pages 站點公開，因此指向儲存庫的連結（topbar 按鈕與頁尾）預設隱藏，由 `assets/app.js` 的 `REPO_PUBLIC` 控制；轉為公開後改成 `true`。
+- 儲存庫已於 2026-09-14 轉為公開，指向儲存庫的連結（topbar 按鈕與頁尾）因此顯示。**若改回 private 記得把 `assets/app.js` 的 `REPO_PUBLIC` 改成 `false`**：Pages 站點是公開的，指向 private 儲存庫的連結對訪客一律是 404，而站在維護者的瀏覽器裡看不出來（你有權限）。
 - 若啟用 `backend/` 代理，金鑰只在伺服器端，並限制來源與速率。
 
 ## 7. 在 Windows 上開發
