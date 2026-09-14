@@ -1,0 +1,46 @@
+name: Quarterly review reminder
+
+# docs/guides/deployment.md 第 5 節寫了「建議每季重新查證」，但沒有任何機制讓它真的發生。
+# 這個工作流程每季開一個 issue，把 data/sources.js 的待查證項目變成勾選清單。
+#
+# 只開 issue，不改任何檔案：查證需要人在不受限網路上開頁面判讀，無法自動化。
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每季首日 04:00 UTC（比 link-check.yml 晚一小時，讓連結檢查結果可一併帶入）
+    - cron: '0 4 1 1,4,7,10 *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Create the review issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          quarter="$(date -u +%Y) Q$(( ($(date -u +%-m) - 1) / 3 + 1 ))"
+          {
+            echo "本 issue 由 \`.github/workflows/quarterly-review.yml\` 自動建立。"
+            echo ''
+            node scripts/todo-checklist.mjs
+            echo ''
+            echo '### 另外要看的東西'
+            echo ''
+            echo '- [ ] Gartner 是否有新文件（尤其 Impact Radar 與 Hype Cycle 更新）'
+            echo '- [ ] 五個平台的模型 ID 與功能是否變動（`data/platforms.js`、各平台教學第 1 節）'
+            echo '- [ ] 本季 `link-check.yml` 的執行結果是否已判讀並更新 `link-check.md`'
+            echo '- [ ] 是否要重跑 `model-acceptance.yml`（模型換版後值得重驗）'
+          } > body.md
+          gh issue create \
+            --title "季度查證：$quarter" \
+            --body-file body.md \
+            --repo "$GITHUB_REPOSITORY"
