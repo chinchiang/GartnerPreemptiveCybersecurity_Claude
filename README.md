@@ -21,10 +21,10 @@ docs/evidence/                    英文證據檔（Gartner 與平台查證原�
 skills/shared/                    共用任務規格、核心提示詞、輸入／輸出 JSON Schema
 skills/{chatgpt,claude,grok,glm,deepseek}/   各平台 skill 或等效檔案（SKILL.md、提示詞、API 腳本）
 examples/synthetic-org/           合成範例資料（9 檔）；expected-output.md 預期輸出；demo-snapshot.txt 示範引擎黃金快照
-scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs
+scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs、check-acceptance.mjs（驗收真實模型輸出）
 downloads/                        建置產生的 ZIP 下載包
 backend/                          選用的模型 API 代理範例（預設不需要、無金鑰）
-.github/workflows/                pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）
+.github/workflows/                pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收，手動）
 ```
 
 ## 快速使用 Skills
@@ -47,6 +47,8 @@ npm run verify:static   # 資料、來源 ID、schema、示範引擎驗收與快
 npm run verify          # 加上 Playwright 瀏覽器檢查（導覽、搜尋、篩選、複製、下載、案例互動、行動裝置）；需先 npm ci
 python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
 ```
+
+上面兩個指令驗的是專案本身（免金鑰、可重現）。**真實模型輸出**的驗收另用 `scripts/check-acceptance.mjs` 與 `.github/workflows/model-acceptance.yml`（手動觸發），人工判讀的部分記錄在 `docs/evidence/model-acceptance-template.md`；細節見 `docs/guides/deployment.md` 第 4.3 節。
 
 實際檢查結果記錄於 `verify-report.md`。`data/` 與 `downloads/` 為建置產物但有進版控，CI 會檢查它們與來源一致；修改 `docs/` 或 `skills/` 後請務必重新 `npm run build` 再提交。
 

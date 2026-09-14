@@ -63,6 +63,17 @@ function staticChecks() {
     ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
       actual === expected ? `${actual.split('\n').length} 行` : '評分規則已變動：確認 demo.js／core-prompt.md／task-spec.md／scoring-rules.md 四處已同步後執行 npm run snapshot 更新快照');
   } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
+  // check-acceptance.mjs 自我測試：examples/acceptance-fixture.json 是刻意做成「應該全部通過」的
+  // 合成夾具，用來確保驗收腳本本身沒壞（例如 output-schema.json 的 required 改了）。
+  // 同一份夾具在 no-intel 變體下必須失敗——否則表示第 6 項檢查是空的、驗不到東西。
+  const checker = join(ROOT, 'scripts/check-acceptance.mjs');
+  const fixture = join(ROOT, 'examples/acceptance-fixture.json');
+  const runChecker = (extra) => {
+    try { execFileSync(process.execPath, [checker, fixture, ...extra], { encoding: 'utf8', stdio: 'pipe' }); return 0; }
+    catch (e) { return e.status ?? 2; }
+  };
+  ok('驗收腳本對合成夾具全部通過（baseline）', runChecker([]) === 0);
+  ok('驗收腳本能區分 no-intel 變體（同一夾具應失敗）', runChecker(['--variant', 'no-intel']) === 1);
   // 下載檔案
   for (const d of w.BUILD_MANIFEST.downloads) ok(`下載檔存在 ${d}`, existsSync(join(ROOT, d)));
   // 機敏字串掃描

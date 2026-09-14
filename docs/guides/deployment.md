@@ -18,12 +18,12 @@ data/*.js             由 scripts/build-data.mjs 產生（research、guides、sk
 downloads/*.zip       由建置腳本產生的下載包
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               共用規格與五平台檔案（單一來源）
-examples/             合成範例資料、預期輸出與示範引擎快照
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs
+examples/             合成範例資料、預期輸出、示範引擎快照與驗收夾具
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
 .gitattributes        強制文字檔使用 LF（見第 7 節）
-.github/workflows/    pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）
+.github/workflows/    pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收）
 ```
 
 內容以 `docs/` 與 `skills/` 為單一來源；**修改後務必執行** `npm run build` 重新產生 `data/` 與 `downloads/`，否則網站不會更新。
@@ -71,6 +71,24 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 本地研究環境的出口 proxy 會把 gartner.com 等網域回成 403，**那不代表連結失效**。GitHub Actions runner 沒有這層限制，因此連結檢查改在 CI 執行：`.github/workflows/link-check.yml`（手動 `workflow_dispatch`，另每季 1 月／4 月／7 月／10 月 1 日自動執行），結果以 artifact 形式提供，確認後再覆蓋 `link-check.md` 並更新 `data/sources.js` 的 `LINK_CHECK_NOTE`。
 
 Runner 走資料中心 IP，Gartner 與部分媒體站仍可能因 bot 防護回 403；能藉此區分「本地 proxy 封鎖」與「站方封鎖」已是有價值的資訊。
+
+### 4.3 真實模型驗收
+
+前面兩節驗的都是**專案本身**（資料一致、示範引擎、網站行為），不需要金鑰、結果可重現。**模型實際輸出的品質**是另一件事，用 `.github/workflows/model-acceptance.yml` 手動觸發：
+
+```bash
+# 本機等價操作（金鑰只從環境變數讀）
+python3 skills/chatgpt/api-workflow.py --input-dir examples/synthetic-org --output-dir output/baseline
+node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
+```
+
+`scripts/check-acceptance.mjs` 檢查 `references/acceptance.md` 七項驗收中可機器判定的部分：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
+
+刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
+
+`examples/acceptance-fixture.json` 是一份「應該全部通過」的合成夾具，`verify:static` 會用它反向測試驗收腳本本身沒壞（同一份夾具在 `no-intel` 變體下必須失敗，否則表示該檢查是空的）。**它不是任何模型的真實輸出。**
+
+Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗收需在 Claude Code 或 claude.ai 手動執行後，把輸出 JSON 存檔再跑上面的腳本。
 
 ## 5. 維護
 
