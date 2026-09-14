@@ -1,0 +1,46 @@
+name: Link check (sources)
+
+# 為什麼放在 CI：本地研究環境的出口 proxy 會把 gartner.com 等網域一律回成 403，
+# 那個結果沒有判定價值。GitHub Actions runner 沒有這層限制，能真正區分
+# 「本地 proxy 封鎖」與「站方封鎖／連結失效」。
+#
+# 結果不自動提交：runner 走資料中心 IP，部分網站會因 bot 防護回 403，
+# 需要人工判讀後才覆蓋 link-check.md 並更新 data/sources.js 的 LINK_CHECK_NOTE。
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每季首日 03:00 UTC（對應部署文件「建議每季重新查證」）
+    - cron: '0 3 1 1,4,7,10 *'
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Check source links (HEAD requests, no site content downloaded)
+        run: npm run verify:links
+      - name: Summarise status codes
+        if: always()
+        run: |
+          echo '### 來源連結檢查結果' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '| 狀態 | 數量 |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|---|---|' >> "$GITHUB_STEP_SUMMARY"
+          awk -F'|' '/^\| / {gsub(/ /,"",$3); if ($3 != "" && $3 != "狀態" && $3 !~ /^-+$/) c[$3]++} END {for (s in c) print "| " s " | " c[s] " |"}' link-check.md \
+            | sort >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '403 不代表連結失效；請下載 artifact 人工判讀後再更新 link-check.md。' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload link-check.md
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: link-check
+          path: link-check.md
+          retention-days: 90

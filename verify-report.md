@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-09-12T12:20:42.416Z
+執行時間：2026-09-14T02:48:45.690Z
 模式：full
-結果：63/63 通過
+結果：76/76 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -20,6 +20,9 @@
 | Skills 涵蓋五平台 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
 | 每個平台都有 SKILL.md 或 system-prompt.md | ✅ |  |
 | 所有引用的來源 ID 都存在於來源表 | ✅ | 53 個 ID |
+| 待驗證清單每項都有合法 status | ✅ |  |
+| 待驗證項目都寫出了下一步（how） | ✅ | 11 項待處理 |
+| 已完成項目都有 resolvedAt 日期 | ✅ | 1 項已完成 |
 | 流程步驟引用的 I/O 都存在 | ✅ |  |
 | JSON 有效 skills/shared/input-schema.json | ✅ |  |
 | JSON 有效 skills/shared/output-schema.json | ✅ |  |
@@ -29,6 +32,15 @@
 | 驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | ✅ |  |
 | 驗收 4：驗證計畫每項標「尚未授權主動測試」 | ✅ |  |
 | 驗收 6：移除情資後信心下修並標示 | ✅ |  |
+| 示範引擎輸出與 examples/demo-snapshot.txt 一致 | ✅ | 42 行 |
+| 驗收腳本對合成夾具全部通過（baseline） | ✅ |  |
+| 驗收腳本能區分 no-intel 變體（同一夾具應失敗） | ✅ |  |
+| index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性） | ✅ |  |
+| index.html 有 OG／Twitter 卡片與 canonical | ✅ |  |
+| 站點檔案存在 robots.txt | ✅ |  |
+| 站點檔案存在 sitemap.xml | ✅ |  |
+| 站點檔案存在 .nojekyll | ✅ |  |
+| canonical、og:url、sitemap.xml、robots.txt 的網址一致 | ✅ |  |
 | 下載檔存在 downloads/skills-chatgpt.zip | ✅ |  |
 | 下載檔存在 downloads/skills-claude.zip | ✅ |  |
 | 下載檔存在 downloads/skills-deepseek.zip | ✅ |  |
@@ -52,7 +64,7 @@
 | 全站搜尋回傳結果 | ✅ | 12 筆 |
 | I/O 必要性篩選 | ✅ | 16 → 7 |
 | I/O 階段篩選 | ✅ |  |
-| Skills 一鍵複製（剪貼簿） | ✅ | 3611 字元 |
+| Skills 一鍵複製（剪貼簿） | ✅ | 3691 字元 |
 | Skills 檔案下載 | ✅ | SKILL.md |
 | Skills ZIP 下載 | ✅ |  |
 | Skills 原始／渲染切換 | ✅ |  |
@@ -63,9 +75,10 @@
 | 案例：風險胃納切換改變 P1 數 | ✅ | 10 → 12 |
 | 案例：輸出 JSON 下載 | ✅ |  |
 | 案例：複製報告 Markdown | ✅ |  |
-| 來源頁所有連結為 http(s) | ✅ | 57 個連結 |
+| 來源頁所有連結為 http(s) | ✅ | 55 個連結 |
 | 來源頁類型篩選 | ✅ |  |
 | 行動裝置：無水平捲動 | ✅ | scrollWidth 390 |
 | 行動裝置：漢堡選單開啟 | ✅ |  |
 | 無障礙：skip link、lang、aria-current | ✅ |  |
+| 儲存庫連結顯示狀態符合 REPO_PUBLIC=true | ✅ | 實際 顯示 |
 | 無 JS 執行錯誤 | ✅ |  |

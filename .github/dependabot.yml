@@ -1,0 +1,15 @@
+version: 2
+
+# 只盯 GitHub Actions。網站本身沒有執行期相依（無框架、無 CDN），
+# npm 只有 Playwright 一個開發相依，且版本刻意釘死以確保瀏覽器驗證可重現，
+# 因此不開 npm ecosystem——由人在需要時一併升級 playwright 與 package-lock.json。
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'ci'
+    labels:
+      - dependencies
+    open-pull-requests-limit: 3
