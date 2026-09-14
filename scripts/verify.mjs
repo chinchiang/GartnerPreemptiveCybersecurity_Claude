@@ -37,6 +37,15 @@ function staticChecks() {
   for (const p of w.PLATFORMS || []) for (const id of p.sources) referenced.add(id);
   const missing = [...referenced].filter(id => !srcIds.has(id));
   ok('所有引用的來源 ID 都存在於來源表', missing.length === 0, missing.length ? `缺：${missing.join(', ')}` : `${referenced.size} 個 ID`);
+  // 待驗證清單：status 合法、pending 必須寫得出下一步、done 必須有完成日。
+  // 目的是讓這份清單保持可執行，而不是一堆「有待確認」的空話。
+  const todo = w.TODO_ITEMS || [];
+  const badStatus = todo.filter(t => !['pending', 'done'].includes(t.status)).map(t => t.item?.slice(0, 20));
+  ok('待驗證清單每項都有合法 status', todo.length > 0 && badStatus.length === 0, badStatus.join('｜'));
+  const emptyHow = todo.filter(t => t.status === 'pending' && !(t.how || '').trim()).map(t => t.item?.slice(0, 20));
+  ok('待驗證項目都寫出了下一步（how）', emptyHow.length === 0, emptyHow.length ? emptyHow.join('｜') : `${todo.filter(t => t.status === 'pending').length} 項待處理`);
+  const badDone = todo.filter(t => t.status === 'done' && !/^\d{4}-\d{2}-\d{2}$/.test(t.resolvedAt || '')).map(t => t.item?.slice(0, 20));
+  ok('已完成項目都有 resolvedAt 日期', badDone.length === 0, badDone.length ? badDone.join('｜') : `${todo.filter(t => t.status === 'done').length} 項已完成`);
   // 流程 ↔ IO 對應
   const ioIds = new Set((w.IO_ITEMS || []).map(i => i.id));
   const badIO = (w.PROCESS_STAGES || []).flatMap(s => [...s.inputs, ...s.outputs]).filter(id => !ioIds.has(id));

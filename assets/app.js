@@ -374,13 +374,18 @@
   function viewSources(el, q) {
     const TYPE = { gartner: 'Gartner 官方', 'third-party': '第三方／媒體', vendor: '廠商', 'platform-doc': '平台官方文件', standard: '標準／公部門' };
     const state = { type: q.type || 'all', text: '' };
+    // 待處理與已完成分開呈現：混在一起時「（已完成）」前綴會被當成還沒做的事。
+    const pendingTodo = D.todo.filter(t => t.status !== 'done');
+    const doneTodo = D.todo.filter(t => t.status === 'done');
+    const todoTable = (items, heads, withDate = false) => `<div class="table-wrap"><table><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}${withDate ? '<th>完成日</th>' : ''}</tr></thead><tbody>${items.map(t => `<tr><td>${md(t.item)}</td><td>${md(t.why)}</td><td>${md(t.how)}</td>${withDate ? `<td>${esc(t.resolvedAt || '')}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
     el.innerHTML = `
       <h1>證據與來源</h1>
       <p class="lead">所有引用之來源、發布日期（如有）、查閱日期與付費牆狀態。Gartner 付費牆內容僅引用公開摘要或新聞稿；未讀全文者一律標示。</p>
       <div class="filters"><label>類型 <select id="s-type"><option value="all">全部</option>${Object.entries(TYPE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label><label>關鍵字 <input type="text" id="s-text" placeholder="標題、網址、備註"></label><span class="small" id="s-count"></span></div>
       <div id="src-list"></div>
-      <h2>待驗證清單</h2>
-      <div class="table-wrap"><table><thead><tr><th>項目</th><th>為何待驗證</th><th>驗證方式</th></tr></thead><tbody>${D.todo.map(t => `<tr><td>${md(t.item)}</td><td>${md(t.why)}</td><td>${md(t.how)}</td></tr>`).join('')}</tbody></table></div>
+      <h2>待驗證清單（${pendingTodo.length} 項待處理）</h2>
+      ${todoTable(pendingTodo, ['項目', '為何待驗證', '下一步'])}
+      ${doneTodo.length ? `<h3>已完成（保留作為紀錄）</h3>${todoTable(doneTodo, ['項目', '結果', '後續'], true)}` : ''}
       <h2>連結檢查結果</h2>
       <div class="card">${md(window.LINK_CHECK_NOTE || '尚未記錄。')}</div>`;
     function draw() {
