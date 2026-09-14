@@ -55,7 +55,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ```bash
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎驗收與快照、下載檔、機敏字串
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
-npm run verify:links    # 加上來源連結 HEAD 檢查，輸出 link-check.md（見第 4.2 節）
+npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽器），輸出 link-check.md（見第 4.2 節）
 ```
 
 結果寫入 `verify-report.md`；截圖在 `verify-screenshots/`。任一項失敗時腳本以非零狀態結束。

@@ -10,6 +10,9 @@
     stages: window.PROCESS_STAGES || [], io: window.IO_ITEMS || [], platforms: window.PLATFORMS || [], sources: window.SOURCES || [], todo: window.TODO_ITEMS || [],
     manifest: window.BUILD_MANIFEST || {}
   };
+  // 儲存庫為 private、Pages 站點為公開時，任何指向 repo 的連結對訪客都是 404。
+  // 儲存庫轉為公開後把 REPO_PUBLIC 改成 true，topbar 的 GitHub 按鈕就會顯示。
+  const REPO_PUBLIC = false;
   const PLATFORM_META = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', glm: 'GLM', deepseek: 'DeepSeek', shared: '共用規格' };
   const PLATFORM_ORDER = ['shared', 'chatgpt', 'claude', 'grok', 'glm', 'deepseek'];
   const TAG = { fact: '<span class="pill fact">Gartner 明確陳述</span>', third: '<span class="pill">其他來源</span>', infer: '<span class="pill infer">本專案推論</span>', rec: '<span class="pill rec">建議</span>', todo: '<span class="pill todo">待驗證</span>' };
@@ -383,7 +386,7 @@
     function draw() {
       const list = D.sources.filter(s => (state.type === 'all' || s.type === state.type) && (!state.text || JSON.stringify(s).toLowerCase().includes(state.text.toLowerCase())));
       $('#s-count').textContent = `顯示 ${list.length} / ${D.sources.length} 筆`;
-      $('#src-list').innerHTML = `<div class="table-wrap"><table><thead><tr><th>ID</th><th>標題</th><th>發布者</th><th>發布日期</th><th>查閱日期</th><th>類型</th><th>付費牆</th><th>備註／用途</th></tr></thead><tbody>${list.map(s => `<tr id="src-${esc(s.id)}" ${q.focus === s.id ? 'style="outline:2px solid var(--accent)"' : ''}><td>${esc(s.id)}</td><td><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a></td><td>${esc(s.publisher)}</td><td>${esc(s.date || '未標示')}</td><td>${esc(s.accessed)}</td><td>${TYPE[s.type] || esc(s.type)}</td><td>${s.paywalled ? '<span class="pill todo">是（僅公開摘要）</span>' : '否'}</td><td class="small">${md(s.note)}</td></tr>`).join('')}</tbody></table></div>`;
+      $('#src-list').innerHTML = `<div class="table-wrap"><table><thead><tr><th>ID</th><th>標題</th><th>發布者</th><th>發布日期</th><th>查閱日期</th><th>類型</th><th>付費牆</th><th>備註／用途</th></tr></thead><tbody>${list.map(s => `<tr id="src-${esc(s.id)}" ${q.focus === s.id ? 'style="outline:2px solid var(--accent)"' : ''}><td>${esc(s.id)}</td><td>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : `${esc(s.title)} <span class="pill">無公開連結</span>`}</td><td>${esc(s.publisher)}</td><td>${esc(s.date || '未標示')}</td><td>${esc(s.accessed)}</td><td>${TYPE[s.type] || esc(s.type)}</td><td>${s.paywalled ? '<span class="pill todo">是（僅公開摘要）</span>' : '否'}</td><td class="small">${md(s.note)}</td></tr>`).join('')}</tbody></table></div>`;
       if (q.focus) { const f = document.getElementById(`src-${q.focus}`); if (f) f.scrollIntoView({ block: 'center' }); q.focus = null; }
     }
     $('#s-type').value = state.type;
@@ -448,6 +451,7 @@
   // ---------- 初始化 ----------
   function init() {
     $('.sidebar nav').innerHTML = NAV.map(([g, items]) => `<div class="group">${g}</div>${items.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}`).join('');
+    if (REPO_PUBLIC) { const repoLink = $('#repo-link'); if (repoLink) repoLink.hidden = false; }
     $('#menu-btn').addEventListener('click', () => { const s = $('.sidebar'); s.classList.toggle('open'); $('#menu-btn').setAttribute('aria-expanded', s.classList.contains('open')); });
     const themeBtn = $('#theme-btn');
     const applyTheme = (t) => { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); themeBtn.textContent = t === 'dark' ? '☀︎ 淺色' : t === 'light' ? '☾ 深色' : '◐ 主題'; };

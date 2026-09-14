@@ -11,7 +11,7 @@
     "build": "node scripts/build-data.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:static": "node scripts/verify.mjs --static",
-    "verify:links": "node scripts/verify.mjs --links",
+    "verify:links": "node scripts/verify.mjs --static --links",
     "demo": "node scripts/run-demo.mjs",
     "snapshot": "node scripts/run-demo.mjs > examples/demo-snapshot.txt"
   },

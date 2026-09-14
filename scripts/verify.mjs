@@ -182,13 +182,16 @@ async function linkChecks() {
   const ctx = { window: {} }; vm.createContext(ctx);
   vm.runInContext(readFileSync(join(ROOT, 'data/sources.js'), 'utf8'), ctx);
   const rows = [];
+  let skipped = 0;
   for (const s of ctx.window.SOURCES) {
+    if (!s.url) { rows.push(`| ${s.id} | －（無公開連結） | — |`); skipped++; continue; }
     try {
       const r = await fetch(s.url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(15000) });
       rows.push(`| ${s.id} | ${r.status} | ${s.url} |`);
     } catch (e) { rows.push(`| ${s.id} | ERR ${String(e.cause?.code || e.message).slice(0, 40)} | ${s.url} |`); }
   }
-  writeFileSync(join(ROOT, 'link-check.md'), `# 連結檢查 ${new Date().toISOString()}\n\n| ID | 狀態 | URL |\n|---|---|---|\n${rows.join('\n')}\n`);
+  const note = '> 403 表示執行環境無法判定連結是否有效（出口 proxy 或站方 bot 防護），不代表連結失效。\n';
+  writeFileSync(join(ROOT, 'link-check.md'), `# 連結檢查 ${new Date().toISOString()}\n\n${note}\n檢查 ${rows.length - skipped} 個 URL，另有 ${skipped} 個來源無公開連結。\n\n| ID | 狀態 | URL |\n|---|---|---|\n${rows.join('\n')}\n`);
   console.log(rows.join('\n'));
 }
 
