@@ -16,6 +16,14 @@ const out = (p) => join(ROOT, p);
 mkdirSync(out('data'), { recursive: true });
 mkdirSync(out('downloads'), { recursive: true });
 
+// 以下三個工具讓建置在 Windows 與 Linux 上產生位元組相同的結果（可重現建置）：
+// relPosix：路徑一律用 /，避免 Windows 的 \ 漏進 data/*.js 與 ZIP 檔名
+const relPosix = (f) => relative(ROOT, f).split('\\').join('/');
+// readText：換行一律正規化為 LF，避免 CRLF 簽出時內容與 ZIP 位元組改變
+const readText = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
+// cmpPosix：以正規化後的路徑排序，讓兩個平台的檔案順序一致
+const cmpPosix = (a, b) => { const x = relPosix(a), y = relPosix(b); return x < y ? -1 : x > y ? 1 : 0; };
+
 function walk(dir) {
   const res = [];
   for (const name of readdirSync(dir)) {
@@ -24,13 +32,13 @@ function walk(dir) {
     if (st.isDirectory()) res.push(...walk(p));
     else res.push(p);
   }
-  return res.sort();
+  return res.sort(cmpPosix);
 }
 function parseFrontmatter(md) {
-  const m = md.match(/^---\n([\s\S]*?)\n---\n/);
+  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!m) return { meta: {}, body: md };
   const meta = {};
-  for (const line of m[1].split('\n')) {
+  for (const line of m[1].split(/\r?\n/)) {
     const i = line.indexOf(':');
     if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^"|"$/g, '');
   }
@@ -64,25 +72,25 @@ const jsExport = (name, obj) => `// 由 scripts/build-data.mjs 自動產生，�
 // ---------- 1. 研究文件 ----------
 const researchDir = out('docs/research');
 const research = walk(researchDir).filter(f => f.endsWith('.md')).map(f => {
-  const { meta, body } = parseFrontmatter(readFileSync(f, 'utf8'));
-  return { id: basename(f, '.md'), path: relative(ROOT, f), title: meta.title || basename(f, '.md'), order: Number(meta.order || 99), summary: meta.summary || '', body };
+  const { meta, body } = parseFrontmatter(readText(f));
+  return { id: basename(f, '.md'), path: relPosix(f), title: meta.title || basename(f, '.md'), order: Number(meta.order || 99), summary: meta.summary || '', body };
 }).sort((a, b) => a.order - b.order);
 writeFileSync(out('data/research.js'), jsExport('RESEARCH_DOCS', research));
 
 // ---------- 2. 指南文件（安裝／部署／維護） ----------
 const guidesDir = out('docs/guides');
 const guides = existsSync(guidesDir) ? walk(guidesDir).filter(f => f.endsWith('.md')).map(f => {
-  const { meta, body } = parseFrontmatter(readFileSync(f, 'utf8'));
-  return { id: basename(f, '.md'), path: relative(ROOT, f), title: meta.title || basename(f, '.md'), order: Number(meta.order || 99), platform: meta.platform || '', body };
+  const { meta, body } = parseFrontmatter(readText(f));
+  return { id: basename(f, '.md'), path: relPosix(f), title: meta.title || basename(f, '.md'), order: Number(meta.order || 99), platform: meta.platform || '', body };
 }).sort((a, b) => a.order - b.order) : [];
 writeFileSync(out('data/guides.js'), jsExport('GUIDE_DOCS', guides));
 
 // ---------- 3. Skills ----------
 const skillsDir = out('skills');
 const skillFiles = walk(skillsDir).map(f => {
-  const rel = relative(ROOT, f).split('\\').join('/');
+  const rel = relPosix(f);
   const platform = rel.split('/')[1];
-  const content = readFileSync(f, 'utf8');
+  const content = readText(f);
   const { meta } = f.endsWith('.md') ? parseFrontmatter(content) : { meta: {} };
   return { path: rel, platform, name: basename(f), ext: extname(f).slice(1), title: meta.title || '', role: meta.role || '', content };
 });
@@ -91,16 +99,16 @@ writeFileSync(out('data/skills.js'), jsExport('SKILL_FILES', skillFiles));
 // ---------- 4. 合成案例資料 ----------
 const exDir = out('examples/synthetic-org');
 const caseData = {
-  assets: parseCSV(readFileSync(join(exDir, 'assets.csv'), 'utf8')),
-  vulnerabilities: parseCSV(readFileSync(join(exDir, 'vulnerabilities.csv'), 'utf8')),
-  identities: parseCSV(readFileSync(join(exDir, 'identities.csv'), 'utf8')),
-  misconfigurations: parseCSV(readFileSync(join(exDir, 'misconfigurations.csv'), 'utf8')),
-  controls: JSON.parse(readFileSync(join(exDir, 'controls.json'), 'utf8')),
-  threatIntel: JSON.parse(readFileSync(join(exDir, 'threat-intel.json'), 'utf8')),
-  topology: JSON.parse(readFileSync(join(exDir, 'topology.json'), 'utf8')),
-  exposures: JSON.parse(readFileSync(join(exDir, 'exposures.json'), 'utf8')),
-  scope: JSON.parse(readFileSync(join(exDir, 'scope.json'), 'utf8')),
-  expectedOutput: existsSync(out('examples/expected-output.md')) ? readFileSync(out('examples/expected-output.md'), 'utf8') : ''
+  assets: parseCSV(readText(join(exDir, 'assets.csv'))),
+  vulnerabilities: parseCSV(readText(join(exDir, 'vulnerabilities.csv'))),
+  identities: parseCSV(readText(join(exDir, 'identities.csv'))),
+  misconfigurations: parseCSV(readText(join(exDir, 'misconfigurations.csv'))),
+  controls: JSON.parse(readText(join(exDir, 'controls.json'))),
+  threatIntel: JSON.parse(readText(join(exDir, 'threat-intel.json'))),
+  topology: JSON.parse(readText(join(exDir, 'topology.json'))),
+  exposures: JSON.parse(readText(join(exDir, 'exposures.json'))),
+  scope: JSON.parse(readText(join(exDir, 'scope.json'))),
+  expectedOutput: existsSync(out('examples/expected-output.md')) ? readText(out('examples/expected-output.md')) : ''
 };
 writeFileSync(out('data/case.js'), jsExport('CASE_DATA', caseData));
 
@@ -141,11 +149,11 @@ for (const p of platforms) {
 }
 const allEntries = [
   ...skillFiles.map(s => ({ name: s.path, data: Buffer.from(s.content, 'utf8') })),
-  ...walk(exDir).map(f => ({ name: relative(ROOT, f).split('\\').join('/'), data: readFileSync(f) })),
-  ...(existsSync(out('examples/expected-output.md')) ? [{ name: 'examples/expected-output.md', data: readFileSync(out('examples/expected-output.md')) }] : [])
+  ...walk(exDir).map(f => ({ name: relPosix(f), data: Buffer.from(readText(f), 'utf8') })),
+  ...(existsSync(out('examples/expected-output.md')) ? [{ name: 'examples/expected-output.md', data: Buffer.from(readText(out('examples/expected-output.md')), 'utf8') }] : [])
 ];
 writeFileSync(out('downloads/skills-all-platforms.zip'), buildZip(allEntries));
-const exampleEntries = walk(exDir).map(f => ({ name: relative(ROOT, f).split('\\').join('/'), data: readFileSync(f) }));
+const exampleEntries = walk(exDir).map(f => ({ name: relPosix(f), data: Buffer.from(readText(f), 'utf8') }));
 writeFileSync(out('downloads/synthetic-example-data.zip'), buildZip(exampleEntries));
 
 const manifest = {

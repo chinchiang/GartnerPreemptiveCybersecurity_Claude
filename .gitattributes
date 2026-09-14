@@ -1,0 +1,8 @@
+# 讓所有文字檔在工作樹與索引中一律使用 LF。
+# 原因：scripts/build-data.mjs 會把 docs/ 與 skills/ 的內容內嵌進 data/*.js 並打包成 ZIP；
+# 若在 Windows 以 CRLF 簽出，產出的位元組會與 Linux（CI／Pages）不同，導致重建就弄髒工作樹。
+* text=auto eol=lf
+
+*.zip binary
+*.png binary
+*.pdf binary
