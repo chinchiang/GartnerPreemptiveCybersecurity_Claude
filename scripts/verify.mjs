@@ -9,6 +9,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -53,6 +54,15 @@ function staticChecks() {
   ok('驗收 4：驗證計畫每項標「尚未授權主動測試」', R.validation.length > 0 && R.validation.every(v => v.requires.includes('尚未授權主動測試')));
   const R2 = w.DEMO.analyze(w.CASE_DATA, { inputs: { threatIntel: false } });
   ok('驗收 6：移除情資後信心下修並標示', R2.findings.every(f => f.confidence === '中') && R2.missingSummary.includes('威脅情資'));
+  // 示範引擎 golden snapshot：評分規則同時存在於 assets/demo.js、skills/shared/core-prompt.md、
+  // skills/shared/task-spec.md 附錄 A 與 references/scoring-rules.md，此檢查用來抓「改了一處忘了同步其他處」。
+  const snapPath = join(ROOT, 'examples/demo-snapshot.txt');
+  try {
+    const actual = execFileSync(process.execPath, [join(ROOT, 'scripts/run-demo.mjs')], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
+    const expected = readFileSync(snapPath, 'utf8').replace(/\r\n/g, '\n');
+    ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
+      actual === expected ? `${actual.split('\n').length} 行` : '評分規則已變動：確認 demo.js／core-prompt.md／task-spec.md／scoring-rules.md 四處已同步後執行 npm run snapshot 更新快照');
+  } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
   // 下載檔案
   for (const d of w.BUILD_MANIFEST.downloads) ok(`下載檔存在 ${d}`, existsSync(join(ROOT, d)));
   // 機敏字串掃描

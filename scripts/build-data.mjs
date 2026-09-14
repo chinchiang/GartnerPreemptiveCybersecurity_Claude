@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'node:fs';
 import { join, relative, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -156,8 +157,13 @@ writeFileSync(out('downloads/skills-all-platforms.zip'), buildZip(allEntries));
 const exampleEntries = walk(exDir).map(f => ({ name: relPosix(f), data: Buffer.from(readText(f), 'utf8') }));
 writeFileSync(out('downloads/synthetic-example-data.zip'), buildZip(exampleEntries));
 
+// 內容指紋取代「建置時間」：同一份來源內容永遠產生同一個 manifest，
+// CI 才能用 `git diff --exit-code -- data/ downloads/` 守住整個 data/ 目錄。
+// 實際部署時間請看 GitHub Actions 的執行紀錄。
+const contentHash = createHash('sha256').update(JSON.stringify({ research, guides, skillFiles, caseData })).digest('hex').slice(0, 12);
+
 const manifest = {
-  builtAt: new Date().toISOString(),
+  contentHash,
   research: research.map(r => ({ id: r.id, title: r.title, path: r.path })),
   guides: guides.map(g => ({ id: g.id, title: g.title, path: g.path })),
   skills: skillFiles.map(s => ({ path: s.path, platform: s.platform, bytes: Buffer.byteLength(s.content) })),

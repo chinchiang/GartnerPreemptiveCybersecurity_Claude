@@ -107,7 +107,7 @@
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
         <li>${TAG.rec} 五個平台各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平台比較</a>。</li>
       </ol>
-      <p class="small">建置時間：${esc(D.manifest.builtAt || '未知')}。所有內容以 <a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">GitHub 儲存庫</a> 為單一來源。</p>`;
+      <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；實際部署時間見 GitHub Actions 紀錄）。所有內容以儲存庫為單一來源。</p>`;
   }
 
   // ---------- 方法論（研究文件） ----------

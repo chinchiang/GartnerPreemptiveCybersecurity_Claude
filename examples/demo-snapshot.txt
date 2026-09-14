@@ -1,0 +1,41 @@
+== 曝險優先序 ==
+P1 | vpn-gw-01 | SYN-2026-0101 | score 86 | L 10.0 | I 8.6 | 高 | 對外曝露；EASM 議題：outdated-firmware、legacy-tls；公開利用程式；模擬 EPSS 0.91；模擬 KEV（已知遭利用）；身分弱點 ×1；設定偏差 ×1；既有控制：Central logging / SIEM；控制缺口：EDR、MFA、Patch SLA；威脅情資命中：SYNTHETIC-GROUP-ALPHA（medium）；可達 crown jewel 之入口（blast radius）
+P1 | mes-srv-01 | SYN-2023-0044 | score 72.5 | L 7.3 | I 10.0 | 高 | 公開利用程式；模擬 EPSS 0.55；身分弱點 ×1；設定偏差 ×1；控制缺口：EDR、Network segmentation、MFA、Central logging / SIEM、Patch SLA；威脅情資命中：SYNTHETIC-OT-CAMPAIGN（low）；crown jewel
+P1 | web-portal-01 | SYN-2026-0210 | score 68.7 | L 7.2 | I 9.6 | 高 | 對外曝露；EASM 議題：outdated-cms、http-redirect-missing；公開利用程式；模擬 EPSS 0.62；身分弱點 ×1；設定偏差 ×1；既有控制：EDR、WAF、Central logging / SIEM、Patch SLA；可達 crown jewel 之入口（blast radius）
+P1 | s3-backup-bucket | SYN-2026-0402 | score 64.4 | L 6.4 | I 10.0 | 高 | 對外曝露；EASM 議題：anonymous-list；身分弱點 ×1；設定偏差 ×1；控制缺口：Immutable backups、Central logging / SIEM；可達 crown jewel 之入口（blast radius）
+P1 | mail-gw-01 | SYN-2026-0150 | score 63.4 | L 8.8 | I 7.2 | 高 | 對外曝露；EASM 議題：auth-bypass-advisory；公開利用程式；控制缺口：EDR、Central logging / SIEM、Patch SLA；威脅情資命中：SYNTHETIC-GROUP-BETA（low）；可達 crown jewel 之入口（blast radius）
+P2 | ad-dc-01 | SYN-2025-0500 | score 54.8 | L 5.5 | I 10.0 | 高 | 公開利用程式；身分弱點 ×2；設定偏差 ×1；既有控制：EDR、Central logging / SIEM、Patch SLA；控制缺口：Deception (honey accounts/tokens)；威脅情資命中：SYNTHETIC-GROUP-ALPHA（medium）
+P2 | erp-db-01 | SYN-2024-0810 | score 52.8 | L 5.3 | I 10.0 | 高 | 公開利用程式；身分弱點 ×2；設定偏差 ×1；既有控制：Network segmentation；控制缺口：EDR、Central logging / SIEM、Deception (honey accounts/tokens)；crown jewel
+P2 | vpn-gw-01 | SYN-2025-0342 | score 48.3 | L 5.6 | I 8.6 | 高 | 對外曝露；EASM 議題：outdated-firmware、legacy-tls；身分弱點 ×1；設定偏差 ×1；既有控制：Central logging / SIEM；控制缺口：EDR、MFA、Patch SLA；可達 crown jewel 之入口（blast radius）
+P3 | ci-runner-01 | SYN-2026-0388 | score 36.1 | L 5.0 | I 7.2 | 高 | 對外曝露；身分弱點 ×1；設定偏差 ×1；既有控制：Patch SLA；控制缺口：EDR、Central logging / SIEM；可達 crown jewel 之入口（blast radius）
+P3 | web-portal-01 | SYN-2025-0977 | score 32.5 | L 3.4 | I 9.6 | 高 | 對外曝露；EASM 議題：outdated-cms、http-redirect-missing；身分弱點 ×1；設定偏差 ×1；既有控制：EDR、WAF、Central logging / SIEM、Patch SLA；可達 crown jewel 之入口（blast radius）
+P3 | hr-saas-sso | SYN-2026-0290 | score 28.5 | L 4.6 | I 6.2 | 高 | 對外曝露；EASM 議題：admin-mfa-not-enforced；身分弱點 ×1；設定偏差 ×1；既有控制：MFA
+P4 | file-srv-01 | SYN-2025-0620 | score 15.3 | L 2.5 | I 6.2 | 高 | 公開利用程式；身分弱點 ×1；既有控制：EDR、Patch SLA；控制缺口：Deception (honey accounts/tokens)
+P4 | erp-app-01 | SYN-2026-0333 | score 0 | L 0.0 | I 10.0 | 高 | 身分弱點 ×1；既有控制：EDR、Central logging / SIEM、Patch SLA
+P4 | jump-host-01 | SYN-2026-0015 | score 0 | L 0.0 | I 6.6 | 高 | 既有控制：EDR、MFA、Central logging / SIEM、Patch SLA
+
+== 攻擊路徑假設 ==
+1. internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | hops 3 | feasibility 6.4
+2. internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | hops 4 | feasibility 6.1
+3. internet → vpn-gw-01 → ad-dc-01 → file-srv-01 → mes-srv-01 | hops 4 | feasibility 4.9
+4. internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | hops 3 | feasibility 4.7
+5. internet → vpn-gw-01 → jump-host-01 → erp-db-01 | hops 3 | feasibility 4.7
+6. internet → web-portal-01 → erp-app-01 → erp-db-01 | hops 3 | feasibility 4.3
+7. internet → s3-backup-bucket → erp-db-01 | hops 2 | feasibility 4.2
+8. internet → mail-gw-01 → file-srv-01 → mes-srv-01 | hops 3 | feasibility 3.9
+9. internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | hops 4 | feasibility 3.6
+
+== 指標 ==
+對外曝露且 P1 的發現數: 4 (目標 0（7 天內）)
+P1/P2 發現總數: 5 / 3 (目標 每週下降)
+可達 crown jewel 的攻擊路徑假設數: 9 (目標 每條路徑至少一個已驗證阻斷點)
+平均信心水準: 100% 為高信心 (目標 ≥ 80%)
+資產清冊完整度（模擬）: 100% (目標 ≥ 95%)
+未納入清冊的對外資產: 1 (目標 0)
+
+== 缺漏 == 無
+
+== 驗證計畫 ==
+V1 vpn-gw-01 → erp-db-01（3 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT
+V2 vpn-gw-01 → erp-db-01（4 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT
+V3 vpn-gw-01 → mes-srv-01（4 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT
