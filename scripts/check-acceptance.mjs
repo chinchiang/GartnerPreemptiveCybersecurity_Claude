@@ -44,12 +44,23 @@ const missingTop = (schema.required || []).filter(k => !(k in obj));
 ok('0a', '頂層鍵齊全（output-schema.json required）', missingTop.length === 0, missingTop.length ? `缺：${missingTop.join(', ')}` : `${(schema.required || []).length} 個鍵`);
 
 const BLOCK_FIELDS = ['confidence', 'basis', 'missing_inputs', 'requires_human'];
-const blockKeys = (schema.required || []).filter(k => k !== 'meta');
+const blockKeys = (schema.required || []).filter(k =>
+  (schema.properties?.[k]?.allOf || []).some(entry => entry?.$ref === '#/$defs/block'));
 const badBlocks = blockKeys.filter(k => {
   const b = obj[k];
   return !b || typeof b !== 'object' || BLOCK_FIELDS.some(f => !(f in b));
 });
-ok('0b', '每個區塊都有 confidence／basis／missing_inputs／requires_human', badBlocks.length === 0, badBlocks.length ? `不完整：${badBlocks.join(', ')}` : '');
+ok('0b', 'schema block 都有 confidence／basis／missing_inputs／requires_human', badBlocks.length === 0, badBlocks.length ? `不完整：${badBlocks.join(', ')}` : '');
+
+const metaRequired = schema.properties?.meta?.required || [];
+const missingMeta = metaRequired.filter(k => !(k in (obj.meta || {})));
+ok('0c', 'meta 必填欄位齊全', missingMeta.length === 0, missingMeta.length ? `缺：${missingMeta.join(', ')}` : `${metaRequired.length} 個鍵`);
+
+const reviewPoints = obj.human_review_points;
+const badReviewPoints = !Array.isArray(reviewPoints) || reviewPoints.some(point =>
+  !point || typeof point !== 'object' || ['stage', 'who', 'what'].some(k => !(k in point)));
+ok('0d', 'human_review_points 符合 schema array 契約', !badReviewPoints,
+  Array.isArray(reviewPoints) ? `${reviewPoints.length} 項` : '不是 array');
 
 // ---------- 1. 資料品質：9 個檔案的筆數 ----------
 const EXPECTED_RECORDS = { assets: 12, vulnerabilities: 14, identities: 8, misconfigurations: 9, controls: 8, exposures: 7 };
@@ -61,7 +72,8 @@ const recordOf = (key) => {
 const recordMismatch = Object.entries(EXPECTED_RECORDS)
   .map(([k, want]) => [k, want, recordOf(k)])
   .filter(([, want, got]) => got !== want);
-ok('1', '驗收 1：資料品質回報 9 個檔案且筆數正確', files.length >= 9 && recordMismatch.length === 0,
+const expectedFileCount = variant === 'no-intel' ? 8 : 9;
+ok('1', `驗收 1：資料品質回報 ${expectedFileCount} 個適用檔案且筆數正確`, files.length >= expectedFileCount && recordMismatch.length === 0,
   recordMismatch.length ? recordMismatch.map(([k, want, got]) => `${k} 期望 ${want} 得到 ${got ?? '未回報'}`).join('；') : `${files.length} 個檔案`);
 
 // ---------- 2. vpn-gw-01 / SYN-2026-0101 為 P1 且含四項依據 ----------
@@ -75,9 +87,10 @@ const FACTOR_KEYS = [
   { label: '威脅情資', re: /情資|threat intel|SYNTHETIC-GROUP-ALPHA/i }
 ];
 const vpnFactors = (vpn?.factors || []).join('；');
-const missingFactors = FACTOR_KEYS.filter(k => !k.re.test(vpnFactors)).map(k => k.label);
+const requiredFactorKeys = variant === 'no-intel' ? FACTOR_KEYS.filter(k => k.label !== '威脅情資') : FACTOR_KEYS;
+const missingFactors = requiredFactorKeys.filter(k => !k.re.test(vpnFactors)).map(k => k.label);
 ok('2', '驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據',
-  !!vpn && vpn.priority === 'P1' && String(vpn.asset_id || vpn.asset_name).includes('vpn-gw-01') && missingFactors.length === 0,
+  !!vpn && vpn.priority === 'P1' && vpn.asset_id === 'A01' && vpn.asset_name === 'vpn-gw-01' && missingFactors.length === 0,
   !vpn ? '找不到該發現' : `${vpn.priority} score ${vpn.score}${missingFactors.length ? `；缺依據：${missingFactors.join('、')}` : ''}`);
 
 // ---------- 3. 攻擊路徑假設 ----------

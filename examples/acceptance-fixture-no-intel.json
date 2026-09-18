@@ -9,9 +9,11 @@
     "scoring_rules": "task-spec.md 附錄 A 示範規則"
   },
   "data_quality": {
-    "confidence": "高",
-    "basis": "9 個輸入檔全部讀入，無缺漏類別",
-    "missing_inputs": [],
+    "confidence": "中",
+    "basis": "已讀8個適用輸入檔；threat-intel.json未提供",
+    "missing_inputs": [
+      "threat-intel.json"
+    ],
     "requires_human": false,
     "files": [
       {
@@ -59,12 +61,6 @@
         "anomalies": []
       },
       {
-        "name": "threat-intel.json",
-        "records": 3,
-        "missing_fields": [],
-        "anomalies": []
-      },
-      {
         "name": "topology.json",
         "records": 19,
         "missing_fields": [],
@@ -75,9 +71,11 @@
     "inventory_completeness_estimate": 92
   },
   "exposure_priorities": {
-    "confidence": "高",
-    "basis": "資產、弱點、曝險、身分、設定、控制、情資、拓樸八類資料齊備",
-    "missing_inputs": [],
+    "confidence": "中",
+    "basis": "未納入威脅情資，依其餘7類資料排序",
+    "missing_inputs": [
+      "threat-intel.json"
+    ],
     "requires_human": false,
     "items": [
       {
@@ -94,7 +92,6 @@
           "對外曝露",
           "公開利用程式可得",
           "模擬 KEV（已知遭利用）",
-          "威脅情資命中 SYNTHETIC-GROUP-ALPHA（medium）",
           "可達 crown jewel 之入口"
         ],
         "confidence": "高"

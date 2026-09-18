@@ -72,17 +72,20 @@ function staticChecks() {
     ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
       actual === expected ? `${actual.split('\n').length} 行` : '評分規則已變動：確認 demo.js／core-prompt.md／task-spec.md／scoring-rules.md 四處已同步後執行 npm run snapshot 更新快照');
   } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
-  // check-acceptance.mjs 自我測試：examples/acceptance-fixture.json 是刻意做成「應該全部通過」的
-  // 合成夾具，用來確保驗收腳本本身沒壞（例如 output-schema.json 的 required 改了）。
-  // 同一份夾具在 no-intel 變體下必須失敗——否則表示第 6 項檢查是空的、驗不到東西。
+  // check-acceptance.mjs 契約回歸：兩個 fixture 都符合正式 schema 的欄位形狀。
+  // baseline 必須證明 human_review_points array 與 A01/vpn-gw-01 可通過；
+  // no-intel positive 必須以 8 個適用檔、信心下修與 missing_inputs 通過；
+  // baseline 冒充 no-intel 則必須失敗，避免第 6 項變成空檢查。
   const checker = join(ROOT, 'scripts/check-acceptance.mjs');
   const fixture = join(ROOT, 'examples/acceptance-fixture.json');
-  const runChecker = (extra) => {
-    try { execFileSync(process.execPath, [checker, fixture, ...extra], { encoding: 'utf8', stdio: 'pipe' }); return 0; }
+  const noIntelFixture = join(ROOT, 'examples/acceptance-fixture-no-intel.json');
+  const runChecker = (input, extra = []) => {
+    try { execFileSync(process.execPath, [checker, input, ...extra], { encoding: 'utf8', stdio: 'pipe' }); return 0; }
     catch (e) { return e.status ?? 2; }
   };
-  ok('驗收腳本對合成夾具全部通過（baseline）', runChecker([]) === 0);
-  ok('驗收腳本能區分 no-intel 變體（同一夾具應失敗）', runChecker(['--variant', 'no-intel']) === 1);
+  ok('驗收腳本接受符合 schema 的 baseline array／A01 fixture', runChecker(fixture) === 0);
+  ok('驗收腳本接受誠實的 no-intel 8-file fixture', runChecker(noIntelFixture, ['--variant', 'no-intel']) === 0);
+  ok('驗收腳本拒絕未宣告缺漏的假 no-intel 輸出', runChecker(fixture, ['--variant', 'no-intel']) === 1);
   // 站點層級檔案與 index.html 的 head
   const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
   ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
