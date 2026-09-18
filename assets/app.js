@@ -10,6 +10,10 @@
     stages: window.PROCESS_STAGES || [], io: window.IO_ITEMS || [], platforms: window.PLATFORMS || [], sources: window.SOURCES || [], todo: window.TODO_ITEMS || [],
     manifest: window.BUILD_MANIFEST || {}
   };
+  // 儲存庫已於 2026-09-14 轉為公開，因此指向 repo 的連結（topbar 按鈕、頁尾）預設顯示。
+  // 若改回 private，把這裡改成 false 即會隱藏——Pages 站點是公開的，指向 private 儲存庫的
+  // 連結對訪客一律是 404。預設值放在 HTML（可見），JS 只負責隱藏，這樣 JS 失效時連結仍在。
+  const REPO_PUBLIC = true;
   const PLATFORM_META = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', glm: 'GLM', deepseek: 'DeepSeek', shared: '共用規格' };
   const PLATFORM_ORDER = ['shared', 'chatgpt', 'claude', 'grok', 'glm', 'deepseek'];
   const TAG = { fact: '<span class="pill fact">Gartner 明確陳述</span>', third: '<span class="pill">其他來源</span>', infer: '<span class="pill infer">本專案推論</span>', rec: '<span class="pill rec">建議</span>', todo: '<span class="pill todo">待驗證</span>' };
@@ -107,7 +111,7 @@
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
         <li>${TAG.rec} 五個平台各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平台比較</a>。</li>
       </ol>
-      <p class="small">建置時間：${esc(D.manifest.builtAt || '未知')}。所有內容以 <a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">GitHub 儲存庫</a> 為單一來源。</p>`;
+      <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；實際部署時間見 GitHub Actions 紀錄）。所有內容以儲存庫為單一來源。</p>`;
   }
 
   // ---------- 方法論（研究文件） ----------
@@ -371,19 +375,24 @@
   function viewSources(el, q) {
     const TYPE = { gartner: 'Gartner 官方', 'third-party': '第三方／媒體', vendor: '廠商', 'platform-doc': '平台官方文件', standard: '標準／公部門' };
     const state = { type: q.type || 'all', text: '' };
+    // 待處理與已完成分開呈現：混在一起時「（已完成）」前綴會被當成還沒做的事。
+    const pendingTodo = D.todo.filter(t => t.status !== 'done');
+    const doneTodo = D.todo.filter(t => t.status === 'done');
+    const todoTable = (items, heads, withDate = false) => `<div class="table-wrap"><table><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}${withDate ? '<th>完成日</th>' : ''}</tr></thead><tbody>${items.map(t => `<tr><td>${md(t.item)}</td><td>${md(t.why)}</td><td>${md(t.how)}</td>${withDate ? `<td>${esc(t.resolvedAt || '')}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
     el.innerHTML = `
       <h1>證據與來源</h1>
       <p class="lead">所有引用之來源、發布日期（如有）、查閱日期與付費牆狀態。Gartner 付費牆內容僅引用公開摘要或新聞稿；未讀全文者一律標示。</p>
       <div class="filters"><label>類型 <select id="s-type"><option value="all">全部</option>${Object.entries(TYPE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label><label>關鍵字 <input type="text" id="s-text" placeholder="標題、網址、備註"></label><span class="small" id="s-count"></span></div>
       <div id="src-list"></div>
-      <h2>待驗證清單</h2>
-      <div class="table-wrap"><table><thead><tr><th>項目</th><th>為何待驗證</th><th>驗證方式</th></tr></thead><tbody>${D.todo.map(t => `<tr><td>${md(t.item)}</td><td>${md(t.why)}</td><td>${md(t.how)}</td></tr>`).join('')}</tbody></table></div>
+      <h2>待驗證清單（${pendingTodo.length} 項待處理）</h2>
+      ${todoTable(pendingTodo, ['項目', '為何待驗證', '下一步'])}
+      ${doneTodo.length ? `<h3>已完成（保留作為紀錄）</h3>${todoTable(doneTodo, ['項目', '結果', '後續'], true)}` : ''}
       <h2>連結檢查結果</h2>
       <div class="card">${md(window.LINK_CHECK_NOTE || '尚未記錄。')}</div>`;
     function draw() {
       const list = D.sources.filter(s => (state.type === 'all' || s.type === state.type) && (!state.text || JSON.stringify(s).toLowerCase().includes(state.text.toLowerCase())));
       $('#s-count').textContent = `顯示 ${list.length} / ${D.sources.length} 筆`;
-      $('#src-list').innerHTML = `<div class="table-wrap"><table><thead><tr><th>ID</th><th>標題</th><th>發布者</th><th>發布日期</th><th>查閱日期</th><th>類型</th><th>付費牆</th><th>備註／用途</th></tr></thead><tbody>${list.map(s => `<tr id="src-${esc(s.id)}" ${q.focus === s.id ? 'style="outline:2px solid var(--accent)"' : ''}><td>${esc(s.id)}</td><td><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a></td><td>${esc(s.publisher)}</td><td>${esc(s.date || '未標示')}</td><td>${esc(s.accessed)}</td><td>${TYPE[s.type] || esc(s.type)}</td><td>${s.paywalled ? '<span class="pill todo">是（僅公開摘要）</span>' : '否'}</td><td class="small">${md(s.note)}</td></tr>`).join('')}</tbody></table></div>`;
+      $('#src-list').innerHTML = `<div class="table-wrap"><table><thead><tr><th>ID</th><th>標題</th><th>發布者</th><th>發布日期</th><th>查閱日期</th><th>類型</th><th>付費牆</th><th>備註／用途</th></tr></thead><tbody>${list.map(s => `<tr id="src-${esc(s.id)}" ${q.focus === s.id ? 'style="outline:2px solid var(--accent)"' : ''}><td>${esc(s.id)}</td><td>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : `${esc(s.title)} <span class="pill">無公開連結</span>`}</td><td>${esc(s.publisher)}</td><td>${esc(s.date || '未標示')}</td><td>${esc(s.accessed)}</td><td>${TYPE[s.type] || esc(s.type)}</td><td>${s.paywalled ? '<span class="pill todo">是（僅公開摘要）</span>' : '否'}</td><td class="small">${md(s.note)}</td></tr>`).join('')}</tbody></table></div>`;
       if (q.focus) { const f = document.getElementById(`src-${q.focus}`); if (f) f.scrollIntoView({ block: 'center' }); q.focus = null; }
     }
     $('#s-type').value = state.type;
@@ -448,6 +457,7 @@
   // ---------- 初始化 ----------
   function init() {
     $('.sidebar nav').innerHTML = NAV.map(([g, items]) => `<div class="group">${g}</div>${items.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}`).join('');
+    if (!REPO_PUBLIC) for (const id of ['#repo-link', '#repo-footer']) { const n = $(id); if (n) n.hidden = true; }
     $('#menu-btn').addEventListener('click', () => { const s = $('.sidebar'); s.classList.toggle('open'); $('#menu-btn').setAttribute('aria-expanded', s.classList.contains('open')); });
     const themeBtn = $('#theme-btn');
     const applyTheme = (t) => { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); themeBtn.textContent = t === 'dark' ? '☀︎ 淺色' : t === 'light' ? '☾ 深色' : '◐ 主題'; };

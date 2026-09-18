@@ -1,0 +1,274 @@
+{
+  "_fixture_note": "合成夾具，用來驗證 scripts/check-acceptance.mjs 本身是否運作正確。這不是任何模型的真實輸出，也不是預期輸出的範例（那是 examples/expected-output.md）。數值取自 examples/synthetic-org/ 的合成資料，全部為虛構。真實模型驗收結果請記錄在 docs/evidence/model-acceptance-*.md。",
+  "meta": {
+    "organization": "Northwind Precision（合成）",
+    "analysis_date": "2026-09-14",
+    "generated_by": "fixture",
+    "disclaimer": "本分析由語言模型依使用者提供的資料整理，未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與變更需人工授權。",
+    "scope_reference": "examples/synthetic-org/scope.json",
+    "scoring_rules": "task-spec.md 附錄 A 示範規則"
+  },
+  "data_quality": {
+    "confidence": "高",
+    "basis": "9 個輸入檔全部讀入，無缺漏類別",
+    "missing_inputs": [],
+    "requires_human": false,
+    "files": [
+      {
+        "name": "scope.json",
+        "records": 1,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "assets.csv",
+        "records": 12,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "vulnerabilities.csv",
+        "records": 14,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "exposures.json",
+        "records": 7,
+        "missing_fields": [],
+        "anomalies": [
+          "old-test.northwind-synthetic.example 未納入資產清冊"
+        ]
+      },
+      {
+        "name": "identities.csv",
+        "records": 8,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "misconfigurations.csv",
+        "records": 9,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "controls.json",
+        "records": 8,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "threat-intel.json",
+        "records": 3,
+        "missing_fields": [],
+        "anomalies": []
+      },
+      {
+        "name": "topology.json",
+        "records": 19,
+        "missing_fields": [],
+        "anomalies": []
+      }
+    ],
+    "out_of_scope_excluded": [],
+    "inventory_completeness_estimate": 92
+  },
+  "exposure_priorities": {
+    "confidence": "高",
+    "basis": "資產、弱點、曝險、身分、設定、控制、情資、拓樸八類資料齊備",
+    "missing_inputs": [],
+    "requires_human": false,
+    "items": [
+      {
+        "finding_id": "F-001",
+        "asset_id": "A01",
+        "asset_name": "vpn-gw-01",
+        "vuln_id": "SYN-2026-0101",
+        "title": "VPN pre-auth RCE（合成）",
+        "priority": "P1",
+        "score": 86,
+        "likelihood": 10,
+        "impact": 8.6,
+        "factors": [
+          "對外曝露",
+          "公開利用程式可得",
+          "模擬 KEV（已知遭利用）",
+          "威脅情資命中 SYNTHETIC-GROUP-ALPHA（medium）",
+          "可達 crown jewel 之入口"
+        ],
+        "confidence": "高"
+      },
+      {
+        "finding_id": "F-002",
+        "asset_id": "A07",
+        "asset_name": "mes-srv-01",
+        "vuln_id": "SYN-2023-0044",
+        "title": "MES unauthenticated API（合成）",
+        "priority": "P1",
+        "score": 72.5,
+        "likelihood": 7.3,
+        "impact": 10,
+        "factors": [
+          "公開利用程式可得",
+          "控制缺口 ×5",
+          "crown jewel"
+        ],
+        "confidence": "高"
+      }
+    ]
+  },
+  "attack_path_hypotheses": {
+    "confidence": "中",
+    "basis": "依 topology.json 的 19 條邊推導，未經任何主動驗證",
+    "missing_inputs": [],
+    "requires_human": true,
+    "items": [
+      {
+        "id": "H-1",
+        "entry": "internet",
+        "target": "erp-db-01",
+        "nodes": [
+          "internet",
+          "vpn-gw-01",
+          "ad-dc-01",
+          "erp-db-01"
+        ],
+        "edges": [
+          "E-01",
+          "E-07",
+          "E-12"
+        ],
+        "feasibility": 6.4,
+        "status": "hypothesis"
+      },
+      {
+        "id": "H-2",
+        "entry": "internet",
+        "target": "erp-db-01",
+        "nodes": [
+          "internet",
+          "vpn-gw-01",
+          "ad-dc-01",
+          "erp-app-01",
+          "erp-db-01"
+        ],
+        "edges": [
+          "E-01",
+          "E-07",
+          "E-10",
+          "E-12"
+        ],
+        "feasibility": 6.1,
+        "status": "hypothesis"
+      }
+    ]
+  },
+  "remediation": {
+    "confidence": "中",
+    "basis": "依曝險優先序與既有控制缺口",
+    "missing_inputs": [],
+    "requires_human": true,
+    "items": [
+      {
+        "id": "R-1",
+        "finding_id": "F-001",
+        "action": "套用廠商修補並輪換憑證",
+        "owner": "網路維運",
+        "approval_level": "資安主管",
+        "priority": "P1",
+        "effort": "中",
+        "verify": "確認版本與憑證輪換證據"
+      },
+      {
+        "id": "R-2",
+        "finding_id": "F-002",
+        "action": "OT 無法修補，改以網段隔離與唯讀存取作為補償控制",
+        "owner": "OT 負責人",
+        "approval_level": "變更委員會／OT 負責人",
+        "priority": "P1",
+        "effort": "高",
+        "verify": "確認隔離規則與唯讀存取測試"
+      }
+    ]
+  },
+  "validation_plan": {
+    "confidence": "中",
+    "basis": "scope.json 中 active_testing_authorized 與 external_scanning_authorized 皆為 false",
+    "missing_inputs": [],
+    "requires_human": true,
+    "items": [
+      {
+        "id": "V-1",
+        "hypothesis": "H-1",
+        "method": "授權後以外部版本確認 + 內部 BAS 模擬橫向移動",
+        "authorization_required": "尚未授權主動測試；需書面授權",
+        "scope_exclusions": [
+          "OT 網段"
+        ],
+        "success_criteria": "能否在不觸發告警的情況下自 vpn-gw-01 取得 ad-dc-01 憑證"
+      },
+      {
+        "id": "V-2",
+        "hypothesis": "H-2",
+        "method": "設定審查（被動）",
+        "authorization_required": "尚未授權主動測試",
+        "scope_exclusions": [],
+        "success_criteria": "erp-app-01 是否允許以服務帳號直連資料庫"
+      }
+    ]
+  },
+  "executive_summary": {
+    "confidence": "中",
+    "basis": "彙整本次八個章節",
+    "missing_inputs": [],
+    "requires_human": true,
+    "audience": [
+      "資安主管",
+      "IT 主管"
+    ],
+    "text": "本次 14 項發現中 5 項為 P1，其中 4 項對外曝露。最急迫者為 VPN 閘道的 pre-auth RCE：已有公開利用程式，且情資顯示同業遭鎖定。最可行路徑為 VPN → 網域控制站 → ERP 資料庫，關鍵阻斷點是特權服務帳號的 MFA 與網段隔離。限制：所有路徑均為假設，未經驗證；備份儲存桶尚未啟用不可變設定。",
+    "decisions_requested": [
+      "核准 7 日內修補 VPN 與入口網站",
+      "決定是否授權外部驗證（排除 OT）"
+    ]
+  },
+  "metrics": {
+    "confidence": "高",
+    "basis": "由本次輸出直接計算",
+    "missing_inputs": [],
+    "requires_human": false,
+    "items": [
+      {
+        "name": "P1 發現數",
+        "value": 5,
+        "target": "≤ 3"
+      },
+      {
+        "name": "未納入清冊的對外資產",
+        "value": 1,
+        "target": "0"
+      }
+    ]
+  },
+  "human_review_points": [
+    {
+      "stage": "攻擊路徑審查",
+      "who": "資安團隊",
+      "what": "確認所有攻擊路徑假設的可行性",
+      "status": "pending"
+    },
+    {
+      "stage": "主動驗證授權",
+      "who": "資安主管",
+      "what": "確認任何主動驗證已有書面授權",
+      "status": "pending"
+    },
+    {
+      "stage": "OT 變更核准",
+      "who": "OT 負責人與變更委員會",
+      "what": "核准所有 OT 相關變更",
+      "status": "pending"
+    }
+  ]
+}

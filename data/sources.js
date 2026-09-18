@@ -37,8 +37,8 @@ window.SOURCES = [
   { id: 'V5', title: 'Splunk — Preemptive Cybersecurity in 2026: How It Works', url: 'https://www.splunk.com/en_us/blog/learn/preemptive-cybersecurity.html', publisher: 'Splunk（廠商）', date: '2026', accessed: '2026-09-09', type: 'vendor', paywalled: false, note: '三個 D；重複「35% by 2028」（待驗證）。' },
   { id: 'V6', title: 'XM Cyber — Intelligent Simulation 2025（Gartner 授權轉載頁）', url: 'https://info.xmcyber.com/intelligent-simulation-2025', publisher: 'XM Cyber（廠商）', date: '2025', accessed: '2026-09-09', type: 'vendor', paywalled: true, note: '攻擊路徑／關鍵節點分析作為 CTEM 引擎（廠商定位）。' },
   { id: 'V7', title: 'Vectra — CTEM explained: Gartner\'s 5 stages and 2026 prediction', url: 'https://www.vectra.ai/topics/ctem', publisher: 'Vectra（廠商）', date: '2025/26', accessed: '2026-09-09', type: 'vendor', paywalled: false, note: '引用「3x less likely」並註明「directionally supported, but not empirically validated」。' },
-  { id: 'U1', title: '先制式資安（Preemptive Cybersecurity）深度研究報告（使用者提供；Claude 生成）', url: 'https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude', publisher: '使用者提供之 AI 生成報告', date: '2026-07-29', accessed: '2026-09-09', type: 'third-party', paywalled: false, note: '面向臺灣 ODM/EMS 資安主管；本站只採用其結構性觀點（OT 被動探索、RACI、平台即「王冠珠寶地圖」）；其引用之 Verizon DBIR 2026 等數字未在本研究環境核對，列為待驗證。未放入儲存庫。' },
-  { id: 'U2', title: '新興技術研究報告：Preemptive Cybersecurity 的頂尖解決方案能力（使用者提供；ChatGPT 生成）', url: 'https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude', publisher: '使用者提供之 AI 生成報告', date: '約 2026-07', accessed: '2026-09-09', type: 'third-party', paywalled: false, note: '六層參考架構、五個治理問題、廠商比較；本站只採用結構性觀點，廠商比較與數字不作為事實。未放入儲存庫。' },
+  { id: 'U1', title: '先制式資安（Preemptive Cybersecurity）深度研究報告（使用者提供；Claude 生成）', url: null, publisher: '使用者提供之 AI 生成報告', date: '2026-07-29', accessed: '2026-09-09', type: 'third-party', paywalled: false, note: '面向臺灣 ODM/EMS 資安主管；本站只採用其結構性觀點（OT 被動探索、RACI、平台即「王冠珠寶地圖」）；其引用之 Verizon DBIR 2026 等數字未在本研究環境核對，列為待驗證。**未放入儲存庫、無公開連結**（先前此欄填的是本儲存庫 URL，那是佔位值，會誤導讀者以為文件可取得）。' },
+  { id: 'U2', title: '新興技術研究報告：Preemptive Cybersecurity 的頂尖解決方案能力（使用者提供；ChatGPT 生成）', url: null, publisher: '使用者提供之 AI 生成報告', date: '約 2026-07', accessed: '2026-09-09', type: 'third-party', paywalled: false, note: '六層參考架構、五個治理問題、廠商比較；本站只採用結構性觀點，廠商比較與數字不作為事實。**未放入儲存庫、無公開連結**（同 U1，先前的 URL 為佔位值）。' },
   // 平台文件
   { id: 'P-AS1', title: 'Agent Skills 開放標準（GitHub：agentskills/agentskills，README 與 specification.mdx）', url: 'https://github.com/agentskills/agentskills', publisher: 'agentskills.io', date: '未標示', accessed: '2026-09-09', type: 'standard', paywalled: false, note: '已讀全文（GitHub）。frontmatter 規則、目錄結構、漸進式載入；採用清單資料檔含 50 項。agentskills.io 網站本身無法開啟。' },
   { id: 'P-C1', title: 'Claude 模型總覽', url: 'https://platform.claude.com/docs/en/about-claude/models/overview', publisher: 'Anthropic', date: '未標示', accessed: '2026-09-09', type: 'platform-doc', paywalled: false, note: '已讀全文：Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5。' },
@@ -61,19 +61,25 @@ window.SOURCES = [
   { id: 'P-D3', title: 'Hugging Face deepseek-ai/DeepSeek-V4-Pro-0813', url: 'https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813', publisher: 'DeepSeek', date: '未標示', accessed: '2026-09-09', type: 'platform-doc', paywalled: false, note: '無法開啟；1.6T／49B／1M 為搜尋摘錄；授權條款待驗證。' }
 ];
 
+// status：'pending'（待查證）或 'done'（已完成，保留作為紀錄）。
+// 'done' 需填 resolvedAt；'pending' 的 how 必須寫得出下一步動作，否則這份清單只是焦慮清單。
+// scripts/verify.mjs 會檢查這兩件事。
 window.TODO_ITEMS = [
-  { item: '所有 Gartner 網頁引文（G1、G3、G4、G7、G8、G28 系列）的完整上下文', why: '研究環境無法開啟 gartner.com，引文來自搜尋索引摘錄', how: '在不受限網路開啟各 URL，逐句核對「證據與來源」表中的引文；特別確認 G3 的三個 D 與兩句歸屬不明的曝險管理句子' },
-  { item: '「By 2030, 75% or more of large enterprise organizations will implement autonomous cyber-immune system capabilities」的原始文件', why: '僅見於 gartner.com 限定搜尋的單一摘錄，未確認頁面', how: '搜尋 Gartner 2025 SecOps Hype Cycle、Tech Innovators 或 Impact Radar 2025 的公開摘要；Impact Radar 全文中未出現此句' },
-  { item: '「先制型採用率 5% → 35% by 2028」', why: '只出現在 Silent Push 轉載頁與 Splunk 部落格', how: '對照 Gartner 文件 5912075 公開摘要' },
-  { item: 'Top Strategic Technology Trends 2026 的主題名稱（The Vanguard vs. The Sentinel）', why: '來源不一致', how: '開啟 G4 新聞稿確認' },
-  { item: 'ChatGPT Custom Instructions／Projects 的字數與檔案數上限；Codex skills 的確切路徑', why: 'help.openai.com 與 developers.openai.com 無法開啟', how: '開啟 P-O4、P-O5；確認 ~/.codex/skills 是否仍支援' },
-  { item: 'grok.com 的自訂指令、Workspaces、Custom Agents、Tasks；「SpaceXAI」更名', why: '官方頁面無法開啟，只有第三方描述', how: '登入 grok.com 檢視設定頁；開啟 x.ai/news' },
-  { item: 'GLM：Z.ai／BigModel 的 base URL 與 function calling 文件；chat.z.ai／智谱清言 的智能体與知識庫；GLM-5.3 授權', why: 'docs.z.ai、open.bigmodel.cn、chatglm.cn 無法開啟', how: '開啟 P-Z3 與 open.bigmodel.cn 文件；以 --dry-run 以外的方式實測 API 腳本' },
-  { item: 'DeepSeek V4：授權條款、strict tool calling、chat.deepseek.com 的自訂指令／專案、Anthropic 相容介面在 Claude Code 的設定方式', why: 'api-docs.deepseek.com、huggingface.co 無法開啟', how: '開啟 P-D2、P-D3；實測 api-workflow.py' },
-  { item: '使用者提供之 AI 生成報告引用的數字（例如 Verizon 2026 DBIR「31% 初始入侵為漏洞利用」「KEV 修補率 26%」、IBM 2024 breach cost）', why: '本研究未核對原始報告', how: '開啟 Verizon DBIR 2026 與 IBM 報告原文' },
-  { item: '各平台 skill 在真實模型上的驗收結果', why: '研究環境無 API 金鑰，僅完成 --dry-run 與確定性示範引擎驗證', how: '依各平台教學第 9 節執行 7 項驗收並記錄' },
-  { item: '（已完成）GitHub Pages 部署', why: '2026-09-13 已由 pages.yml 工作流程部署成功，網址 https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/ ，使用者已確認網站可用。保留此項作為紀錄。', how: '若儲存庫改為公開，重跑 node scripts/verify.mjs --links 以更新 U1、U2 的 404 結果' }
+  { status: 'pending', item: '所有 Gartner 網頁引文（G1、G3、G4、G7、G8、G28 系列）的完整上下文', why: '研究環境無法開啟 gartner.com，引文來自搜尋索引摘錄', how: '在不受限網路開啟各 URL，逐句核對「證據與來源」表中的引文；特別確認 G3 的三個 D 與兩句歸屬不明的曝險管理句子' },
+  { status: 'pending', item: '「By 2030, 75% or more of large enterprise organizations will implement autonomous cyber-immune system capabilities」的原始文件', why: '僅見於 gartner.com 限定搜尋的單一摘錄，未確認頁面', how: '搜尋 Gartner 2025 SecOps Hype Cycle、Tech Innovators 或 Impact Radar 2025 的公開摘要；Impact Radar 全文中未出現此句' },
+  { status: 'pending', item: '「先制型採用率 5% → 35% by 2028」', why: '只出現在 Silent Push 轉載頁與 Splunk 部落格', how: '對照 Gartner 文件 5912075 公開摘要' },
+  { status: 'pending', item: 'Top Strategic Technology Trends 2026 的主題名稱（The Vanguard vs. The Sentinel）', why: '來源不一致', how: '開啟 G4 新聞稿確認' },
+  { status: 'pending', item: 'ChatGPT Custom Instructions／Projects 的字數與檔案數上限；Codex skills 的確切路徑', why: 'help.openai.com 與 developers.openai.com 無法開啟', how: '開啟 P-O4、P-O5；確認 ~/.codex/skills 是否仍支援' },
+  { status: 'pending', item: 'grok.com 的自訂指令、Workspaces、Custom Agents、Tasks；「SpaceXAI」更名', why: '官方頁面無法開啟，只有第三方描述', how: '登入 grok.com 檢視設定頁；開啟 x.ai/news' },
+  { status: 'pending', item: 'GLM：Z.ai／BigModel 的 base URL 與 function calling 文件；chat.z.ai／智谱清言 的智能体與知識庫；GLM-5.3 授權', why: 'docs.z.ai、open.bigmodel.cn、chatglm.cn 無法開啟', how: '開啟 P-Z3 與 open.bigmodel.cn 文件；以 --dry-run 以外的方式實測 API 腳本' },
+  { status: 'pending', item: 'DeepSeek V4：授權條款、strict tool calling、chat.deepseek.com 的自訂指令／專案、Anthropic 相容介面在 Claude Code 的設定方式', why: 'api-docs.deepseek.com、huggingface.co 無法開啟', how: '開啟 P-D2、P-D3；實測 api-workflow.py' },
+  { status: 'pending', item: '使用者提供之 AI 生成報告引用的數字（例如 Verizon 2026 DBIR「31% 初始入侵為漏洞利用」「KEV 修補率 26%」、IBM 2024 breach cost）', why: '本研究未核對原始報告', how: '開啟 Verizon DBIR 2026 與 IBM 報告原文' },
+  { status: 'pending', item: '各平台 skill 在真實模型上的驗收結果', why: '研究環境無 API 金鑰，僅完成 --dry-run 與確定性示範引擎驗證', how: '設好平台 API key secret 後手動觸發 .github/workflows/model-acceptance.yml（chatgpt／grok／glm／deepseek），Claude 需在 Claude Code 或 claude.ai 手動執行；機器檢查由 scripts/check-acceptance.mjs 完成，人工判讀依 docs/evidence/model-acceptance-template.md 填寫並提交' },
+  { status: 'done', resolvedAt: '2026-09-13', item: 'GitHub Pages 部署', why: '已由 pages.yml 工作流程部署成功，網址 https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/ ，使用者已確認網站可用。保留此項作為紀錄。', how: '無後續動作；U1／U2 先前指向本儲存庫的佔位 URL 已於 2026-09-14 改為「無公開連結」' },
+  { status: 'pending', item: '在不受 proxy 限制的網路重跑連結檢查', why: '2026-09-09 的紀錄中 42 個 URL 回 403，全部來自本地研究環境的出口 proxy 政策，無法判定連結是否有效', how: '在 GitHub 上手動觸發 .github/workflows/link-check.yml（另每季自動執行一次），下載 artifact 後覆蓋 link-check.md 並更新本頁的連結檢查說明；runner 走資料中心 IP，Gartner 等站仍可能因 bot 防護回 403，屆時需人工在瀏覽器確認' }
 ];
 
-window.LINK_CHECK_NOTE = `- **2026-09-09 實際結果**（\`node scripts/verify.mjs --links\`，輸出 \`link-check.md\`）：57 個 URL 中，**13 個回應 200**（github.com 的 7 個官方 repo、platform.claude.com 與 code.claude.com 的 5 頁、agentskills 標準 repo），**42 個回應 403**（研究環境的出口 proxy 政策封鎖：gartner.com、openai.com、help.openai.com、developers.openai.com、docs.x.ai、docs.z.ai、api-docs.deepseek.com、huggingface.co、媒體與廠商網域），**2 個回應 404**（U1、U2 指向本儲存庫，因儲存庫尚未公開；使用者提供的兩份 AI 生成報告未放入儲存庫）。
-- 403 表示**無法在此環境判定連結是否有效**，不代表連結失效。「已查證」僅表示已讀取可開啟的來源；被封鎖的 URL 需在不受限網路重新執行 \`--links\` 並更新本段。`;
+window.LINK_CHECK_NOTE = `- **2026-09-09 實際結果**（\`npm run verify:links\`，輸出 \`link-check.md\`）：57 個 URL 中，**13 個回應 200**（github.com 的 7 個官方 repo、platform.claude.com 與 code.claude.com 的 5 頁、agentskills 標準 repo），**42 個回應 403**（研究環境的出口 proxy 政策封鎖：gartner.com、openai.com、help.openai.com、developers.openai.com、docs.x.ai、docs.z.ai、api-docs.deepseek.com、huggingface.co、媒體與廠商網域），**2 個回應 404**（U1、U2 當時填入本儲存庫 URL 作為佔位值）。
+- 403 表示**無法在此環境判定連結是否有效**，不代表連結失效。「已查證」僅表示已讀取可開啟的來源。
+- **2026-09-14 調整**：U1、U2 是使用者提供、未放入儲存庫的文件，已改為「無公開連結」，不再佔用一個會 404 的 URL；待檢查的 URL 因此為 55 個。
+- **連結檢查已移到 CI 執行**：本地 proxy 的 403 沒有判定價值，因此改由 \`.github/workflows/link-check.yml\`（手動觸發，另每季自動執行）在 GitHub Actions runner 上跑，結果以 artifact 提供，人工確認後再覆蓋 \`link-check.md\` 與本段。runner 走資料中心 IP，Gartner 與部分媒體站仍可能因 bot 防護回 403——但能區分「本地 proxy 封鎖」與「站方封鎖」，已足以縮小待人工核對的範圍。`;

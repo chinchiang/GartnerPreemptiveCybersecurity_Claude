@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 只列一個 URL：本站是 hash 路由的單頁應用程式（#/methodology、#/skills…），
+     搜尋引擎不索引 # 之後的片段，列出來只會產生無效條目。 -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/</loc>
+    <lastmod>2026-09-14</lastmod>
+    <changefreq>monthly</changefreq>
+  </url>
+</urlset>

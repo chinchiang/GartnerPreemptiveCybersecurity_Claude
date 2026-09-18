@@ -1,0 +1,184 @@
+name: Model acceptance (real API)
+
+# 對「真實模型輸出」執行 references/acceptance.md 的驗收，只在手動觸發時執行。
+#
+# 為什麼不放進 ci.yml：需要 API 金鑰、會產生費用、輸出不具決定性。PR 檢查必須是
+# 免金鑰且可重現的（見 ci.yml），因此真實模型驗收獨立成手動工作流程。
+#
+# 資料：只使用 examples/synthetic-org/ 的合成資料（虛構組織 Northwind Precision）。
+# 不得改成真實客戶資料——輸出會上傳成 artifact。
+#
+# 金鑰：只從 GitHub Secrets 讀入環境變數，未設定時直接中止並說明要設哪一個。
+# Claude 沒有 api-workflow.py（只有 validate_inputs.py），其驗收需以 Claude Code／
+# claude.ai 手動執行，記錄在 docs/evidence/model-acceptance-template.md。
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 要驗收的平台
+        required: true
+        type: choice
+        options: [chatgpt, grok, glm, deepseek]
+      model:
+        description: 模型 ID（留空則用腳本預設值）
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    env:
+      PLATFORM: ${{ inputs.platform }}
+      # 經由環境變數傳入，不直接內插到 shell 指令中（避免工作流程輸入被當成指令執行）。
+      MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Provider secrets只注入下方實際模型呼叫step；checkout、setup與安裝均不可見。
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: skills/*/requirements.txt
+
+      - name: Install platform SDK
+        run: pip install -r "skills/$PLATFORM/requirements.txt"
+
+      - name: Prepare variant input directories
+        run: |
+          # baseline 用原始 9 檔；另兩個變體各刪掉一個檔案，對應驗收 6 與驗收 7。
+          cp -r examples/synthetic-org "$RUNNER_TEMP/no-intel"
+          rm "$RUNNER_TEMP/no-intel/threat-intel.json"
+          cp -r examples/synthetic-org "$RUNNER_TEMP/no-scope"
+          rm "$RUNNER_TEMP/no-scope/scope.json"
+
+      - name: Run baseline — ChatGPT
+        if: inputs.platform == 'chatgpt'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          test -n "$OPENAI_API_KEY" || { echo "::error::chatgpt 需要 OPENAI_API_KEY"; exit 1; }
+          ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run baseline — Grok
+        if: inputs.platform == 'grok'
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: |
+          test -n "$XAI_API_KEY" || { echo "::error::grok 需要 XAI_API_KEY"; exit 1; }
+          ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run baseline — GLM
+        if: inputs.platform == 'glm'
+        env:
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+        run: |
+          test -n "$GLM_API_KEY" || { echo "::error::glm 需要 GLM_API_KEY"; exit 1; }
+          ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run baseline — DeepSeek
+        if: inputs.platform == 'deepseek'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          test -n "$DEEPSEEK_API_KEY" || { echo "::error::deepseek 需要 DEEPSEEK_API_KEY"; exit 1; }
+          ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Check baseline against acceptance items 1-5
+        run: node scripts/check-acceptance.mjs "output/baseline/$PLATFORM-output.json"
+
+      - name: Run no-intel — ChatGPT
+        if: inputs.platform == 'chatgpt'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          ARGS=(--input-dir "$RUNNER_TEMP/no-intel" --output-dir output/no-intel)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run no-intel — Grok
+        if: inputs.platform == 'grok'
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: |
+          ARGS=(--input-dir "$RUNNER_TEMP/no-intel" --output-dir output/no-intel)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run no-intel — GLM
+        if: inputs.platform == 'glm'
+        env:
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+        run: |
+          ARGS=(--input-dir "$RUNNER_TEMP/no-intel" --output-dir output/no-intel)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run no-intel — DeepSeek
+        if: inputs.platform == 'deepseek'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          ARGS=(--input-dir "$RUNNER_TEMP/no-intel" --output-dir output/no-intel)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Check no-intel against acceptance item 6
+        run: node scripts/check-acceptance.mjs "output/no-intel/$PLATFORM-output.json" --variant no-intel
+
+      - name: Acceptance item 7 — missing scope.json must abort
+        run: |
+          # 這一項由腳本的 I1 守門實作（task-spec.md 第 2.1 節）：不呼叫 API 就中止。
+          # 「模型自己也會拒絕」需在對話介面手動驗證，見 docs/evidence/model-acceptance-template.md。
+          set +e
+          out=$(python3 "skills/$PLATFORM/api-workflow.py" --input-dir "$RUNNER_TEMP/no-scope" --output-dir output/no-scope 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" -eq 0 ]; then
+            echo "::error::缺少 scope.json 時仍完成分析，違反 I1 守門"
+            exit 1
+          fi
+          case "$out" in
+            *scope.json*) echo "已如預期中止（exit $code）" ;;
+            *) echo "::error::中止了但訊息未提到 scope.json，請確認是同一個原因"; exit 1 ;;
+          esac
+
+      - name: Upload model output for human review
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: model-acceptance-${{ inputs.platform }}
+          path: output/
+          retention-days: 30
+
+      - name: Remind about the human-judgement items
+        if: always()
+        run: |
+          {
+            echo "### $PLATFORM 真實模型驗收"
+            echo ''
+            echo '機器可判定的部分已由 `scripts/check-acceptance.mjs` 檢查（見上方步驟）。'
+            echo '下列仍需人工判讀，請下載 artifact 後依 `docs/evidence/model-acceptance-template.md` 填寫：'
+            echo ''
+            echo '- 管理摘要的中文品質、是否真的遮罩帳號／IP／主機名稱'
+            echo '- 改善建議與補償控制是否合理、核准層級是否恰當'
+            echo '- 攻擊路徑敘述是否僅止於假設、沒有暗示已驗證'
+            echo '- 是否出現任何主動掃描或測試的指示（出現即為不合格）'
+          } >> "$GITHUB_STEP_SUMMARY"
