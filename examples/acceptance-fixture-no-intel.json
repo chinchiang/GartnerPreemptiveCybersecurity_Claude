@@ -1,5 +1,5 @@
 {
-  "_fixture_note": "合成夾具，用來驗證 scripts/check-acceptance.mjs 本身是否運作正確。這不是任何模型的真實輸出，也不是預期輸出的範例（那是 examples/expected-output.md）。數值取自 examples/synthetic-org/ 的合成資料，全部為虛構。真實模型驗收結果請記錄在 docs/evidence/model-acceptance-*.md。",
+  "_fixture_note": "合成夾具，用來驗證 scripts/check-acceptance.mjs 本身是否運作正確。這不是任何模型的真實輸出，也不是預期輸出的範例（那是 examples/expected-output.md）。數值取自 examples/synthetic-org/ 的合成資料，全部為虛構。真實模型驗收結果請記錄在 docs/evidence/model-acceptance-*.md。 此 no-intel 夾具僅測試缺檔與信心降級的結構檢查；分數與統計為固定測試值，並非移除情資後重新計算的結果。",
   "meta": {
     "organization": "Northwind Precision（合成）",
     "analysis_date": "2026-09-14",
@@ -94,7 +94,7 @@
           "模擬 KEV（已知遭利用）",
           "可達 crown jewel 之入口"
         ],
-        "confidence": "高"
+        "confidence": "中"
       },
       {
         "finding_id": "F-002",
@@ -111,7 +111,7 @@
           "控制缺口 ×5",
           "crown jewel"
         ],
-        "confidence": "高"
+        "confidence": "中"
       }
     ]
   },
@@ -218,13 +218,15 @@
   "executive_summary": {
     "confidence": "中",
     "basis": "彙整本次八個章節",
-    "missing_inputs": [],
+    "missing_inputs": [
+      "threat-intel.json"
+    ],
     "requires_human": true,
     "audience": [
       "資安主管",
       "IT 主管"
     ],
-    "text": "本次 14 項發現中 5 項為 P1，其中 4 項對外曝露。最急迫者為 VPN 閘道的 pre-auth RCE：已有公開利用程式，且情資顯示同業遭鎖定。最可行路徑為 VPN → 網域控制站 → ERP 資料庫，關鍵阻斷點是特權服務帳號的 MFA 與網段隔離。限制：所有路徑均為假設，未經驗證；備份儲存桶尚未啟用不可變設定。",
+    "text": "本次 14 項發現中 5 項為 P1，其中 4 項對外曝露。最急迫者為 VPN 閘道的 pre-auth RCE：已有公開利用程式，但未提供 threat-intel.json，無法判定同業是否遭鎖定。最可行路徑為 VPN → 網域控制站 → ERP 資料庫，關鍵阻斷點是特權服務帳號的 MFA 與網段隔離。限制：所有路徑均為假設，未經驗證；備份儲存桶尚未啟用不可變設定。",
     "decisions_requested": [
       "核准 7 日內修補 VPN 與入口網站",
       "決定是否授權外部驗證（排除 OT）"
