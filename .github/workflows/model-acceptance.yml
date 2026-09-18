@@ -38,31 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # 每個條件式 step 只取得實際選定平台的一把 key；checkout、setup 與安裝均不可見 provider secrets。
-      - name: Check ChatGPT API key
-        if: inputs.platform == 'chatgpt'
-        env:
-          PROVIDER_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: test -n "$PROVIDER_API_KEY" || { echo "::error::chatgpt 需要 OPENAI_API_KEY"; exit 1; }
-
-      - name: Check Grok API key
-        if: inputs.platform == 'grok'
-        env:
-          PROVIDER_API_KEY: ${{ secrets.XAI_API_KEY }}
-        run: test -n "$PROVIDER_API_KEY" || { echo "::error::grok 需要 XAI_API_KEY"; exit 1; }
-
-      - name: Check GLM API key
-        if: inputs.platform == 'glm'
-        env:
-          PROVIDER_API_KEY: ${{ secrets.GLM_API_KEY }}
-        run: test -n "$PROVIDER_API_KEY" || { echo "::error::glm 需要 GLM_API_KEY"; exit 1; }
-
-      - name: Check DeepSeek API key
-        if: inputs.platform == 'deepseek'
-        env:
-          PROVIDER_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: test -n "$PROVIDER_API_KEY" || { echo "::error::deepseek 需要 DEEPSEEK_API_KEY"; exit 1; }
-
+      # Provider secrets只注入下方實際模型呼叫step；checkout、setup與安裝均不可見。
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
@@ -89,6 +65,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          test -n "$OPENAI_API_KEY" || { echo "::error::chatgpt 需要 OPENAI_API_KEY"; exit 1; }
           ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
@@ -98,6 +75,7 @@ jobs:
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
+          test -n "$XAI_API_KEY" || { echo "::error::grok 需要 XAI_API_KEY"; exit 1; }
           ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
@@ -107,6 +85,7 @@ jobs:
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
         run: |
+          test -n "$GLM_API_KEY" || { echo "::error::glm 需要 GLM_API_KEY"; exit 1; }
           ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
@@ -116,6 +95,7 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
+          test -n "$DEEPSEEK_API_KEY" || { echo "::error::deepseek 需要 DEEPSEEK_API_KEY"; exit 1; }
           ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
