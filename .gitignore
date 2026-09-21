@@ -10,5 +10,9 @@ node_modules/
 .claude/settings.local.json
 backend/.env
 scratch/
+_site/
 # 驗證截圖（可選擇提交）
 
+
+# 由 scripts/build-worker.mjs 產生（含嵌入提示詞的 worker）
+backend/dist/

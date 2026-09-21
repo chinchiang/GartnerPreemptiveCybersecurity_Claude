@@ -68,7 +68,7 @@
     },
     "executive_summary": {
       "allOf": [{ "$ref": "#/$defs/block" }],
-      "properties": { "audience": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string", "maxLength": 1200 }, "decisions_requested": { "type": "array", "items": { "type": "string" } } }
+      "properties": { "audience": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string", "maxLength": 300, "description": "正文 ≤ 300 字（含標點；對象／日期列另放 audience 與 meta）" }, "decisions_requested": { "type": "array", "items": { "type": "string" } } }
     },
     "metrics": {
       "allOf": [{ "$ref": "#/$defs/block" }],

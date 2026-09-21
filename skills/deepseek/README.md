@@ -29,7 +29,7 @@ role: readme
 | 情境 | 檔案 | 做法 |
 |---|---|---|
 | 以 API 自動化 | `api-workflow.py` + `requirements.txt` | 兩段式：Markdown 報告 → `response_format={"type":"json_object"}` 的 JSON |
-| 在 skills-capable host 內 | `host-skill/SKILL.md` | 放入 OpenClaw、Deep Code（皆列於 agentskills.io 支援清單）或 Claude Code（透過 Anthropic 相容介面，設定方式待驗證） |
+| 在 skills-capable host 內 | `preemptive-exposure-analysis/SKILL.md` | 放入 OpenClaw、Deep Code（皆列於 agentskills.io 支援清單）或 Claude Code（透過 Anthropic 相容介面，設定方式待驗證） |
 | 在 chat.deepseek.com 對話中 | `system-prompt.md` | 貼在新對話第一則訊息（無原生自訂指令可用） |
 
 ## 4. 能力限制與治理考量
@@ -44,7 +44,7 @@ role: readme
 skills/deepseek/
 ├── README.md              本檔
 ├── system-prompt.md       可直接複製的系統提示詞
-├── host-skill/SKILL.md    Agent Skills 標準 skill（供 skills-capable host）
+├── preemptive-exposure-analysis/SKILL.md    Agent Skills 標準 skill（供 skills-capable host）
 ├── api-workflow.py        OpenAI 相容端點腳本（含 --dry-run；版本無關）
 └── requirements.txt       openai
 ```

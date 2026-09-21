@@ -40,7 +40,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 
 ## 3. GitHub Pages 部署
 
-工作流程 `.github/workflows/pages.yml` 會在推送到 `main` 時：安裝 Node 22 → `node scripts/build-data.mjs` → `node scripts/verify.mjs --static` → 上傳整個儲存庫為 Pages artifact → 部署。
+工作流程 `.github/workflows/pages.yml` 會在推送到 `main` 時：安裝 Node 22 → `node scripts/build-data.mjs` → `node scripts/verify.mjs --static` → 只把網站需要的檔案（`index.html`、`404.html`、`.nojekyll`、`assets/`、`data/`、`downloads/`）組成 `_site/` 上傳為 Pages artifact → 部署。研究文件、證據檔、README、驗證報告與連結檢查表都已由建置腳本嵌入 `data/*.js`，因此網站內容完整，但 `docs/`、`examples/`、`scripts/`、`verify-screenshots/` 不會直接以檔案形式公開在 Pages 上（仍可在 GitHub 儲存庫瀏覽）。
 
 **已完成的一次性設定**（2026-09-13）：儲存庫 Settings → Pages → Build and deployment → Source 選 **GitHub Actions**；預設分支設為 `main`；`github-pages` 環境的部署分支規則允許 `main`。目前網址為 `https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`，部署工作流程已成功執行並經人工確認。若新建 fork 或搬移儲存庫，需重做這三項設定。
 
@@ -61,7 +61,9 @@ node scripts/verify.mjs --links      # 加上來源連結 HEAD 檢查（需不�
 | 要更新什麼 | 改哪裡 | 之後 |
 |---|---|---|
 | 研究內容 | `docs/research/*.md`（frontmatter `order`、`title`、`summary`） | build |
-| 來源、待驗證清單、連結檢查紀錄 | `data/sources.js` | 無需 build |
+| 來源、待驗證清單、連結檢查紀錄 | `data/sources.js`（每筆需有 `verification` 等級） | 無需 build |
+| 證據檔、README、驗證報告、連結檢查表（站上附錄） | `docs/evidence/*.md`、`README.md`、`verify-report.md`、`link-check.md` | build（嵌入 `data/extra.js`） |
+| 選用後端代理的提示詞 | `skills/shared/core-prompt.md` | `node scripts/build-worker.mjs` 產生 `backend/dist/worker.js` |
 | 流程／I-O／平台比較 | `data/process.js`、`data/io.js`、`data/platforms.js` | 無需 build |
 | Skills | `skills/<platform>/…`；規則變更先改 `skills/shared/` 再同步各平台 | build |
 | 教學 | `docs/guides/<platform>.md` | build |

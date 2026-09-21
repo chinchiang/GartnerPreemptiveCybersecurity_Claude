@@ -18,7 +18,7 @@ const ok = (name, pass, detail = '') => { results.push({ name, pass, detail }); 
 // ---------- 靜態檢查 ----------
 function staticChecks() {
   const ctx = { window: {} }; vm.createContext(ctx);
-  for (const f of ['data/manifest.js', 'data/research.js', 'data/guides.js', 'data/skills.js', 'data/case.js', 'data/process.js', 'data/io.js', 'data/platforms.js', 'data/sources.js']) {
+  for (const f of ['data/manifest.js', 'data/research.js', 'data/guides.js', 'data/skills.js', 'data/case.js', 'data/process.js', 'data/io.js', 'data/platforms.js', 'data/sources.js', 'data/extra.js']) {
     try { vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx); ok(`載入 ${f}`, true); } catch (e) { ok(`載入 ${f}`, false, e.message); }
   }
   const w = ctx.window;
@@ -36,6 +36,11 @@ function staticChecks() {
   for (const p of w.PLATFORMS || []) for (const id of p.sources) referenced.add(id);
   const missing = [...referenced].filter(id => !srcIds.has(id));
   ok('所有引用的來源 ID 都存在於來源表', missing.length === 0, missing.length ? `缺：${missing.join(', ')}` : `${referenced.size} 個 ID`);
+  const noVer = (w.SOURCES || []).filter(s => !s.verification || !s.url || !s.date || !s.accessed).map(s => s.id);
+  ok('每筆來源都有 verification、url、date、accessed', noVer.length === 0, noVer.join(','));
+  ok('證據檔已嵌入網站', (w.EXTRA_DOCS?.evidence || []).length >= 2, `${(w.EXTRA_DOCS?.evidence || []).length} 份`);
+  const badDerived = (w.PROCESS_STAGES || []).flatMap(s => s.derivedFrom || []).filter(id => !(w.PROCESS_STAGES || []).some(x => x.id === id));
+  ok('流程步驟 derivedFrom 指向存在的步驟', badDerived.length === 0, badDerived.join(','));
   // 流程 ↔ IO 對應
   const ioIds = new Set((w.IO_ITEMS || []).map(i => i.id));
   const badIO = (w.PROCESS_STAGES || []).flatMap(s => [...s.inputs, ...s.outputs]).filter(id => !ioIds.has(id));
@@ -51,8 +56,26 @@ function staticChecks() {
   ok('驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據', vpn && vpn.priority === 'P1' && ['對外曝露', '公開利用程式', '模擬 KEV', '威脅情資命中'].every(k => vpn.factors.some(x => x.includes(k))), vpn ? `${vpn.priority} ${vpn.score}` : '找不到');
   ok('驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01', R.hypotheses.some(h => h.nodes.join('>') === 'A01>A04>A06'));
   ok('驗收 4：驗證計畫每項標「尚未授權主動測試」', R.validation.length > 0 && R.validation.every(v => v.requires.includes('尚未授權主動測試')));
+  ok('驗收 5：管理摘要 ≤ 300 字且含「決策請求」「限制」', R.summary.length <= 300 && R.summary.text.includes('決策請求') && R.summary.text.includes('限制'), `${R.summary.length} 字`);
+  const R7 = w.DEMO.analyze({ ...w.CASE_DATA, scope: undefined }, {});
+  ok('驗收 7：缺 scope 時拒絕分析並列出必要欄位', R7.refused === true && R7.requiredFields.length === 6 && R7.findings.length === 0);
+  const Rx = w.DEMO.analyze(w.CASE_DATA, { inputs: { topology: false } });
+  ok('缺拓樸：信心下修且無路徑假設', Rx.hypotheses.length === 0 && Rx.findings.every(f => f.confidence === '中'));
+  const Ri = w.DEMO.analyze(w.CASE_DATA, { inventoryCompleteness: 70 });
+  ok('清冊 < 80%：信心「低」', Ri.findings.length > 0 && Ri.findings.every(f => f.confidence === '低'));
+  const Ra = w.DEMO.analyze({ ...w.CASE_DATA, scope: { ...w.CASE_DATA.scope, authorized_scope: { ...w.CASE_DATA.scope.authorized_scope, active_testing_authorized: true, external_scanning_authorized: false } } }, {});
+  ok('驗證計畫：外部驗證需兩個授權旗標', Ra.validation.filter(v => v.method.includes('外部')).every(v => v.requires.includes('尚未授權')));
+  const S = w.DEMO.toSchema(R, w.CASE_DATA);
+  const schema = JSON.parse(readFileSync(join(ROOT, 'skills/shared/output-schema.json'), 'utf8'));
+  const missTop = schema.required.filter(k => !(k in S));
+  const blocksOK = schema.required.filter(k => k !== 'human_review_points' && k !== 'meta').every(k => ['confidence', 'basis', 'missing_inputs', 'requires_human'].every(f => f in S[k]));
+  const hypOK = S.attack_path_hypotheses.items.every(h => h.status === 'hypothesis' && ['id', 'entry', 'target', 'nodes', 'edges', 'feasibility'].every(f => f in h));
+  const valOK = S.validation_plan.items.every(v => ['id', 'hypothesis', 'method', 'authorization_required', 'success_criteria'].every(f => f in v));
+  const remOK = S.remediation.items.every(r => ['finding_id', 'priority', 'action', 'owner', 'effort', 'verify', 'approval_level'].every(f => f in r));
+  ok('引擎 JSON 符合 output-schema 結構', missTop.length === 0 && blocksOK && hypOK && valOK && remOK && (S.executive_summary.text.length <= 300), missTop.join(',') || 'required、block 欄位、items 必填鍵、摘要長度');
   const R2 = w.DEMO.analyze(w.CASE_DATA, { inputs: { threatIntel: false } });
   ok('驗收 6：移除情資後信心下修並標示', R2.findings.every(f => f.confidence === '中') && R2.missingSummary.includes('威脅情資'));
+  // 陳舊產生檔：downloads/*.zip 與 data/*.js 由 build-data.mjs 產生，CI 另以 git status 檢查
   // 下載檔案
   for (const d of w.BUILD_MANIFEST.downloads) ok(`下載檔存在 ${d}`, existsSync(join(ROOT, d)));
   // 機敏字串掃描
@@ -98,10 +121,27 @@ async function browserChecks() {
   const tabs = await page.$$('.tabs button');
   await tabs[1].click(); await page.waitForTimeout(100);
   ok('方法論章節切換', (await page.textContent('article h2')).length > 0 && page.url().includes('doc='), page.url().split('#')[1]);
+  // 目錄錨點（中文 slug 需 decode）與 tab 鍵盤操作
+  const tocLink = await page.$('.doc-toc a:nth-child(3)');
+  const tocHref = await tocLink.getAttribute('href');
+  await tocLink.click(); await page.waitForTimeout(150);
+  const anchorId = decodeURIComponent(tocHref.split('#')[2] || '');
+  const anchorEl = anchorId ? await page.$(`[id="${anchorId.replace(/"/g, '')}"]`) : null;
+  ok('目錄錨點：同章且元素存在', page.url().includes('doc=01-definition') && !!anchorEl && (await page.evaluate(() => window.scrollY)) > 0, `${anchorId} scrollY=${await page.evaluate(() => window.scrollY)}`);
+  await page.focus('.tabs [role="tab"][aria-selected="true"]'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150);
+  ok('Tabs 方向鍵切換', page.url().includes('doc=02-relations'), page.url().split('#')[1]);
+  // skip link 不應觸發「找不到頁面」
+  await page.goto(base + '#/process'); await page.waitForTimeout(100);
+  await page.keyboard.press('Tab'); await page.keyboard.press('Enter'); await page.waitForTimeout(100);
+  ok('Skip link 不改變頁面', (await page.textContent('h1')).includes('可執行流程') && (await page.evaluate(() => document.activeElement?.id)) === 'main');
   // 搜尋
   await page.fill('#search', 'CTEM'); await page.waitForTimeout(150);
   const n = await page.$$eval('#search-results a', a => a.length);
   ok('全站搜尋回傳結果', n > 0, `${n} 筆`);
+  ok('搜尋 ARIA：aria-expanded 更新且結果為 option', (await page.getAttribute('#search', 'aria-expanded')) === 'true' && (await page.$$eval('#search-results [role="option"]', a => a.length)) === n);
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');
+  ok('搜尋鍵盤導覽：aria-activedescendant', (await page.getAttribute('#search', 'aria-activedescendant')) === 'search-opt-1');
+  ok('搜尋片段含 mark', (await page.$$eval('#search-results .small mark', m => m.length)) > 0);
   await page.fill('#search', '');
   // I/O 篩選
   await page.goto(base + '#/io'); await page.waitForTimeout(100);
@@ -151,18 +191,49 @@ async function browserChecks() {
   ok('來源頁所有連結為 http(s)', links.length > 30 && links.every(h => /^https?:\/\//.test(h)), `${links.length} 個連結`);
   await page.selectOption('#s-type', 'gartner'); await page.waitForTimeout(100);
   ok('來源頁類型篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) < links.length);
+  await page.selectOption('#s-type', 'all'); await page.selectOption('#s-ver', 'full'); await page.waitForTimeout(100);
+  ok('來源頁查證等級篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) === 6);
+  ok('來源頁：證據檔附錄可展開', (await page.$$('details.doc-details')).length >= 3);
+  await page.goto(base + '#/deploy'); await page.waitForTimeout(100);
+  ok('部署頁：標題層級無跳級', await page.evaluate(() => { const hs = [...document.querySelectorAll('main h1,main h2,main h3,main h4')].map(h => +h.tagName[1]); return hs.every((l, i) => i === 0 || l <= hs[i - 1] + 1); }));
   // 行動裝置
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const mp = await mobile.newPage();
-  await mp.goto(base + '#/platforms'); await mp.waitForTimeout(150);
-  const bodyW = await mp.evaluate(() => document.documentElement.scrollWidth);
-  ok('行動裝置：無水平捲動', bodyW <= 390, `scrollWidth ${bodyW}`);
+  const overflow = [];
+  for (const r of ['#/', ...routes, '#/skills?platform=claude', '#/guides?platform=claude', '#/methodology?doc=03-process']) {
+    await mp.goto(base + r); await mp.waitForTimeout(150);
+    const w = await mp.evaluate(() => document.documentElement.scrollWidth);
+    if (w > 390) overflow.push(`${r}:${w}`);
+  }
+  ok('行動裝置 390px：所有路由無水平捲動', overflow.length === 0, overflow.join(' '));
+  await mp.setViewportSize({ width: 320, height: 700 });
+  const overflow320 = [];
+  for (const r of ['#/', '#/io', '#/case', '#/skills', '#/deploy']) { await mp.goto(base + r); await mp.waitForTimeout(150); const w = await mp.evaluate(() => document.documentElement.scrollWidth); if (w > 320) overflow320.push(`${r}:${w}`); }
+  ok('行動裝置 320px：無水平捲動', overflow320.length === 0, overflow320.join(' '));
+  await mp.setViewportSize({ width: 390, height: 844 }); await mp.goto(base + '#/platforms'); await mp.waitForTimeout(150);
   await mp.click('#menu-btn'); await mp.waitForTimeout(100);
   ok('行動裝置：漢堡選單開啟', await mp.$eval('.sidebar', s => s.classList.contains('open')));
   await mp.screenshot({ path: join(shots, 'mobile-platforms.png') });
   // 無障礙基礎
   await page.goto(base + '#/'); await page.waitForTimeout(100);
   ok('無障礙：skip link、lang、aria-current', (await page.$('.skip-link')) && (await page.getAttribute('html', 'lang')) === 'zh-Hant' && (await page.$('.sidebar nav a[aria-current="page"]')) !== null);
+  // 對比：主要按鈕文字與深色主題徽章
+  const contrast = await page.evaluate(() => {
+    const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const btn = document.querySelector('.btn:not(.secondary)'); const cs = getComputedStyle(btn);
+    return ratio(cs.color, cs.backgroundColor);
+  });
+  ok('對比：主要按鈕 ≥ 4.5', contrast >= 4.5, contrast.toFixed(2));
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+  const darkContrast = await page.evaluate(() => {
+    const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const els = [document.querySelector('.btn:not(.secondary)'), document.querySelector('.brand .badge'), document.querySelector('.sidebar nav a[aria-current="page"]')];
+    return Math.min(...els.map(e => { const cs = getComputedStyle(e); return ratio(cs.color, cs.backgroundColor); }));
+  });
+  ok('對比：深色主題強調色元素 ≥ 4.5', darkContrast >= 4.5, darkContrast.toFixed(2));
+  await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }

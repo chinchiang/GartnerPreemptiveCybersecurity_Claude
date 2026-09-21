@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-09-12T12:20:42.416Z
+執行時間：2026-09-21T07:07:06.382Z
 模式：full
-結果：63/63 通過
+結果：85/85 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -15,11 +15,15 @@
 | 載入 data/io.js | ✅ |  |
 | 載入 data/platforms.js | ✅ |  |
 | 載入 data/sources.js | ✅ |  |
+| 載入 data/extra.js | ✅ |  |
 | 研究文件 ≥ 7 章 | ✅ | 8 章 |
 | 五個平台教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,deployment |
 | Skills 涵蓋五平台 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
 | 每個平台都有 SKILL.md 或 system-prompt.md | ✅ |  |
-| 所有引用的來源 ID 都存在於來源表 | ✅ | 53 個 ID |
+| 所有引用的來源 ID 都存在於來源表 | ✅ | 57 個 ID |
+| 每筆來源都有 verification、url、date、accessed | ✅ |  |
+| 證據檔已嵌入網站 | ✅ | 2 份 |
+| 流程步驟 derivedFrom 指向存在的步驟 | ✅ |  |
 | 流程步驟引用的 I/O 都存在 | ✅ |  |
 | JSON 有效 skills/shared/input-schema.json | ✅ |  |
 | JSON 有效 skills/shared/output-schema.json | ✅ |  |
@@ -28,6 +32,12 @@
 | 驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據 | ✅ | P1 86 |
 | 驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | ✅ |  |
 | 驗收 4：驗證計畫每項標「尚未授權主動測試」 | ✅ |  |
+| 驗收 5：管理摘要 ≤ 300 字且含「決策請求」「限制」 | ✅ | 243 字 |
+| 驗收 7：缺 scope 時拒絕分析並列出必要欄位 | ✅ |  |
+| 缺拓樸：信心下修且無路徑假設 | ✅ |  |
+| 清冊 < 80%：信心「低」 | ✅ |  |
+| 驗證計畫：外部驗證需兩個授權旗標 | ✅ |  |
+| 引擎 JSON 符合 output-schema 結構 | ✅ | required、block 欄位、items 必填鍵、摘要長度 |
 | 驗收 6：移除情資後信心下修並標示 | ✅ |  |
 | 下載檔存在 downloads/skills-chatgpt.zip | ✅ |  |
 | 下載檔存在 downloads/skills-claude.zip | ✅ |  |
@@ -49,10 +59,16 @@
 | 導覽 #/sources | ✅ | 證據與來源 |
 | 導覽 #/deploy | ✅ | 部署與維護 |
 | 方法論章節切換 | ✅ | /methodology?doc=01-definition |
+| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=131 |
+| Tabs 方向鍵切換 | ✅ | /methodology?doc=02-relations |
+| Skip link 不改變頁面 | ✅ |  |
 | 全站搜尋回傳結果 | ✅ | 12 筆 |
+| 搜尋 ARIA：aria-expanded 更新且結果為 option | ✅ |  |
+| 搜尋鍵盤導覽：aria-activedescendant | ✅ |  |
+| 搜尋片段含 mark | ✅ |  |
 | I/O 必要性篩選 | ✅ | 16 → 7 |
 | I/O 階段篩選 | ✅ |  |
-| Skills 一鍵複製（剪貼簿） | ✅ | 3611 字元 |
+| Skills 一鍵複製（剪貼簿） | ✅ | 3707 字元 |
 | Skills 檔案下載 | ✅ | SKILL.md |
 | Skills ZIP 下載 | ✅ |  |
 | Skills 原始／渲染切換 | ✅ |  |
@@ -65,7 +81,13 @@
 | 案例：複製報告 Markdown | ✅ |  |
 | 來源頁所有連結為 http(s) | ✅ | 57 個連結 |
 | 來源頁類型篩選 | ✅ |  |
-| 行動裝置：無水平捲動 | ✅ | scrollWidth 390 |
+| 來源頁查證等級篩選 | ✅ |  |
+| 來源頁：證據檔附錄可展開 | ✅ |  |
+| 部署頁：標題層級無跳級 | ✅ |  |
+| 行動裝置 390px：所有路由無水平捲動 | ✅ |  |
+| 行動裝置 320px：無水平捲動 | ✅ |  |
 | 行動裝置：漢堡選單開啟 | ✅ |  |
 | 無障礙：skip link、lang、aria-current | ✅ |  |
+| 對比：主要按鈕 ≥ 4.5 | ✅ | 6.53 |
+| 對比：深色主題強調色元素 ≥ 4.5 | ✅ | 8.54 |
 | 無 JS 執行錯誤 | ✅ |  |

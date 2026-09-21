@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/skills/shared/input-schema.json",
+  "title": "Preemptive Exposure Analysis — Input Bundle",
+  "description": "五平台共用的輸入格式。scope 與 assets 為必要；其餘為建議。所有內容皆須在授權範圍內。",
+  "type": "object",
+  "required": ["scope", "assets"],
+  "properties": {
+    "scope": {
+      "type": "object",
+      "required": ["organization", "analysis_date", "authorized_scope", "reporting"],
+      "properties": {
+        "organization": { "type": "string" },
+        "analysis_date": { "type": "string", "format": "date" },
+        "authorized_scope": {
+          "type": "object",
+          "required": ["in_scope_assets", "active_testing_authorized", "external_scanning_authorized"],
+          "properties": {
+            "in_scope_assets": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            "excluded": { "type": "array", "items": { "type": "string" } },
+            "active_testing_authorized": { "type": "boolean" },
+            "external_scanning_authorized": { "type": "boolean" },
+            "authorizer": { "type": "string" },
+            "authorization_reference": { "type": "string" }
+          }
+        },
+        "risk_appetite": { "type": "object" },
+        "reporting": {
+          "type": "object",
+          "required": ["audience"],
+          "properties": {
+            "audience": { "type": "array", "items": { "type": "string" } },
+            "language": { "type": "string", "default": "zh-TW" },
+            "mask_identifiers": { "type": "boolean", "default": true },
+            "cadence": { "type": "string" }
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["asset_id", "name", "type", "business_criticality", "internet_exposed", "owner"],
+        "properties": {
+          "asset_id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "environment": { "type": "string" },
+          "owner": { "type": "string" },
+          "business_criticality": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "data_classification": { "type": "string", "enum": ["Public", "Internal", "Confidential", "Restricted"] },
+          "internet_exposed": { "type": "boolean" },
+          "os_or_platform": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "vulnerabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["finding_id", "asset_id", "vuln_id", "title", "cvss_base"],
+        "properties": {
+          "finding_id": { "type": "string" },
+          "asset_id": { "type": "string" },
+          "vuln_id": { "type": "string" },
+          "title": { "type": "string" },
+          "cvss_base": { "type": "number", "minimum": 0, "maximum": 10 },
+          "exploit_public": { "type": "boolean" },
+          "epss": { "type": "number", "minimum": 0, "maximum": 1 },
+          "kev": { "type": "boolean" },
+          "first_seen": { "type": "string", "format": "date" },
+          "patch_available": { "type": "boolean" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "exposures": { "type": "object", "properties": { "as_of": { "type": "string" }, "exposures": { "type": "array", "items": { "type": "object", "properties": { "asset_id": { "type": ["string", "null"] }, "hostname": { "type": "string" }, "ip": { "type": ["string", "null"] }, "ports": { "type": "array", "items": { "type": "integer" } }, "fingerprint": { "type": "string" }, "issues": { "type": "array", "items": { "type": "string" } } } } } } },
+    "identities": { "type": "array", "items": { "type": "object", "required": ["identity_id", "account", "privilege_level", "linked_assets"], "properties": { "identity_id": { "type": "string" }, "account": { "type": "string" }, "type": { "type": "string" }, "privilege_level": { "type": "string" }, "mfa_enabled": { "type": ["boolean", "string"] }, "last_login_days": { "type": "integer" }, "linked_assets": { "type": "string", "description": "以分號分隔的 asset_id" }, "notes": { "type": "string" } } } },
+    "misconfigurations": { "type": "array", "items": { "type": "object", "required": ["config_id", "asset_id", "control", "status"], "properties": { "config_id": { "type": "string" }, "asset_id": { "type": "string" }, "benchmark": { "type": "string" }, "control": { "type": "string" }, "status": { "type": "string", "enum": ["pass", "fail", "unknown"] }, "severity": { "type": "string" } } } },
+    "controls": { "type": "object", "properties": { "as_of": { "type": "string" }, "controls": { "type": "array", "items": { "type": "object", "required": ["control_id", "name", "coverage_assets", "gaps", "maturity"], "properties": { "control_id": { "type": "string" }, "name": { "type": "string" }, "coverage_assets": { "type": "array", "items": { "type": "string" } }, "gaps": { "type": "array", "items": { "type": "string" } }, "maturity": { "type": "string", "enum": ["none", "basic", "partial", "managed", "optimized"] }, "notes": { "type": "string" } } } } } },
+    "threat_intel": { "type": "object", "properties": { "as_of": { "type": "string" }, "sector": { "type": "string" }, "actors": { "type": "array", "items": { "type": "object", "required": ["actor_id", "name", "ttps", "exploits_vuln_ids"], "properties": { "actor_id": { "type": "string" }, "name": { "type": "string" }, "motivation": { "type": "string" }, "targets_sector": { "type": "boolean" }, "confidence": { "type": "string", "enum": ["low", "medium", "high"] }, "ttps": { "type": "array", "items": { "type": "string" } }, "exploits_vuln_ids": { "type": "array", "items": { "type": "string" } }, "recent_activity": { "type": "string" } } } }, "trending_weakness_classes": { "type": "array", "items": { "type": "string" } } } },
+    "topology": { "type": "object", "required": ["crown_jewels", "edges"], "properties": { "crown_jewels": { "type": "array", "items": { "type": "string" } }, "edges": { "type": "array", "items": { "type": "object", "required": ["from", "to", "via", "trust"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "via": { "type": "string" }, "trust": { "type": "string", "enum": ["exposed", "network", "identity", "app-trust", "misconfig", "user-pivot", "data"] } } } } } }
+  }
+}

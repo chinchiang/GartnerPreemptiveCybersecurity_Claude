@@ -17,7 +17,7 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 
 | 檔案 | 筆數 | 值得注意 |
 |---|---|---|
-| assets.csv | 12 | 6 項對外曝露；2 項 Restricted 且重要性 5 |
+| assets.csv | 12 | 6 項對外曝露；4 項 Restricted 且重要性 5（其中 2 項為 crown jewel：erp-db-01、mes-srv-01） |
 | vulnerabilities.csv | 14 | `SYN-2026-0101`（VPN pre-auth RCE，EPSS 0.91、KEV）；`SYN-2023-0044`（MES，無修補） |
 | exposures.json | 7 | `old-test.northwind-synthetic.example` 不在清冊 |
 | identities.csv | 8 | `svc-erp-sync` 網域管理員無 MFA；`adm-legacy01` 190 天未登入 |
@@ -61,16 +61,18 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 | # | 路徑 | 跳數 | 可行性 | 關鍵邊 |
 |---|---|---|---|---|
 | 1 | internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | 3 | 6.4 | VPN RCE → DC → svc-erp-sync 憑證（identity） |
-| 2 | internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | 4 | 6.1 | 同上 + pg_hba trust（misconfig） |
+| 2 | internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | 4 | 5.2 | 同上 + pg_hba trust（misconfig）；erp-app-01 有 EDR／日誌把可能性壓到 0，成為最弱節點 |
 | 3 | internet → vpn-gw-01 → ad-dc-01 → file-srv-01 → mes-srv-01 | 4 | 4.9 | DC → 檔案伺服器 → OT-DMZ 未隔離 |
-| 4 | internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | 3 | 4.7 | RDP 無 MFA → 跳板機可達 OT-DMZ |
-| 5 | internet → vpn-gw-01 → jump-host-01 → erp-db-01 | 3 | 4.7 | 跳板機由 DBA 使用 |
-| 6 | internet → web-portal-01 → erp-app-01 → erp-db-01 | 3 | 4.3 | CMS RCE → API → pg_hba trust |
-| 7 | internet → s3-backup-bucket → erp-db-01（資料外洩路徑）| 2 | 4.2 | 匿名列出 → DB dump |
-| 8 | internet → mail-gw-01 → file-srv-01 → mes-srv-01 | 3 | 3.9 | 釣魚 → SMB → OT-DMZ 未隔離 |
-| 9 | internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | 4 | 3.6 | 部署金鑰 → 入口網站 |
+| 4 | internet → s3-backup-bucket → erp-db-01（資料外洩路徑）| 2 | 4.2 | 匿名列出 → DB dump |
+| 5 | internet → mail-gw-01 → file-srv-01 → mes-srv-01 | 3 | 3.9 | 釣魚 → SMB → OT-DMZ 未隔離 |
+| 6 | internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | 3 | 3.8 | RDP 無 MFA → 跳板機可達 OT-DMZ；跳板機控制完整（可能性 0）拉低可行性 |
+| 7 | internet → vpn-gw-01 → jump-host-01 → erp-db-01 | 3 | 3.8 | 跳板機由 DBA 使用 |
+| 8 | internet → web-portal-01 → erp-app-01 → erp-db-01 | 3 | 3.4 | CMS RCE → API → pg_hba trust |
+| 9 | internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | 4 | 2.7 | 部署金鑰 → 入口網站 |
 
-**人工決策**：架構師確認「VPN 使用者網段可達 DC」屬實；補充「跳板機到 OT-DMZ 需經防火牆規則 #42」，路徑 4 可行性應下修（此類修正正是人工審查的價值）。
+> 路徑可行性規則：節點若有任何發現，取其最高可能性（可為 0，表示控制已把該節點壓低）；完全沒有發現的節點取 3（未知）。因此經過 erp-app-01、jump-host-01 的路徑可行性偏低——這是規則對「有控制的節點」的獎勵，但也可能低估「控制存在但未驗證」的情況，需人工審查。
+
+**人工決策**：架構師確認「VPN 使用者網段可達 DC」屬實；補充「跳板機到 OT-DMZ 需經防火牆規則 #42」，路徑 6 可行性應再下修；同時質疑 jump-host-01 的 RDP 無 MFA 議題被控制降分到 0 是否合理（此類修正正是人工審查的價值）。
 
 ## 6.6 S5：改善建議（節錄）
 
@@ -89,13 +91,17 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 
 | # | 假設 | 方法 | 授權狀態 |
 |---|---|---|---|
-| V1 | vpn-gw-01 → erp-db-01（3 跳） | 授權下外部版本確認 + 內部 BAS 模擬 Kerberoasting 與橫向移動 | **尚未授權主動測試**：需 CISO 核准，排除 OT |
+| V1 | vpn-gw-01 → erp-db-01（3 跳） | 授權下外部版本確認 + 內部 BAS 模擬 Kerberoasting 與橫向移動 | **尚未授權主動測試**：需 CISO 核准（含外部掃描授權），排除 OT |
 | V2 | vpn-gw-01 → erp-db-01（4 跳，經 erp-app-01） | 內部設定檢視（pg_hba）+ 桌面演練 | 同上 |
 | V3 | vpn-gw-01 → mes-srv-01（4 跳，經 DC 與檔案伺服器） | 只做讀取式驗證（網段與 SMB 規則檢視）；**不對 OT 主動測試** | 同上 |
+
+> 「方法」欄是分析師依假設細化後的版本；示範引擎只依「入口是否對外」「是否經過 OT」給出通用方法（見 `examples/expected-output.md`）。授權狀態由引擎依 scope 的兩個旗標決定：任一為 false 即「尚未授權」，對外驗證另需 `external_scanning_authorized`。
 
 **人工決策**：CISO 決定授權 V1、V2 的內部 BAS（排除 OT），外部驗證交由既有授權的第三方。
 
 ## 6.8 S7：管理摘要（≤ 300 字，識別資訊已遮罩）
+
+> 以下為分析師依引擎輸出潤飾的版本；引擎直接產生的版本（同樣遮罩、243 字）見 `examples/expected-output.md` 與網站案例頁第 7 節。
 
 > 本週 14 項發現納入分析，5 項 P1（4 項對外曝露、1 項為 OT 製造執行系統）。最急迫：遠端存取閘道之 pre-auth RCE，已有公開利用且產業情資顯示活躍。最可行的攻擊路徑假設：遠端存取閘道 → 網域控制站 → ERP 資料庫，關鍵阻斷點為特權服務帳號 MFA 與網段隔離。決策請求：(1) 核准 7 天內修補四項對外 P1 並封鎖備份儲存桶公開存取；(2) 核准 OT-DMZ 隔離變更；(3) 授權內部 BAS 驗證前兩條路徑（排除 OT）。限制：所有路徑為假設；發現 1 個未納入清冊的對外資產待確認。
 
@@ -112,13 +118,13 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 
 時間軸：T+2 天業務確認排序與授權決策；T+7 天 P1 修補後重跑；T+14 天驗證結果回填 O2 狀態；每週檢視。
 
-## 6.10 資料缺漏的影響（互動示範可重現）
+## 6.10 資料缺漏的影響（互動示範可重現；數值由 `node scripts/run-demo.mjs` 各旗標產生）
 
 | 移除 | 影響 |
 |---|---|
-| threat-intel.json | `SYN-2026-0101` 仍為 P1（可能性已達上限）；`mes-srv-01` 降為 62.5、`mail-gw-01` 降為 P2、`ad-dc-01` 降為 P3；信心中 |
-| identities.csv | 路徑 1、2 的身分邊標「未知」，可行性下降；`ad-dc-01`、`erp-db-01` 分數下降 |
-| topology.json | 無攻擊路徑假設、無「入口」影響加分：`vpn-gw-01` 降為 66.0，`web-portal-01`、`s3-backup-bucket` 降為 P2；驗證計畫為空；O5 註明 |
-| controls.json | `web-portal-01` 分數上升（無 EDR/WAF 降分）；補償控制缺口為空 |
-| 清冊完整度 70% | 後 4 項資產（jump-host、backup bucket、CI、HR SaaS）消失；路徑假設減為 5；未知資產指標不變；信心低 |
+| threat-intel.json（`--no-intel`） | `SYN-2026-0101` 仍為 P1（可能性已達上限）；`mes-srv-01` 降為 62.5、`mail-gw-01` 降為 P2、`ad-dc-01` 降為 P3；路徑 1 可行性 6.4 → 6.0；所有發現信心「中」，缺漏列出「威脅情資」 |
+| identities.csv（`--no-identities`） | `ad-dc-01`、`erp-db-01` 降為 P3、`s3-backup-bucket` 降為 P2；路徑 1 可行性 6.4 → 5.9；信心「中」。skill 執行時另應把路徑中的 identity 邊標「未知」（引擎不標示，這是提示詞規則） |
+| topology.json（`--no-topology`） | 無攻擊路徑假設、無「入口」影響加分：`vpn-gw-01` 降為 66.0，`web-portal-01`、`s3-backup-bucket`、`mail-gw-01` 降為 P2；驗證計畫為空；拓樸計為缺一類，信心「中」；O5 註明「未提供拓樸」 |
+| controls.json（`--no-controls`） | `web-portal-01` 升至 84.1、`ad-dc-01` 升為 P1（無 EDR／WAF 降分）；`erp-app-01`、`jump-host-01` 不再是 0 分；補償控制缺口為空；信心「中」 |
+| 清冊完整度 70%（`--inventory 70`） | 後 4 項資產（jump-host、backup bucket、CI、HR SaaS）消失；路徑假設減為 5；未知資產指標不變；所有發現信心「低」（清冊 < 80%），缺漏列出「資產清冊完整度 70% < 80%」 |
 | scope.json | **拒絕分析** |

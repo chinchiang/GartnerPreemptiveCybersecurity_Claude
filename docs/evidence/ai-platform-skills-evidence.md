@@ -3,6 +3,8 @@
 **Accessed date for all sources:** 2026-09-09
 **Scope:** ChatGPT (OpenAI), Claude (Anthropic), Grok (xAI), GLM (Zhipu / Z.ai), DeepSeek — plus the Agent Skills open standard (agentskills.io).
 
+> **中文說明**：本檔是研究代理在 2026-09-09 逐條記錄的英文原始證據（平台能力、官方文件可達性、查證等級），供核對網站「平台比較」與「證據與來源」表使用；正體中文整理版見 `docs/research/07-platforms.md` 與各平台教學。注意：agentskills.io 採用清單宣告 50 筆、本檔只擷取到 45 筆，因此「xAI／Z.ai／DeepSeek 不在清單上」屬部分查證。
+
 ## Verification method and an important caveat
 
 Pages were fetched directly (WebFetch) wherever the network egress policy of this session allowed. The following official hosts were **blocked by the egress proxy** and could not be fetched: `agentskills.io`, `help.openai.com`, `platform.openai.com`, `developers.openai.com`, `openai.com`, `chatgpt.com`, `docs.x.ai`, `x.ai`, `grok.com`, `docs.z.ai`, `z.ai`, `chat.z.ai`, `open.bigmodel.cn`, `chatglm.cn`, `api-docs.deepseek.com`, `deepseek.com`, `chat.deepseek.com`, `huggingface.co`, `support.claude.com`, `en.wikipedia.org`.

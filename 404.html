@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>找不到頁面 — 先制型資安研究</title>
+<meta name="robots" content="noindex">
+<script>
+  // 本站以 hash 路由運作（#/methodology 等），任何不存在的路徑一律導回首頁並保留 hash。
+  // GitHub Pages 專案站台的根路徑是 /<repo>/，取路徑第一段即可；使用者站台（根目錄部署）則為 /。
+  (function () {
+    var seg = location.pathname.split('/').filter(Boolean);
+    var base = seg.length > 1 ? '/' + seg[0] + '/' : '/';
+    location.replace(base + 'index.html' + (location.hash || ''));
+  })();
+</script>
+<style>body{font-family:system-ui,sans-serif;padding:2rem;color:#222;background:#fff}</style>
+</head>
+<body>
+<p>找不到頁面，正在導回首頁。若未自動跳轉，請前往 <a href="./">首頁</a>。</p>
+</body>
+</html>

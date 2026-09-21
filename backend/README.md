@@ -12,17 +12,22 @@
 
 ## 檔案
 
-- `worker.js`：Cloudflare Worker，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek`（皆為 OpenAI 相容或 Anthropic 相容端點）。
+- `worker.js`：Cloudflare Worker **模板**，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek`（皆為 OpenAI 相容或 Anthropic 相容端點）。其中 `CORE_PROMPT` 是佔位字串，部署前必須先建置。
+- `../scripts/build-worker.mjs`：把 `skills/shared/core-prompt.md` 的提示詞區塊嵌入模板，輸出 `backend/dist/worker.js`（已列入 `.gitignore`）。
 - `.env.example`：需要設定的變數清單（**不要**建立含真實值的 `.env` 並提交）。
 
 ## 部署（Cloudflare Workers）
 
 ```bash
+node scripts/build-worker.mjs               # 在儲存庫根目錄執行，產生 backend/dist/worker.js
 npm i -g wrangler
 cd backend
 wrangler secret put PROVIDER_API_KEY        # 互動輸入，不會寫入檔案
-wrangler deploy --var PROVIDER:openai --var MODEL:gpt-5.5 --var ALLOWED_ORIGIN:https://<你的 GitHub Pages 網域>
+wrangler deploy dist/worker.js --name pea-proxy --compatibility-date 2026-01-01 \
+  --var PROVIDER:openai --var MODEL:<供應商官方模型 ID> --var ALLOWED_ORIGIN:https://<你的 GitHub Pages 網域>
 ```
+
+`MODEL` 請以各供應商官方模型列表為準；本專案未在真實模型上驗證代理（列為待驗證）。速率限制使用 Worker 記憶體，僅為示範；正式使用請改用 Cloudflare Rate Limiting 或 KV／Durable Objects。
 
 前端接法（示意，未內建於本站）：
 

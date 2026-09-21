@@ -16,7 +16,7 @@ role: readme
 | 應用 | **xAI API**（`api.x.ai`，`xai_sdk`） | 「Agentic Tool Calling」（伺服器端 `web_search`、`x_search`、`code_execution`）、Function Calling（客戶端工具）、Structured Outputs（Pydantic） | **已查證**（SDK README 與 `examples/sync/server_side_tools.py`） |
 | 應用 | grok.com／Grok 應用程式 | 自訂指令、Workspaces、Custom Agents、Tasks 等 | **待驗證**：官方頁面在研究環境內無法開啟，僅第三方描述 |
 | 應用 | Grok in X | 社群平台內建對話 | 不適用本任務（無法附檔與固定指令） |
-| 技能格式 | — | **沒有查證到任何原生 skills／SKILL.md 機制**；agentskills.io 的採用清單中沒有 xAI 產品 | 已查證（缺席） |
+| 技能格式 | — | **沒有查證到任何原生 skills／SKILL.md 機制**；agentskills.io 的採用清單中沒有 xAI 產品 | 部分查證（擷取到的 45/50 項中未見） |
 | 命名 | 官方頁面標題出現「SpaceXAI」字樣 | 可能為公司更名 | 待驗證 |
 
 ## 2. 本專案採用的等效方案

@@ -28,7 +28,7 @@ platform: chatgpt
 | `skills/chatgpt/README.md` | 平台說明與查證狀態 |
 | `skills/chatgpt/custom-gpt-instructions.md` | Custom GPT 的 Instructions 全文、名稱、描述、開場提示、Knowledge 清單 |
 | `skills/chatgpt/project-instructions.md` | ChatGPT Projects 的短版指令與附檔方式 |
-| `skills/chatgpt/codex-skill/SKILL.md` | Agent Skills 標準格式的 Codex skill |
+| `skills/chatgpt/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準格式的 Codex skill |
 | `skills/chatgpt/api-workflow.py`、`requirements.txt` | Responses API 腳本（含 `--dry-run`） |
 | `skills/shared/*` | 共用規格、核心提示詞、輸入／輸出 schema |
 | `examples/synthetic-org/*` | 合成範例資料（9 檔） |
@@ -108,7 +108,7 @@ V1：授權下外部版本確認 + 內部 BAS；**尚未授權主動測試**。
 git clone https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude.git
 cd GartnerPreemptiveCybersecurity_Claude
 mkdir -p .agents/skills
-cp -r skills/chatgpt/codex-skill .agents/skills/preemptive-exposure-analysis
+cp -r skills/chatgpt/preemptive-exposure-analysis .agents/skills/preemptive-exposure-analysis
 # 若要脫離 repo 使用，另複製 skills/shared/* 到 .agents/skills/preemptive-exposure-analysis/references/
 codex
 ```
@@ -149,8 +149,8 @@ python3 skills/chatgpt/api-workflow.py
 3. 路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01` 存在且為 hypothesis。
 4. 驗證計畫每項標「尚未授權主動測試」。
 5. 管理摘要 ≤ 300 字，含決策請求與限制。
-6. 移除 `threat-intel.json`（Knowledge／Project 中刪除，或 API 以 `--input-dir` 指向缺該檔的資料夾）重跑：信心下修並標示。
-7. 移除 `scope.json` 重跑：拒絕分析。API 腳本會直接中止並印出必要欄位。
+6. 移除 `threat-intel.json`（Knowledge／Project 中刪除；API 腳本加 `--exclude threat_intel`）重跑：信心下修並標示「未納入威脅情資」。
+7. 移除 `scope.json`（API 腳本加 `--exclude scope`）重跑：拒絕分析。API 腳本會直接中止並印出必要欄位。
 
 ## 10. 機敏資料處理與人工核准邊界
 

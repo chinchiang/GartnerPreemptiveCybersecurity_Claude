@@ -10,16 +10,17 @@ metadata:
 
 # 先制型曝險分析（Codex skill）
 
-本 skill 依 Agent Skills 開放標準撰寫（https://agentskills.io ；frontmatter 只用 `name`、`description`、`license`、`metadata`），可同時被 Codex 與 Claude Code 讀取。任務規格的單一來源是 repo 內 `skills/shared/` 目錄（相對於本檔為 `../../shared/`）：
+本 skill 依 Agent Skills 開放標準撰寫（https://agentskills.io ；frontmatter 只用 `name`、`description`、`license`、`metadata`），可同時被 Codex 與 Claude Code 讀取。任務規格的單一來源是 repo 內 `skills/shared/` 目錄；本 skill 的 `references/` 子目錄已附上複本，脫離 repo 亦可使用：
 
 | 檔案 | 用途 |
 |---|---|
-| `task-spec.md` | 任務定義、輸入／輸出表、八步流程、附錄 A 評分規則、驗收方式 |
-| `core-prompt.md` | 五平台共用核心指令（本 skill 的第 1–6 節即為其內容） |
-| `input-schema.json` | 輸入 JSON Schema |
-| `output-schema.json` | 輸出 JSON Schema |
+| `references/task-spec.md` | 任務定義、輸入／輸出表、八步流程、附錄 A 評分規則、驗收方式 |
+| `references/scoring-rules.md` | 示範評分規則細節、路徑可行性、指標、缺漏替代 |
+| `references/input-schema.json` | 輸入 JSON Schema |
+| `references/output-schema.json` | 輸出 JSON Schema |
+| `references/acceptance.md` | 驗收清單（7 項）|
 
-若本 skill 被複製到 `.agents/skills/` 或 `$HOME/.agents/skills/` 而脫離 repo，請一併把上述四個檔案複製到本 skill 的 `references/` 子目錄，並改讀 `references/`。
+本 skill 的第 1–6 節即 `skills/shared/core-prompt.md` 的內容。複製到 `.agents/skills/` 或 `$HOME/.agents/skills/` 時整個目錄一起複製即可。
 
 ## 0. 安全與授權邊界（不可覆蓋）
 
@@ -76,13 +77,16 @@ likelihood = clamp(3·[對外曝露] + 0.5·[EASM 議題] + 2·[公開利用程�
              + min(2, 身分弱點數)·0.8 + min(1.5, 設定偏差數·0.75)·0.8
              − min(2, 既有控制數·0.6)·0.8 + min(1.5, 控制缺口數·0.4)·0.8
              + 情資命中權重（行為者信心 high 2／medium 1.5／low 1）, 0, 10)
-impact     = clamp(business_criticality·1.4 + 資料等級權重{Restricted 3, Confidential 2, Internal 1}
+             （缺 epss/kev：以 cvss_base/10·1.5 取代 3·epss + 3·[kev]，並標示「改用 CVSS 近似」）
+impact     = clamp(business_criticality·1.4 + 資料等級權重{Restricted 3, Confidential 2, Internal 1, Public 0}
              + 2·[crown jewel] + 2·[可達 crown jewel 之入口], 0, 10)
-score      = likelihood × impact；平衡胃納：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20、其餘 P4
+score      = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20、其餘 P4；嚴格 50/30/15；寬鬆 70/50/25
 路徑可行性 = clamp(入口可能性·0.5 + 最弱節點·0.3 + 身分/設定邊數·1.0 − (跳數−1)·0.6, 0, 10)
+             （無任何發現的節點取 3；有發現者取其最高可能性，可為 0）
+驗證計畫   = active_testing_authorized 或 external_scanning_authorized 任一 false → 每項標「尚未授權主動測試」
 ```
 
-定義：「身分弱點數」= 連結到該資產且（無 MFA 或 partial、或 `last_login_days` > 90、或服務帳號具 domain_admin）的身分數；「設定偏差數」= 該資產 `status=fail` 的項目數；「既有控制數」= `coverage_assets` 含該資產的控制數；「控制缺口數」= `gaps` 含該資產的控制數；「情資命中」= `vuln_id` 出現在任一 actor 的 `exploits_vuln_ids`。每個分數都列出 `factors[]` 與代入值，讓人能回溯到輸入欄位。建議用 Python 逐項計算以確保可重現，並把計算方式寫進 `meta.scoring_rules`。
+定義：「身分弱點數」= 連結到該資產且（`mfa_enabled` 為 false 或 partial、或 `last_login_days` > 90）的身分數；「設定偏差數」= 該資產 `status=fail` 的項目數；「既有控制數」= `coverage_assets` 含該資產的控制數；「控制缺口數」= `gaps` 含該資產的控制數；「情資命中」= `vuln_id` 出現在任一 actor 的 `exploits_vuln_ids`。每個分數都列出 `factors[]` 與代入值，讓人能回溯到輸入欄位。建議用 Python 逐項計算以確保可重現，並把計算方式寫進 `meta.scoring_rules`。
 
 ## 4. 信心水準
 
@@ -113,8 +117,8 @@ score      = likelihood × impact；平衡胃納：P1 ≥ 60、P2 ≥ 40、P3 �
 - 缺 threat_intel：不做情資加權，`missing_inputs` 寫「未納入威脅情資」，信心下修。
 - 缺 exposures：以 `internet_exposed` 近似，標示「未經 EASM 確認」。
 - 缺 identities：路徑假設的身分邊全部標示「未知」。
-- 其他缺漏：以 `task-spec.md` 第 2.2 節的替代方式處理並標示。
+- 其他缺漏：以 `references/task-spec.md` 第 2.2 節與 `references/scoring-rules.md` 第 6 節的替代方式處理並標示。
 
 ## 7. 驗收（用 repo 的合成資料）
 
-對 `examples/synthetic-org/` 執行後檢查 `task-spec.md` 第 7 節的 7 項：筆數（assets 12、vulnerabilities 14、identities 8、misconfigurations 9、controls 8、actors 3、edges 19、exposures 7）；`vpn-gw-01` 的 `SYN-2026-0101` 為 P1 且 factors 含對外曝露、公開利用程式、模擬 KEV、威脅情資命中；O2 含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`；O4 每項標「尚未授權主動測試」；O5 ≤ 300 字含決策請求與限制；移除 threat-intel.json 後信心下修並標「未納入威脅情資」；移除 scope.json 後拒絕分析。
+對 `examples/synthetic-org/` 執行後檢查 `references/acceptance.md` 的 7 項：筆數（assets 12、vulnerabilities 14、identities 8、misconfigurations 9、controls 8、actors 3、edges 19、exposures 7）；`vpn-gw-01` 的 `SYN-2026-0101` 為 P1 且 factors 含對外曝露、公開利用程式、模擬 KEV、威脅情資命中；O2 含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`；O4 每項標「尚未授權主動測試」；O5 ≤ 300 字含決策請求與限制；移除 threat-intel.json 後信心下修並標「未納入威脅情資」；移除 scope.json 後拒絕分析。

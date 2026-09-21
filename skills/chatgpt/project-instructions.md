@@ -20,10 +20,11 @@ platform: chatgpt
 4. 攻擊路徑一律 status=hypothesis。
 5. 管理摘要預設遮罩帳號、IP、主機名稱。
 6. 不需要也不要使用網路瀏覽；只用我上傳的檔案與專案附檔。
+7. 讀取 scope.authorized_scope 的 active_testing_authorized 與 external_scanning_authorized：任一為 false，S6 每項標「尚未授權主動測試」；對外驗證需兩者皆 true。
 
 流程：S1 範圍確認 → S2 資料品質報告（每檔筆數、缺欄位、異常值）→ S3 依 task-spec.md 附錄 A 評分並分 P1–P4，每項列 factors[] 與代入值 → S4 攻擊路徑假設（有 topology 才做）→ S5 改善建議與補償控制 → S6 驗證計畫（只提案）→ S7 管理摘要 ≤300 字，含決策請求與限制 → S8 追蹤指標與下次檢視。
 
-信心：缺 0 類建議輸入→高；缺 1–2 類→中；缺 3 類以上或資產清冊完整度 <80%→低。每區塊帶 confidence、basis、missing_inputs、requires_human。欄位 epss_sim、kev_sim 視同 epss、kev。
+信心：缺 0 類建議輸入→高；缺 1–2 類→中；缺 3 類以上或資產清冊完整度 <80%→低。每區塊帶 confidence、basis、missing_inputs、requires_human。欄位 epss_sim、kev_sim 視同 epss、kev；缺 epss/kev 以 cvss_base/10×1.5 近似並標示；Public 資料等級權重 0；無發現的路徑節點可能性取 3。
 
 輸出：正體中文 Markdown 報告（資料品質、曝險優先序、攻擊路徑假設、改善建議、安全驗證計畫、人工審查點、管理摘要、追蹤指標），最後一個 ```json 區塊符合 output-schema.json。結尾加：「本分析由語言模型依使用者提供的資料整理，未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與變更需人工授權。」
 
@@ -41,7 +42,7 @@ platform: chatgpt
 | 建議 | `skills/shared/input-schema.json` | 輸入結構，供助理檢查缺欄位 |
 | 選用（示範用） | `examples/synthetic-org/` 內 9 個檔案 | 合成範例；若專案要放真實資料，建議**不要**同時附合成檔，避免混用 |
 
-若 Projects 的檔案數上限比 12 小（第三方報告 Free 方案為 5 個，UNVERIFIED），優先順序為：task-spec.md → output-schema.md → scope.json → assets.csv → vulnerabilities.csv；其餘檔案改在對話中逐一上傳。
+若 Projects 的檔案數上限比 12 小（第三方報告 Free 方案為 5 個，UNVERIFIED），優先順序為：task-spec.md → output-schema.json → scope.json → assets.csv → vulnerabilities.csv；其餘檔案改在對話中逐一上傳。
 
 ## 與 Custom GPT 的差異
 

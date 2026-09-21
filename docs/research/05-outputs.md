@@ -65,11 +65,18 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 ### O5 管理摘要
 
 - **結構**：`audience[]`、`text`（≤ 300 字）、`decisions_requested[]`；含現況、最急迫、決策請求、限制；預設遮罩識別資訊。
-- **範例（合成）**：見網站案例頁第 7 節與 `examples/expected-output.md`。
+- **範例（合成，引擎輸出，識別資訊已遮罩）**：
+
+  > 1. 現況：14 項發現，5 項 P1（4 項對外曝露）；最急迫：VPN Gateway（A01）之 VPN appliance pre-auth RCE。
+  > 2. 最可能路徑：internet → A01 → A04 → A06（可行性 6.4/10，未驗證），阻斷點為身分與網段控制。
+  > 3. 決策請求：（1）核准 P1（5 項）修補排程與補償控制；（2）決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）。
+  > 4. 限制：無重大資料缺漏；所有路徑為假設，模型未驗證實際曝險。
+
+  完整版見網站案例頁第 7 節與 `examples/expected-output.md`。
 - **判斷依據**：O1–O4 綜合。
 - **信心水準**：綜合；文字需人工校對。
 - **驗證方式**：管理層回饋；下次檢視比較。
-- **對應 Gartner 概念**：CTEM mobilization「communication standards」[G8]；「buying down exposure levels」[G-SRM25]。
+- **對應 Gartner 概念**：CTEM mobilization「communication standards」[G8]；Gartner 新聞稿轉述（非逐字，待原頁核對）的「buying down exposure levels」溝通建議 [G-SRM25]。
 
 ### O6 追蹤指標
 

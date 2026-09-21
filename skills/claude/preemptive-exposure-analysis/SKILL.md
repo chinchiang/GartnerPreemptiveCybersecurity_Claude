@@ -30,7 +30,7 @@ metadata:
 |---|---|---|
 | scope | 必要 | `organization`、`analysis_date`、`authorized_scope.{in_scope_assets, active_testing_authorized, external_scanning_authorized}`、`reporting.audience` |
 | assets | 必要 | `asset_id`、`name`、`type`、`business_criticality`(1–5)、`internet_exposed`、`owner`、`data_classification` |
-| vulnerabilities | 必要 | `finding_id`、`asset_id`、`vuln_id`、`title`、`cvss_base`；建議 `exploit_public`、`epss`、`kev`、`patch_available` |
+| vulnerabilities | 必要 | `finding_id`、`asset_id`、`vuln_id`、`title`、`cvss_base`；建議 `exploit_public`、`epss`、`kev`、`patch_available`（範例資料的 `epss_sim`／`kev_sim` 視同 `epss`／`kev`） |
 | exposures | 建議 | EASM 輸出：`asset_id`、`hostname`、`ports`、`issues` |
 | identities | 建議 | `account`、`privilege_level`、`mfa_enabled`、`last_login_days`、`linked_assets` |
 | misconfigurations | 建議 | `asset_id`、`control`、`status`、`severity` |
@@ -47,7 +47,7 @@ metadata:
 3. **S3 曝險評分**：依 `references/scoring-rules.md`（或使用者提供的規則）計算 likelihood、impact、score，分 P1–P4；每項列 `factors[]`。
 4. **S4 攻擊路徑假設**：僅在有 topology 時。從 `internet` 沿 edges 到 `crown_jewels`，最多 5 跳；計算可行性；列出每條路徑的可能阻斷控制。
 5. **S5 改善建議**：對 P1/P2 給行動、負責人、工作量、驗證方式、核准層級；列補償控制缺口。
-6. **S6 安全驗證計畫**：對前 3 條路徑假設提出方法與授權需求。只提案。若 `active_testing_authorized=false`，每項標「尚未授權主動測試」。
+6. **S6 安全驗證計畫**：對前 3 條路徑假設提出方法與授權需求。只提案。若 `active_testing_authorized` 或 `external_scanning_authorized` 任一為 false，每項標「尚未授權主動測試」（對外驗證需兩者皆 true）。
 7. **S7 管理摘要**：面向 `reporting.audience`，≤ 300 字，含現況、最急迫、決策請求、限制。
 8. **S8 追蹤指標**：至少 6 項（見 `references/scoring-rules.md` 第 4 節）與下次檢視時間。
 

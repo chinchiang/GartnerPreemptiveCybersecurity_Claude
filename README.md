@@ -21,10 +21,11 @@ docs/evidence/                    英文證據檔（Gartner 與平台查證原�
 skills/shared/                    共用任務規格、核心提示詞、輸入／輸出 JSON Schema
 skills/{chatgpt,claude,grok,glm,deepseek}/   各平台 skill 或等效檔案（SKILL.md、提示詞、API 腳本）
 examples/synthetic-org/           合成範例資料（9 檔）；examples/expected-output.md 預期輸出
-scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs
+scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs（示範引擎；--json 輸出 output-schema 格式）、build-worker.mjs（後端代理嵌入提示詞）
 downloads/                        建置產生的 ZIP 下載包
-backend/                          選用的模型 API 代理範例（預設不需要、無金鑰）
-.github/workflows/pages.yml       GitHub Pages 部署
+backend/                          選用的模型 API 代理範例（預設不需要、無金鑰；部署前以 build-worker.mjs 產生 dist/）
+.github/workflows/ci.yml          CI：靜態驗證、產生檔一致性、Python dry-run、示範引擎驗收、Playwright 瀏覽器驗證
+.github/workflows/pages.yml       GitHub Pages 部署（只上傳網站需要的檔案）
 ```
 
 ## 快速使用 Skills
@@ -32,10 +33,10 @@ backend/                          選用的模型 API 代理範例（預設不�
 | 平台 | 最快路徑 |
 |---|---|
 | Claude | 把 `skills/claude/preemptive-exposure-analysis/` 放進 `.claude/skills/`，在 Claude Code 輸入 `/preemptive-exposure-analysis examples/synthetic-org` |
-| ChatGPT | Custom GPT 貼入 `skills/chatgpt/custom-gpt-instructions.md`；或 Codex 使用 `skills/chatgpt/codex-skill/` |
+| ChatGPT | Custom GPT 貼入 `skills/chatgpt/custom-gpt-instructions.md`；或 Codex 使用 `skills/chatgpt/preemptive-exposure-analysis/` |
 | Grok | `skills/grok/system-prompt.md` 貼入對話，或 `python3 skills/grok/api-workflow.py --dry-run` |
-| GLM | Claude Code + GLM 後端使用 `skills/glm/claude-code-skill/`；或 `python3 skills/glm/api-workflow.py --dry-run` |
-| DeepSeek | `python3 skills/deepseek/api-workflow.py --dry-run`（版本無關）；或 `skills/deepseek/host-skill/` |
+| GLM | Claude Code + GLM 後端使用 `skills/glm/preemptive-exposure-analysis/`；或 `python3 skills/glm/api-workflow.py --dry-run` |
+| DeepSeek | `python3 skills/deepseek/api-workflow.py --dry-run`（版本無關）；或 `skills/deepseek/preemptive-exposure-analysis/` |
 
 所有 API 腳本都支援 `--dry-run`（不需 API 金鑰）。金鑰一律以環境變數提供，儲存庫不含任何金鑰或真實資料。
 

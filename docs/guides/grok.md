@@ -104,7 +104,14 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 7 項執行；API 腳本可用 `--input-dir` 指向刪除 `threat-intel.json` 或 `scope.json` 的複本資料夾來做第 6、7 項（缺 scope 時腳本會立即中止並列出必要欄位）。
+依 `task-spec.md` 第 7 節 7 項執行。第 6、7 項可直接用旗標模擬缺漏，不必另建資料夾：
+
+```bash
+python3 skills/grok/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項：提示詞標示 threat-intel 未提供
+python3 skills/grok/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出六個必填欄位
+```
+
+`tool-definitions.json` 的 `score_findings.exclude_inputs` 參數對應同一組類別名稱，供自建 harness 使用。
 
 ## 10. 機敏資料處理與人工核准邊界
 
