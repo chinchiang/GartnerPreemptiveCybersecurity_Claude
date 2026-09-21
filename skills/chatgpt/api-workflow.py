@@ -53,6 +53,8 @@ INPUT_FILES = [
 ]
 
 SKILL_VERSION = "1.0.0"
+EXCLUDE_CHOICES = ["scope", "assets", "vulnerabilities", "exposures", "identities", "misconfigurations", "controls", "threat_intel", "topology"]
+FILE_CATEGORY = {"scope.json": "scope", "assets.csv": "assets", "vulnerabilities.csv": "vulnerabilities", "exposures.json": "exposures", "identities.csv": "identities", "misconfigurations.csv": "misconfigurations", "controls.json": "controls", "threat-intel.json": "threat_intel", "topology.json": "topology"}
 
 
 # ---------------------------------------------------------------------------
@@ -83,13 +85,13 @@ def count_records(name: str, text: str) -> int | None:
         return None
 
 
-def load_inputs(input_dir: Path) -> tuple[list[dict], list[str]]:
-    """讀入 9 個檔案；回傳 (已載入清單, 缺少的必要檔清單)。"""
+def load_inputs(input_dir: Path, exclude: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
+    """讀入 9 個檔案；回傳 (已載入清單, 缺少的必要檔清單)。exclude 內的類別視同未提供（模擬缺漏）。"""
     loaded: list[dict] = []
     missing_required: list[str] = []
     for filename, category, required in INPUT_FILES:
         path = input_dir / filename
-        if not path.exists():
+        if category in exclude or not path.exists():
             if required:
                 missing_required.append(filename)
             loaded.append({"name": filename, "category": category, "present": False, "text": "", "records": None})
@@ -215,20 +217,30 @@ def call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
 # 主程式
 # ---------------------------------------------------------------------------
 
+def _get_path(obj, dotted: str):
+    node = obj
+    for k in dotted.split("."):
+        node = node.get(k) if isinstance(node, dict) else None
+    return node
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="先制型曝險分析 — OpenAI Responses API 工作流程")
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT_DIR, help="輸入資料夾（預設 examples/synthetic-org）")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="輸出資料夾（預設 output/）")
     parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL), help="模型 ID（預設取環境變數 OPENAI_MODEL，否則 gpt-5.5）")
     parser.add_argument("--dry-run", action="store_true", help="只印出組好的提示，不呼叫 API")
+    parser.add_argument("--exclude", action="append", choices=EXCLUDE_CHOICES, default=[],
+                        help="模擬缺漏：排除某類輸入（可重複）；排除 scope 會直接中止（驗收第 6、7 項）")
     args = parser.parse_args()
+    exclude = frozenset(args.exclude)
 
     input_dir: Path = args.input_dir.resolve()
     if not input_dir.is_dir():
         sys.exit(f"輸入資料夾不存在：{input_dir}")
 
     # I1 守門：沒有 scope.json 就中止，不得分析。
-    if not (input_dir / "scope.json").exists():
+    if "scope" in exclude or not (input_dir / "scope.json").exists():
         sys.exit(
             "中止：找不到 scope.json（授權範圍與分析參數）。依 task-spec.md 第 2.1 節，無授權範圍不得分析。\n"
             "請提供含 organization、analysis_date、authorized_scope.in_scope_assets、"
@@ -236,11 +248,22 @@ def main() -> int:
             "reporting.audience 的 scope.json。"
         )
 
+    try:
+        scope_obj = json.loads((input_dir / "scope.json").read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        sys.exit(f"中止：scope.json 無法解析：{exc}")
+    scope_missing = [p for p in ("organization", "analysis_date", "authorized_scope.in_scope_assets",
+                                 "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized",
+                                 "reporting.audience")
+                     if _get_path(scope_obj, p) is None]
+    if scope_missing:
+        sys.exit("中止：scope.json 缺少必填欄位：" + ", ".join(scope_missing))
+
     for required_file in (CORE_PROMPT, OUTPUT_SCHEMA):
         if not required_file.exists():
             sys.exit(f"缺少共用檔案：{required_file}")
 
-    loaded, missing_required = load_inputs(input_dir)
+    loaded, missing_required = load_inputs(input_dir, exclude)
     if missing_required:
         print(f"警告：缺少必要輸入 {missing_required}；模型將依規則只產出曝險面清單並詢問是否繼續。", file=sys.stderr)
 

@@ -28,7 +28,7 @@ platform: deepseek
 |---|---|
 | `skills/deepseek/README.md` | 平台說明、V4 查證狀態、版本無關設計 |
 | `skills/deepseek/system-prompt.md` | 可直接複製的系統提示詞 |
-| `skills/deepseek/host-skill/SKILL.md` | Agent Skills 標準 skill（供 OpenClaw、Deep Code 等 host） |
+| `skills/deepseek/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準 skill（供 OpenClaw、Deep Code 等 host） |
 | `skills/deepseek/api-workflow.py`、`requirements.txt` | OpenAI 相容端點腳本（含 `--dry-run`） |
 | `skills/shared/*`、`examples/synthetic-org/*` | 共用規格與合成資料 |
 
@@ -66,7 +66,7 @@ Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同�
 
 ### B. skills-capable host
 
-1. 把 `skills/deepseek/host-skill/` 複製到 host 的 skills 目錄（OpenClaw、Deep Code 的目錄位置以各 host 官方文件為準；Claude Code 為 `.claude/skills/preemptive-exposure-analysis/`）。
+1. 把 `skills/deepseek/preemptive-exposure-analysis/` 複製到 host 的 skills 目錄（OpenClaw、Deep Code 的目錄位置以各 host 官方文件為準；Claude Code 為 `.claude/skills/preemptive-exposure-analysis/`）。
 2. 設定 host 使用 DeepSeek 端點與 API key（Claude Code 的 Anthropic 相容設定待驗證，以 api-docs.deepseek.com 為準）。
 3. 呼叫 skill 並指定資料夾。
 
@@ -88,14 +88,19 @@ python3 skills/deepseek/api-workflow.py
 **FAQ**
 
 1. *模型 ID 不存在？* 舊名稱已退役；以官方模型列表更新 `DEEPSEEK_MODEL`。
-2. *`response_format` 被拒絕？* 表示該模型或端點不支援 JSON Output；腳本會退回純文字解析並存原始回應。
+2. *`response_format` 被拒絕？* 表示該模型或端點不支援 JSON Output。腳本會捕捉例外、印出警告，並自動改以提示詞要求純 JSON 重試一次；仍解析失敗時存原始回應。也可一開始就加 `--no-json-mode`。
 3. *chat.deepseek.com 沒有自訂指令？* 每次新對話貼提示詞；或改用 API 腳本。
 4. *可以用 V4-Flash？* 可，改環境變數；重跑驗收確認分級一致。
 5. *strict 工具呼叫可用嗎？* 待驗證；本流程不依賴它。
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 7 項；API 腳本以 `--input-dir` 指向刪除 `threat-intel.json`／`scope.json` 的複本資料夾完成第 6、7 項。
+依 `task-spec.md` 第 7 節 7 項。第 6、7 項用旗標模擬缺漏：
+
+```bash
+python3 skills/deepseek/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項
+python3 skills/deepseek/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出必填欄位
+```
 
 ## 10. 機敏資料處理與人工核准邊界
 

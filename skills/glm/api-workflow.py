@@ -55,6 +55,9 @@ ALT_BASE_URL_CN = "https://open.bigmodel.cn/api/paas/v4"    # BigModel（中國�
 DEFAULT_ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"  # PARTIALLY VERIFIED（第三方引述 docs.z.ai）
 DEFAULT_MODEL = "glm-5.3"                                   # 請以官方模型列表確認模型 ID
 
+EXCLUDE_CHOICES = ["scope", "assets", "vulnerabilities", "exposures", "identities", "misconfigurations", "controls", "threat_intel", "topology"]
+FILE_CATEGORY = {"scope.json": "scope", "assets.csv": "assets", "vulnerabilities.csv": "vulnerabilities", "exposures.json": "exposures", "identities.csv": "identities", "misconfigurations.csv": "misconfigurations", "controls.json": "controls", "threat-intel.json": "threat_intel", "topology.json": "topology"}
+
 # 9 個輸入檔：(檔名, 輸入類別, 是否必要)
 INPUT_FILES = [
     ("scope.json", "I1 授權範圍與分析參數", True),
@@ -117,10 +120,10 @@ def count_records(name: str, raw: str) -> int | None:
     return None
 
 
-def load_inputs(input_dir: Path) -> tuple[list[dict], list[str]]:
-    """讀入 9 個輸入檔。回傳 (已載入檔案列表, 缺少檔案列表)。缺 scope.json 直接中止。"""
+def load_inputs(input_dir: Path, exclude: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
+    """讀入 9 個輸入檔。回傳 (已載入檔案列表, 缺少檔案列表)。缺 scope.json 直接中止；exclude 內的類別視同未提供。"""
     scope_path = input_dir / "scope.json"
-    if not scope_path.exists():
+    if "scope" in exclude or not scope_path.exists():
         sys.exit(
             "[中止] 找不到 scope.json（授權範圍與分析參數）。\n"
             "依共用任務規格第 2.1 節，無授權範圍不得分析。請提供含下列欄位的 scope.json：\n"
@@ -152,6 +155,9 @@ def load_inputs(input_dir: Path) -> tuple[list[dict], list[str]]:
     loaded, missing = [], []
     for name, label, required_file in INPUT_FILES:
         path = input_dir / name
+        if FILE_CATEGORY[name] in exclude:
+            missing.append(f"{name}（{label}；依 --exclude 排除）")
+            continue
         if not path.exists():
             missing.append(f"{name}（{label}）")
             if required_file and name != "scope.json":
@@ -321,6 +327,8 @@ def main() -> int:
     ap.add_argument("--max-tokens", type=int, default=16000, help="每段回應的最大輸出 token")
     ap.add_argument("--dry-run", action="store_true",
                     help="只印出組裝好的提示詞，不呼叫 API、不載入 SDK、不需 API key")
+    ap.add_argument("--exclude", action="append", choices=EXCLUDE_CHOICES, default=[],
+                    help="模擬缺漏：排除某類輸入（可重複）；排除 scope 會直接中止（驗收第 6、7 項）")
     ap.add_argument("--anthropic-compatible", action="store_true",
                     help="改用 Anthropic 相容端點（https://api.z.ai/api/anthropic；待驗證）")
     args = ap.parse_args()
@@ -330,7 +338,7 @@ def main() -> int:
         sys.exit(f"[錯誤] 輸入資料夾不存在：{input_dir}")
 
     system_prompt = load_core_prompt()
-    loaded, missing = load_inputs(input_dir)
+    loaded, missing = load_inputs(input_dir, frozenset(args.exclude))
     user_prompt = build_user_prompt(loaded, missing)
     json_prompt = build_json_prompt(load_output_schema())
 

@@ -11,13 +11,13 @@ summary: 逐項說明每個輸入的用途與必要性、資料來源與格式�
 | 編號 | 輸入 | 必要性 | 對應步驟 | 敏感度 |
 |---|---|---|---|---|
 | I1 | 授權範圍與分析參數 | 必要 | S1、S6、S7 | 中 |
-| I2 | 資產清冊 + 業務重要性 | 必要 | S2、S3、S4 | 高 |
+| I2 | 資產清冊 + 業務重要性 | 必要 | S2、S3、S4、S8 | 高 |
 | I3 | 弱點與發現 | 必要 | S2、S3、S5 | 高 |
 | I4 | 外部曝險（EASM） | 建議 | S2、S3、S8 | 高 |
 | I5 | 利用可能性訊號（EPSS／KEV／公開利用） | 建議 | S3 | 低（公開資料）|
 | I6 | 身分與權限 | 建議 | S3、S4 | 極高 |
 | I7 | 設定基準偏差 | 選用 | S3、S5 | 高 |
-| I8 | 既有控制措施 | 建議 | S3、S5 | 高 |
+| I8 | 既有控制措施 | 建議 | S3、S4、S5 | 高 |
 | I9 | 威脅情資 | 建議 | S3、S8 | 中 |
 | I10 | 網路拓樸／信任關係 | 建議 | S4、S6 | 極高 |
 
@@ -73,7 +73,7 @@ summary: 逐項說明每個輸入的用途與必要性、資料來源與格式�
 
 ### I7 設定基準偏差（misconfigurations）
 
-- **用途**：對應 Gartner ASCA 的「misconfigurations and gaps in security controls」[G-IR]；設定議題常是無修補時的主要曝險。
+- **用途**：對應 Gartner 對 ASCA 的定義「continuously analyze, prioritize and optimize security control configurations to minimize threat exposure」[G-IR]（見第 1 章 1.6 表）；設定議題常是無修補時的主要曝險。
 - **來源／格式／頻率**：CIS 基準掃描、雲端 CSPM、ASCA 工具；CSV/JSON；每週。
 - **品質要求**：`status` 為 pass/fail/unknown；`control` 可對應基準條目。
 - **敏感程度**：高。

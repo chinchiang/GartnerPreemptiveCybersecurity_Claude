@@ -47,9 +47,10 @@ Gartner 在 2025 年 9 月 18 日的新聞稿中給出目前最常被引用的�
 | Predictive threat intelligence（PTI） | PTI 平台 "continuously collect information from a wide variety of sources — like security alerts, public online discussions, the dark web and records of past cyberattacks"，使組織能 "address vulnerabilities and exposures to boost your defenses before an attack even happens"；"serves as an early warning system to anticipate future attacks and prioritize preemptive mitigation" | [G3]、[G12] |
 | Automated moving target defense（AMTD） | "AMTD leverages automation to dynamically adjust system configurations, ensuring a continuous and unpredictable environment."；Peer Insights 市場定義："a set of technologies and methods to make unpredictable automated changes to an IT environment, making it significantly harder for attackers to identify and exploit vulnerabilities" | [G3]、[G28] |
 | Advanced deception | "Advanced cyber deception is often combined with moving target defense to add even more layers of 'moving targets.'"；"can shift the balance against attackers, and empower a preemptive cyber defense strategy" | [G3]、[G12] |
-| （延伸）Continuous exposure management、automated mitigations | "This preemptive approach shifts security from 'detect-and-respond' to prevention, embedding predictive analytics, continuous exposure management and automated mitigations into operating systems, networks, applications and services." | [G3]（頁面歸屬待確認） |
 | 2026 年五大支柱 | "preemptive exposure management, adversary management and threat intelligence, adversary disruption, posture and policy management, and services and capabilities maturity" | [G27]（付費研究公開摘要） |
 | 2026 年技術描述 | "Preemptive cybersecurity techniques include concealing assets, confusing attackers, and forecasting likely exploits" | [G25]（經廠商轉載） |
+
+**待驗證（不列入明確陳述）**：一句在搜尋摘錄中出現、但頁面歸屬未能確認的描述——"This preemptive approach shifts security from 'detect-and-respond' to prevention, embedding predictive analytics, continuous exposure management and automated mitigations into operating systems, networks, applications and services."（單一摘錄；疑似出自 [G3]，見證據頁待驗證清單第 1 項）。
 
 ## 1.4 適用範圍（Gartner 明確陳述 + 本專案推論）
 
@@ -65,7 +66,7 @@ Gartner 在 2025 年 9 月 18 日的新聞稿中給出目前最常被引用的�
 - 一份 2025 年研究標題直接說明兩者關係：「Preemptive Cybersecurity Is Now Critical for Effective Detection and Response」[G19]，摘要要求產品領導者 "shift investment priorities from reactive threat detection and response to preemptive cybersecurity"。
 - Hype Cycle for Security Operations 2026 的公開摘要定義安全營運為 "identify, validate and manage threats and exposures" [G26]，把「曝險」與「威脅」並列。
 
-**其他來源**：多家廠商把先制型資安對映到 Gartner 早年的「Predict–Prevent–Detect–Respond」框架 [G31]。但在本研究抓到的 2025–2026 Gartner 先制型資安文本中，**沒有**明確引用該框架；最接近的公開語句是 Paulman 的 "prediction is protection" 與影響雷達轉載中的 "predict, prevent, and neutralize"。
+**其他來源**：多家廠商把先制型資安對映到 Gartner 早年的「Predict–Prevent–Detect–Respond」框架 [G31]。但在本研究抓到的 2025–2026 Gartner 先制型資安文本中，**沒有**明確引用該框架；最接近的公開語句是 Paulman 的 "prediction is protection" [G4] 與 Morphisec 對 Impact Radar 的轉載摘要中的 "predict, prevent, and neutralize" [V8]（廠商轉述，Impact Radar 原文用語為 "deny, disrupt, and deceive" [G-IR]）。
 
 **本專案推論**（下表）：
 
@@ -77,7 +78,7 @@ Gartner 在 2025 年 9 月 18 日的新聞稿中給出目前最常被引用的�
 | 典型輸出 | 設定、修補 | 事件、處置 | 優先序、路徑假設、阻斷／欺敵／變動措施、驗證計畫 |
 | 與本專案流程的對應 | S5 改善建議 | 不在範圍（但 S8 指標回饋給 SOC） | S1–S8 |
 
-## 1.7 Gartner《Emerging Tech Impact Radar: Preemptive Cybersecurity》（2025-10-07）— 已讀全文 [G-IR]
+## 1.6 Gartner《Emerging Tech Impact Radar: Preemptive Cybersecurity》（2025-10-07）— 已讀全文 [G-IR]
 
 這是本研究唯一讀過全文的 Gartner 研究文件（使用者提供之授權轉載版）。它面向**產品領導者**，分析 11 項新興技術與趨勢的「範圍（range，距離早期多數採用的年數）」與「質量（mass，對市場的影響）」。以下皆為 Gartner 明確陳述。
 
@@ -119,8 +120,8 @@ Gartner 在 2025 年 9 月 18 日的新聞稿中給出目前最常被引用的�
 
 **對本專案的意義**（本專案推論）：PEM 的定義直接把先制型資安錨定在「加速 CTEM 流程」；PTI「擴充 EAP／AEV／ASCA」的描述，與本專案把情資當作優先序加權因子、把設定偏差與控制覆蓋納入評分的設計一致。AAE 與 AMTD 屬 3–6 年技術，本專案流程只把它們列為「驗證方法選項」與「補償控制選項」，不假設組織已具備。
 
-## 1.6 本章小結
+## 1.7 本章小結
 
-- 可驗證的核心：定義（AI/ML 在威脅成形前預測並中和）、三個命名能力（PTI、deception、AMTD）、三個 D、兩個 2030 年預測（50% 支出、75% 產品）、CVE 破百萬預測、「取代獨立 DR」的定位。
-- 需要小心的：50% 不是市場金額；「predict–prevent–detect–respond」對映是他人詮釋；「35% by 2028」「ACIS 75%」等數字待驗證（見證據頁）。
+- 可驗證的核心：定義（AI/ML 在威脅成形前預測並中和）、三個命名能力（PTI、deception、AMTD）、兩個 2030 年預測（50% 支出、75% 產品；50% 支出預測另見媒體轉載 [M1][M2]）、CVE 破百萬預測、「取代獨立 DR」的定位、Impact Radar 的「deny, disrupt, and deceive」[G-IR]。
+- 需要小心的：「三個 D」在 [G3] 只有單一搜尋摘錄，仍待原頁核對；50% 不是市場金額；「predict–prevent–detect–respond」對映是他人詮釋；「35% by 2028」（僅見於 Silent Push 轉載頁與 Splunk 部落格 [V5]）、「ACIS 75%」等數字待驗證（見證據頁）。
 - 已讀全文的 Impact Radar [G-IR] 補充了 11 項技術的定義、範圍與質量，並明確提到「anticipate attack paths」。

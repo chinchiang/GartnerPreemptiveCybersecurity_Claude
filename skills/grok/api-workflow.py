@@ -7,7 +7,7 @@ Grok（xAI）API 工作流程：先制型曝險分析（Preemptive Exposure Anal
   透過 xAI API（xai_sdk）產出 Markdown 報告與符合 output-schema.json 的 JSON。
 
 查證狀態（2026-09-09）
-  - xai_sdk 的 Client / chat.create / chat.append / chat.sample / chat.parse 用法依 github.com/xai-org/xai-sdk-python
+  - xai_sdk 的 Client / chat.create / chat.append / chat.sample 用法依 github.com/xai-org/xai-sdk-python
     README 與範例撰寫（已查證），但 SDK 版本更新後可能變動，執行前請對照官方 README。
   - 模型 ID 預設 grok-4.6（SDK README 範例值）；請以 docs.x.ai 模型列表確認。
   - --compat：OpenAI 相容端點（https://api.x.ai/v1）的相容性「待驗證」，僅作為替代路徑。
@@ -21,6 +21,8 @@ Grok（xAI）API 工作流程：先制型曝險分析（Preemptive Exposure Anal
   python3 skills/grok/api-workflow.py                      # xai_sdk（pip install -r skills/grok/requirements.txt）
   python3 skills/grok/api-workflow.py --compat             # OpenAI 相容端點（pip install openai；待驗證）
   python3 skills/grok/api-workflow.py --input-dir <dir>    # 自己的資料夾
+  python3 skills/grok/api-workflow.py --dry-run --exclude threat_intel   # 模擬缺漏（驗收第 6 項）
+  python3 skills/grok/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出
   output/grok-report.md、output/grok-output.json（JSON 解析失敗時另存 output/grok-output.raw.txt）
@@ -47,6 +49,9 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "output"
 DEFAULT_MODEL = "grok-4.6"          # 依 xai-sdk-python README 範例；請以 docs.x.ai 確認
 COMPAT_BASE_URL = "https://api.x.ai/v1"  # OpenAI 相容端點（待驗證）
 
+EXCLUDE_CHOICES = ["scope", "assets", "vulnerabilities", "exposures", "identities", "misconfigurations", "controls", "threat_intel", "topology"]
+FILE_CATEGORY = {"scope.json": "scope", "assets.csv": "assets", "vulnerabilities.csv": "vulnerabilities", "exposures.json": "exposures", "identities.csv": "identities", "misconfigurations.csv": "misconfigurations", "controls.json": "controls", "threat-intel.json": "threat_intel", "topology.json": "topology"}
+
 INPUT_FILES = [
     ("scope.json", "I1 授權範圍與分析參數", True),
     ("assets.csv", "I2 資產清冊與業務重要性", True),
@@ -69,29 +74,52 @@ def load_core_prompt() -> str:
 
 
 def count_records(path: Path) -> str:
-    if path.suffix == ".csv":
-        with path.open(encoding="utf-8", newline="") as f:
-            return f"{sum(1 for _ in csv.DictReader(f))} 筆"
-    data = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        if path.suffix == ".csv":
+            with path.open(encoding="utf-8", newline="") as f:
+                return f"{sum(1 for _ in csv.DictReader(f))} 筆"
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, csv.Error, UnicodeDecodeError) as exc:
+        return f"無法解析（{type(exc).__name__}）；模型將視為缺漏"
     for key in ("exposures", "controls", "actors", "edges"):
         if isinstance(data, dict) and isinstance(data.get(key), list):
             return f"{len(data[key])} 筆（{key}）"
     return "單一物件"
 
 
-def build_user_prompt(input_dir: Path) -> str:
-    if not (input_dir / "scope.json").exists():
-        sys.exit("[中止] 缺少 scope.json：無授權範圍不得分析。請提供 organization、analysis_date、"
-                 "authorized_scope.in_scope_assets、authorized_scope.active_testing_authorized、"
-                 "authorized_scope.external_scanning_authorized、reporting.audience。")
+def validate_scope(path: Path) -> None:
+    """I1 守門：scope.json 必須存在、可解析且含六個必填欄位。"""
+    try:
+        scope = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        sys.exit(f"[中止] scope.json 無法解析：{exc}")
+    required = [("organization",), ("analysis_date",), ("authorized_scope", "in_scope_assets"),
+                ("authorized_scope", "active_testing_authorized"), ("authorized_scope", "external_scanning_authorized"),
+                ("reporting", "audience")]
+    missing = []
+    for keys in required:
+        node = scope
+        for k in keys:
+            node = node.get(k) if isinstance(node, dict) else None
+        if node is None:
+            missing.append(".".join(keys))
+    if missing:
+        sys.exit("[中止] scope.json 缺少必填欄位：" + ", ".join(missing))
+
+
+def build_user_prompt(input_dir: Path, exclude: frozenset[str] = frozenset()) -> str:
+    if "scope" in exclude or not (input_dir / "scope.json").exists():
+        sys.exit("[中止] 缺少 scope.json：無授權範圍不得分析。請提供 organization、analysis_date、authorized_scope.in_scope_assets、authorized_scope.active_testing_authorized、authorized_scope.external_scanning_authorized、reporting.audience。")
+    validate_scope(input_dir / "scope.json")
     parts = ["請依系統指令進行先制型曝險分析。以下為輸入檔案（來源資料夾：%s）。" % input_dir.name,
              "請先回報每個檔案的筆數與缺欄位，再逐步輸出 S1–S8，最後附上符合 output-schema.json 的 JSON 區塊。"]
     print("[資訊] 已載入檔案與筆數：", file=sys.stderr)
     for name, label, required in INPUT_FILES:
         p = input_dir / name
-        if not p.exists():
-            print(f"  - {name}: 缺少（{'必要' if required else '建議'}）", file=sys.stderr)
-            parts.append(f"\n### {name}（{label}）\n（未提供）")
+        if FILE_CATEGORY[name] in exclude or not p.exists():
+            why = "依 --exclude 排除" if FILE_CATEGORY[name] in exclude else "缺少"
+            print(f"  - {name}: {why}（{'必要' if required else '建議'}）", file=sys.stderr)
+            parts.append(f"\n### {name}（{label}）\n（未提供；請依規則以替代方式處理並在 missing_inputs 標示）")
             continue
         print(f"  - {name}: {count_records(p)}", file=sys.stderr)
         lang = "json" if p.suffix == ".json" else "csv"
@@ -158,11 +186,15 @@ def main() -> int:
     ap.add_argument("--model", default=os.environ.get("XAI_MODEL", DEFAULT_MODEL))
     ap.add_argument("--dry-run", action="store_true", help="只組裝提示詞，不呼叫 API")
     ap.add_argument("--compat", action="store_true", help="改用 OpenAI 相容端點（待驗證）")
+    ap.add_argument("--exclude", action="append", choices=EXCLUDE_CHOICES, default=[],
+                    help="模擬缺漏：排除某類輸入（可重複）；排除 scope 會直接中止（驗收第 6、7 項）")
     args = ap.parse_args()
 
     input_dir = Path(args.input_dir)
+    if not input_dir.is_dir():
+        sys.exit(f"[錯誤] 輸入資料夾不存在：{input_dir}")
     system_prompt = load_core_prompt()
-    user_prompt = build_user_prompt(input_dir)
+    user_prompt = build_user_prompt(input_dir, frozenset(args.exclude))
     print("=" * 78, file=sys.stderr)
     if args.dry_run:
         print(f"[DRY-RUN] 平台：Grok  模型：{args.model}（未呼叫 API）")

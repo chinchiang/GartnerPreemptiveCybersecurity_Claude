@@ -9,7 +9,7 @@
 - 網站網址（已由 GitHub Actions 部署，2026-09-13 確認可用）：`https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`
 - 本機預覽：`npm run build && npx http-server -p 8080 .`，或直接開啟 `index.html`。建置與靜態驗證只用 Node 內建模組，不需要 `npm install`。
 
-網站包含：方法論導覽（8 章研究文件全文）、可執行流程（8 步驟互動）、Inputs／Outputs 對照（可篩選）、平台比較、Skills 專區（一鍵複製／下載／ZIP）、安裝與使用教學（切換平台）、案例互動展示（合成資料，可切換輸入與權重）、證據與來源（含待驗證清單）、部署與維護。支援桌面與行動裝置、淺／深色主題、全站搜尋、基本無障礙。
+網站包含：方法論導覽（8 章研究文件全文）、可執行流程（8 步驟互動）、Inputs／Outputs 對照（可篩選，含合成範例）、平台比較、Skills 專區（一鍵複製／下載／ZIP）、安裝與使用教學（切換平台）、案例互動展示（合成資料，可切換輸入與權重；輸出 JSON 符合 output-schema）、證據與來源（查證等級可篩選、原始證據檔、待驗證清單、連結檢查表）、部署與維護（附驗證報告與後端說明）。支援桌面與行動裝置、淺／深色主題、全站搜尋、基本無障礙。
 
 ## 儲存庫結構
 
@@ -21,9 +21,9 @@ docs/evidence/                    英文證據檔（Gartner 與平台查證原�
 skills/shared/                    共用任務規格、核心提示詞、輸入／輸出 JSON Schema
 skills/{chatgpt,claude,grok,glm,deepseek}/   各平台 skill 或等效檔案（SKILL.md、提示詞、API 腳本）
 examples/synthetic-org/           合成範例資料（9 檔）；expected-output.md 預期輸出；demo-snapshot.txt 示範引擎黃金快照
-scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs、check-acceptance.mjs（驗收真實模型輸出）
+scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs（示範引擎；--json 輸出 output-schema 格式、--no-scope 模擬缺授權）、check-acceptance.mjs（驗收真實模型輸出）、build-worker.mjs（後端代理嵌入提示詞）
 downloads/                        建置產生的 ZIP 下載包
-backend/                          選用的模型 API 代理範例（預設不需要、無金鑰）
+backend/                          選用的模型 API 代理範例（預設不需要、無金鑰；部署前以 build-worker.mjs 產生 dist/）
 .github/workflows/                pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收，手動）、quarterly-review.yml（季度查證提醒）
 ```
 

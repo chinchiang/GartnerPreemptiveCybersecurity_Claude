@@ -14,16 +14,16 @@ P4 | file-srv-01 | SYN-2025-0620 | score 15.3 | L 2.5 | I 6.2 | 高 | 公開利�
 P4 | erp-app-01 | SYN-2026-0333 | score 0 | L 0.0 | I 10.0 | 高 | 身分弱點 ×1；既有控制：EDR、Central logging / SIEM、Patch SLA
 P4 | jump-host-01 | SYN-2026-0015 | score 0 | L 0.0 | I 6.6 | 高 | 既有控制：EDR、MFA、Central logging / SIEM、Patch SLA
 
-== 攻擊路徑假設 ==
-1. internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | hops 3 | feasibility 6.4
-2. internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | hops 4 | feasibility 6.1
-3. internet → vpn-gw-01 → ad-dc-01 → file-srv-01 → mes-srv-01 | hops 4 | feasibility 4.9
-4. internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | hops 3 | feasibility 4.7
-5. internet → vpn-gw-01 → jump-host-01 → erp-db-01 | hops 3 | feasibility 4.7
-6. internet → web-portal-01 → erp-app-01 → erp-db-01 | hops 3 | feasibility 4.3
-7. internet → s3-backup-bucket → erp-db-01 | hops 2 | feasibility 4.2
-8. internet → mail-gw-01 → file-srv-01 → mes-srv-01 | hops 3 | feasibility 3.9
-9. internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | hops 4 | feasibility 3.6
+== 攻擊路徑假設（status: hypothesis） ==
+1. internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | hops 3 | feasibility 6.4 | hypothesis
+2. internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | hops 4 | feasibility 5.2 | hypothesis
+3. internet → vpn-gw-01 → ad-dc-01 → file-srv-01 → mes-srv-01 | hops 4 | feasibility 4.9 | hypothesis
+4. internet → s3-backup-bucket → erp-db-01 | hops 2 | feasibility 4.2 | hypothesis
+5. internet → mail-gw-01 → file-srv-01 → mes-srv-01 | hops 3 | feasibility 3.9 | hypothesis
+6. internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | hops 3 | feasibility 3.8 | hypothesis
+7. internet → vpn-gw-01 → jump-host-01 → erp-db-01 | hops 3 | feasibility 3.8 | hypothesis
+8. internet → web-portal-01 → erp-app-01 → erp-db-01 | hops 3 | feasibility 3.4 | hypothesis
+9. internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | hops 4 | feasibility 2.7 | hypothesis
 
 == 指標 ==
 對外曝露且 P1 的發現數: 4 (目標 0（7 天內）)
@@ -36,6 +36,14 @@ P1/P2 發現總數: 5 / 3 (目標 每週下降)
 == 缺漏 == 無
 
 == 驗證計畫 ==
-V1 vpn-gw-01 → erp-db-01（3 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT
-V2 vpn-gw-01 → erp-db-01（4 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT
-V3 vpn-gw-01 → mes-srv-01（4 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT
+V1 vpn-gw-01 → erp-db-01（3 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT
+V2 vpn-gw-01 → erp-db-01（4 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT
+V3 vpn-gw-01 → mes-srv-01（4 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動（OT 端點只做讀取式驗證） | 尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT
+
+== 管理摘要（O5） ==
+**對象：** CISO、IT 主管、廠務主管｜**日期：** 2026-09-08｜**信心：** 14/14 項高信心｜識別資訊已遮罩
+1. 現況：14 項發現，5 項 P1（4 項對外曝露）；最急迫：VPN Gateway（A01） 之 VPN appliance pre-auth RCE。
+2. 最可能路徑：internet → A01 → A04 → A06（可行性 6.4/10，未驗證），阻斷點為身分與網段控制。
+3. 決策請求：（1）核准 P1（5 項）修補排程與補償控制；（2）決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）。
+4. 限制：無重大資料缺漏；所有路徑為假設，模型未驗證實際曝險。
+（正文 243 字；規格 ≤ 300）

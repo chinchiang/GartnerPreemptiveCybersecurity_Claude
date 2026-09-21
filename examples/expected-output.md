@@ -41,23 +41,36 @@
 
 | # | 路徑 | 跳數 | 可行性 |
 |---|---|---|---|
-| 1 | internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | 3 | 6.4 |
-| 2 | internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | 4 | 6.1 |
-| 3 | internet → vpn-gw-01 → ad-dc-01 → file-srv-01 → mes-srv-01 | 4 | 4.9 |
-| 4 | internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | 3 | 4.7 |
-| 5 | internet → vpn-gw-01 → jump-host-01 → erp-db-01 | 3 | 4.7 |
-| 6 | internet → web-portal-01 → erp-app-01 → erp-db-01 | 3 | 4.3 |
-| 7 | internet → s3-backup-bucket → erp-db-01 | 2 | 4.2 |
-| 8 | internet → mail-gw-01 → file-srv-01 → mes-srv-01 | 3 | 3.9 |
-| 9 | internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | 4 | 3.6 |
+| H1 | internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | 3 | 6.4 |
+| H2 | internet → vpn-gw-01 → ad-dc-01 → erp-app-01 → erp-db-01 | 4 | 5.2 |
+| H3 | internet → vpn-gw-01 → ad-dc-01 → file-srv-01 → mes-srv-01 | 4 | 4.9 |
+| H4 | internet → s3-backup-bucket → erp-db-01 | 2 | 4.2 |
+| H5 | internet → mail-gw-01 → file-srv-01 → mes-srv-01 | 3 | 3.9 |
+| H6 | internet → vpn-gw-01 → jump-host-01 → mes-srv-01 | 3 | 3.8 |
+| H7 | internet → vpn-gw-01 → jump-host-01 → erp-db-01 | 3 | 3.8 |
+| H8 | internet → web-portal-01 → erp-app-01 → erp-db-01 | 3 | 3.4 |
+| H9 | internet → ci-runner-01 → web-portal-01 → erp-app-01 → erp-db-01 | 4 | 2.7 |
+
+節點可能性：有發現者取其最高可能性（可為 0）；無任何發現的節點取 3（未知）。
 
 ## 安全驗證計畫（提案；兩個授權旗標皆 false）
 
 | # | 假設 | 方法 | 授權狀態 |
 |---|---|---|---|
-| V1 | vpn-gw-01 → erp-db-01（3 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准並排除 OT |
-| V2 | vpn-gw-01 → erp-db-01（4 跳） | 同上 | 同上 |
-| V3 | vpn-gw-01 → mes-srv-01（4 跳） | 同上（OT 端點只做讀取式驗證） | 同上 |
+| V1 | H1：vpn-gw-01 → erp-db-01（3 跳） | 授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動 | 尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT |
+| V2 | H2：vpn-gw-01 → erp-db-01（4 跳） | 同上 | 同上 |
+| V3 | H3：vpn-gw-01 → mes-srv-01（4 跳） | 同上（OT 端點只做讀取式驗證） | 同上 |
+
+授權狀態規則：`active_testing_authorized` 或 `external_scanning_authorized` 任一為 false → 「尚未授權主動測試」；入口對外的驗證需兩者皆 true。
+
+## 管理摘要（O5；`reporting.mask_identifiers` 未設定 → 預設遮罩；正文 243 字）
+
+> **對象：** CISO、IT 主管、廠務主管｜**日期：** 2026-09-08｜**信心：** 14/14 項高信心｜識別資訊已遮罩
+>
+> 1. 現況：14 項發現，5 項 P1（4 項對外曝露）；最急迫：VPN Gateway（A01）之 VPN appliance pre-auth RCE。
+> 2. 最可能路徑：internet → A01 → A04 → A06（可行性 6.4/10，未驗證），阻斷點為身分與網段控制。
+> 3. 決策請求：（1）核准 P1（5 項）修補排程與補償控制；（2）決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）。
+> 4. 限制：無重大資料缺漏；所有路徑為假設，模型未驗證實際曝險。
 
 ## 追蹤指標
 
@@ -76,9 +89,12 @@
 |---|---|---|
 | 2 | `vpn-gw-01 / SYN-2026-0101` | P1；依據含對外曝露、公開利用程式、模擬 KEV、威脅情資命中 |
 | 3 | 路徑 | 含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`，hypothesis |
-| 4 | 驗證計畫 | 每項「尚未授權主動測試」 |
-| 6 | 移除 threat-intel.json | 信心「中」；`SYN-2026-0101` 仍 P1；`mail-gw-01` 降 P2；`ad-dc-01` 降 P3；輸出列「未納入威脅情資」 |
-| 7 | 移除 scope.json | 拒絕分析並列出必要欄位 |
+| 4 | 驗證計畫 | 每項「尚未授權主動測試」（`node scripts/run-demo.mjs` 驗證計畫段） |
+| 5 | 管理摘要 | 正體中文、正文 ≤ 300 字、含「決策請求」與「限制」（`run-demo.mjs` 管理摘要段） |
+| 6 | 移除 threat-intel.json（`--no-intel`） | 信心「中」；`SYN-2026-0101` 仍 P1；`mail-gw-01` 降 P2；`ad-dc-01` 降 P3；輸出列「未納入威脅情資」 |
+| 7 | 移除 scope.json（`--no-scope`） | 拒絕分析並列出必要欄位（exit code 2） |
+
+`node scripts/run-demo.mjs --json` 輸出符合 `skills/shared/output-schema.json` 的完整 JSON（九個必要區塊、`status: hypothesis`、`executive_summary.text` ≤ 300 字）。
 
 ## 結尾聲明
 

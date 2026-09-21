@@ -145,7 +145,7 @@ curl https://api.anthropic.com/v1/skills \
 
 依 `references/acceptance.md` 執行 7 項檢查：
 
-1. 先跑 `python3 scripts/validate_inputs.py examples/synthetic-org`，應顯示 9 檔筆數且「可以進行分析」。
+1. 先跑 `python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org`（在儲存庫根目錄；若已安裝到 `.claude/skills/`，路徑為 `.claude/skills/preemptive-exposure-analysis/scripts/validate_inputs.py`），應顯示 9 檔筆數且「可以進行分析」。
 2. 執行 skill，確認 `vpn-gw-01 / SYN-2026-0101` 為 P1 並含四個關鍵依據。
 3. 確認路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01` 存在且為 hypothesis。
 4. 驗證計畫每項標「尚未授權主動測試」。

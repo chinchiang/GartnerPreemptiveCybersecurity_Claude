@@ -3,6 +3,13 @@
 Compiled: 2026-09-09 (all sources accessed 2026-09-09)
 Scope: Gartner's public statements on preemptive cybersecurity, the technology categories it names, its numeric predictions, its relationship to detection and response (DR) and to CTEM / exposure management; third-party interpretations; and an explicit list of what could not be verified.
 
+## Addendum (added 2026-09-09 after the user supplied a licensed reprint; updated 2026-09-21)
+
+- **One Gartner document was subsequently read in full:** *Emerging Tech Impact Radar: Preemptive Cybersecurity* (ID G00830315, 7 Oct 2025), supplied by the user as a licensed-reprint PDF (source ID **G-IR** in the site's source table). The SimSpace URL listed in Section 5 ("Unreachable; best lead for full text") was still unreachable from this environment (HTTP 403); the content came from the user's PDF, so URL-to-PDF equivalence remains to be verified.
+- **Correction to Section 2.3 / Section 4 item 13:** the statement "no Gartner text names attack path analysis" applied only to captured web snippets. The Impact Radar's key findings state that "AI and machine learning (ML) technologies must be used to anticipate attack paths and predict where an adversary is likely to strike", and its PTI profile mentions correlating findings across "alerts, threats, vulnerabilities and attack paths". "Anticipating attack paths" is therefore a **Gartner explicit statement**; graph-based choke-point methods remain third-party.
+- **Two user-provided AI-generated reports** (source IDs **U1**, **U2**) were used only for structural viewpoints (RACI, OT passive discovery, six-layer reference architecture). Their quoted statistics were not verified and are listed as to-verify. They are not stored in the repository.
+- The Traditional-Chinese research chapters (`docs/research/00-method.md` §0.3.1 and `01-definition.md` §1.6) carry the full treatment of the Impact Radar; this English file is kept as the original capture log and has **not** been rewritten line by line.
+
 ## 0. Method and access limitations (read first)
 
 - **Direct page fetches were blocked.** The research environment's egress proxy refused every HTTPS CONNECT to `www.gartner.com` (HTTP 403 from the proxy) and to every third-party host tried (Help Net Security, Cybersecurity Dive, SecurityBrief, BusinessWire, Yahoo Finance, Nasdaq, Morningstar, Morphisec, CounterCraft, Threater, Zynap, Picus, Cymulate, Tenable, Zscaler, XM Cyber, Pentera, Vectra, ctem.org, watchTowr, BforeAI, Dropzone, SimSpace, Splunk, Wikipedia, etc.). Wayback Machine (`web.archive.org`) and `archive.ph` were also unreachable. Only `github.com` / `raw.githubusercontent.com` responded.

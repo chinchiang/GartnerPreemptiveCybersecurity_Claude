@@ -27,6 +27,8 @@ DeepSeek API 工作流程：先制型曝險分析（Preemptive Exposure Analysis
   python3 skills/deepseek/api-workflow.py --dry-run                 # 只組裝提示詞，不呼叫 API、不需 SDK
   python3 skills/deepseek/api-workflow.py                           # 需 pip install openai
   python3 skills/deepseek/api-workflow.py --input-dir /path/to/dir  # 以自己的資料夾取代合成資料
+  python3 skills/deepseek/api-workflow.py --dry-run --exclude threat_intel   # 模擬缺漏（驗收第 6 項）
+  python3 skills/deepseek/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出
   output/deepseek-report.md、output/deepseek-output.json（JSON 解析失敗時另存 output/deepseek-output.raw.txt）
@@ -55,6 +57,9 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "output"
 PLATFORM = "deepseek"
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-v4-pro"   # 請以 api-docs.deepseek.com 確認；模型 ID 隨版本變動，腳本本身與版本無關
+
+EXCLUDE_CHOICES = ["scope", "assets", "vulnerabilities", "exposures", "identities", "misconfigurations", "controls", "threat_intel", "topology"]
+FILE_CATEGORY = {"scope.json": "scope", "assets.csv": "assets", "vulnerabilities.csv": "vulnerabilities", "exposures.json": "exposures", "identities.csv": "identities", "misconfigurations.csv": "misconfigurations", "controls.json": "controls", "threat-intel.json": "threat_intel", "topology.json": "topology"}
 
 # 9 個輸入檔：(檔名, 輸入類別, 是否必要)
 INPUT_FILES = [
@@ -117,10 +122,10 @@ def count_records(name: str, raw: str) -> int | None:
     return None
 
 
-def load_inputs(input_dir: Path) -> tuple[list[dict], list[str]]:
-    """讀入 9 個輸入檔。回傳 (已載入檔案列表, 缺少檔案列表)。缺 scope.json 直接中止。"""
+def load_inputs(input_dir: Path, exclude: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
+    """讀入 9 個輸入檔。回傳 (已載入檔案列表, 缺少檔案列表)。缺 scope.json 直接中止；exclude 內的類別視同未提供。"""
     scope_path = input_dir / "scope.json"
-    if not scope_path.exists():
+    if "scope" in exclude or not scope_path.exists():
         sys.exit(
             "[中止] 找不到 scope.json（授權範圍與分析參數）。\n"
             "依共用任務規格第 2.1 節，無授權範圍不得分析。請提供含下列欄位的 scope.json：\n"
@@ -152,6 +157,9 @@ def load_inputs(input_dir: Path) -> tuple[list[dict], list[str]]:
     loaded, missing = [], []
     for name, label, required_file in INPUT_FILES:
         path = input_dir / name
+        if FILE_CATEGORY[name] in exclude:
+            missing.append(f"{name}（{label}；依 --exclude 排除）")
+            continue
         if not path.exists():
             missing.append(f"{name}（{label}）")
             if required_file and name != "scope.json":
@@ -229,7 +237,14 @@ def call_deepseek(system_prompt: str, user_prompt: str, json_prompt: str,
     kwargs = dict(model=model, messages=messages, temperature=0.0, max_tokens=max_tokens)
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
-    r2 = client.chat.completions.create(**kwargs)
+    try:
+        r2 = client.chat.completions.create(**kwargs)
+    except Exception as exc:  # noqa: BLE001 — 端點拒絕 response_format 時自動退回純提示詞模式，重試一次
+        if not json_mode:
+            raise
+        print(f"[警告] JSON Output 模式被端點拒絕（{type(exc).__name__}: {exc}）；改以提示詞要求純 JSON 重試一次。", file=sys.stderr)
+        kwargs.pop("response_format", None)
+        r2 = client.chat.completions.create(**kwargs)
     return report, r2.choices[0].message.content or ""
 
 
@@ -292,6 +307,8 @@ def main() -> int:
                     help="第 2 段不使用 response_format json_object，改以提示詞要求純 JSON")
     ap.add_argument("--dry-run", action="store_true",
                     help="只印出組裝好的提示詞，不呼叫 API、不載入 SDK、不需 API key")
+    ap.add_argument("--exclude", action="append", choices=EXCLUDE_CHOICES, default=[],
+                    help="模擬缺漏：排除某類輸入（可重複）；排除 scope 會直接中止（驗收第 6、7 項）")
     args = ap.parse_args()
 
     input_dir: Path = args.input_dir
@@ -299,7 +316,7 @@ def main() -> int:
         sys.exit(f"[錯誤] 輸入資料夾不存在：{input_dir}")
 
     system_prompt = load_core_prompt()
-    loaded, missing = load_inputs(input_dir)
+    loaded, missing = load_inputs(input_dir, frozenset(args.exclude))
     user_prompt = build_user_prompt(loaded, missing)
     json_prompt = build_json_prompt(load_output_schema())
 

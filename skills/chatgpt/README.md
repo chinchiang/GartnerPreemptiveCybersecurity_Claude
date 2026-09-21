@@ -24,7 +24,7 @@ role: readme
 |---|---|---|
 | 想給團隊一個可分享、固定行為的「分析助理」 | `custom-gpt-instructions.md` | 建立 Custom GPT，貼入 Instructions，上傳 Knowledge 檔案，Actions 保持停用 |
 | 自己在 ChatGPT 裡反覆做分析，且要附上組織的檔案 | `project-instructions.md` | 建立 Project，貼入較短指令，把輸入檔加入專案 |
-| 在終端機／IDE 內以 Codex 針對資料夾內的 CSV/JSON 產生報告 | `codex-skill/SKILL.md` | 複製到 `.agents/skills/preemptive-exposure-analysis/`，以 `$preemptive-exposure-analysis` 叫用 |
+| 在終端機／IDE 內以 Codex 針對資料夾內的 CSV/JSON 產生報告 | `preemptive-exposure-analysis/SKILL.md` | 複製到 `.agents/skills/preemptive-exposure-analysis/`，以 `$preemptive-exposure-analysis` 叫用 |
 | 要自動化、可重現、可納入排程或 CI | `api-workflow.py` + `requirements.txt` | 設定 `OPENAI_API_KEY`，執行腳本；`--dry-run` 可離線檢查提示詞 |
 
 ## 3. 能力限制（三個承載層共通）
@@ -54,7 +54,7 @@ skills/chatgpt/
 ├── README.md                     本檔
 ├── custom-gpt-instructions.md    Custom GPT 的 Instructions 全文 + 名稱／描述／開場提示／Knowledge 清單
 ├── project-instructions.md       ChatGPT Projects 的短版指令與附檔方式
-├── codex-skill/
+├── preemptive-exposure-analysis/
 │   └── SKILL.md                  Agent Skills 標準格式的 Codex skill
 ├── api-workflow.py               Responses API 腳本（含 --dry-run）
 └── requirements.txt              openai>=1.0

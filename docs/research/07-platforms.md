@@ -9,7 +9,7 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 ## 7.1 Agent Skills 開放標準
 
 - 規格（已查證，`agentskills/agentskills` GitHub）：`SKILL.md` + 選用 `scripts/`、`references/`、`assets/`；frontmatter `name`（1–64 字元、小寫與連字號）、`description`（≤ 1024）、選用 `license`、`compatibility`、`metadata`、`allowed-tools`；建議主檔 < 500 行；漸進式載入（啟動只載名稱與描述）。
-- 採用清單（已查證，官方站台資料檔，50 項）：含 Claude、Claude Code、「ChatGPT & Codex (OpenAI)」、Gemini CLI、Cursor、GitHub Copilot、VS Code、OpenClaw、Deep Code（DeepSeek terminal assistant）等；**沒有** xAI、Zhipu/Z.ai 產品，DeepSeek 只有第三方 host。
+- 採用清單（**部分查證**：官方站台資料檔宣告 50 項，研究環境只擷取到 45 項）：含 Claude、Claude Code、「ChatGPT & Codex (OpenAI)」、Gemini CLI、Cursor、GitHub Copilot、VS Code、OpenClaw、Deep Code（DeepSeek terminal assistant）等；在擷取到的 45 項中**未見** xAI、Zhipu/Z.ai 產品，DeepSeek 只有第三方 host——其餘 5 項未能檢視，列入待驗證清單。
 
 ## 7.2 平台總表
 
@@ -18,7 +18,7 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 | ChatGPT（OpenAI） | GPT-5.x（SDK 範例 `gpt-5.5`；已查證） | ChatGPT 應用（Custom Instructions／Projects／Custom GPTs）、Codex、Responses API | Codex 支援 Agent Skills（`.agents/skills`）；ChatGPT 應用無 SKILL.md 證據 | Custom GPT 指令 + Knowledge；Project 指令；Codex SKILL.md；API 腳本 | Codex 已查證／部分；應用部分／待驗證 |
 | Claude（Anthropic） | Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5（已查證） | claude.ai、Claude Code、Developer Platform（Skills API）、Agent SDK | **原生 Agent Skills**；六個跨介面欄位 | SKILL.md（單一來源） | 已查證 |
 | Grok（xAI） | Grok 4.x（SDK 範例 `grok-4.6`、`grok-4.20`；已查證） | xAI API（function calling、structured outputs、伺服器端工具）；grok.com | 無 | system prompt + function calling 工具定義 + API 腳本 | API 已查證；應用待驗證 |
-| GLM（Zhipu／Z.ai） | GLM-5／5.1／5.2／5.3、5.3-Flash（已查證） | Z.ai API Platform／BigModel；chat.z.ai／智谱清言；GLM Coding Plan + Claude Code | Z.ai 以 SKILL.md 發布 skill（發布者）；官方 Claude Code 外掛市集 | Claude Code + GLM 後端的 SKILL.md；system prompt；API 腳本 | 模型與 Claude Code 整合已查證；應用待驗證 |
+| GLM（Zhipu／Z.ai） | GLM-5／5.1／5.2／5.3、5.3-Flash（已查證） | Z.ai API Platform／BigModel；chat.z.ai／智譜清言（原文「智谱清言」）；GLM Coding Plan + Claude Code | Z.ai 以 SKILL.md 發布 skill（發布者）；官方 Claude Code 外掛市集 | Claude Code + GLM 後端的 SKILL.md；system prompt；API 腳本 | 模型與 Claude Code 整合已查證；應用待驗證 |
 | DeepSeek | V4-Pro／V4-Flash（官方公告摘錄 + GitHub 佐證；部分查證） | DeepSeek API（OpenAI／Anthropic 相容）；chat.deepseek.com；`deepseek-harness` | 無第一方；plugin 架構 | 版本無關的 API 腳本；skills-capable host 的 SKILL.md；system prompt | V4 部分查證；應用待驗證 |
 
 ## 7.3 DeepSeek V4 的查證結論

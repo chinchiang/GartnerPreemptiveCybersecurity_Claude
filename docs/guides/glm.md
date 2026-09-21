@@ -16,7 +16,7 @@ platform: glm
 | Z.ai 官方 Claude Code 外掛市集 `zai-org/zai-coding-plugins` | 已查證 |
 | Anthropic 相容端點 `https://api.z.ai/api/anthropic`（GLM Coding Plan） | 部分查證（第三方引述 docs.z.ai） |
 | Z.ai 以 SKILL.md 格式發布 `glm-master-skill` | 已查證（發布者角色） |
-| chat.z.ai／智谱清言 的智能体、知識庫 | **待驗證** |
+| chat.z.ai／智譜清言 的智能體、知識庫 | **待驗證** |
 | Z.ai API Platform／BigModel base URL、function calling 細節 | 部分查證／待驗證 |
 
 **能力限制**：聊天應用能否載入 SKILL.md 未查證；API 細節需以 docs.z.ai／open.bigmodel.cn 為準；模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
@@ -26,7 +26,7 @@ platform: glm
 | 檔案 | 用途 |
 |---|---|
 | `skills/glm/README.md` | 平台說明與查證狀態 |
-| `skills/glm/claude-code-skill/SKILL.md` | Agent Skills 標準 skill（與 Claude 版內容相同，標記 GLM 後端） |
+| `skills/glm/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準 skill（與 Claude 版等效；結構不同：內嵌核心提示與評分規則，並附 `references/`；標記 GLM 後端） |
 | `skills/glm/claude-code-settings.example.json` | Claude Code 使用 GLM 後端的環境變數範例 |
 | `skills/glm/system-prompt.md` | 可直接複製的系統提示詞 |
 | `skills/glm/api-workflow.py`、`requirements.txt` | OpenAI 相容／Anthropic 相容端點腳本（含 `--dry-run`） |
@@ -52,15 +52,15 @@ Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同�
 |---|---|---|
 | Claude Code + GLM 後端 | Claude Code；GLM Coding Plan token（環境變數 `ANTHROPIC_AUTH_TOKEN`） | 資料送至 Z.ai（api.z.ai） |
 | API 腳本 | `GLM_API_KEY`；`pip install openai`（或 `anthropic`） | 資料送至 Z.ai 或 BigModel |
-| 聊天應用 | chat.z.ai／智谱清言帳號 | 資料上傳至 Z.ai／智譜 |
+| 聊天應用 | chat.z.ai／智譜清言帳號 | 資料上傳至 Z.ai／智譜 |
 
 **治理考量**：Z.ai 與 BigModel 由中國大陸公司營運。企業使用者需依組織的資料出境、資料分類與供應商評估政策，決定是否可將資產清冊、弱點、身分資料送出；示範請只用合成資料。
 
 ## 7. 逐步安裝或設定方式
 
-### A. 聊天應用（chat.z.ai／智谱清言，功能待驗證）
+### A. 聊天應用（chat.z.ai／智譜清言，功能待驗證）
 
-1. 若有「智能体／自訂助理」：建立一個，指令欄貼入 `system-prompt.md` 的提示詞區塊；知識庫上傳 `task-spec.md` 與資料檔。
+1. 若有「智能體／自訂助理」：建立一個，指令欄貼入 `system-prompt.md` 的提示詞區塊；知識庫上傳 `task-spec.md` 與資料檔。
 2. 若沒有：新對話第一則貼入提示詞，再附上 9 個資料檔內容。
 
 ### B. Claude Code + GLM 後端（部分查證）
@@ -68,7 +68,7 @@ Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同�
 ```bash
 git clone https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude.git
 cd GartnerPreemptiveCybersecurity_Claude
-mkdir -p .claude/skills && cp -r skills/glm/claude-code-skill .claude/skills/preemptive-exposure-analysis
+mkdir -p .claude/skills && cp -r skills/glm/preemptive-exposure-analysis .claude/skills/preemptive-exposure-analysis
 export ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic   # 以 docs.z.ai 為準
 export ANTHROPIC_AUTH_TOKEN=...                             # 勿寫入檔案
 claude
@@ -101,7 +101,12 @@ python3 skills/glm/api-workflow.py                          # 或 --anthropic-co
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 7 項；API 腳本以 `--input-dir` 指向刪除 `threat-intel.json`／`scope.json` 的複本資料夾完成第 6、7 項。
+依 `task-spec.md` 第 7 節 7 項。第 6、7 項用旗標模擬缺漏：
+
+```bash
+python3 skills/glm/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項
+python3 skills/glm/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出必填欄位
+```
 
 ## 10. 機敏資料處理與人工核准邊界
 

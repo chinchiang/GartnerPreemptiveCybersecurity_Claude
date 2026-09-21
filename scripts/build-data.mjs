@@ -25,13 +25,15 @@ const readText = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
 // cmpPosix：以正規化後的路徑排序，讓兩個平台的檔案順序一致
 const cmpPosix = (a, b) => { const x = relPosix(a), y = relPosix(b); return x < y ? -1 : x > y ? 1 : 0; };
 
+const SKIP_DIRS = new Set(['__pycache__', 'node_modules', '.git', 'dist', 'output']);
+const SKIP_FILES = /\.(pyc|pyo|DS_Store)$|^\.DS_Store$/;
 function walk(dir) {
   const res = [];
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     const st = statSync(p);
-    if (st.isDirectory()) res.push(...walk(p));
-    else res.push(p);
+    if (st.isDirectory()) { if (!SKIP_DIRS.has(name)) res.push(...walk(p)); }
+    else if (!SKIP_FILES.test(name)) res.push(p);
   }
   return res.sort(cmpPosix);
 }
@@ -112,6 +114,24 @@ const caseData = {
   expectedOutput: existsSync(out('examples/expected-output.md')) ? readText(out('examples/expected-output.md')) : ''
 };
 writeFileSync(out('data/case.js'), jsExport('CASE_DATA', caseData));
+
+// ---------- 4b. 其他站上需要的文件（證據檔、README、驗證報告、連結檢查） ----------
+const readIf = (p) => existsSync(out(p)) ? readText(out(p)) : '';
+const evidenceDir = out('docs/evidence');
+const evidence = existsSync(evidenceDir) ? walk(evidenceDir).filter(f => f.endsWith('.md')).map(f => {
+  const body = readText(f);
+  const title = (body.match(/^#\s+(.*)$/m) || [])[1] || basename(f, '.md');
+  return { id: basename(f, '.md'), path: relPosix(f), title, body };
+}) : [];
+const extra = {
+  evidence,
+  readme: readIf('README.md'),
+  syntheticReadme: readIf('examples/synthetic-org/README.md'),
+  backendReadme: readIf('backend/README.md'),
+  verifyReport: readIf('verify-report.md'),
+  linkCheck: readIf('link-check.md')
+};
+writeFileSync(out('data/extra.js'), jsExport('EXTRA_DOCS', extra));
 
 // ---------- 5. ZIP 下載包（store 模式，無壓縮） ----------
 function buildZip(entries) {

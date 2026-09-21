@@ -10,6 +10,9 @@
     t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     t = t.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>');
     t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, a, b) => {
+      // 只允許 http(s)、mailto、站內 hash 與相對路徑；其他協定（javascript:、data: 等）一律不輸出成連結
+      const safe = /^(https?:\/\/|mailto:|#|\.{0,2}\/|[\w.-]+(\/|$|\.md|\.json|\.zip|\.csv|\.py))/i.test(b) && !/^[a-z][a-z0-9+.-]*:/i.test(b.replace(/^(https?|mailto):/i, ''));
+      if (!safe) return `${a}`;
       const ext = /^https?:\/\//i.test(b) ? ' target="_blank" rel="noopener noreferrer"' : '';
       return `<a href="${b}"${ext}>${a}</a>`;
     });
