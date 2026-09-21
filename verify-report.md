@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-09-21T07:07:06.382Z
+執行時間：2026-09-21T07:22:50.499Z
 模式：full
-結果：85/85 通過
+結果：102/102 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -21,8 +21,11 @@
 | Skills 涵蓋五平台 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
 | 每個平台都有 SKILL.md 或 system-prompt.md | ✅ |  |
 | 所有引用的來源 ID 都存在於來源表 | ✅ | 57 個 ID |
-| 每筆來源都有 verification、url、date、accessed | ✅ |  |
-| 證據檔已嵌入網站 | ✅ | 2 份 |
+| 每筆來源都有 verification、url（可為 null）、date、accessed | ✅ |  |
+| 待驗證清單每項都有合法 status | ✅ |  |
+| 待驗證項目都寫出了下一步（how） | ✅ | 15 項待處理 |
+| 已完成項目都有 resolvedAt 日期 | ✅ | 1 項已完成 |
+| 證據檔已嵌入網站 | ✅ | 3 份 |
 | 流程步驟 derivedFrom 指向存在的步驟 | ✅ |  |
 | 流程步驟引用的 I/O 都存在 | ✅ |  |
 | JSON 有效 skills/shared/input-schema.json | ✅ |  |
@@ -39,6 +42,19 @@
 | 驗證計畫：外部驗證需兩個授權旗標 | ✅ |  |
 | 引擎 JSON 符合 output-schema 結構 | ✅ | required、block 欄位、items 必填鍵、摘要長度 |
 | 驗收 6：移除情資後信心下修並標示 | ✅ |  |
+| 示範引擎輸出與 examples/demo-snapshot.txt 一致 | ✅ | 50 行 |
+| 驗收腳本接受符合 schema 的 baseline array／A01 fixture | ✅ |  |
+| 驗收腳本接受誠實的 no-intel 8-file fixture | ✅ |  |
+| 驗收腳本拒絕未宣告缺漏的假 no-intel 輸出 | ✅ |  |
+| 引擎 JSON 通過驗收腳本（baseline） | ✅ |  |
+| 引擎 JSON 通過驗收腳本（no-intel） | ✅ |  |
+| index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性） | ✅ |  |
+| index.html 有 OG／Twitter 卡片與 canonical | ✅ |  |
+| 站點檔案存在 robots.txt | ✅ |  |
+| 站點檔案存在 sitemap.xml | ✅ |  |
+| 站點檔案存在 .nojekyll | ✅ |  |
+| 站點檔案存在 404.html | ✅ |  |
+| canonical、og:url、sitemap.xml、robots.txt 的網址一致 | ✅ |  |
 | 下載檔存在 downloads/skills-chatgpt.zip | ✅ |  |
 | 下載檔存在 downloads/skills-claude.zip | ✅ |  |
 | 下載檔存在 downloads/skills-deepseek.zip | ✅ |  |
@@ -59,7 +75,7 @@
 | 導覽 #/sources | ✅ | 證據與來源 |
 | 導覽 #/deploy | ✅ | 部署與維護 |
 | 方法論章節切換 | ✅ | /methodology?doc=01-definition |
-| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=131 |
+| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=100 |
 | Tabs 方向鍵切換 | ✅ | /methodology?doc=02-relations |
 | Skip link 不改變頁面 | ✅ |  |
 | 全站搜尋回傳結果 | ✅ | 12 筆 |
@@ -79,7 +95,7 @@
 | 案例：風險胃納切換改變 P1 數 | ✅ | 10 → 12 |
 | 案例：輸出 JSON 下載 | ✅ |  |
 | 案例：複製報告 Markdown | ✅ |  |
-| 來源頁所有連結為 http(s) | ✅ | 57 個連結 |
+| 來源頁所有連結為 http(s) | ✅ | 55 個連結 |
 | 來源頁類型篩選 | ✅ |  |
 | 來源頁查證等級篩選 | ✅ |  |
 | 來源頁：證據檔附錄可展開 | ✅ |  |
@@ -90,4 +106,5 @@
 | 無障礙：skip link、lang、aria-current | ✅ |  |
 | 對比：主要按鈕 ≥ 4.5 | ✅ | 6.53 |
 | 對比：深色主題強調色元素 ≥ 4.5 | ✅ | 8.54 |
+| 儲存庫連結顯示狀態符合 REPO_PUBLIC=true | ✅ | 實際 顯示 |
 | 無 JS 執行錯誤 | ✅ |  |

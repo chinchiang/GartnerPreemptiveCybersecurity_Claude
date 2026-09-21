@@ -3,6 +3,7 @@ name: CI
 on:
   pull_request:
   push:
+    branches-ignore: [main]
 
 permissions:
   contents: read
@@ -19,23 +20,22 @@ jobs:
         with:
           python-version: '3.11'
       - name: Build data files and downloads
-        run: node scripts/build-data.mjs
-      - name: Static verification (data, sources, schema, demo acceptance, secrets scan)
-        run: node scripts/verify.mjs --static
-      - name: Generated files are up to date (data/*.js and downloads/*.zip; manifest builtAt excluded)
+        run: npm run build
+      - name: Static verification (data, sources, schema, demo acceptance + snapshot, secrets scan)
+        run: npm run verify:static
+      - name: Generated files are up to date (data/ and downloads/)
         run: |
-          git diff --stat -- data/ downloads/ ':!data/manifest.js' | tee /tmp/dirty.txt
-          git status --porcelain -- data/ downloads/ | grep '^??' | tee -a /tmp/dirty.txt || true
-          test ! -s /tmp/dirty.txt || { echo "data/ 或 downloads/ 與來源不一致，請執行 node scripts/build-data.mjs 後提交"; exit 1; }
-          if git diff -- data/manifest.js | grep '^[+-] ' | grep -v builtAt | grep -q .; then echo "data/manifest.js 內容（builtAt 以外）過期"; exit 1; fi
+          git diff --exit-code -- data/ downloads/ || {
+            echo "::error::data/ 或 downloads/ 與 docs/、skills/、examples/ 不一致，請執行 npm run build 後提交"
+            exit 1
+          }
       - name: Python skills compile and dry-run (no API keys)
         run: |
           python3 -m py_compile skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
           for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run >/dev/null; done
           python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
-      - name: Demo engine acceptance snapshot (incl. --no-scope refusal and schema JSON)
+      - name: Demo engine acceptance (--no-scope refusal, schema JSON, --exclude scope)
         run: |
-          node scripts/run-demo.mjs | head -5
           node scripts/run-demo.mjs --no-scope && { echo '缺 scope 應拒絕'; exit 1; } || echo '缺 scope 已拒絕（exit 2）'
           node scripts/run-demo.mjs --json | python3 -c "import sys,json; d=json.load(sys.stdin); assert all(k in d for k in ['meta','data_quality','exposure_priorities','attack_path_hypotheses','remediation','validation_plan','executive_summary','metrics','human_review_points']); print('schema JSON ok')"
           for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run --exclude scope >/dev/null 2>&1 && { echo "$p 缺 scope 未中止"; exit 1; } || true; done
@@ -50,14 +50,15 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Install Playwright (pinned) and Chromium
+          cache: npm
+      - name: Install Playwright (from package-lock.json) and Chromium
         run: |
-          npm install --no-save --no-package-lock playwright@1.56.1
+          npm ci
           npx playwright install --with-deps chromium
       - name: Build data files and downloads
-        run: node scripts/build-data.mjs
+        run: npm run build
       - name: Browser verification (navigation, search, filters, copy, download, case interaction, mobile, a11y)
-        run: node scripts/verify.mjs
+        run: npm run verify
       - name: Upload verification report and screenshots
         if: always()
         uses: actions/upload-artifact@v7

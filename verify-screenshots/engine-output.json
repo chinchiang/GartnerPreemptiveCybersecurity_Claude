@@ -1,0 +1,940 @@
+{
+ "meta": {
+  "organization": "Northwind Precision（虛構）",
+  "analysis_date": "2026-09-08",
+  "generated_by": "demo-engine (assets/demo.js) / skill 1.0.0",
+  "scope_reference": "SYN-AUTH-2026-09",
+  "scoring_rules": "本專案示範規則（task-spec 附錄 A）；風險胃納 balanced，門檻 P1 ≥ 60、P2 ≥ 40、P3 ≥ 20；權重 {\"exposure\":1,\"exploit\":1,\"identity\":0.8,\"control\":0.8,\"intel\":1,\"impact\":1}",
+  "disclaimer": "本輸出由確定性示範引擎依合成資料產生；語言模型或引擎皆未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與正式環境變更需人工書面授權。"
+ },
+ "data_quality": {
+  "confidence": "中",
+  "basis": "各檔案筆數與可用性",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": true,
+  "files": [
+   {
+    "missing_fields": [],
+    "anomalies": [
+     "主動測試授權 = false；外部掃描授權 = false"
+    ],
+    "name": "scope.json",
+    "records": 1
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [],
+    "name": "assets.csv",
+    "records": 12
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [],
+    "name": "vulnerabilities.csv",
+    "records": 14
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [
+     "old-test.northwind-synthetic.example（asset_id null）未納入清冊"
+    ],
+    "name": "exposures.json",
+    "records": 7
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [],
+    "name": "identities.csv",
+    "records": 8
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [],
+    "name": "misconfigurations.csv",
+    "records": 9
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [],
+    "name": "controls.json",
+    "records": 8
+   },
+   {
+    "missing_fields": [],
+    "anomalies": [],
+    "name": "topology.json",
+    "records": 19
+   }
+  ],
+  "out_of_scope_excluded": [],
+  "inventory_completeness_estimate": 100
+ },
+ "exposure_priorities": {
+  "confidence": "中",
+  "basis": "可能性 × 影響（附錄 A 示範規則）",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": true,
+  "items": [
+   {
+    "finding_id": "F001",
+    "asset_id": "A01",
+    "asset_name": "vpn-gw-01",
+    "vuln_id": "SYN-2026-0101",
+    "title": "VPN appliance pre-auth RCE (synthetic)",
+    "priority": "P1",
+    "score": 86,
+    "likelihood": 10,
+    "impact": 8.6,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：outdated-firmware、legacy-tls",
+     "公開利用程式",
+     "模擬 EPSS 0.91",
+     "模擬 KEV（已知遭利用）",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "既有控制：Central logging / SIEM",
+     "控制缺口：EDR、MFA、Patch SLA",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F003",
+    "asset_id": "A02",
+    "asset_name": "web-portal-01",
+    "vuln_id": "SYN-2026-0210",
+    "title": "SynthCMS file upload leads to RCE (synthetic)",
+    "priority": "P1",
+    "score": 68.7,
+    "likelihood": 7.2,
+    "impact": 9.6,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：outdated-cms、http-redirect-missing",
+     "公開利用程式",
+     "模擬 EPSS 0.62",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "既有控制：EDR、WAF、Central logging / SIEM、Patch SLA",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F012",
+    "asset_id": "A10",
+    "asset_name": "s3-backup-bucket",
+    "vuln_id": "SYN-2026-0402",
+    "title": "Object storage bucket policy allows anonymous list (synthetic)",
+    "priority": "P1",
+    "score": 64.4,
+    "likelihood": 6.4,
+    "impact": 10,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：anonymous-list",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "控制缺口：Immutable backups、Central logging / SIEM",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F009",
+    "asset_id": "A07",
+    "asset_name": "mes-srv-01",
+    "vuln_id": "SYN-2023-0044",
+    "title": "SynthMES unauthenticated API (synthetic)",
+    "priority": "P1",
+    "score": 62.5,
+    "likelihood": 6.3,
+    "impact": 10,
+    "factors": [
+     "公開利用程式",
+     "模擬 EPSS 0.55",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "控制缺口：EDR、Network segmentation、MFA、Central logging / SIEM、Patch SLA",
+     "crown jewel"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F005",
+    "asset_id": "A03",
+    "asset_name": "mail-gw-01",
+    "vuln_id": "SYN-2026-0150",
+    "title": "Mail gateway auth bypass (synthetic)",
+    "priority": "P2",
+    "score": 56.2,
+    "likelihood": 7.8,
+    "impact": 7.2,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：auth-bypass-advisory",
+     "公開利用程式",
+     "控制缺口：EDR、Central logging / SIEM、Patch SLA",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F008",
+    "asset_id": "A06",
+    "asset_name": "erp-db-01",
+    "vuln_id": "SYN-2024-0810",
+    "title": "PostgreSQL privilege escalation (synthetic)",
+    "priority": "P2",
+    "score": 52.8,
+    "likelihood": 5.3,
+    "impact": 10,
+    "factors": [
+     "公開利用程式",
+     "身分弱點 ×2",
+     "設定偏差 ×1",
+     "既有控制：Network segmentation",
+     "控制缺口：EDR、Central logging / SIEM、Deception (honey accounts/tokens)",
+     "crown jewel"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F002",
+    "asset_id": "A01",
+    "asset_name": "vpn-gw-01",
+    "vuln_id": "SYN-2025-0342",
+    "title": "VPN admin panel weak session handling (synthetic)",
+    "priority": "P2",
+    "score": 48.3,
+    "likelihood": 5.6,
+    "impact": 8.6,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：outdated-firmware、legacy-tls",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "既有控制：Central logging / SIEM",
+     "控制缺口：EDR、MFA、Patch SLA",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F006",
+    "asset_id": "A04",
+    "asset_name": "ad-dc-01",
+    "vuln_id": "SYN-2025-0500",
+    "title": "Kerberos ticket handling weakness (synthetic)",
+    "priority": "P3",
+    "score": 39.8,
+    "likelihood": 4,
+    "impact": 10,
+    "factors": [
+     "公開利用程式",
+     "身分弱點 ×2",
+     "設定偏差 ×1",
+     "既有控制：EDR、Central logging / SIEM、Patch SLA",
+     "控制缺口：Deception (honey accounts/tokens)"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F013",
+    "asset_id": "A11",
+    "asset_name": "ci-runner-01",
+    "vuln_id": "SYN-2026-0388",
+    "title": "CI runner exposes token in build logs (synthetic)",
+    "priority": "P3",
+    "score": 36.1,
+    "likelihood": 5,
+    "impact": 7.2,
+    "factors": [
+     "對外曝露",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "既有控制：Patch SLA",
+     "控制缺口：EDR、Central logging / SIEM",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F004",
+    "asset_id": "A02",
+    "asset_name": "web-portal-01",
+    "vuln_id": "SYN-2025-0977",
+    "title": "Nginx outdated version (synthetic)",
+    "priority": "P3",
+    "score": 32.5,
+    "likelihood": 3.4,
+    "impact": 9.6,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：outdated-cms、http-redirect-missing",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "既有控制：EDR、WAF、Central logging / SIEM、Patch SLA",
+     "可達 crown jewel 之入口（blast radius）"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F014",
+    "asset_id": "A12",
+    "asset_name": "hr-saas-sso",
+    "vuln_id": "SYN-2026-0290",
+    "title": "SSO app lacks MFA enforcement for admins (synthetic)",
+    "priority": "P3",
+    "score": 28.5,
+    "likelihood": 4.6,
+    "impact": 6.2,
+    "factors": [
+     "對外曝露",
+     "EASM 議題：admin-mfa-not-enforced",
+     "身分弱點 ×1",
+     "設定偏差 ×1",
+     "既有控制：MFA"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F010",
+    "asset_id": "A08",
+    "asset_name": "file-srv-01",
+    "vuln_id": "SYN-2025-0620",
+    "title": "SMB signing not enforced (synthetic)",
+    "priority": "P4",
+    "score": 15.3,
+    "likelihood": 2.5,
+    "impact": 6.2,
+    "factors": [
+     "公開利用程式",
+     "身分弱點 ×1",
+     "既有控制：EDR、Patch SLA",
+     "控制缺口：Deception (honey accounts/tokens)"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F007",
+    "asset_id": "A05",
+    "asset_name": "erp-app-01",
+    "vuln_id": "SYN-2026-0333",
+    "title": "SynthERP deserialization RCE (synthetic)",
+    "priority": "P4",
+    "score": 0,
+    "likelihood": 0,
+    "impact": 10,
+    "factors": [
+     "身分弱點 ×1",
+     "既有控制：EDR、Central logging / SIEM、Patch SLA"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   },
+   {
+    "finding_id": "F011",
+    "asset_id": "A09",
+    "asset_name": "jump-host-01",
+    "vuln_id": "SYN-2026-0015",
+    "title": "RDP exposed to user VLAN without MFA (synthetic)",
+    "priority": "P4",
+    "score": 0,
+    "likelihood": 0,
+    "impact": 6.6,
+    "factors": [
+     "既有控制：EDR、MFA、Central logging / SIEM、Patch SLA"
+    ],
+    "missing": [
+     "威脅情資"
+    ],
+    "confidence": "中"
+   }
+  ],
+  "thresholds": {
+   "P1": 60,
+   "P2": 40,
+   "P3": 20
+  }
+ },
+ "attack_path_hypotheses": {
+  "confidence": "中",
+  "basis": "拓樸邊 + 節點可能性的 DFS 推論（最長 5 跳）",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": true,
+  "items": [
+   {
+    "id": "H1",
+    "entry": "vpn-gw-01",
+    "target": "erp-db-01",
+    "entry_id": "A01",
+    "target_id": "A06",
+    "nodes": [
+     "internet",
+     "vpn-gw-01",
+     "ad-dc-01",
+     "erp-db-01"
+    ],
+    "node_ids": [
+     "A01",
+     "A04",
+     "A06"
+    ],
+    "edges": [
+     "internet → vpn-gw-01（VPN 443/tcp；exposed）",
+     "vpn-gw-01 → ad-dc-01（VPN 使用者網段可達 DC (LDAP/Kerberos/SMB)；network）",
+     "ad-dc-01 → erp-db-01（svc-erp-sync 憑證；identity）"
+    ],
+    "feasibility": 6,
+    "blocking_controls": [
+     "Central logging / SIEM",
+     "EDR",
+     "Patch SLA",
+     "Network segmentation"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H2",
+    "entry": "vpn-gw-01",
+    "target": "erp-db-01",
+    "entry_id": "A01",
+    "target_id": "A06",
+    "nodes": [
+     "internet",
+     "vpn-gw-01",
+     "ad-dc-01",
+     "erp-app-01",
+     "erp-db-01"
+    ],
+    "node_ids": [
+     "A01",
+     "A04",
+     "A05",
+     "A06"
+    ],
+    "edges": [
+     "internet → vpn-gw-01（VPN 443/tcp；exposed）",
+     "vpn-gw-01 → ad-dc-01（VPN 使用者網段可達 DC (LDAP/Kerberos/SMB)；network）",
+     "ad-dc-01 → erp-app-01（網域信任 / svc-erp-sync 網域管理員；identity）",
+     "erp-app-01 → erp-db-01（pg_hba trust 認證；misconfig）"
+    ],
+    "feasibility": 5.2,
+    "blocking_controls": [
+     "Central logging / SIEM",
+     "EDR",
+     "Patch SLA",
+     "Network segmentation"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H3",
+    "entry": "vpn-gw-01",
+    "target": "mes-srv-01",
+    "entry_id": "A01",
+    "target_id": "A07",
+    "nodes": [
+     "internet",
+     "vpn-gw-01",
+     "ad-dc-01",
+     "file-srv-01",
+     "mes-srv-01"
+    ],
+    "node_ids": [
+     "A01",
+     "A04",
+     "A08",
+     "A07"
+    ],
+    "edges": [
+     "internet → vpn-gw-01（VPN 443/tcp；exposed）",
+     "vpn-gw-01 → ad-dc-01（VPN 使用者網段可達 DC (LDAP/Kerberos/SMB)；network）",
+     "ad-dc-01 → file-srv-01（網域管理員；identity）",
+     "file-srv-01 → mes-srv-01（OT-DMZ 未隔離 / SMB；network）"
+    ],
+    "feasibility": 4.9,
+    "blocking_controls": [
+     "Central logging / SIEM",
+     "EDR",
+     "Patch SLA"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H4",
+    "entry": "s3-backup-bucket",
+    "target": "erp-db-01",
+    "entry_id": "A10",
+    "target_id": "A06",
+    "nodes": [
+     "internet",
+     "s3-backup-bucket",
+     "erp-db-01"
+    ],
+    "node_ids": [
+     "A10",
+     "A06"
+    ],
+    "edges": [
+     "internet → s3-backup-bucket（Object storage API；exposed）",
+     "s3-backup-bucket → erp-db-01（備份內含 DB dump（資料外洩路徑）；data）"
+    ],
+    "feasibility": 4.2,
+    "blocking_controls": [
+     "Network segmentation"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H5",
+    "entry": "vpn-gw-01",
+    "target": "mes-srv-01",
+    "entry_id": "A01",
+    "target_id": "A07",
+    "nodes": [
+     "internet",
+     "vpn-gw-01",
+     "jump-host-01",
+     "mes-srv-01"
+    ],
+    "node_ids": [
+     "A01",
+     "A09",
+     "A07"
+    ],
+    "edges": [
+     "internet → vpn-gw-01（VPN 443/tcp；exposed）",
+     "vpn-gw-01 → jump-host-01（RDP 3389 無 MFA；network）",
+     "jump-host-01 → mes-srv-01（跳板機可達 OT-DMZ；network）"
+    ],
+    "feasibility": 3.8,
+    "blocking_controls": [
+     "Central logging / SIEM",
+     "EDR",
+     "MFA",
+     "Patch SLA"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H6",
+    "entry": "vpn-gw-01",
+    "target": "erp-db-01",
+    "entry_id": "A01",
+    "target_id": "A06",
+    "nodes": [
+     "internet",
+     "vpn-gw-01",
+     "jump-host-01",
+     "erp-db-01"
+    ],
+    "node_ids": [
+     "A01",
+     "A09",
+     "A06"
+    ],
+    "edges": [
+     "internet → vpn-gw-01（VPN 443/tcp；exposed）",
+     "vpn-gw-01 → jump-host-01（RDP 3389 無 MFA；network）",
+     "jump-host-01 → erp-db-01（DBA 由跳板機管理；network）"
+    ],
+    "feasibility": 3.8,
+    "blocking_controls": [
+     "Central logging / SIEM",
+     "EDR",
+     "MFA",
+     "Patch SLA",
+     "Network segmentation"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H7",
+    "entry": "web-portal-01",
+    "target": "erp-db-01",
+    "entry_id": "A02",
+    "target_id": "A06",
+    "nodes": [
+     "internet",
+     "web-portal-01",
+     "erp-app-01",
+     "erp-db-01"
+    ],
+    "node_ids": [
+     "A02",
+     "A05",
+     "A06"
+    ],
+    "edges": [
+     "internet → web-portal-01（HTTPS 443/tcp；exposed）",
+     "web-portal-01 → erp-app-01（應用 API 8443；app-trust）",
+     "erp-app-01 → erp-db-01（pg_hba trust 認證；misconfig）"
+    ],
+    "feasibility": 3.4,
+    "blocking_controls": [
+     "EDR",
+     "WAF",
+     "Central logging / SIEM",
+     "Patch SLA",
+     "Network segmentation"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H8",
+    "entry": "mail-gw-01",
+    "target": "mes-srv-01",
+    "entry_id": "A03",
+    "target_id": "A07",
+    "nodes": [
+     "internet",
+     "mail-gw-01",
+     "file-srv-01",
+     "mes-srv-01"
+    ],
+    "node_ids": [
+     "A03",
+     "A08",
+     "A07"
+    ],
+    "edges": [
+     "internet → mail-gw-01（SMTP/IMAP；exposed）",
+     "mail-gw-01 → file-srv-01（釣魚後使用者工作站 → SMB；user-pivot）",
+     "file-srv-01 → mes-srv-01（OT-DMZ 未隔離 / SMB；network）"
+    ],
+    "feasibility": 3.4,
+    "blocking_controls": [
+     "EDR",
+     "Patch SLA"
+    ],
+    "status": "hypothesis"
+   },
+   {
+    "id": "H9",
+    "entry": "ci-runner-01",
+    "target": "erp-db-01",
+    "entry_id": "A11",
+    "target_id": "A06",
+    "nodes": [
+     "internet",
+     "ci-runner-01",
+     "web-portal-01",
+     "erp-app-01",
+     "erp-db-01"
+    ],
+    "node_ids": [
+     "A11",
+     "A02",
+     "A05",
+     "A06"
+    ],
+    "edges": [
+     "internet → ci-runner-01（CI webhook；exposed）",
+     "ci-runner-01 → web-portal-01（ci-deploy-bot 部署金鑰；identity）",
+     "web-portal-01 → erp-app-01（應用 API 8443；app-trust）",
+     "erp-app-01 → erp-db-01（pg_hba trust 認證；misconfig）"
+    ],
+    "feasibility": 2.7,
+    "blocking_controls": [
+     "Patch SLA",
+     "EDR",
+     "WAF",
+     "Central logging / SIEM",
+     "Network segmentation"
+    ],
+    "status": "hypothesis"
+   }
+  ]
+ },
+ "remediation": {
+  "confidence": "中",
+  "basis": "P1/P2 發現的規則對映",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": true,
+  "items": [
+   {
+    "finding_id": "F001",
+    "asset_name": "vpn-gw-01",
+    "priority": "P1",
+    "action": "套用修補（SYN-2026-0101）並驗證版本",
+    "owner": "Network Team",
+    "effort": "中",
+    "verify": "修補後以授權的外部驗證確認服務版本／不可利用",
+    "approval_level": "一般變更流程"
+   },
+   {
+    "finding_id": "F003",
+    "asset_name": "web-portal-01",
+    "priority": "P1",
+    "action": "套用修補（SYN-2026-0210）並驗證版本",
+    "owner": "Digital Team",
+    "effort": "中",
+    "verify": "修補後以授權的外部驗證確認服務版本／不可利用",
+    "approval_level": "一般變更流程"
+   },
+   {
+    "finding_id": "F012",
+    "asset_name": "s3-backup-bucket",
+    "priority": "P1",
+    "action": "修正設定：Object storage bucket policy allows anonymous list (synthetic)",
+    "owner": "IT Ops",
+    "effort": "低",
+    "verify": "修補後以授權的外部驗證確認服務版本／不可利用",
+    "approval_level": "一般變更流程"
+   },
+   {
+    "finding_id": "F009",
+    "asset_name": "mes-srv-01",
+    "priority": "P1",
+    "action": "無修補可用：套用廠商緩解措施、限制存取來源、加強監控",
+    "owner": "Plant IT",
+    "effort": "高（需維護窗口／OT 變更審查）",
+    "verify": "修補後以內部弱掃或設定檢查確認",
+    "approval_level": "需變更委員會／OT 負責人／系統擁有者核准"
+   },
+   {
+    "finding_id": "F005",
+    "asset_name": "mail-gw-01",
+    "priority": "P2",
+    "action": "無修補可用：套用廠商緩解措施、限制存取來源、加強監控",
+    "owner": "IT Ops",
+    "effort": "中",
+    "verify": "修補後以授權的外部驗證確認服務版本／不可利用",
+    "approval_level": "一般變更流程"
+   },
+   {
+    "finding_id": "F008",
+    "asset_name": "erp-db-01",
+    "priority": "P2",
+    "action": "套用修補（SYN-2024-0810）並驗證版本",
+    "owner": "DBA Team",
+    "effort": "中",
+    "verify": "修補後以內部弱掃或設定檢查確認",
+    "approval_level": "需變更委員會／OT 負責人／系統擁有者核准"
+   },
+   {
+    "finding_id": "F002",
+    "asset_name": "vpn-gw-01",
+    "priority": "P2",
+    "action": "套用修補（SYN-2025-0342）並驗證版本",
+    "owner": "Network Team",
+    "effort": "中",
+    "verify": "修補後以授權的外部驗證確認服務版本／不可利用",
+    "approval_level": "一般變更流程"
+   }
+  ],
+  "compensating_controls": [
+   {
+    "control": "Network segmentation",
+    "gaps": "mes-srv-01",
+    "note": "ERP DB 已隔離；OT-DMZ 與產線網段未隔離"
+   },
+   {
+    "control": "MFA",
+    "gaps": "vpn-gw-01、mes-srv-01",
+    "note": "VPN 群組 12% 未啟用；OT 共用帳號無 MFA"
+   },
+   {
+    "control": "Immutable backups",
+    "gaps": "s3-backup-bucket",
+    "note": "備份儲存桶未啟用物件鎖定／版本控管"
+   },
+   {
+    "control": "Deception (honey accounts/tokens)",
+    "gaps": "ad-dc-01、erp-db-01、file-srv-01",
+    "note": "尚未部署"
+   },
+   {
+    "control": "Patch SLA",
+    "gaps": "vpn-gw-01、mail-gw-01、mes-srv-01",
+    "note": "網路設備與 OT 由不同團隊負責，無 SLA"
+   }
+  ]
+ },
+ "validation_plan": {
+  "confidence": "中",
+  "basis": "前 3 條路徑假設；僅提案",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": true,
+  "items": [
+   {
+    "id": "V1",
+    "hypothesis": "H1：vpn-gw-01 → erp-db-01",
+    "method": "授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動",
+    "authorization_required": "尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT",
+    "scope_exclusions": [
+     "產線 PLC 與 HMI（僅可讀取 MES 相關資料，不得對 OT 提出主動測試）"
+    ],
+    "success_criteria": "證明路徑不可行，或確認阻斷點（控制）有效"
+   },
+   {
+    "id": "V2",
+    "hypothesis": "H2：vpn-gw-01 → erp-db-01",
+    "method": "授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動",
+    "authorization_required": "尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT",
+    "scope_exclusions": [
+     "產線 PLC 與 HMI（僅可讀取 MES 相關資料，不得對 OT 提出主動測試）"
+    ],
+    "success_criteria": "證明路徑不可行，或確認阻斷點（控制）有效"
+   },
+   {
+    "id": "V3",
+    "hypothesis": "H3：vpn-gw-01 → mes-srv-01",
+    "method": "授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動（OT 端點只做讀取式驗證）",
+    "authorization_required": "尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT",
+    "scope_exclusions": [
+     "產線 PLC 與 HMI（僅可讀取 MES 相關資料，不得對 OT 提出主動測試）"
+    ],
+    "success_criteria": "證明路徑不可行，或確認阻斷點（控制）有效"
+   }
+  ]
+ },
+ "executive_summary": {
+  "confidence": "中",
+  "basis": "面向 reporting.audience 的摘要",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": true,
+  "audience": [
+   "CISO",
+   "IT 主管",
+   "廠務主管"
+  ],
+  "text": "1. 現況：14 項發現，4 項 P1（3 項對外曝露）；最急迫：VPN Gateway（A01） 之 VPN appliance pre-auth RCE。\n2. 最可能路徑：internet → A01 → A04 → A06（可行性 6/10，未驗證），阻斷點為身分與網段控制。\n3. 決策請求：（1）核准 P1（4 項）修補排程與補償控制；（2）決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）；（3）補齊缺漏資料後重跑分析。\n4. 限制：威脅情資；所有路徑為假設，模型未驗證實際曝險。",
+  "decisions_requested": [
+   "核准 P1（4 項）修補排程與補償控制",
+   "決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）",
+   "補齊缺漏資料後重跑分析"
+  ]
+ },
+ "metrics": {
+  "confidence": "中",
+  "basis": "由優先序與路徑假設計算",
+  "missing_inputs": [
+   "威脅情資"
+  ],
+  "requires_human": false,
+  "items": [
+   {
+    "name": "對外曝露且 P1 的發現數",
+    "value": 3,
+    "target": "0（7 天內）",
+    "next_review": "每週"
+   },
+   {
+    "name": "P1/P2 發現總數",
+    "value": "4 / 3",
+    "target": "每週下降",
+    "next_review": "每週"
+   },
+   {
+    "name": "可達 crown jewel 的攻擊路徑假設數",
+    "value": 9,
+    "target": "每條路徑至少一個已驗證阻斷點",
+    "next_review": "每週"
+   },
+   {
+    "name": "平均信心水準",
+    "value": "0% 為高信心",
+    "target": "≥ 80%",
+    "next_review": "每週"
+   },
+   {
+    "name": "資產清冊完整度（模擬）",
+    "value": "100%",
+    "target": "≥ 95%",
+    "next_review": "每週"
+   },
+   {
+    "name": "未納入清冊的對外資產",
+    "value": 1,
+    "target": "0",
+    "next_review": "每週"
+   }
+  ]
+ },
+ "human_review_points": [
+  {
+   "stage": "範圍確認",
+   "who": "CISO / 系統擁有者",
+   "what": "確認授權範圍、排除項與是否允許任何主動測試",
+   "status": "pending"
+  },
+  {
+   "stage": "優先序核准",
+   "who": "資安主管 + 業務擁有者",
+   "what": "確認 P1（4 項）的業務重要性與排序是否合理；模型只是建議",
+   "status": "pending"
+  },
+  {
+   "stage": "攻擊路徑假設審查",
+   "who": "資安架構師",
+   "what": "拓樸與信任邊是否正確；假設不等於已驗證",
+   "status": "pending"
+  },
+  {
+   "stage": "改善方案核准",
+   "who": "變更委員會 / OT 負責人",
+   "what": "正式環境變更、OT 變更與維護窗口",
+   "status": "pending"
+  },
+  {
+   "stage": "驗證執行授權",
+   "who": "CISO",
+   "what": "任何外部掃描、BAS 或滲透測試須書面授權",
+   "status": "pending"
+  }
+ ]
+}

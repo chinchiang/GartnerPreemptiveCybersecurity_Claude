@@ -1,0 +1,21 @@
+{
+  "name": "gartner-preemptive-cybersecurity-playbook",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Gartner Preemptive Cybersecurity 研究、五平台 skills 與互動網站（純靜態，建置與驗證只用 Node 內建模組；Playwright 僅用於瀏覽器驗證）",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build-data.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:static": "node scripts/verify.mjs --static",
+    "verify:links": "node scripts/verify.mjs --static --links",
+    "demo": "node scripts/run-demo.mjs",
+    "snapshot": "node scripts/run-demo.mjs > examples/demo-snapshot.txt"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

@@ -259,12 +259,18 @@
         refused: true, missing_fields: R.missingFields, required_fields: R.requiredFields,
         data_quality: block('缺少 scope'), exposure_priorities: { ...block('未執行'), items: [] }, attack_path_hypotheses: { ...block('未執行'), items: [] }, remediation: { ...block('未執行'), items: [], compensating_controls: [] }, validation_plan: { ...block('未執行'), items: [] }, executive_summary: { ...block('未執行'), audience: [], text: '缺少授權範圍，無法分析。', decisions_requested: ['提供 scope（授權範圍）後重跑'] }, metrics: { ...block('未執行'), items: [] }, human_review_points: [] };
     }
+    // 只列入本次實際納入分析的檔案（被切換掉的類別視同未提供，不列入，並反映在 missing_inputs）
+    const unknownExposed = (data.exposures?.exposures || []).filter(e => !e.asset_id).map(e => e.hostname);
     const files = [
-      { name: 'assets', records: data.assets?.length ?? 0 }, { name: 'vulnerabilities', records: data.vulnerabilities?.length ?? 0 },
-      { name: 'exposures', records: R.params.inputs.exposures ? (data.exposures?.exposures?.length ?? 0) : 0 }, { name: 'identities', records: R.params.inputs.identities ? (data.identities?.length ?? 0) : 0 },
-      { name: 'misconfigurations', records: R.params.inputs.misconfig ? (data.misconfigurations?.length ?? 0) : 0 }, { name: 'controls', records: R.params.inputs.controls ? (data.controls?.controls?.length ?? 0) : 0 },
-      { name: 'threat_intel.actors', records: R.params.inputs.threatIntel ? (data.threatIntel?.actors?.length ?? 0) : 0 }, { name: 'topology.edges', records: R.params.inputs.topology ? (data.topology?.edges?.length ?? 0) : 0 }
-    ].map(f => ({ ...f, missing_fields: [], anomalies: [] }));
+      { name: 'scope.json', records: 1, anomalies: [`主動測試授權 = ${scope.authorized_scope?.active_testing_authorized}；外部掃描授權 = ${scope.authorized_scope?.external_scanning_authorized}`] },
+      { name: 'assets.csv', records: data.assets?.length ?? 0 }, { name: 'vulnerabilities.csv', records: data.vulnerabilities?.length ?? 0 },
+      R.params.inputs.exposures && { name: 'exposures.json', records: data.exposures?.exposures?.length ?? 0, anomalies: unknownExposed.map(h => `${h}（asset_id null）未納入清冊`) },
+      R.params.inputs.identities && { name: 'identities.csv', records: data.identities?.length ?? 0 },
+      R.params.inputs.misconfig && { name: 'misconfigurations.csv', records: data.misconfigurations?.length ?? 0 },
+      R.params.inputs.controls && { name: 'controls.json', records: data.controls?.controls?.length ?? 0 },
+      R.params.inputs.threatIntel && { name: 'threat-intel.json', records: data.threatIntel?.actors?.length ?? 0 },
+      R.params.inputs.topology && { name: 'topology.json', records: data.topology?.edges?.length ?? 0 }
+    ].filter(Boolean).map(f => ({ missing_fields: [], anomalies: [], ...f }));
     return {
       meta: {
         organization: scope.organization, analysis_date: scope.analysis_date, generated_by: generatedBy,
@@ -274,7 +280,7 @@
       },
       data_quality: { ...block('各檔案筆數與可用性'), files, out_of_scope_excluded: R.outOfScope, inventory_completeness_estimate: R.params.inventoryCompleteness },
       exposure_priorities: { ...block('可能性 × 影響（附錄 A 示範規則）'), items: R.findings.map(f => ({ finding_id: f.finding_id, asset_id: f.asset_id, asset_name: f.asset.name, vuln_id: f.vuln_id, title: f.title, priority: f.priority, score: f.score, likelihood: round1(f.likelihood), impact: round1(f.impact), factors: f.factors, missing: f.missing, confidence: f.confidence })), thresholds: { P1: R.thresholds[0], P2: R.thresholds[1], P3: R.thresholds[2] } },
-      attack_path_hypotheses: { ...block('拓樸邊 + 節點可能性的 DFS 推論（最長 5 跳）'), items: R.hypotheses.map(h => ({ id: h.id, entry: h.entry, target: h.target, nodes: ['internet', ...h.nodes], edges: h.edges.map(e => `${e.from} → ${e.to}（${e.via}；${e.trust}）`), feasibility: h.feasibility, blocking_controls: h.blockingControls, status: 'hypothesis' })) },
+      attack_path_hypotheses: { ...block('拓樸邊 + 節點可能性的 DFS 推論（最長 5 跳）'), items: R.hypotheses.map(h => ({ id: h.id, entry: nameOf(h.entry), target: nameOf(h.target), entry_id: h.entry, target_id: h.target, nodes: ['internet', ...h.nodes.map(nameOf)], node_ids: h.nodes, edges: h.edges.map(e => `${nameOf(e.from)} → ${nameOf(e.to)}（${e.via}；${e.trust}）`), feasibility: h.feasibility, blocking_controls: h.blockingControls, status: 'hypothesis' })) },
       remediation: { ...block('P1/P2 發現的規則對映'), items: R.recs.map(r => ({ finding_id: r.finding_id, asset_name: r.asset, priority: r.priority, action: r.action, owner: r.owner, effort: r.effort, verify: r.verify, approval_level: r.approval })), compensating_controls: R.compensating },
       validation_plan: { ...block('前 3 條路徑假設；僅提案'), items: R.validation.map(v => ({ id: v.id, hypothesis: `${v.hypothesis_id}：${nameOf(R.hypotheses.find(h => h.id === v.hypothesis_id)?.entry)} → ${nameOf(R.hypotheses.find(h => h.id === v.hypothesis_id)?.target)}`, method: v.method, authorization_required: v.requires, scope_exclusions: v.scope_exclusions, success_criteria: v.success })) },
       executive_summary: { ...block('面向 reporting.audience 的摘要'), audience: R.summary.audience, text: R.summary.text, decisions_requested: R.summary.decisions },

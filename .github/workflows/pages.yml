@@ -23,13 +23,13 @@ jobs:
         with:
           node-version: '22'
       - name: Build data files and downloads
-        run: node scripts/build-data.mjs
+        run: npm run build
       - name: Smoke test (static checks)
-        run: node scripts/verify.mjs --static
+        run: npm run verify:static
       - name: Assemble site (only the files the site needs)
         run: |
           rm -rf _site && mkdir _site
-          cp -r index.html 404.html .nojekyll assets data downloads _site/
+          cp -r index.html 404.html .nojekyll robots.txt sitemap.xml assets data downloads _site/
           du -sh _site
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

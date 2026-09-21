@@ -9,6 +9,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,8 +37,16 @@ function staticChecks() {
   for (const p of w.PLATFORMS || []) for (const id of p.sources) referenced.add(id);
   const missing = [...referenced].filter(id => !srcIds.has(id));
   ok('所有引用的來源 ID 都存在於來源表', missing.length === 0, missing.length ? `缺：${missing.join(', ')}` : `${referenced.size} 個 ID`);
-  const noVer = (w.SOURCES || []).filter(s => !s.verification || !s.url || !s.date || !s.accessed).map(s => s.id);
-  ok('每筆來源都有 verification、url、date、accessed', noVer.length === 0, noVer.join(','));
+  const noVer = (w.SOURCES || []).filter(s => !s.verification || s.url === undefined || !s.date || !s.accessed).map(s => s.id);
+  ok('每筆來源都有 verification、url（可為 null）、date、accessed', noVer.length === 0, noVer.join(','));
+  // 待驗證清單：status 合法、pending 必須寫得出下一步、done 必須有完成日。
+  const todo = w.TODO_ITEMS || [];
+  const badStatus = todo.filter(t => !['pending', 'done'].includes(t.status)).map(t => t.item?.slice(0, 20));
+  ok('待驗證清單每項都有合法 status', todo.length > 0 && badStatus.length === 0, badStatus.join('｜'));
+  const emptyHow = todo.filter(t => t.status === 'pending' && !(t.how || '').trim()).map(t => t.item?.slice(0, 20));
+  ok('待驗證項目都寫出了下一步（how）', emptyHow.length === 0, emptyHow.length ? emptyHow.join('｜') : `${todo.filter(t => t.status === 'pending').length} 項待處理`);
+  const badDone = todo.filter(t => t.status === 'done' && !/^\d{4}-\d{2}-\d{2}$/.test(t.resolvedAt || '')).map(t => t.item?.slice(0, 20));
+  ok('已完成項目都有 resolvedAt 日期', badDone.length === 0, badDone.length ? badDone.join('｜') : `${todo.filter(t => t.status === 'done').length} 項已完成`);
   ok('證據檔已嵌入網站', (w.EXTRA_DOCS?.evidence || []).length >= 2, `${(w.EXTRA_DOCS?.evidence || []).length} 份`);
   const badDerived = (w.PROCESS_STAGES || []).flatMap(s => s.derivedFrom || []).filter(id => !(w.PROCESS_STAGES || []).some(x => x.id === id));
   ok('流程步驟 derivedFrom 指向存在的步驟', badDerived.length === 0, badDerived.join(','));
@@ -75,7 +84,44 @@ function staticChecks() {
   ok('引擎 JSON 符合 output-schema 結構', missTop.length === 0 && blocksOK && hypOK && valOK && remOK && (S.executive_summary.text.length <= 300), missTop.join(',') || 'required、block 欄位、items 必填鍵、摘要長度');
   const R2 = w.DEMO.analyze(w.CASE_DATA, { inputs: { threatIntel: false } });
   ok('驗收 6：移除情資後信心下修並標示', R2.findings.every(f => f.confidence === '中') && R2.missingSummary.includes('威脅情資'));
-  // 陳舊產生檔：downloads/*.zip 與 data/*.js 由 build-data.mjs 產生，CI 另以 git status 檢查
+  // 示範引擎 golden snapshot：評分規則同時存在於 assets/demo.js、skills/shared/core-prompt.md、
+  // skills/shared/task-spec.md 附錄 A 與 references/scoring-rules.md，此檢查用來抓「改了一處忘了同步其他處」。
+  const snapPath = join(ROOT, 'examples/demo-snapshot.txt');
+  try {
+    const actual = execFileSync(process.execPath, [join(ROOT, 'scripts/run-demo.mjs')], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
+    const expected = readFileSync(snapPath, 'utf8').replace(/\r\n/g, '\n');
+    ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
+      actual === expected ? `${actual.split('\n').length} 行` : '評分規則已變動：確認 demo.js／core-prompt.md／task-spec.md／scoring-rules.md 四處已同步後執行 npm run snapshot 更新快照');
+  } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
+  // check-acceptance.mjs 契約回歸
+  const checker = join(ROOT, 'scripts/check-acceptance.mjs');
+  const fixture = join(ROOT, 'examples/acceptance-fixture.json');
+  const noIntelFixture = join(ROOT, 'examples/acceptance-fixture-no-intel.json');
+  const runChecker = (input, extra = []) => {
+    try { execFileSync(process.execPath, [checker, input, ...extra], { encoding: 'utf8', stdio: 'pipe' }); return 0; }
+    catch (e) { return e.status ?? 2; }
+  };
+  ok('驗收腳本接受符合 schema 的 baseline array／A01 fixture', runChecker(fixture) === 0);
+  ok('驗收腳本接受誠實的 no-intel 8-file fixture', runChecker(noIntelFixture, ['--variant', 'no-intel']) === 0);
+  ok('驗收腳本拒絕未宣告缺漏的假 no-intel 輸出', runChecker(fixture, ['--variant', 'no-intel']) === 1);
+  // 引擎 JSON 也應通過驗收腳本（baseline 與 no-intel）
+  const tmpDir = join(ROOT, 'verify-screenshots'); mkdirSync(tmpDir, { recursive: true });
+  const engineJson = join(tmpDir, 'engine-output.json');
+  writeFileSync(engineJson, JSON.stringify(w.DEMO.toSchema(R, w.CASE_DATA), null, 1));
+  ok('引擎 JSON 通過驗收腳本（baseline）', runChecker(engineJson) === 0);
+  writeFileSync(engineJson, JSON.stringify(w.DEMO.toSchema(R2, w.CASE_DATA), null, 1));
+  ok('引擎 JSON 通過驗收腳本（no-intel）', runChecker(engineJson, ['--variant', 'no-intel']) === 0);
+  // 站點層級檔案與 index.html 的 head
+  const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
+    /http-equiv="Content-Security-Policy"/.test(html) && /style-src [^"]*'unsafe-inline'/.test(html));
+  ok('index.html 有 OG／Twitter 卡片與 canonical', ['og:title', 'og:url', 'twitter:card', 'rel="canonical"'].every(k => html.includes(k)));
+  for (const f of ['robots.txt', 'sitemap.xml', '.nojekyll', '404.html']) ok(`站點檔案存在 ${f}`, existsSync(join(ROOT, f)));
+  const SITE = 'https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/';
+  ok('canonical、og:url、sitemap.xml、robots.txt 的網址一致',
+    html.includes(`rel="canonical" href="${SITE}"`) && html.includes(`content="${SITE}"`)
+    && readFileSync(join(ROOT, 'sitemap.xml'), 'utf8').includes(`<loc>${SITE}</loc>`)
+    && readFileSync(join(ROOT, 'robots.txt'), 'utf8').includes(`${SITE}sitemap.xml`));
   // 下載檔案
   for (const d of w.BUILD_MANIFEST.downloads) ok(`下載檔存在 ${d}`, existsSync(join(ROOT, d)));
   // 機敏字串掃描
@@ -234,6 +280,10 @@ async function browserChecks() {
   });
   ok('對比：深色主題強調色元素 ≥ 4.5', darkContrast >= 4.5, darkContrast.toFixed(2));
   await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+  // 儲存庫連結的顯示狀態必須與 assets/app.js 的 REPO_PUBLIC 一致。
+  const repoPublic = /const REPO_PUBLIC = true/.test(readFileSync(join(ROOT, 'assets/app.js'), 'utf8'));
+  const repoVisible = await page.evaluate(() => ['#repo-link', '#repo-footer'].every(s => { const n = document.querySelector(s); return n && !n.hidden; }));
+  ok(`儲存庫連結顯示狀態符合 REPO_PUBLIC=${repoPublic}`, repoVisible === repoPublic, `實際 ${repoVisible ? '顯示' : '隱藏'}`);
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }
@@ -243,13 +293,16 @@ async function linkChecks() {
   const ctx = { window: {} }; vm.createContext(ctx);
   vm.runInContext(readFileSync(join(ROOT, 'data/sources.js'), 'utf8'), ctx);
   const rows = [];
+  let skipped = 0;
   for (const s of ctx.window.SOURCES) {
+    if (!s.url) { rows.push(`| ${s.id} | －（無公開連結） | — |`); skipped++; continue; }
     try {
       const r = await fetch(s.url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(15000) });
       rows.push(`| ${s.id} | ${r.status} | ${s.url} |`);
     } catch (e) { rows.push(`| ${s.id} | ERR ${String(e.cause?.code || e.message).slice(0, 40)} | ${s.url} |`); }
   }
-  writeFileSync(join(ROOT, 'link-check.md'), `# 連結檢查 ${new Date().toISOString()}\n\n| ID | 狀態 | URL |\n|---|---|---|\n${rows.join('\n')}\n`);
+  const note = '> 403 表示執行環境無法判定連結是否有效（出口 proxy 或站方 bot 防護），不代表連結失效。\n';
+  writeFileSync(join(ROOT, 'link-check.md'), `# 連結檢查 ${new Date().toISOString()}\n\n${note}\n檢查 ${rows.length - skipped} 個 URL，另有 ${skipped} 個來源無公開連結。\n\n| ID | 狀態 | URL |\n|---|---|---|\n${rows.join('\n')}\n`);
   console.log(rows.join('\n'));
 }
 
