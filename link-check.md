@@ -1,4 +1,4 @@
-# 連結檢查 2026-09-09T23:23:33.768Z
+# 連結檢查 2026-09-21T06:28:44.279Z
 
 | ID | 狀態 | URL |
 |---|---|---|
@@ -38,8 +38,8 @@
 | V5 | 403 | https://www.splunk.com/en_us/blog/learn/preemptive-cybersecurity.html |
 | V6 | 403 | https://info.xmcyber.com/intelligent-simulation-2025 |
 | V7 | 403 | https://www.vectra.ai/topics/ctem |
-| U1 | 404 | https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude |
-| U2 | 404 | https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude |
+| U1 | 200 | https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude |
+| U2 | 200 | https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude |
 | P-AS1 | 200 | https://github.com/agentskills/agentskills |
 | P-C1 | 200 | https://platform.claude.com/docs/en/about-claude/models/overview |
 | P-C2 | 200 | https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview |
