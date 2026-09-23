@@ -16,3 +16,5 @@ _site/
 
 # 由 scripts/build-worker.mjs 產生（含嵌入提示詞的 worker）
 backend/dist/
+# verify.mjs 的暫存輸出（已改寫到系統暫存目錄；保留此行以防舊版腳本再次產生）
+verify-screenshots/engine-output.json
