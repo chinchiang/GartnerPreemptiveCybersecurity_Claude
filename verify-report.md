@@ -1,6 +1,6 @@
 # 驗證報告
 
-執行時間：2026-09-21T07:22:50.499Z
+執行時間：2026-09-23T00:59:20.349Z
 模式：full
 結果：102/102 通過
 
@@ -75,7 +75,7 @@
 | 導覽 #/sources | ✅ | 證據與來源 |
 | 導覽 #/deploy | ✅ | 部署與維護 |
 | 方法論章節切換 | ✅ | /methodology?doc=01-definition |
-| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=100 |
+| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=131 |
 | Tabs 方向鍵切換 | ✅ | /methodology?doc=02-relations |
 | Skip link 不改變頁面 | ✅ |  |
 | 全站搜尋回傳結果 | ✅ | 12 筆 |

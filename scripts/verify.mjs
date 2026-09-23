@@ -5,7 +5,8 @@
  *   node scripts/verify.mjs            靜態檢查 + 以 Playwright（Chromium）啟動本機伺服器，檢查導覽、搜尋、篩選、複製、下載、案例互動
  * 結果寫入 verify-report.md（實際檢查結果紀錄）。
  */
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
@@ -105,12 +106,14 @@ function staticChecks() {
   ok('驗收腳本接受誠實的 no-intel 8-file fixture', runChecker(noIntelFixture, ['--variant', 'no-intel']) === 0);
   ok('驗收腳本拒絕未宣告缺漏的假 no-intel 輸出', runChecker(fixture, ['--variant', 'no-intel']) === 1);
   // 引擎 JSON 也應通過驗收腳本（baseline 與 no-intel）
-  const tmpDir = join(ROOT, 'verify-screenshots'); mkdirSync(tmpDir, { recursive: true });
+  // 暫存檔寫到系統暫存目錄，不留在儲存庫內
+  const tmpDir = mkdtempSync(join(tmpdir(), 'pea-verify-'));
   const engineJson = join(tmpDir, 'engine-output.json');
   writeFileSync(engineJson, JSON.stringify(w.DEMO.toSchema(R, w.CASE_DATA), null, 1));
   ok('引擎 JSON 通過驗收腳本（baseline）', runChecker(engineJson) === 0);
   writeFileSync(engineJson, JSON.stringify(w.DEMO.toSchema(R2, w.CASE_DATA), null, 1));
   ok('引擎 JSON 通過驗收腳本（no-intel）', runChecker(engineJson, ['--variant', 'no-intel']) === 0);
+  rmSync(tmpDir, { recursive: true, force: true });
   // 站點層級檔案與 index.html 的 head
   const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
   ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
