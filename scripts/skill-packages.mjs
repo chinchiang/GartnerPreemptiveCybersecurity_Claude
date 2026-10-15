@@ -49,6 +49,7 @@ function copyContent(name, content) {
 }
 
 // 回傳所有要由建置寫入的複本 [{ path, content }]。files：至少要含 skills/shared/ 的母本。
+// 只認 LF 換行（frontmatter 判斷也是）：呼叫端讀檔後須先把 CRLF 正規化為 LF。
 // 複本放在 skills/<平臺>/preemptive-exposure-analysis/references/<檔名>。
 export function generateCopies(files) {
   const copies = [];

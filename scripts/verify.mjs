@@ -29,6 +29,11 @@ function staticChecks() {
   const platforms = new Set((w.SKILL_FILES || []).map(s => s.platform));
   ok('Skills 涵蓋五平台 + shared', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'shared'].every(p => platforms.has(p)), [...platforms].join(','));
   ok('每個平台都有 SKILL.md 或 system-prompt.md', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek'].every(p => (w.SKILL_FILES || []).some(s => s.platform === p && /SKILL\.md$|system-prompt\.md$/.test(s.name))));
+  // 複本的標題要與母本相同：網站從 frontmatter 讀標題，標註若擋在 frontmatter 前面，標題就會變成空的
+  const masterOf = (s) => (w.SKILL_FILES || []).find(m => m.path === `skills/shared/${s.name}`);
+  const refCopies = (w.SKILL_FILES || []).filter(s => s.ext === 'md' && s.path.includes('/references/'));
+  const badTitles = refCopies.filter(s => !masterOf(s) || s.title !== masterOf(s).title);
+  ok('references/ 的 .md 複本標題與母本一致', refCopies.length > 0 && badTitles.length === 0, badTitles.length ? `不一致：${badTitles.map(s => s.path).join(', ')}` : `${refCopies.length} 份`);
   // 來源 ID 對應
   const srcIds = new Set((w.SOURCES || []).map(s => s.id));
   const referenced = new Set();
