@@ -44,6 +44,7 @@ const repo = [
   'skills/glm/api-workflow.py',
   'skills/grok/README.md',
   'skills/grok/api-workflow.py',
+  'skills/shared/analysis_workflow.py',
   'skills/shared/core-prompt.md',
   'skills/shared/input-schema.json',
   'skills/shared/output-schema.json',
@@ -80,6 +81,7 @@ test('Claude 技能包不帶母本但附合成範例資料；shared 只放母本
     'skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py'
   ]);
   assert.deepEqual(paths(packageFiles('shared', repo)), [
+    'skills/shared/analysis_workflow.py',
     'skills/shared/core-prompt.md',
     'skills/shared/input-schema.json',
     'skills/shared/output-schema.json',
@@ -244,4 +246,10 @@ test('SKILL.md 的「## 核心指令」標題與 ```text 區塊之間夾了文�
   const textBetween = withSkillMd('deepseek', c => c.replace('`references/scoring-rules.md`）\n\n```text', '`references/scoring-rules.md`）\n\n說明文字。\n\n```text'));
   assert.ok(textBetween.find(f => f.path.endsWith('deepseek/preemptive-exposure-analysis/SKILL.md')).content.includes('說明文字。\n\n```text'));
   assert.throws(() => generatedFiles(textBetween), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
+});
+
+test('改用分析工作流程核心的平臺（目前是 deepseek）另外帶上核心與它讀取的 input-schema.json', () => {
+  const got = paths(packageFiles('deepseek', repo));
+  for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `deepseek 技能包缺少 ${p}`);
+  assert.ok(!paths(packageFiles('glm', repo)).includes('skills/shared/analysis_workflow.py'), 'glm 尚未搬遷，不該帶核心');
 });

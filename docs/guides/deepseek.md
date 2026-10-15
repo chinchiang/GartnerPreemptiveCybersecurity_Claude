@@ -29,7 +29,7 @@ platform: deepseek
 | `skills/deepseek/README.md` | 平臺說明、V4 查證狀態、版本無關設計 |
 | `skills/deepseek/system-prompt.md` | 可直接複製的系統提示詞 |
 | `skills/deepseek/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準 skill（供 OpenClaw、Deep Code 等 host） |
-| `skills/deepseek/api-workflow.py`、`requirements.txt` | OpenAI 相容端點腳本（含 `--dry-run`） |
+| `skills/deepseek/api-workflow.py`、`requirements.txt` | OpenAI 相容端點腳本（含 `--dry-run`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 DeepSeek 的模型 adapter |
 | `skills/shared/*`、`examples/synthetic-org/*` | 共用規格與合成資料 |
 
 取得：網站「Skills 專區 → DeepSeek」或 `downloads/skills-deepseek.zip`。
@@ -81,7 +81,9 @@ export DEEPSEEK_MODEL=deepseek-v4-pro            # 以 api-docs.deepseek.com 確
 python3 skills/deepseek/api-workflow.py
 ```
 
-輸出：`output/deepseek-report.md`、`output/deepseek-output.json`。
+輸出：`output/deepseek-report.md`、`output/deepseek-output.json`（JSON 解析失敗時另存 `output/deepseek-output.raw.txt`）。
+
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗。授權範圍不合格（例如 `in_scope_assets` 是空陣列、`active_testing_authorized` 不是布林值）時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 
