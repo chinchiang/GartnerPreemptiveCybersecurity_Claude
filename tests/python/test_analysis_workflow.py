@@ -135,6 +135,14 @@ class InputChecksTest(unittest.TestCase):
                 self.edit(name, old, new)
                 self.assertIn(expected, self.warnings())
 
+    def test_missing_asset_id_column_only_reports_the_column(self):
+        header = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
+        self.edit("assets.csv", header, header.replace("asset_id,", "id,", 1))
+        out = self.warnings()
+        self.assertIn("assets.csv：缺少必填欄位 asset_id", out)
+        self.assertNotIn("重複 asset_id", out)       # 沒有 asset_id 不等於全部重複
+        self.assertNotIn("指向不存在資產", out)      # 也不能把每個參照都當成懸空
+
     def test_value_ranges_are_checked(self):
         assets = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()
         header = assets[0].split(",")

@@ -16,12 +16,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import analysis_workflow  # noqa: E402
 
-INPUT_SCHEMA = Path(__file__).resolve().parents[1] / "references" / "input-schema.json"
+INPUT_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "references" / "input-schema.json"
 
 OPTIONAL_JSON = ["controls.json", "threat-intel.json", "topology.json", "exposures.json"]   # 輸出順序
 
 
-def _items(data: dict, key: str) -> list:
+def _list_at(data: dict, key: str) -> list:
+    """data[key] 是清單就回傳它，否則（缺少或型別不對）回傳空清單，供 JSON 摘要行計數。"""
     return data.get(key) if isinstance(data.get(key), list) else []
 
 
@@ -30,7 +31,7 @@ def main(folder: str) -> int:
     if not root.is_dir():
         print(f"找不到資料夾：{root}")
         return 2
-    input_schema = json.loads(INPUT_SCHEMA.read_text(encoding="utf-8"))
+    input_schema = json.loads(INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
     scope_path = root / "scope.json"
     if not scope_path.exists():
         print("缺少 scope.json：無授權範圍，停止分析。必要欄位：" + "、".join(analysis_workflow.required_scope_fields(input_schema)))
@@ -94,15 +95,15 @@ def main(folder: str) -> int:
             warnings += 1
             continue
         if name == "controls.json":
-            print(f"[{name}] 控制項={len(_items(data, 'controls'))}")
+            print(f"[{name}] 控制項={len(_list_at(data, 'controls'))}")
         elif name == "threat-intel.json":
-            print(f"[{name}] 行為者={len(_items(data, 'actors'))} 趨勢弱點類別={len(_items(data, 'trending_weakness_classes'))}")
+            print(f"[{name}] 行為者={len(_list_at(data, 'actors'))} 趨勢弱點類別={len(_list_at(data, 'trending_weakness_classes'))}")
         elif name == "topology.json":
             bad = sum(1 for n, _ in findings if n == name)
-            print(f"[{name}] crown_jewels={data.get('crown_jewels')} edges={len(_items(data, 'edges'))} 指向不存在資產的邊={bad}")
+            print(f"[{name}] crown_jewels={data.get('crown_jewels')} edges={len(_list_at(data, 'edges'))} 指向不存在資產的邊={bad}")
         elif name == "exposures.json":
             unknown = analysis_workflow.unlisted_hosts(data)
-            print(f"[{name}] 筆數={len(_items(data, 'exposures'))} 未納入清冊的對外資產={unknown or '無'}")
+            print(f"[{name}] 筆數={len(_list_at(data, 'exposures'))} 未納入清冊的對外資產={unknown or '無'}")
 
     if warnings:
         print(f"警告：{warnings} 項建議檔問題（不阻擋分析，但信心下修）")

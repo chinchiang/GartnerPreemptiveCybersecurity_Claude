@@ -103,7 +103,16 @@ class ValidateInputsTest(unittest.TestCase):
     def test_out_of_scope_asset_uses_core_wording(self):
         self.edit("scope.json", '"A01",', "")
         code, out, err = self.run_script()
+        self.assertEqual(code, 0, out + err)
         self.assertIn("範圍外資產（分析時應排除）：A01", self.line(out, "assets.csv"))
+
+    def test_json_summary_counts_only_lists(self):
+        controls = json.loads((self.dir / "controls.json").read_text(encoding="utf-8"))
+        controls["controls"] = {"C01": "不是清單"}
+        (self.dir / "controls.json").write_text(json.dumps(controls, ensure_ascii=False), encoding="utf-8")
+        code, out, err = self.run_script()
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.line(out, "controls.json"), "[controls.json] 控制項=0")
 
     def test_runs_from_a_standalone_skill_folder(self):
         installed = Path(self.tmp.name) / ".claude" / "skills" / "preemptive-exposure-analysis"
@@ -121,7 +130,6 @@ class ValidateInputsTest(unittest.TestCase):
                 self.assertNotIn("Traceback", err)
                 self.assertIn("scope.json 缺少必填欄位：organization、analysis_date", out)
                 self.assertIn("停止分析", out)
-
 
     def test_missing_folder_exits_2(self):
         code, out, err = self.run_script(folder=Path(self.tmp.name) / "nope")
@@ -176,6 +184,7 @@ class ValidateInputsTest(unittest.TestCase):
             ("JSON 不是物件", lambda: (self.dir / "topology.json").write_text("[]", encoding="utf-8"),
              "[topology.json] 結構不是物件 → 視同缺少（建議）", 1),
             ("缺少", lambda: (self.dir / "threat-intel.json").unlink(), "[threat-intel.json] 缺少（建議）", 0),
+            ("CSV 缺少", lambda: (self.dir / "misconfigurations.csv").unlink(), "[misconfigurations.csv] 缺少（建議）", 0),
         ]
         for label, mutate, expected, warnings in cases:
             with self.subTest(case=label):
@@ -189,6 +198,7 @@ class ValidateInputsTest(unittest.TestCase):
                 else:
                     self.assertNotIn("項建議檔問題", out)
                 self.assertIn("結果：可以進行分析", out)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -265,12 +265,14 @@ def integrity_findings(inputs: Inputs) -> list:
     authorized = inputs.scope.get("authorized_scope") if isinstance(inputs.scope.get("authorized_scope"), dict) else {}
     in_scope = set(authorized.get("in_scope_assets") or [])
     assets = loaded.get("assets.csv", {}).get("data") or []
-    asset_ids = {r.get("asset_id") for r in assets}
-    if assets:
-        dup = len(assets) - len(asset_ids)
+    # 只看有 asset_id 的列：缺這個欄位（另有缺欄位警告）時不能算成全部重複，也不能把每個參照都當成懸空
+    listed = [r.get("asset_id") for r in assets if r.get("asset_id")]
+    asset_ids = set(listed)
+    if listed:
+        dup = len(listed) - len(asset_ids)
         if dup:
             findings.append(("assets.csv", f"重複 asset_id ×{dup}"))
-        outside = sorted(a for a in asset_ids - in_scope if a)
+        outside = sorted(asset_ids - in_scope)
         if outside:
             findings.append(("assets.csv", f"範圍外資產（分析時應排除）：{', '.join(outside)}"))
         for r in assets:
