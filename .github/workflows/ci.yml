@@ -40,12 +40,14 @@ jobs:
         run: |
           for p in chatgpt grok glm deepseek claude; do
             d=$(mktemp -d)
-            python3 -m zipfile -e "downloads/skills-$p.zip" "$d"
-            if [ "$p" = claude ]; then
-              (cd "$d" && python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org >/dev/null)
-            else
-              (cd "$d" && python3 "skills/$p/api-workflow.py" --dry-run >/dev/null)
-            fi || { echo "::error::downloads/skills-$p.zip 解壓後無法執行，請檢查 scripts/skill-packages.mjs 的對照表"; exit 1; }
+            {
+              python3 -m zipfile -e "downloads/skills-$p.zip" "$d" &&
+              if [ "$p" = claude ]; then
+                (cd "$d" && python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org >/dev/null)
+              else
+                (cd "$d" && python3 "skills/$p/api-workflow.py" --dry-run >/dev/null)
+              fi
+            } || { echo "::error::downloads/skills-$p.zip 無法解壓或解壓後無法執行，請檢查 scripts/skill-packages.mjs 的對照表"; exit 1; }
             rm -rf "$d"
           done
       - name: Demo engine acceptance (--no-scope refusal, schema JSON, --exclude scope)

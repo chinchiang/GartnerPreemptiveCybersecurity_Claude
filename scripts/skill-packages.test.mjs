@@ -38,7 +38,10 @@ const repo = [
   'examples/synthetic-org/assets.csv',
   'examples/synthetic-org/scope.json',
   'skills/claude/preemptive-exposure-analysis/SKILL.md',
+  'skills/chatgpt/api-workflow.py',
   'skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py',
+  'skills/deepseek/api-workflow.py',
+  'skills/glm/api-workflow.py',
   'skills/grok/README.md',
   'skills/grok/api-workflow.py',
   'skills/shared/core-prompt.md',
@@ -65,7 +68,7 @@ test('對照表宣告的母本不存在時中止，錯誤訊息指出平臺與�
   assert.throws(() => packageFiles('grok', withoutSchema), { message: /grok.*skills\/shared\/output-schema\.json/ });
 });
 
-test('對照表沒有的平臺目錄會中止，提示要在對照表補上一列', () => {
+test('skills/ 底下有對照表沒有的目錄就中止，提示要在對照表補上一列', () => {
   assert.throws(() => packageFiles('gemini', repo), { message: /對照表.*gemini/ });
 });
 
@@ -83,3 +86,14 @@ test('Claude 技能包不帶母本但附合成範例資料；shared 只放母本
     'skills/shared/task-spec.md'
   ]);
 });
+
+// 四支 api-workflow.py 執行時讀取 core-prompt.md 與 output-schema.json，預設輸入是 examples/synthetic-org/
+for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
+  test(`${platform} 技能包帶齊 api-workflow.py 執行時讀取的母本與合成範例資料`, () => {
+    const got = paths(packageFiles(platform, repo));
+    for (const p of [`skills/${platform}/api-workflow.py`, 'skills/shared/core-prompt.md', 'skills/shared/output-schema.json',
+      'examples/synthetic-org/assets.csv', 'examples/synthetic-org/scope.json']) {
+      assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
+    }
+  });
+}

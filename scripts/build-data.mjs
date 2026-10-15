@@ -174,7 +174,7 @@ for (const p of platforms) {
 const allEntries = [
   ...skillFiles.map(toEntry),
   ...exampleFiles.map(toEntry),
-  ...(existsSync(out('examples/expected-output.md')) ? [{ name: 'examples/expected-output.md', data: Buffer.from(readText(out('examples/expected-output.md')), 'utf8') }] : [])
+  ...(existsSync(out('examples/expected-output.md')) ? [toEntry({ path: 'examples/expected-output.md', content: readText(out('examples/expected-output.md')) })] : [])
 ];
 writeFileSync(out('downloads/skills-all-platforms.zip'), buildZip(allEntries));
 writeFileSync(out('downloads/synthetic-example-data.zip'), buildZip(exampleFiles.map(toEntry)));

@@ -22,7 +22,7 @@ const PACKAGES = {
   deepseek: { needs: SCRIPT_NEEDS, examples: true },
   glm:      { needs: SCRIPT_NEEDS, examples: true },
   grok:     { needs: SCRIPT_NEEDS, examples: true },
-  shared:   { needs: [], examples: false }            // 母本本身，不是平臺
+  shared:   { needs: [], examples: false }            // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
 };
 const EXAMPLES_DIR = 'examples/synthetic-org/';
 
