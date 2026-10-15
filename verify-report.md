@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-09-23T00:59:20.349Z
+執行時間：2026-10-15T10:41:10.513Z
 模式：full
-結果：102/102 通過
+結果：103/103 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -17,9 +17,10 @@
 | 載入 data/sources.js | ✅ |  |
 | 載入 data/extra.js | ✅ |  |
 | 研究文件 ≥ 7 章 | ✅ | 8 章 |
-| 五個平台教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,deployment |
-| Skills 涵蓋五平台 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
-| 每個平台都有 SKILL.md 或 system-prompt.md | ✅ |  |
+| 五個平臺教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,deployment |
+| Skills 涵蓋五平臺 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
+| 每個平臺都有 SKILL.md 或 system-prompt.md | ✅ |  |
+| references/ 的 .md 複本標題與母本一致 | ✅ | 11 份 |
 | 所有引用的來源 ID 都存在於來源表 | ✅ | 57 個 ID |
 | 每筆來源都有 verification、url（可為 null）、date、accessed | ✅ |  |
 | 待驗證清單每項都有合法 status | ✅ |  |
@@ -68,14 +69,14 @@
 | 導覽 #/methodology | ✅ | 方法論導覽 |
 | 導覽 #/process | ✅ | 可執行流程（本專案推論框架） |
 | 導覽 #/io | ✅ | Inputs／Outputs 對照 |
-| 導覽 #/platforms | ✅ | 平台比較 |
+| 導覽 #/platforms | ✅ | 平臺比較 |
 | 導覽 #/skills | ✅ | Skills 專區 |
 | 導覽 #/guides | ✅ | 安裝與使用教學 |
 | 導覽 #/case | ✅ | 案例互動展示：Northwind Precision（合成資 |
 | 導覽 #/sources | ✅ | 證據與來源 |
 | 導覽 #/deploy | ✅ | 部署與維護 |
 | 方法論章節切換 | ✅ | /methodology?doc=01-definition |
-| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=131 |
+| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=100 |
 | Tabs 方向鍵切換 | ✅ | /methodology?doc=02-relations |
 | Skip link 不改變頁面 | ✅ |  |
 | 全站搜尋回傳結果 | ✅ | 12 筆 |
@@ -88,7 +89,7 @@
 | Skills 檔案下載 | ✅ | SKILL.md |
 | Skills ZIP 下載 | ✅ |  |
 | Skills 原始／渲染切換 | ✅ |  |
-| 教學平台切換 Grok | ✅ |  |
+| 教學平臺切換 Grok | ✅ |  |
 | 案例：移除情資後顯示缺漏警示 | ✅ |  |
 | 案例：移除拓樸後無路徑假設 | ✅ |  |
 | 案例：清冊完整度調整 | ✅ |  |
