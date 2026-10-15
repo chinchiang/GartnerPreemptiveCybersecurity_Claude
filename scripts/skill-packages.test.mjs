@@ -108,11 +108,14 @@ const masters = [
 ];
 // 平臺的系統提示詞：手寫的說明＋核心提示詞區塊＋手寫的範例區塊（也是 ```text）
 const systemPrompt = (name) => `---\ntitle: ${name} 系統提示詞\n---\n\n# ${name}\n\n> 用法說明。\n\n## 可直接複製的提示詞\n\n\`\`\`text\n舊的提示詞\n\`\`\`\n\n## 建議的第一則使用者訊息（範例）\n\n\`\`\`text\n請開始分析。\n\`\`\`\n`;
-// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的平臺系統提示詞（手寫）
+// 平臺技能的 SKILL.md：frontmatter（平臺讀取技能的依據）＋手寫步驟＋核心指令區塊＋其他手寫章節
+const skillMd = (name) => `---\nname: preemptive-exposure-analysis\ndescription: 先制型曝險分析。\nmetadata:\n  backend: ${name}\n---\n\n# 先制型曝險分析\n\n## 執行步驟\n\n1. 依核心指令的八步流程產出報告。\n\n## 核心指令（與 \`skills/shared/core-prompt.md\` 一致；評分細則見 \`references/scoring-rules.md\`）\n\n\`\`\`text\n舊的核心指令\n\`\`\`\n\n## 輸出格式\n\n\`\`\`json\n{ "meta": {} }\n\`\`\`\n`;
+// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md）
 const sources = [
   ...masters,
   { path: 'skills/shared/core-prompt.md', content: '---\ntitle: 核心提示詞\n---\n\n```text\n你是先制型曝險分析助理。\n```\n' },
-  ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPrompt(p) }))
+  ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPrompt(p) })),
+  ...['glm', 'deepseek'].map(p => ({ path: `skills/${p}/preemptive-exposure-analysis/SKILL.md`, content: skillMd(p) }))
 ];
 const copyAt = (copies, path) => copies.find(c => c.path === path);
 
@@ -141,7 +144,7 @@ test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本',
   assert.throws(() => generatedFiles(withoutTaskSpec), { message: /母本不存在.*skills\/shared\/task-spec\.md/ });
 });
 
-test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞', () => {
+test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
   assert.deepEqual(paths(generatedFiles(sources)).sort(), [
     'skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md',
     'skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json',
@@ -152,12 +155,14 @@ test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-s
     'skills/claude/preemptive-exposure-analysis/references/input-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/output-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/deepseek/preemptive-exposure-analysis/SKILL.md',
     'skills/deepseek/preemptive-exposure-analysis/references/acceptance.md',
     'skills/deepseek/preemptive-exposure-analysis/references/input-schema.json',
     'skills/deepseek/preemptive-exposure-analysis/references/output-schema.json',
     'skills/deepseek/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/deepseek/preemptive-exposure-analysis/references/task-spec.md',
     'skills/deepseek/system-prompt.md',
+    'skills/glm/preemptive-exposure-analysis/SKILL.md',
     'skills/glm/preemptive-exposure-analysis/references/acceptance.md',
     'skills/glm/preemptive-exposure-analysis/references/input-schema.json',
     'skills/glm/preemptive-exposure-analysis/references/output-schema.json',
@@ -204,4 +209,26 @@ test('核心提示詞區塊被刪掉、只剩範例區塊時中止，不會把�
     ? { ...f, content: f.content.replace('```text\n舊的提示詞\n```\n\n', '') } : f);
   assert.ok(onlyExample.find(f => f.path === 'skills/glm/system-prompt.md').content.includes('```text\n請開始分析。\n```'));
   assert.throws(() => generatedFiles(onlyExample), { message: /skills\/glm\/system-prompt\.md.*可直接複製的提示詞/ });
+});
+
+test('SKILL.md 的「## 核心指令」標題下的區塊換成核心提示詞並加上標註；frontmatter 與其他手寫內容不變', () => {
+  const copy = copyAt(generatedFiles(sources), 'skills/glm/preemptive-exposure-analysis/SKILL.md');
+  assert.equal(copy.content,
+    '---\nname: preemptive-exposure-analysis\ndescription: 先制型曝險分析。\nmetadata:\n  backend: glm\n---\n\n# 先制型曝險分析\n\n## 執行步驟\n\n1. 依核心指令的八步流程產出報告。\n\n' +
+    '## 核心指令（與 `skills/shared/core-prompt.md` 一致；評分細則見 `references/scoring-rules.md`）\n\n' +
+    CORE_MARKER + '\n```text\n你是先制型曝險分析助理。\n```\n\n' +
+    '## 輸出格式\n\n```json\n{ "meta": {} }\n```\n');
+});
+
+test('SKILL.md 的「## 核心指令」標題下沒有 ```text 區塊時中止，錯誤訊息指出檔案與標題', () => {
+  const broken = sources.map(f => f.path === 'skills/deepseek/preemptive-exposure-analysis/SKILL.md'
+    ? { ...f, content: f.content.replace('```text\n舊的核心指令\n```\n\n', '') } : f);
+  assert.throws(() => generatedFiles(broken), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
+});
+
+test('已嵌入過的 SKILL.md 再產生一次結果不變，不會疊出第二行標註', () => {
+  const once = generatedFiles(sources);
+  const rebuilt = sources.map(f => once.find(c => c.path === f.path) || f);
+  const path = 'skills/deepseek/preemptive-exposure-analysis/SKILL.md';
+  assert.equal(copyAt(generatedFiles(rebuilt), path).content, copyAt(once, path).content);
 });
