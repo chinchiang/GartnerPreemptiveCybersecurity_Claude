@@ -81,6 +81,9 @@ class DeepSeekAdapter:
     def generated_by(self, args):
         return f"DeepSeek API / {args.model} / skills/deepseek/api-workflow.py"
 
+    def supports_json_mode(self, args):
+        return not args.no_json_mode
+
     def _connect(self):
         if self._client is None:
             try:
@@ -93,11 +96,10 @@ class DeepSeekAdapter:
             self._client = OpenAI(api_key=api_key, base_url=os.environ.get("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL))
         return self._client
 
-    def send(self, messages, stage, args):
+    def send(self, messages, stage, args, json_mode):
         client = self._connect()
         kwargs = dict(model=args.model, messages=messages, max_tokens=args.max_tokens,
                       temperature=0.2 if stage == "report" else 0.0)
-        json_mode = stage == "json" and not args.no_json_mode
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
         try:

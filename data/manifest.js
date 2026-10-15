@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "1cd96d94cdb5",
+ "contentHash": "4a5b117bae9a",
  "research": [
   {
    "id": "00-method",
@@ -174,7 +174,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/api-workflow.py",
    "platform": "deepseek",
-   "bytes": 6304
+   "bytes": 6331
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
@@ -304,7 +304,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 23866
+   "bytes": 26944
   },
   {
    "path": "skills/shared/core-prompt.md",

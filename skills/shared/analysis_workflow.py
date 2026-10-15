@@ -59,14 +59,23 @@ _TYPE_CHECKS = {
 }
 
 
-def _required_leaves(node: dict, prefix: str) -> list:
-    """物件型別的欄位缺少或型別錯誤時，回報它底下所有必填的末端欄位（例如缺整個 authorized_scope）。"""
+def _join(prefix: str, key: str) -> str:
+    return f"{prefix}.{key}" if prefix else key
+
+
+def _required_leaf_nodes(node: dict, prefix: str) -> list:
+    """必填的末端欄位與它們的 schema 節點：[(路徑, 節點)]。"""
     if node.get("type") != "object" or not node.get("required"):
-        return [prefix]
+        return [(prefix, node)]
     leaves = []
     for key in node["required"]:
-        leaves += _required_leaves(node.get("properties", {}).get(key, {}), f"{prefix}.{key}" if prefix else key)
+        leaves += _required_leaf_nodes(node.get("properties", {}).get(key, {}), _join(prefix, key))
     return leaves
+
+
+def _required_leaves(node: dict, prefix: str) -> list:
+    """物件型別的欄位缺少或型別錯誤時，回報它底下所有必填的末端欄位（例如缺整個 authorized_scope）。"""
+    return [path for path, _ in _required_leaf_nodes(node, prefix)]
 
 
 def _check(value, node: dict, path: str) -> list:
@@ -83,7 +92,7 @@ def _check(value, node: dict, path: str) -> list:
     if expected == "object":
         problems = []
         for key in node.get("required", []):
-            problems += _check(value.get(key), node.get("properties", {}).get(key, {}), f"{path}.{key}" if path else key)
+            problems += _check(value.get(key), node.get("properties", {}).get(key, {}), _join(path, key))
         return problems
     return []
 
@@ -94,7 +103,15 @@ def scope_problems(scope, input_schema: dict) -> list:
     return _check(scope if isinstance(scope, dict) else {}, input_schema["properties"]["scope"], "")
 
 
-SCOPE_RULE_NOTE = "（organization、analysis_date 須為非空字串；in_scope_assets、audience 須為非空陣列；*_authorized 須為布林值）"
+def scope_rule_note(input_schema: dict) -> str:
+    """把 schema 的 scope 規則寫成給使用者看的說明，附在守門的錯誤訊息後面（規則改了，說明跟著改）。"""
+    groups = {}
+    for path, node in _required_leaf_nodes(input_schema["properties"]["scope"], ""):
+        rule = {("string", True): "須為非空字串", ("array", True): "須為非空陣列", ("boolean", False): "須為布林值",
+                ("string", False): "須為字串", ("array", False): "須為陣列"}.get(
+            (node.get("type"), bool(node.get("minLength") or node.get("minItems"))), "須提供")
+        groups.setdefault(rule, []).append(path.rsplit(".", 1)[-1])
+    return "（" + "；".join(f"{'、'.join(names)} {rule}" for rule, names in groups.items()) + "）"
 
 
 # ---------------------------------------------------------------------------
@@ -110,10 +127,13 @@ class Inputs:
 
 
 def _parse(name: str, raw: str):
-    """CSV 回傳列（dict 清單），JSON 回傳解析結果；無法解析時丟出 ValueError。"""
+    """回傳 (資料, 欄位標頭)。CSV 的資料是列（dict 清單）、欄位標頭是第一列；JSON 沒有欄位標頭。
+    無法解析時丟出 ValueError。"""
     if name.endswith(".csv"):
-        return list(csv.DictReader(io.StringIO(raw)))
-    return json.loads(raw)
+        reader = csv.DictReader(io.StringIO(raw))
+        rows = list(reader)
+        return rows, list(reader.fieldnames or [])
+    return json.loads(raw), None
 
 
 def count_records(data) -> int | None:
@@ -141,10 +161,10 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
         raise Abort(f"[中止] scope.json 無法解析：{exc}") from exc
     problems = scope_problems(scope, input_schema)
     if problems:
-        raise Abort("[中止] scope.json 缺少或不合格的必填欄位：" + ", ".join(problems) + SCOPE_RULE_NOTE)
+        raise Abort("[中止] scope.json 缺少或不合格的必填欄位：" + ", ".join(problems) + scope_rule_note(input_schema))
 
     inputs = Inputs(scope=scope)
-    for name, category, label, required in INPUT_FILES:
+    for name, category, label, _ in INPUT_FILES:
         if category in exclude:
             inputs.missing.append(f"{name}（{label}；依 --exclude 排除）")
             continue
@@ -154,51 +174,82 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
             continue
         try:
             raw = path.read_text(encoding="utf-8-sig")
-            data = _parse(name, raw)
+            data, columns = _parse(name, raw)
         except (ValueError, UnicodeDecodeError, csv.Error) as exc:
             inputs.missing.append(f"{name}（{label}；無法解析：{exc}）")
             continue
         inputs.files.append({"name": name, "category": category, "label": label, "raw": raw, "data": data,
-                             "records": count_records(data)})
+                             "columns": columns, "records": count_records(data)})
     inputs.warnings = check_inputs(inputs, input_schema)
     return inputs
 
 
-def _missing_keys(rows: list, required: list) -> list:
-    keys = set().union(*(r.keys() for r in rows if isinstance(r, dict))) if rows else set()
-    return [k for k in required if k not in keys] if rows else []
-
-
 def check_inputs(inputs: Inputs, input_schema: dict) -> list:
-    """腳本預檢結果：必要檔是否齊全、schema 的必填欄位、資料完整性（重複、範圍、懸空參照）。
-    只產生警告，交給模型寫進資料品質章節並據以下修信心；授權範圍以外的問題都不中止分析。"""
-    warnings = []
+    """腳本預檢結果：只產生警告，交給模型寫進資料品質章節並據以下修信心；授權範圍以外的問題都不中止分析。
+    任何一列資料缺值或型別不對，都只會變成警告，不會讓預檢本身失敗。"""
     loaded = {f["name"]: f for f in inputs.files}
-    for name, category, label, required in INPUT_FILES:
-        if required and name not in loaded and name != "scope.json":
-            warnings.append(f"{name}：缺少必要輸入（{label}）；只能產出曝險面清單並下修信心")
+    return (_required_file_warnings(loaded) + _schema_field_warnings(inputs.files, input_schema)
+            + _integrity_warnings(loaded, inputs.scope))
 
-    # schema 的必填欄位：清單型輸入看每一列的鍵（CSV 為欄位標頭），物件型輸入看物件本身與其中清單的每一筆
-    for f in inputs.files:
+
+def _required_file_warnings(loaded: dict) -> list:
+    """必要輸入是否齊全、是否至少有一筆資料（scope.json 另由守門處理）。"""
+    warnings = []
+    for name, _, label, required in INPUT_FILES:
+        if not required or name == "scope.json":
+            continue
+        if name not in loaded:
+            warnings.append(f"{name}：缺少必要輸入（{label}）；只能產出曝險面清單並下修信心")
+        elif loaded[name]["records"] == 0:
+            warnings.append(f"{name}：必要檔案 0 筆資料")
+    return warnings
+
+
+def _schema_field_warnings(files: list, input_schema: dict) -> list:
+    """input-schema.json 的必填欄位：CSV 看欄位標頭，JSON 清單看每一筆，JSON 物件看物件本身與其中清單的每一筆。"""
+    warnings = []
+    for f in files:
         node = input_schema["properties"].get(f["category"], {})
         data = f["data"]
-        if node.get("type") == "array" and isinstance(data, list):
-            cols = _missing_keys(data, node.get("items", {}).get("required", []))
-            if cols:
-                warnings.append(f"{f['name']}：缺少必填欄位 {', '.join(cols)}")
-        elif node.get("type") == "object" and isinstance(data, dict) and f["category"] != "scope":
+        if f["category"] == "scope":
+            continue
+        if node.get("type") == "array":
+            required = node.get("items", {}).get("required", [])
+            if f["columns"] is not None:
+                absent = [k for k in required if k not in f["columns"]]
+                if absent:
+                    warnings.append(f"{f['name']}：缺少必填欄位 {', '.join(absent)}")
+            elif isinstance(data, list):
+                bad = sum(1 for r in data if not isinstance(r, dict) or any(k not in r for k in required))
+                if required and bad:
+                    warnings.append(f"{f['name']}：有 {bad} 筆缺少必填欄位（{', '.join(required)}）")
+        elif node.get("type") == "object" and isinstance(data, dict):
             absent = [k for k in node.get("required", []) if k not in data]
             if absent:
                 warnings.append(f"{f['name']}：缺少必填欄位 {', '.join(absent)}")
             for key, sub in node.get("properties", {}).items():
-                required = sub.get("items", {}).get("required", []) if sub.get("type") == "array" else []
+                item_required = sub.get("items", {}).get("required", []) if sub.get("type") == "array" else []
                 rows = data.get(key) if isinstance(data.get(key), list) else []
-                bad = sum(1 for r in rows if not isinstance(r, dict) or any(k not in r for k in required))
-                if required and bad:
-                    warnings.append(f"{f['name']}：{key} 有 {bad} 筆缺少必填欄位（{', '.join(required)}）")
+                bad = sum(1 for r in rows if not isinstance(r, dict) or any(k not in r for k in item_required))
+                if item_required and bad:
+                    warnings.append(f"{f['name']}：{key} 有 {bad} 筆缺少必填欄位（{', '.join(item_required)}）")
+    return warnings
 
-    # 資料完整性（與 Claude 技能的 validate_inputs.py 相同的檢查）
-    in_scope = set(inputs.scope.get("authorized_scope", {}).get("in_scope_assets", []))
+
+def _in_range(value, low: float, high: float):
+    """True／False＝是否在範圍內；None＝不是數字（欄位不足的列，值會是 None）。"""
+    try:
+        return low <= float(value) <= high
+    except (TypeError, ValueError):
+        return None
+
+
+def _integrity_warnings(loaded: dict, scope: dict) -> list:
+    """資料完整性（與 Claude 技能的 validate_inputs.py 相同的檢查）：重複、範圍外、數值範圍、懸空參照、
+    拓樸的邊、未納入清冊的對外資產。"""
+    warnings = []
+    authorized = scope.get("authorized_scope") if isinstance(scope.get("authorized_scope"), dict) else {}
+    in_scope = set(authorized.get("in_scope_assets") or [])
     assets = loaded.get("assets.csv", {}).get("data") or []
     asset_ids = {r.get("asset_id") for r in assets}
     if assets:
@@ -209,33 +260,36 @@ def check_inputs(inputs: Inputs, input_schema: dict) -> list:
         if outside:
             warnings.append(f"assets.csv：範圍外資產（分析時應排除）：{', '.join(outside)}")
         for r in assets:
-            try:
-                if not 1 <= int(r.get("business_criticality", "")) <= 5:
-                    warnings.append(f"assets.csv：{r.get('asset_id')} business_criticality 超出 1–5")
-            except ValueError:
+            ok = _in_range(r.get("business_criticality"), 1, 5)
+            if ok is None:
                 warnings.append(f"assets.csv：{r.get('asset_id')} business_criticality 無效")
+            elif not ok:
+                warnings.append(f"assets.csv：{r.get('asset_id')} business_criticality 超出 1–5")
     for r in loaded.get("vulnerabilities.csv", {}).get("data") or []:
-        try:
-            if not 0 <= float(r.get("cvss_base", "")) <= 10:
-                warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} cvss_base 超出 0–10")
-        except ValueError:
+        ok = _in_range(r.get("cvss_base"), 0, 10)
+        if ok is None:
             warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} cvss_base 無效")
+        elif not ok:
+            warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} cvss_base 超出 0–10")
         if asset_ids and r.get("asset_id") not in asset_ids:
             warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} 指向不存在資產 {r.get('asset_id')}")
     for r in loaded.get("identities.csv", {}).get("data") or []:
-        for a in str(r.get("linked_assets", "")).split(";"):
+        for a in str(r.get("linked_assets") or "").split(";"):
             if a and asset_ids and a not in asset_ids:
                 warnings.append(f"identities.csv：{r.get('identity_id')} linked_assets 指向不存在資產 {a}")
     topology = loaded.get("topology.json", {}).get("data")
     if isinstance(topology, dict) and asset_ids:
         for e in topology.get("edges", []) if isinstance(topology.get("edges"), list) else []:
+            if not isinstance(e, dict):
+                warnings.append(f"topology.json：edges 裡有不是物件的項目（{e!r}）")
+                continue
             for end in ("from", "to"):
-                node_id = e.get(end) if isinstance(e, dict) else None
+                node_id = e.get(end)
                 if node_id != "internet" and node_id not in asset_ids:
                     warnings.append(f"topology.json：邊 {e.get('from')}→{e.get('to')} 指向不存在資產 {node_id}")
     exposures = loaded.get("exposures.json", {}).get("data")
-    if isinstance(exposures, dict):
-        unlisted = [e.get("hostname") for e in exposures.get("exposures", []) if isinstance(e, dict) and not e.get("asset_id")]
+    if isinstance(exposures, dict) and isinstance(exposures.get("exposures"), list):
+        unlisted = [e.get("hostname") for e in exposures["exposures"] if isinstance(e, dict) and not e.get("asset_id")]
         if unlisted:
             warnings.append(f"exposures.json：未納入清冊的對外資產 {', '.join(str(h) for h in unlisted)}")
     return warnings
@@ -298,16 +352,19 @@ def build_json_prompt(output_schema_text: str, generated_by: str) -> str:
 #   add_arguments(parser)        加上平臺專屬的 CLI 參數
 #   describe(args)               回傳要印出的平臺資訊（端點、JSON 模式等），dry-run 與正式執行都會印
 #   generated_by(args)           meta.generated_by 的寫法
-#   send(messages, stage, args)  送出整串訊息（[{role, content}]，第一則是 system）並回傳文字；
-#                                stage 是 "report" 或 "json"，由 adapter 決定 temperature、JSON 模式等設定。
+#   supports_json_mode(args)     這次執行能否使用平臺的 JSON 模式（例如 response_format）；核心只在 json 階段開啟
+#   send(messages, stage, args, json_mode)
+#                                送出整串訊息（[{role, content}]，第一則是 system）並回傳文字。stage 是 "report"
+#                                或 "json"，temperature 等設定由 adapter 依 stage 決定；json_mode 為 True 時使用 JSON 模式。
 #                                SDK 在這裡才載入，--dry-run 不會呼叫它。
+#   adapter 遇到使用者能處理的問題（缺 SDK、缺金鑰）時丟出 Abort(訊息)；其他例外由核心轉成結束碼 1。
 
 def run_conversation(adapter, args, system_prompt: str, report_prompt: str, json_prompt: str):
     """第一段要報告；延續同一對話，第二段要 JSON。回傳 (報告, JSON 回覆原文)。"""
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": report_prompt}]
-    report = adapter.send(list(messages), "report", args)
+    report = adapter.send(list(messages), "report", args, False)
     messages += [{"role": "assistant", "content": report}, {"role": "user", "content": json_prompt}]
-    return report, adapter.send(list(messages), "json", args)
+    return report, adapter.send(list(messages), "json", args, bool(adapter.supports_json_mode(args)))
 
 
 class DryRunAdapter:
@@ -316,7 +373,10 @@ class DryRunAdapter:
     def __init__(self, platform_adapter):
         self.platform_adapter = platform_adapter
 
-    def send(self, messages, stage, args):
+    def supports_json_mode(self, args):
+        return self.platform_adapter.supports_json_mode(args)
+
+    def send(self, messages, stage, args, json_mode):
         if stage == "report":
             print("----- SYSTEM PROMPT -----")
             print(messages[0]["content"])

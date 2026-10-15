@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "skills" / "shared"))
@@ -27,6 +28,13 @@ class ScopeGateFromSchemaTest(unittest.TestCase):
         for case in CASES:
             with self.subTest(case=case["name"]):
                 self.assertEqual(aw.scope_problems(apply_case(SYNTHETIC_SCOPE, case), INPUT_SCHEMA), case["problems"])
+
+
+class ScopeRuleNoteTest(unittest.TestCase):
+    def test_rule_note_is_derived_from_the_schema(self):
+        self.assertEqual(aw.scope_rule_note(INPUT_SCHEMA),
+                         "（organization、analysis_date 須為非空字串；in_scope_assets、audience 須為非空陣列；"
+                         "active_testing_authorized、external_scanning_authorized 須為布林值）")
 
 
 class InputLoadingTest(unittest.TestCase):
@@ -154,6 +162,38 @@ class InputChecksTest(unittest.TestCase):
         self.edit("assets.csv", header, header.replace(",owner", ",owner_name"))
         self.assertIn("owner", self.warnings())
 
+    def test_short_or_malformed_rows_only_warn(self):
+        cases = [
+            ("assets.csv", lambda t: t + "A99,short-row\n", "A99"),
+            ("vulnerabilities.csv", lambda t: t + "F99,A01\n", "F99"),
+            ("topology.json", lambda t: t.replace('"edges": [', '"edges": ["not-an-edge", ', 1), "topology.json"),
+        ]
+        for name, mutate, expected in cases:
+            with self.subTest(name=name):
+                self.fresh()
+                path = self.dir / name
+                path.write_text(mutate(path.read_text(encoding="utf-8")), encoding="utf-8")
+                self.assertIn(expected, self.warnings())
+
+    def test_header_only_required_file_reports_zero_rows_and_missing_columns(self):
+        header = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
+        (self.dir / "assets.csv").write_text(header.replace(",owner", ",owner_name") + "\n", encoding="utf-8")
+        out = self.warnings()
+        self.assertIn("assets.csv：必要檔案 0 筆資料", out)
+        self.assertIn("assets.csv：缺少必填欄位 owner", out)
+
+    def test_utf8_bom_in_a_csv_input_does_not_hide_its_first_column(self):
+        raw = (self.dir / "assets.csv").read_text(encoding="utf-8")
+        (self.dir / "assets.csv").write_bytes("\ufeff".encode("utf-8") + raw.encode("utf-8"))
+        inputs = aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA)
+        assets = next(f for f in inputs.files if f["name"] == "assets.csv")
+        self.assertEqual(assets["columns"][0], "asset_id")
+        self.assertNotIn("assets.csv：缺少必填欄位", "\n".join(inputs.warnings))
+
+    def test_required_fields_of_object_inputs_come_from_schema(self):
+        self.edit("controls.json", '"maturity"', '"maturity_level"')
+        self.assertIn("controls.json：controls 有", self.warnings())
+
     def test_missing_required_file_is_a_warning_not_an_abort(self):
         (self.dir / "assets.csv").unlink()
         out = self.warnings()
@@ -197,7 +237,7 @@ class PromptTest(unittest.TestCase):
         p = aw.build_json_prompt(schema, "DeepSeek API / deepseek-v4-pro / api-workflow.py")
         self.assertIn(schema.strip(), p)
         self.assertIn("DeepSeek API / deepseek-v4-pro / api-workflow.py", p)
-        self.assertIn("json", p)
+        self.assertIn("單一 JSON 物件（json）", p)  # 部分平臺的 JSON 模式要求提示詞裡出現小寫 json
 
     def test_system_prompt_is_core_prompt_plus_platform_note(self):
         md = "---\ntitle: 核心\n---\n\n```text\n你是先制型曝險分析助理。\n```\n"
@@ -217,9 +257,11 @@ class FakeAdapter:
     default_model = "fake-1"
     platform_note = "7. 平臺備註（Fake）\n- 測試用。"
 
-    def __init__(self, replies):
+    def __init__(self, replies, json_mode=False, error=None):
         self.replies = list(replies)
         self.calls = []
+        self.json_mode_supported = json_mode
+        self.error = error
 
     def add_arguments(self, parser):
         parser.add_argument("--fake-flag", action="store_true")
@@ -230,8 +272,14 @@ class FakeAdapter:
     def generated_by(self, args):
         return f"Fake API / {args.model} / api-workflow.py"
 
-    def send(self, messages, stage, args):
+    def supports_json_mode(self, args):
+        return self.json_mode_supported
+
+    def send(self, messages, stage, args, json_mode):
         self.calls.append((stage, [dict(m) for m in messages]))
+        self.json_modes = getattr(self, "json_modes", []) + [json_mode]
+        if self.error:
+            raise self.error
         return self.replies.pop(0)
 
 
@@ -266,6 +314,14 @@ class WorkflowRunTest(unittest.TestCase):
         self.assertEqual(m2[2]["content"], "# 報告")
         self.assertIn("output-schema.json", m2[3]["content"])
         self.assertIn("Fake API / fake-1 / api-workflow.py", m2[3]["content"])
+
+    def test_json_mode_is_requested_only_in_the_json_stage_when_supported(self):
+        for supported, expected in ((True, [False, True]), (False, [False, False])):
+            with self.subTest(supported=supported):
+                adapter = FakeAdapter(["# 報告", json.dumps(VALID_OUTPUT)], json_mode=supported)
+                code, out, err = self.run_main(adapter)
+                self.assertEqual(code, 0, err)
+                self.assertEqual(adapter.json_modes, expected)
 
     def test_outputs_are_written_and_paths_printed_to_stdout(self):
         code, out, err = self.run_main(FakeAdapter(["# 報告", "```json\n" + json.dumps(VALID_OUTPUT) + "\n```"]))
@@ -307,6 +363,50 @@ class WorkflowRunTest(unittest.TestCase):
         self.assertIn("### assets.csv", out)
         self.assertIn("output-schema.json", out)
         self.assertIn("端點：fake://", err)
+
+    def test_dry_run_prints_full_prompts_and_keeps_info_out_of_stdout(self):
+        inputs = aw.load_inputs(ROOT / "examples" / "synthetic-org", frozenset(), INPUT_SCHEMA)
+        code, out, err = self.run_main(FakeAdapter([]), "--dry-run")
+        self.assertEqual(code, 0, err)
+        self.assertIn(aw.build_report_prompt(inputs), out)  # 完整、不截斷
+        for tag in ("[資訊]", "[預檢]", "[DRY-RUN]"):
+            self.assertNotIn(tag, out)
+            self.assertIn(tag, err)
+
+    def test_invalid_scope_exits_1_before_calling_the_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            inputs = Path(tmp) / "inputs"
+            shutil.copytree(ROOT / "examples" / "synthetic-org", inputs)
+            (inputs / "scope.json").write_text(json.dumps(dict(SYNTHETIC_SCOPE, organization="")), encoding="utf-8")
+            adapter = FakeAdapter([])
+            code, out, err = self.run_main(adapter, "--input-dir", str(inputs))
+        self.assertEqual(code, 1)
+        self.assertIn("organization", err)
+        self.assertEqual(adapter.calls, [])
+
+    def test_api_error_exits_1_without_traceback(self):
+        code, out, err = self.run_main(FakeAdapter([], error=ConnectionError("連線逾時")))
+        self.assertEqual(code, 1)
+        self.assertIn("連線逾時", err)
+        self.assertNotIn("Traceback", err)
+        self.assertFalse(self.out.exists())
+
+    def test_shared_files_are_read_with_bom_and_a_missing_one_exits_1(self):
+        names = ("input-schema.json", "output-schema.json", "core-prompt.md")
+        for missing in (None, *names):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as tmp:
+                shared = Path(tmp)
+                for name in names:
+                    if name != missing:
+                        raw = (ROOT / "skills" / "shared" / name).read_text(encoding="utf-8")
+                        (shared / name).write_bytes("\ufeff".encode("utf-8") + raw.encode("utf-8"))
+                with mock.patch.object(aw, "SHARED_DIR", shared):
+                    code, out, err = self.run_main(FakeAdapter([]), "--dry-run")
+                if missing is None:
+                    self.assertEqual(code, 0, err)
+                else:
+                    self.assertEqual(code, 1, err)
+                    self.assertIn(f"找不到共用檔案：{shared / missing}", err)
 
     def test_adapter_arguments_are_added_to_the_cli(self):
         code, out, err = self.run_main(FakeAdapter([]), "--dry-run", "--fake-flag")

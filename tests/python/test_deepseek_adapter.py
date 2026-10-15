@@ -97,7 +97,8 @@ class DeepSeekAdapterTest(unittest.TestCase):
         os.environ["DEEPSEEK_BASE_URL"] = "https://example.invalid/v1"
         os.environ["DEEPSEEK_MODEL"] = "deepseek-v4-flash"
         openai, record = fake_openai(["# 報告", "{}"])
-        self.run_main("--max-tokens", "2048", "--no-json-mode", openai=openai)
+        code, out, err = self.run_main("--max-tokens", "2048", "--no-json-mode", openai=openai)
+        self.assertEqual(code, 0, err)
         self.assertEqual(record["clients"][0]["base_url"], "https://example.invalid/v1")
         self.assertEqual(record["calls"][0]["model"], "deepseek-v4-flash")
         self.assertEqual(record["calls"][1]["max_tokens"], 2048)
@@ -110,7 +111,7 @@ class DeepSeekAdapterTest(unittest.TestCase):
         self.assertEqual(len(record["calls"]), 3)
         self.assertIn("response_format", record["calls"][1])
         self.assertNotIn("response_format", record["calls"][2])
-        self.assertIn("JSON", err)
+        self.assertIn("[警告] JSON Output 模式被端點拒絕", err)
 
     def test_missing_api_key_exits_1(self):
         os.environ.pop("DEEPSEEK_API_KEY")
