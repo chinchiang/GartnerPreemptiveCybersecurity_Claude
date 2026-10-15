@@ -92,14 +92,14 @@ class GrokAdapter:
         if args.compat:
             reply = self._openai_client().chat.completions.create(model=args.model, messages=messages)
             return reply.choices[0].message.content or ""
-        client, roles = self._xai_sdk()
+        client, roles = self._xai_client_and_roles()
         # 注意：不傳入任何 tools=[...]，因此不會啟用 web_search / x_search / code_execution。
         chat = client.chat.create(model=args.model)
         for m in messages:
             chat.append(roles[m["role"]](m["content"]))
         return chat.sample().content
 
-    def _xai_sdk(self):
+    def _xai_client_and_roles(self):
         """回傳 (Client, 角色 → 訊息建構函式)。xai_sdk 的對話物件要逐則 append 訊息，不吃 [{role, content}]。"""
         if "xai_sdk" not in self._clients:
             try:

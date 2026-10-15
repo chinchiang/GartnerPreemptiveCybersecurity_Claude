@@ -60,6 +60,16 @@ class GrokAdapterTest(unittest.TestCase):
         self.assertEqual((self.out / "grok-report.md").read_text(encoding="utf-8"), "# 報告")
         self.assertTrue((self.out / "grok-output.json").exists())
 
+    def test_xai_sdk_model_from_env_and_flag(self):
+        os.environ["XAI_MODEL"] = "grok-4.20"
+        for extra, expected in (((), "grok-4.20"), (("--model", "grok-5"), "grok-5")):
+            with self.subTest(args=extra):
+                modules, record = fake_xai_sdk(["# 報告", VALID_OUTPUT])
+                code, out, err = self.run_main(*extra, modules=modules)
+                self.assertEqual(code, 0, err)
+                self.assertEqual([chat["create"]["model"] for chat in record["chats"]], [expected, expected])
+                self.assertIn(f"xAI API（xai_sdk）/ {expected} /", record["chats"][1]["messages"][-1][1])
+
     def test_compat_two_stages(self):
         openai, record = fake_openai(["# 報告", VALID_OUTPUT])
         code, out, err = self.run_main("--compat", modules={"openai": openai})

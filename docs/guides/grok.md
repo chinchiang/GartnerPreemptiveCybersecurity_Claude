@@ -102,7 +102,7 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 **FAQ**
 
-1. *`xai_sdk` 的方法名稱不同？* SDK 更新可能改變 API；以 `github.com/xai-org/xai-sdk-python` README 為準修改 `api-workflow.py` 的 `GrokAdapter`（`send` 與 `_xai_sdk`）。
+1. *`xai_sdk` 的方法名稱不同？* SDK 更新可能改變 API；以 `github.com/xai-org/xai-sdk-python` README 為準修改 `api-workflow.py` 的 `GrokAdapter`（`send` 與 `_xai_client_and_roles`）。
 2. *可以開啟 web_search 讓 Grok 查 CVE？* 不建議：本任務禁止上網補造資料，且會把內容送往額外處理流程；若組織核准，需另行標示所有外部知識「需查證」。
 3. *grok.com 沒有自訂指令欄？* 直接把提示詞貼在對話第一則。
 4. *JSON 解析失敗？* 腳本以結束碼 4 結束，原始回應會存為 `output/grok-output.raw.txt`；可人工檢查或重跑。
