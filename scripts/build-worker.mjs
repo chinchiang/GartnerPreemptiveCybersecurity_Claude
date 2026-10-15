@@ -10,12 +10,12 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractCorePrompt } from './skill-packages.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const promptMd = readFileSync(join(ROOT, 'skills/shared/core-prompt.md'), 'utf8');
-const m = promptMd.match(/```text\n([\s\S]*?)\n```/);
-if (!m) { console.error('找不到 core-prompt.md 內的 ```text 區塊'); process.exit(1); }
-const prompt = m[1];
+let prompt;
+try { prompt = extractCorePrompt(promptMd); } catch (e) { console.error(e.message); process.exit(1); }
 
 const template = readFileSync(join(ROOT, 'backend/worker.js'), 'utf8');
 const marker = /const CORE_PROMPT = `[^`]*`;/;
