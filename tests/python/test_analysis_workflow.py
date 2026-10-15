@@ -127,12 +127,21 @@ class InputChecksTest(unittest.TestCase):
             ("vulnerabilities.csv", ",A01,", ",A99,", "指向不存在資產 A99"),
             ("identities.csv", "A04;A05;A06", "A04;A98", "指向不存在資產 A98"),
             ("topology.json", '"to": "A06"', '"to": "A97"', "A97"),
+            ("topology.json", '"from": "A01"', '"from": "A96"', "A96"),
         ]
         for name, old, new, expected in cases:
             with self.subTest(name=name, expected=expected):
                 self.fresh()
                 self.edit(name, old, new)
                 self.assertIn(expected, self.warnings())
+
+    def test_missing_asset_id_column_only_reports_the_column(self):
+        header = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
+        self.edit("assets.csv", header, header.replace("asset_id,", "id,", 1))
+        out = self.warnings()
+        self.assertIn("assets.csv：缺少必填欄位 asset_id", out)
+        self.assertNotIn("重複 asset_id", out)       # 沒有 asset_id 不等於全部重複
+        self.assertNotIn("指向不存在資產", out)      # 也不能把每個參照都當成懸空
 
     def test_value_ranges_are_checked(self):
         assets = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()

@@ -97,5 +97,6 @@ class DeepSeekAdapterTest(unittest.TestCase):
         self.assertIn("7. 平臺備註（DeepSeek）", out)
         self.assertIn("https://api.deepseek.com", err)
 
+
 if __name__ == "__main__":
     unittest.main()

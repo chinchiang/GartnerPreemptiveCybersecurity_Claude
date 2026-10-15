@@ -130,5 +130,6 @@ def _api_key() -> str:
         raise analysis_workflow.Abort("[錯誤] 未設定環境變數 GLM_API_KEY（請勿寫入程式碼或提交到 git）。")
     return api_key
 
+
 if __name__ == "__main__":
     sys.exit(analysis_workflow.main(GlmAdapter()))
