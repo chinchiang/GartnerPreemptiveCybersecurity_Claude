@@ -11,6 +11,7 @@ import { join, relative, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
+import { packageFiles } from './skill-packages.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = (p) => join(ROOT, p);
@@ -163,19 +164,20 @@ function buildZip(entries) {
   eocd.writeUInt32LE(cdSize, 12); eocd.writeUInt32LE(offset, 16); eocd.writeUInt16LE(0, 20);
   return Buffer.concat([...local, ...central, eocd]);
 }
+const toEntry = (f) => ({ name: f.path, data: Buffer.from(f.content, 'utf8') });
+const exampleFiles = walk(exDir).map(f => ({ path: relPosix(f), content: readText(f) }));
+// 每個技能包 ZIP 的內容由技能包組裝器決定：平臺自己的檔案＋腳本依賴的母本＋合成範例資料，解壓後即可執行
 const platforms = [...new Set(skillFiles.map(s => s.platform))];
 for (const p of platforms) {
-  const entries = skillFiles.filter(s => s.platform === p).map(s => ({ name: s.path, data: Buffer.from(s.content, 'utf8') }));
-  writeFileSync(out(`downloads/skills-${p}.zip`), buildZip(entries));
+  writeFileSync(out(`downloads/skills-${p}.zip`), buildZip(packageFiles(p, [...skillFiles, ...exampleFiles]).map(toEntry)));
 }
 const allEntries = [
-  ...skillFiles.map(s => ({ name: s.path, data: Buffer.from(s.content, 'utf8') })),
-  ...walk(exDir).map(f => ({ name: relPosix(f), data: Buffer.from(readText(f), 'utf8') })),
+  ...skillFiles.map(toEntry),
+  ...exampleFiles.map(toEntry),
   ...(existsSync(out('examples/expected-output.md')) ? [{ name: 'examples/expected-output.md', data: Buffer.from(readText(out('examples/expected-output.md')), 'utf8') }] : [])
 ];
 writeFileSync(out('downloads/skills-all-platforms.zip'), buildZip(allEntries));
-const exampleEntries = walk(exDir).map(f => ({ name: relPosix(f), data: Buffer.from(readText(f), 'utf8') }));
-writeFileSync(out('downloads/synthetic-example-data.zip'), buildZip(exampleEntries));
+writeFileSync(out('downloads/synthetic-example-data.zip'), buildZip(exampleFiles.map(toEntry)));
 
 // 內容指紋取代「建置時間」：同一份來源內容永遠產生同一個 manifest，
 // CI 才能用 `git diff --exit-code -- data/ downloads/` 守住整個 data/ 目錄。

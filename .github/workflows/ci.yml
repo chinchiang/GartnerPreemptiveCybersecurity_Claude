@@ -36,6 +36,18 @@ jobs:
           python3 -m py_compile skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
           for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run >/dev/null; done
           python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
+      - name: Platform skill-package ZIPs run standalone after unzip (dry-run, no API keys)
+        run: |
+          for p in chatgpt grok glm deepseek claude; do
+            d=$(mktemp -d)
+            python3 -m zipfile -e "downloads/skills-$p.zip" "$d"
+            if [ "$p" = claude ]; then
+              (cd "$d" && python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org >/dev/null)
+            else
+              (cd "$d" && python3 "skills/$p/api-workflow.py" --dry-run >/dev/null)
+            fi || { echo "::error::downloads/skills-$p.zip 解壓後無法執行，請檢查 scripts/skill-packages.mjs 的對照表"; exit 1; }
+            rm -rf "$d"
+          done
       - name: Demo engine acceptance (--no-scope refusal, schema JSON, --exclude scope)
         run: |
           node scripts/run-demo.mjs --no-scope && { echo '缺 scope 應拒絕'; exit 1; } || echo '缺 scope 已拒絕（exit 2）'

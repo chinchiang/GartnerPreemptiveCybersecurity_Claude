@@ -15,7 +15,7 @@ assets/md.js          極簡 Markdown 渲染器
 assets/demo.js        案例互動展示的確定性引擎
 assets/app.js         hash 路由、各頁面、全站搜尋、複製／下載
 data/*.js             由 scripts/build-data.mjs 產生（research、guides、skills、case、manifest）或手動維護（process、io、platforms、sources）
-downloads/*.zip       由建置腳本產生的下載包
+downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內容（平臺檔案＋腳本依賴的母本＋合成範例資料，解壓即可執行）由 scripts/skill-packages.mjs 的對照表決定
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               共用規格與五平台檔案（單一來源）
 examples/             合成範例資料、預期輸出、示範引擎快照與驗收夾具
