@@ -32,10 +32,10 @@ backend/                          選用的模型 API 代理範例（預設不�
 | 平台 | 最快路徑 |
 |---|---|
 | Claude | 把 `skills/claude/preemptive-exposure-analysis/` 放進 `.claude/skills/`，在 Claude Code 輸入 `/preemptive-exposure-analysis examples/synthetic-org` |
-| ChatGPT | Custom GPT 貼入 `skills/chatgpt/custom-gpt-instructions.md`；或 Codex 使用 `skills/chatgpt/codex-skill/` |
+| ChatGPT | Custom GPT 貼入 `skills/chatgpt/custom-gpt-instructions.md`；或 Codex 使用 `skills/chatgpt/preemptive-exposure-analysis/` |
 | Grok | `skills/grok/system-prompt.md` 貼入對話，或 `python3 skills/grok/api-workflow.py --dry-run` |
-| GLM | Claude Code + GLM 後端使用 `skills/glm/claude-code-skill/`；或 `python3 skills/glm/api-workflow.py --dry-run` |
-| DeepSeek | `python3 skills/deepseek/api-workflow.py --dry-run`（版本無關）；或 `skills/deepseek/host-skill/` |
+| GLM | Claude Code + GLM 後端使用 `skills/glm/preemptive-exposure-analysis/`；或 `python3 skills/glm/api-workflow.py --dry-run` |
+| DeepSeek | `python3 skills/deepseek/api-workflow.py --dry-run`（版本無關）；或 `skills/deepseek/preemptive-exposure-analysis/` |
 
 所有 API 腳本都支援 `--dry-run`（不需 API 金鑰）。金鑰一律以環境變數提供，儲存庫不含任何金鑰或真實資料。
 
