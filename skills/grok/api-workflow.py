@@ -87,24 +87,39 @@ def count_records(path: Path) -> str:
     return "單一物件"
 
 
+SCOPE_REQUIRED = ("organization", "analysis_date", "authorized_scope.in_scope_assets",
+                  "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized",
+                  "reporting.audience")
+
+
+def scope_problems(scope) -> list:
+    """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則與網站示範引擎 scopeProblems、
+    validate_inputs.py 相同，案例見 tests/fixtures/scope-cases.json：organization、analysis_date
+    不可缺、不可為空字串；in_scope_assets、audience 須為非空陣列；兩個 *_authorized 須為布林值。"""
+    problems = []
+    for path in SCOPE_REQUIRED:
+        node = scope
+        for key in path.split("."):
+            node = node.get(key) if isinstance(node, dict) else None
+        if node is None or node == "":
+            problems.append(path)
+        elif path in ("authorized_scope.in_scope_assets", "reporting.audience"):
+            if not isinstance(node, list) or not node:
+                problems.append(path)
+        elif path.endswith("_authorized") and not isinstance(node, bool):
+            problems.append(path)
+    return problems
+
+
 def validate_scope(path: Path) -> None:
-    """I1 守門：scope.json 必須存在、可解析且含六個必填欄位。"""
+    """I1 守門：scope.json 必須存在、可解析，且六個必填欄位都合格（見 scope_problems）。"""
     try:
         scope = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         sys.exit(f"[中止] scope.json 無法解析：{exc}")
-    required = [("organization",), ("analysis_date",), ("authorized_scope", "in_scope_assets"),
-                ("authorized_scope", "active_testing_authorized"), ("authorized_scope", "external_scanning_authorized"),
-                ("reporting", "audience")]
-    missing = []
-    for keys in required:
-        node = scope
-        for k in keys:
-            node = node.get(k) if isinstance(node, dict) else None
-        if node is None:
-            missing.append(".".join(keys))
+    missing = scope_problems(scope)
     if missing:
-        sys.exit("[中止] scope.json 缺少必填欄位：" + ", ".join(missing))
+        sys.exit("[中止] scope.json 缺少或不合格的必填欄位：" + ", ".join(missing) + "（in_scope_assets、audience 須為非空陣列；*_authorized 須為布林值）")
 
 
 def build_user_prompt(input_dir: Path, exclude: frozenset[str] = frozenset()) -> str:

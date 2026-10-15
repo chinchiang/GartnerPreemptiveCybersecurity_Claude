@@ -1,0 +1,21 @@
+{
+  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。Python（四支 api-workflow.py、validate_inputs.py）與網站示範引擎（demo.js scopeProblems）都用這份案例測試，判定必須一致。規則：organization、analysis_date 不可缺、不可為空字串；in_scope_assets、audience 必須是非空陣列；兩個 *_authorized 必須是布林值。",
+  "cases": [
+    { "name": "合成資料原樣", "set": {}, "remove": [], "problems": [] },
+    { "name": "issue #26 的重現範例", "set": { "authorized_scope.in_scope_assets": [], "authorized_scope.active_testing_authorized": "no", "reporting.audience": [] }, "remove": [],
+      "problems": ["authorized_scope.in_scope_assets", "authorized_scope.active_testing_authorized", "reporting.audience"] },
+    { "name": "in_scope_assets 是空陣列", "set": { "authorized_scope.in_scope_assets": [] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
+    { "name": "in_scope_assets 是字串而不是陣列", "set": { "authorized_scope.in_scope_assets": "erp-db-01" }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
+    { "name": "active_testing_authorized 是字串 no", "set": { "authorized_scope.active_testing_authorized": "no" }, "remove": [], "problems": ["authorized_scope.active_testing_authorized"] },
+    { "name": "external_scanning_authorized 是數字 0", "set": { "authorized_scope.external_scanning_authorized": 0 }, "remove": [], "problems": ["authorized_scope.external_scanning_authorized"] },
+    { "name": "audience 是空陣列", "set": { "reporting.audience": [] }, "remove": [], "problems": ["reporting.audience"] },
+    { "name": "audience 是字串而不是陣列", "set": { "reporting.audience": "資安主管" }, "remove": [], "problems": ["reporting.audience"] },
+    { "name": "organization 是空字串", "set": { "organization": "" }, "remove": [], "problems": ["organization"] },
+    { "name": "缺 analysis_date", "set": {}, "remove": ["analysis_date"], "problems": ["analysis_date"] },
+    { "name": "缺整個 authorized_scope", "set": {}, "remove": ["authorized_scope"],
+      "problems": ["authorized_scope.in_scope_assets", "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized"] },
+    { "name": "authorized_scope 是字串而不是物件", "set": { "authorized_scope": "全部" }, "remove": [],
+      "problems": ["authorized_scope.in_scope_assets", "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized"] },
+    { "name": "缺整個 reporting", "set": {}, "remove": ["reporting"], "problems": ["reporting.audience"] }
+  ]
+}
