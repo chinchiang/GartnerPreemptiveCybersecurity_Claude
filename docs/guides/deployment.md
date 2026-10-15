@@ -104,7 +104,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 證據檔、README、驗證報告、連結檢查表（站上附錄） | `docs/evidence/*.md`、`README.md`、`verify-report.md`、`link-check.md` | `npm run build`（嵌入 `data/extra.js`） |
 | 選用後端代理的提示詞 | `skills/shared/core-prompt.md` | `node scripts/build-worker.mjs` 產生 `backend/dist/worker.js`（不提交） |
 | 流程／I-O／平臺比較 | `data/process.js`、`data/io.js`、`data/platforms.js` | 無需 build |
-| Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本由建置產生，**請勿手動編輯** | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
+| Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及 Grok／GLM／DeepSeek `system-prompt.md` 裡的核心提示詞區塊，都由建置從母本產生，**請勿手動編輯**（system-prompt.md 其餘的平臺說明是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 範例資料 | `examples/synthetic-org/`（保持合成） | build；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
 | 評分規則 | `skills/shared/task-spec.md` 附錄 A、`core-prompt.md`、`assets/demo.js`、`skills/shared/scoring-rules.md` 需一致 | build + verify + `npm run snapshot` |

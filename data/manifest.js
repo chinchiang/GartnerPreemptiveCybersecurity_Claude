@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "a0abe759c473",
+ "contentHash": "2bb9d637cc03",
  "research": [
   {
    "id": "00-method",
@@ -214,7 +214,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/system-prompt.md",
    "platform": "deepseek",
-   "bytes": 5824
+   "bytes": 5968
   },
   {
    "path": "skills/glm/README.md",
@@ -269,7 +269,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/system-prompt.md",
    "platform": "glm",
-   "bytes": 5754
+   "bytes": 5898
   },
   {
    "path": "skills/grok/README.md",
@@ -289,7 +289,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/system-prompt.md",
    "platform": "grok",
-   "bytes": 5831
+   "bytes": 5975
   },
   {
    "path": "skills/grok/tool-definitions.json",

@@ -91,9 +91,10 @@ writeFileSync(out('data/guides.js'), jsExport('GUIDE_DOCS', guides));
 
 // ---------- 3. Skills ----------
 const skillsDir = out('skills');
-// 先由技能包組裝器從 skills/shared/ 母本產生各平臺 references/ 的複本，下面走訪 skills/ 時拿到的才是最新內容
-const masterFiles = walk(join(skillsDir, 'shared')).map(f => ({ path: relPosix(f), content: readText(f) }));
-for (const c of generateCopies(masterFiles)) writeFileSync(out(c.path), c.content);
+// 先由技能包組裝器從 skills/shared/ 母本產生複本（各平臺 references/、system-prompt.md 的核心提示詞區塊），
+// 下面走訪 skills/ 時拿到的才是最新內容。system-prompt.md 的平臺說明是手寫的，所以輸入要含整個 skills/。
+const sourceFiles = walk(skillsDir).map(f => ({ path: relPosix(f), content: readText(f) }));
+for (const c of generateCopies(sourceFiles)) writeFileSync(out(c.path), c.content);
 const skillFiles = walk(skillsDir).map(f => {
   const rel = relPosix(f);
   const platform = rel.split('/')[1];

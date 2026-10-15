@@ -15,16 +15,17 @@ export function extractCorePrompt(md) {
 
 // 對照表：skills/ 底下每個目錄一列。
 // needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成範例資料（腳本的預設輸入）；
-// copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀。
+// copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀；
+// systemPrompt＝skills/<平臺>/system-prompt.md 的核心提示詞區塊由母本嵌入（其餘內容是手寫的平臺說明）。
 const SCRIPT_NEEDS = ['skills/shared/core-prompt.md', 'skills/shared/output-schema.json']; // 四支 api-workflow.py 共同讀取
 const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 'scoring-rules.md', 'task-spec.md'];
 const PACKAGES = {
   chatgpt:  { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES },
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
               copies: REFERENCES.filter(n => n !== 'task-spec.md') },   // SKILL.md 不引用 task-spec
-  deepseek: { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES },
-  glm:      { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES },
-  grok:     { needs: SCRIPT_NEEDS, examples: true, copies: [] },        // 沒有原生 skills，也就沒有 references/
+  deepseek: { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, systemPrompt: true },
+  glm:      { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, systemPrompt: true },
+  grok:     { needs: SCRIPT_NEEDS, examples: true, copies: [], systemPrompt: true }, // 沒有原生 skills，也就沒有 references/
   shared:   { needs: [], examples: false, copies: [] }  // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
 };
 const EXAMPLES_DIR = 'examples/synthetic-org/';
@@ -53,12 +54,34 @@ function copyContent(name, content) {
 // 複本放在 skills/<平臺>/preemptive-exposure-analysis/references/<檔名>。
 export function generateCopies(files) {
   const copies = [];
+  let core; // 核心提示詞：有平臺要嵌入時才擷取，只擷取一次
+  const corePrompt = () => {
+    if (core !== undefined) return core;
+    const master = files.find(f => f.path === 'skills/shared/core-prompt.md');
+    if (!master) throw new Error('要嵌入系統提示詞的母本不存在：skills/shared/core-prompt.md');
+    return (core = extractCorePrompt(master.content));
+  };
   for (const [platform, pkg] of Object.entries(PACKAGES)) {
     for (const name of pkg.copies) {
       const master = files.find(f => f.path === `skills/shared/${name}`);
       if (!master) throw new Error(`${platform} 技能包要複製的母本不存在：skills/shared/${name}`);
       copies.push({ path: `skills/${platform}/preemptive-exposure-analysis/references/${name}`, content: copyContent(name, master.content) });
     }
+    if (pkg.systemPrompt) {
+      const path = `skills/${platform}/system-prompt.md`;
+      const target = files.find(f => f.path === path);
+      if (!target) throw new Error(`${path} 不存在，但對照表宣告 ${platform} 要嵌入核心提示詞`);
+      if (!CORE_BLOCK.test(target.content)) throw new Error(`${path} 找不到要嵌入核心提示詞的 \`\`\`text 區塊`);
+      copies.push({ path, content: embedCorePrompt(target.content, corePrompt()) });
+    }
   }
   return copies;
+}
+
+// 系統提示詞＝手寫的平臺說明＋核心提示詞：只換掉第一個 ```text 區塊（後面的範例區塊是手寫的），並在它正上方加標註。
+// 上一次建置寫入的標註連同區塊一起換掉，重複建置結果不變。
+const CORE_MARKER = '<!-- 以下區塊由 scripts/build-data.mjs 從 skills/shared/core-prompt.md 產生，請改母本後執行 npm run build，勿手動編輯 -->';
+const CORE_BLOCK = /(?:<!-- 以下區塊由 scripts\/build-data\.mjs [^\n]*-->\n)?```text\n[\s\S]*?\n```/;
+function embedCorePrompt(target, core) {
+  return target.replace(CORE_BLOCK, () => `${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``);
 }
