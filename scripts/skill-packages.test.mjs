@@ -2,7 +2,7 @@
 // 執行：npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractCorePrompt, packageFiles } from './skill-packages.mjs';
+import { extractCorePrompt, packageFiles, generateCopies } from './skill-packages.mjs';
 
 test('從核心提示詞母本擷取 ```text 區塊的內容', () => {
   const md = [
@@ -97,3 +97,62 @@ for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
     }
   });
 }
+
+// 母本：模擬 skills/shared/ 的五份會被複製的檔案
+const masters = [
+  { path: 'skills/shared/acceptance.md', content: '# 驗收清單\n\n| # | 檢查 |\n' },
+  { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入"\n}\n' },
+  { path: 'skills/shared/output-schema.json', content: '{\n  "title": "輸出"\n}\n' },
+  { path: 'skills/shared/scoring-rules.md', content: '# 示範評分規則\n\n規則內容。\n' },
+  { path: 'skills/shared/task-spec.md', content: '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n\n# 共用任務規格\n' }
+];
+const copyAt = (copies, path) => copies.find(c => c.path === path);
+
+test('JSON 複本與母本位元組相同，放在平臺技能的 references/ 底下', () => {
+  const copy = copyAt(generateCopies(masters), 'skills/glm/preemptive-exposure-analysis/references/output-schema.json');
+  assert.equal(copy.content, '{\n  "title": "輸出"\n}\n');
+});
+
+test('沒有 frontmatter 的 .md 複本，檔首加上「請勿手動編輯」標註，其後是母本原文', () => {
+  const copy = copyAt(generateCopies(masters), 'skills/glm/preemptive-exposure-analysis/references/scoring-rules.md');
+  assert.equal(copy.content,
+    '<!-- 由 scripts/build-data.mjs 從 skills/shared/scoring-rules.md 產生，請改母本後執行 npm run build，勿手動編輯 -->\n' +
+    '# 示範評分規則\n\n規則內容。\n');
+});
+
+test('有 frontmatter 的 .md 複本，frontmatter 原封不動留在檔首，標註放在它之後', () => {
+  const copy = copyAt(generateCopies(masters), 'skills/glm/preemptive-exposure-analysis/references/task-spec.md');
+  assert.equal(copy.content,
+    '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n' +
+    '<!-- 由 scripts/build-data.mjs 從 skills/shared/task-spec.md 產生，請改母本後執行 npm run build，勿手動編輯 -->\n' +
+    '\n# 共用任務規格\n');
+});
+
+test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本', () => {
+  const withoutTaskSpec = masters.filter(f => f.path !== 'skills/shared/task-spec.md');
+  assert.throws(() => generateCopies(withoutTaskSpec), { message: /母本不存在.*skills\/shared\/task-spec\.md/ });
+});
+
+test('各平臺的複本集合與現狀一致：Claude 沒有 task-spec，Grok 與 shared 沒有 references/', () => {
+  assert.deepEqual(paths(generateCopies(masters)).sort(), [
+    'skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md',
+    'skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json',
+    'skills/chatgpt/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/chatgpt/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/chatgpt/preemptive-exposure-analysis/references/task-spec.md',
+    'skills/claude/preemptive-exposure-analysis/references/acceptance.md',
+    'skills/claude/preemptive-exposure-analysis/references/input-schema.json',
+    'skills/claude/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/claude/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/deepseek/preemptive-exposure-analysis/references/acceptance.md',
+    'skills/deepseek/preemptive-exposure-analysis/references/input-schema.json',
+    'skills/deepseek/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/deepseek/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/deepseek/preemptive-exposure-analysis/references/task-spec.md',
+    'skills/glm/preemptive-exposure-analysis/references/acceptance.md',
+    'skills/glm/preemptive-exposure-analysis/references/input-schema.json',
+    'skills/glm/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/glm/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/glm/preemptive-exposure-analysis/references/task-spec.md'
+  ]);
+});

@@ -2,7 +2,7 @@
 
 複製本檔為 `model-acceptance-<平台>-<YYYY-MM-DD>.md` 後填寫。**不要修改本範本本身**。
 
-驗收項目定義在 `skills/claude/preemptive-exposure-analysis/references/acceptance.md`（7 項）。其中可機器判定的部分由 `scripts/check-acceptance.mjs` 檢查，其餘必須人工判讀——本檔的目的就是留下那部分的判讀紀錄，而不是靠記憶。
+驗收項目定義在 `skills/shared/acceptance.md`（7 項；各平臺 `references/acceptance.md` 為其複本）。其中可機器判定的部分由 `scripts/check-acceptance.mjs` 檢查，其餘必須人工判讀——本檔的目的就是留下那部分的判讀紀錄，而不是靠記憶。
 
 ## 兩條執行路徑
 

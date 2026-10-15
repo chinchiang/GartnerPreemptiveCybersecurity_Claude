@@ -3,6 +3,7 @@ title: 共用任務規格：先制型曝險分析（Preemptive Exposure Analysis
 role: shared-spec
 version: 1.0.0
 ---
+<!-- 由 scripts/build-data.mjs 從 skills/shared/task-spec.md 產生，請改母本後執行 npm run build，勿手動編輯 -->
 
 # 共用任務規格：先制型曝險分析（Preemptive Exposure Analysis）
 

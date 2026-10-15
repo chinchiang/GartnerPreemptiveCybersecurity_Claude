@@ -1,6 +1,6 @@
 name: Model acceptance (real API)
 
-# 對「真實模型輸出」執行 references/acceptance.md 的驗收，只在手動觸發時執行。
+# 對「真實模型輸出」執行 skills/shared/acceptance.md（各平臺 references/ 為其複本）的驗收，只在手動觸發時執行。
 #
 # 為什麼不放進 ci.yml：需要 API 金鑰、會產生費用、輸出不具決定性。PR 檢查必須是
 # 免金鑰且可重現的（見 ci.yml），因此真實模型驗收獨立成手動工作流程。

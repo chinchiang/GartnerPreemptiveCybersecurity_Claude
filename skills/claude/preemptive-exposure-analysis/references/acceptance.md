@@ -1,3 +1,4 @@
+<!-- 由 scripts/build-data.mjs 從 skills/shared/acceptance.md 產生，請改母本後執行 npm run build，勿手動編輯 -->
 # 驗收清單（以 examples/synthetic-org/ 合成資料執行）
 
 | # | 檢查 | 預期結果 |

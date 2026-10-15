@@ -67,7 +67,7 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 ### 4.1 示範引擎快照
 
-評分規則同時存在於四個地方（`assets/demo.js`、`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A、`skills/claude/.../references/scoring-rules.md`）。`examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出，`verify:static` 會逐位元組比對，用來抓「改了一處忘了同步其他三處」。
+評分規則同時存在於四個地方（`assets/demo.js`、`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A、`skills/shared/scoring-rules.md`）。各平臺 `references/` 裡的 `scoring-rules.md`、`task-spec.md` 是建置產生的複本，不算在內。`examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出，`verify:static` 會逐位元組比對，用來抓「改了一處忘了同步其他三處」。
 
 規則**刻意**變更時：先確認四處都已同步，再執行 `npm run snapshot` 更新快照，並在 PR 說明變更理由。
 
@@ -87,7 +87,7 @@ python3 skills/chatgpt/api-workflow.py --input-dir examples/synthetic-org --outp
 node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 ```
 
-`scripts/check-acceptance.mjs` 檢查 `references/acceptance.md` 七項驗收中可機器判定的部分：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
+`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）七項驗收中可機器判定的部分：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
 
 刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
 
@@ -104,12 +104,12 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 證據檔、README、驗證報告、連結檢查表（站上附錄） | `docs/evidence/*.md`、`README.md`、`verify-report.md`、`link-check.md` | `npm run build`（嵌入 `data/extra.js`） |
 | 選用後端代理的提示詞 | `skills/shared/core-prompt.md` | `node scripts/build-worker.mjs` 產生 `backend/dist/worker.js`（不提交） |
 | 流程／I-O／平台比較 | `data/process.js`、`data/io.js`、`data/platforms.js` | 無需 build |
-| Skills | `skills/<platform>/…`；規則變更先改 `skills/shared/` 再同步各平台 | `npm run build` |
+| Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本由建置產生，**請勿手動編輯** | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 範例資料 | `examples/synthetic-org/`（保持合成） | build；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
-| 評分規則 | `skills/shared/task-spec.md` 附錄 A、`core-prompt.md`、`assets/demo.js`、`references/scoring-rules.md` 需一致 | build + verify + `npm run snapshot` |
+| 評分規則 | `skills/shared/task-spec.md` 附錄 A、`core-prompt.md`、`assets/demo.js`、`skills/shared/scoring-rules.md` 需一致 | build + verify + `npm run snapshot` |
 
-`data/` 與 `downloads/` 是建置產物但**有進版控**（為了讓 `file://` 與「Deploy from a branch」都能用）。CI 會執行 `git diff --exit-code -- data/ downloads/`，忘記重建就會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
+`data/`、`downloads/` 與各平臺 `references/` 的複本是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/`，忘記重建或直接改了複本都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
 
 建議每季重新查證：Gartner 新文件（尤其 Impact Radar 與 Hype Cycle 更新）、五個平台的模型與功能變動（見待驗證清單）。這件事已由 `.github/workflows/quarterly-review.yml` 每季（1／4／7／10 月 1 日）自動開一個 issue，內容是 `data/sources.js` 中 `status: 'pending'` 的項目所組成的勾選清單（`node scripts/todo-checklist.mjs` 可在本機預覽）。查證完成後把該項改成 `status: 'done'` 並填 `resolvedAt`——`verify:static` 會檢查 `pending` 項目都寫出了下一步、`done` 項目都有日期。
 

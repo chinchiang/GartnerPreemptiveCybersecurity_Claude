@@ -86,7 +86,7 @@ function staticChecks() {
   const R2 = w.DEMO.analyze(w.CASE_DATA, { inputs: { threatIntel: false } });
   ok('驗收 6：移除情資後信心下修並標示', R2.findings.every(f => f.confidence === '中') && R2.missingSummary.includes('威脅情資'));
   // 示範引擎 golden snapshot：評分規則同時存在於 assets/demo.js、skills/shared/core-prompt.md、
-  // skills/shared/task-spec.md 附錄 A 與 references/scoring-rules.md，此檢查用來抓「改了一處忘了同步其他處」。
+  // skills/shared/task-spec.md 附錄 A 與 skills/shared/scoring-rules.md，此檢查用來抓「改了一處忘了同步其他處」。
   const snapPath = join(ROOT, 'examples/demo-snapshot.txt');
   try {
     const actual = execFileSync(process.execPath, [join(ROOT, 'scripts/run-demo.mjs')], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
