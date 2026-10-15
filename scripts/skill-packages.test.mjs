@@ -27,3 +27,8 @@ test('母本沒有 ```text 區塊時中止，錯誤訊息指出缺的是哪個�
   const md = '# 核心提示詞\n\n```markdown\n不是 text 區塊\n```\n';
   assert.throws(() => extractCorePrompt(md), { message: /找不到 .*```text 區塊/ });
 });
+
+test('只取第一個 ```text 區塊，不會延伸到後面的程式碼區塊', () => {
+  const md = '```text\n第一段提示詞\n```\n\n範例：\n\n```json\n{"a": 1}\n```\n';
+  assert.equal(extractCorePrompt(md), '第一段提示詞');
+});
