@@ -11,7 +11,7 @@ import { join, relative, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
-import { packageFiles, generateCopies } from './skill-packages.mjs';
+import { packageFiles, generatedFiles } from './skill-packages.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = (p) => join(ROOT, p);
@@ -91,9 +91,10 @@ writeFileSync(out('data/guides.js'), jsExport('GUIDE_DOCS', guides));
 
 // ---------- 3. Skills ----------
 const skillsDir = out('skills');
-// 先由技能包組裝器從 skills/shared/ 母本產生各平臺 references/ 的複本，下面走訪 skills/ 時拿到的才是最新內容
-const masterFiles = walk(join(skillsDir, 'shared')).map(f => ({ path: relPosix(f), content: readText(f) }));
-for (const c of generateCopies(masterFiles)) writeFileSync(out(c.path), c.content);
+// 先由技能包組裝器從 skills/shared/ 母本產生建置產物（各平臺 references/ 的複本、system-prompt.md 的嵌入區塊），
+// 下面走訪 skills/ 時拿到的才是最新內容。system-prompt.md 的平臺說明是手寫的，所以輸入要含整個 skills/。
+const sourceFiles = walk(skillsDir).map(f => ({ path: relPosix(f), content: readText(f) }));
+for (const c of generatedFiles(sourceFiles)) writeFileSync(out(c.path), c.content);
 const skillFiles = walk(skillsDir).map(f => {
   const rel = relPosix(f);
   const platform = rel.split('/')[1];
