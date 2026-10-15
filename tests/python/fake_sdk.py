@@ -1,4 +1,4 @@
-"""模型 adapter 測試的共用 helper：載入平臺腳本、假的 openai／anthropic 模組、讓指定模組 import 失敗。
+"""模型 adapter 測試的共用 helper：載入平臺腳本、假的 openai／anthropic／xai_sdk 模組、讓指定模組 import 失敗。
 
 不連網、不需金鑰與 SDK。平臺腳本檔名含連字號（api-workflow.py），所以用 importlib 從路徑載入。
 """
@@ -61,6 +61,32 @@ def fake_anthropic(replies):
             self.messages = Messages()
 
     return types.SimpleNamespace(Anthropic=Anthropic), record
+
+
+def fake_xai_sdk(replies):
+    """回傳 ({"xai_sdk": ..., "xai_sdk.chat": ...}, 呼叫紀錄)。chat.create 記下參數（確認沒有傳 tools），
+    append 的訊息以 (角色, 內容) 記錄，sample 依序回傳 replies。"""
+    record = {"clients": [], "chats": []}
+
+    class Chat:
+        def __init__(self, kwargs):
+            self.entry = {"create": kwargs, "messages": []}
+            record["chats"].append(self.entry)
+
+        def append(self, message):
+            self.entry["messages"].append(message)
+
+        def sample(self):
+            return types.SimpleNamespace(content=replies.pop(0))
+
+    class Client:
+        def __init__(self, api_key=None):
+            record["clients"].append({"api_key": api_key})
+            self.chat = types.SimpleNamespace(create=lambda **kwargs: Chat(kwargs))
+
+    chat = types.SimpleNamespace(system=lambda text: ("system", text), user=lambda text: ("user", text),
+                                 assistant=lambda text: ("assistant", text))
+    return {"xai_sdk": types.SimpleNamespace(Client=Client, chat=chat), "xai_sdk.chat": chat}, record
 
 
 class _Block(importlib.abc.MetaPathFinder):

@@ -40,9 +40,9 @@ role: readme
 skills/grok/
 ├── README.md                 本檔
 ├── system-prompt.md          可直接複製的系統提示詞（與 shared/core-prompt.md 一致）
-├── api-workflow.py           xai_sdk 腳本（含 --dry-run、--compat OpenAI 相容端點（待驗證））
+├── api-workflow.py           Grok 的模型 adapter：xai_sdk 與 --compat OpenAI 相容端點（待驗證）；流程由 ../shared/analysis_workflow.py 負責
 ├── tool-definitions.json     function-calling 工具定義（客戶端 harness 用）
-└── requirements.txt          xai-sdk、pydantic
+└── requirements.txt          xai-sdk、pydantic、openai（--compat 用）
 ```
 
 安裝與使用教學見 `docs/guides/grok.md`。
