@@ -107,14 +107,14 @@ const masters = [
   { path: 'skills/shared/task-spec.md', content: '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n\n# 共用任務規格\n' }
 ];
 // 平臺的系統提示詞：手寫的說明＋核心提示詞區塊＋手寫的範例區塊（也是 ```text）
-const systemPrompt = (name) => `---\ntitle: ${name} 系統提示詞\n---\n\n# ${name}\n\n> 用法說明。\n\n## 可直接複製的提示詞\n\n\`\`\`text\n舊的提示詞\n\`\`\`\n\n## 建議的第一則使用者訊息（範例）\n\n\`\`\`text\n請開始分析。\n\`\`\`\n`;
+const systemPromptMd = (name) => `---\ntitle: ${name} 系統提示詞\n---\n\n# ${name}\n\n> 用法說明。\n\n## 可直接複製的提示詞\n\n\`\`\`text\n舊的提示詞\n\`\`\`\n\n## 建議的第一則使用者訊息（範例）\n\n\`\`\`text\n請開始分析。\n\`\`\`\n`;
 // 平臺技能的 SKILL.md：frontmatter（平臺讀取技能的依據）＋手寫步驟＋核心指令區塊＋其他手寫章節
 const skillMd = (name) => `---\nname: preemptive-exposure-analysis\ndescription: 先制型曝險分析。\nmetadata:\n  backend: ${name}\n---\n\n# 先制型曝險分析\n\n## 執行步驟\n\n1. 依核心指令的八步流程產出報告。\n\n## 核心指令（與 \`skills/shared/core-prompt.md\` 一致；評分細則見 \`references/scoring-rules.md\`）\n\n\`\`\`text\n舊的核心指令\n\`\`\`\n\n## 輸出格式\n\n\`\`\`json\n{ "meta": {} }\n\`\`\`\n`;
 // generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md）
 const sources = [
   ...masters,
   { path: 'skills/shared/core-prompt.md', content: '---\ntitle: 核心提示詞\n---\n\n```text\n你是先制型曝險分析助理。\n```\n' },
-  ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPrompt(p) })),
+  ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPromptMd(p) })),
   ...['glm', 'deepseek'].map(p => ({ path: `skills/${p}/preemptive-exposure-analysis/SKILL.md`, content: skillMd(p) }))
 ];
 const copyAt = (copies, path) => copies.find(c => c.path === path);
@@ -231,4 +231,17 @@ test('已嵌入過的 SKILL.md 再產生一次結果不變，不會疊出第二�
   const rebuilt = sources.map(f => once.find(c => c.path === f.path) || f);
   const path = 'skills/deepseek/preemptive-exposure-analysis/SKILL.md';
   assert.equal(copyAt(generatedFiles(rebuilt), path).content, copyAt(once, path).content);
+});
+
+const withSkillMd = (platform, edit) => sources.map(f => f.path === `skills/${platform}/preemptive-exposure-analysis/SKILL.md` ? { ...f, content: edit(f.content) } : f);
+
+test('SKILL.md 有兩行以「## 核心指令」開頭的標題時中止，不會默默換掉第一個標題下的區塊', () => {
+  const twoHeadings = withSkillMd('glm', c => c.replace('## 核心指令（', '## 核心指令摘要\n\n```text\n手寫的摘要\n```\n\n## 核心指令（'));
+  assert.throws(() => generatedFiles(twoHeadings), { message: /skills\/glm\/preemptive-exposure-analysis\/SKILL\.md.*2 行.*## 核心指令/ });
+});
+
+test('SKILL.md 的「## 核心指令」標題與 ```text 區塊之間夾了文字時中止，不會誤換後面的區塊', () => {
+  const textBetween = withSkillMd('deepseek', c => c.replace('`references/scoring-rules.md`）\n\n```text', '`references/scoring-rules.md`）\n\n說明文字。\n\n```text'));
+  assert.ok(textBetween.find(f => f.path.endsWith('deepseek/preemptive-exposure-analysis/SKILL.md')).content.includes('說明文字。\n\n```text'));
+  assert.throws(() => generatedFiles(textBetween), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
 });

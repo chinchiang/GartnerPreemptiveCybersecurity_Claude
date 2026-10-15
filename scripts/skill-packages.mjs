@@ -13,7 +13,8 @@ const platformDir = (platform) => `skills/${platform}/`;
 const referencePath = (platform, name) => `${platformDir(platform)}preemptive-exposure-analysis/references/${name}`;
 // 建置寫入的標註（HTML 註解，網站渲染時 md.js 會略過）：複本放檔首，嵌入區塊放在區塊正上方
 const MARKER_SOURCE = 'scripts/build-data.mjs';
-const marker = (lead, master) => `<!-- ${lead}由 ${MARKER_SOURCE} 從 ${master} 產生，請改母本後執行 npm run build，勿手動編輯 -->`;
+const markerPrefix = (lead) => `<!-- ${lead}由 ${MARKER_SOURCE} `;
+const marker = (lead, master) => `${markerPrefix(lead)}從 ${master} 產生，請改母本後執行 npm run build，勿手動編輯 -->`;
 
 // 核心提示詞＝core-prompt.md 裡第一個 ```text 區塊；找不到就拋錯，讓建置中止。
 export function extractCorePrompt(md) {
@@ -25,18 +26,18 @@ export function extractCorePrompt(md) {
 // 對照表：skills/ 底下每個目錄一列。
 // needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成範例資料（腳本的預設輸入）；
 // copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀；
-// embeds＝含核心提示詞嵌入區塊的手寫檔（file 相對於 skills/<平臺>/）與區塊所在的標題（比對整行開頭）。
+// embeds＝含核心提示詞嵌入區塊的手寫檔（file 相對於 skills/<平臺>/）與區塊所在的標題：標題行以 heading 開頭（前綴比對），全檔只能有一行。
 const SCRIPT_NEEDS = [CORE_PROMPT, `${SHARED_DIR}output-schema.json`]; // 四支 api-workflow.py 共同讀取
 const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 'scoring-rules.md', 'task-spec.md'];
-const SYSTEM_PROMPT = { file: 'system-prompt.md', heading: '## 可直接複製的提示詞' };
-const SKILL_CORE = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
+const SYSTEM_PROMPT_EMBED = { file: 'system-prompt.md', heading: '## 可直接複製的提示詞' };
+const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
 const PACKAGES = {
   chatgpt:  { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [] },
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
               copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [] }, // SKILL.md 不引用 task-spec
-  deepseek: { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT, SKILL_CORE] },
-  glm:      { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT, SKILL_CORE] },
-  grok:     { needs: SCRIPT_NEEDS, examples: true, copies: [], embeds: [SYSTEM_PROMPT] }, // 沒有原生 skills，也就沒有 references/
+  deepseek: { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
+  glm:      { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
+  grok:     { needs: SCRIPT_NEEDS, examples: true, copies: [], embeds: [SYSTEM_PROMPT_EMBED] }, // 沒有原生 skills，也就沒有 references/
   shared:   { needs: [], examples: false, copies: [], embeds: [] } // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
 };
 
@@ -75,11 +76,12 @@ function copyContent(name, content) {
   return fm ? fm[0] + line + content.slice(fm[0].length) : line + content;
 }
 
-// 嵌入區塊：手寫檔＋核心提示詞。只換掉指定標題下緊接的 ```text 區塊（同一檔案裡其他 ```text 區塊是手寫的），
+// 嵌入區塊：手寫檔＋核心提示詞。以 heading 開頭的標題行全檔須恰好一行，只換掉它下面緊接的 ```text 區塊
+// （同一檔案裡其他 ```text 區塊是手寫的；標題有 0 行、2 行以上，或標題下不是緊接區塊，都中止），
 // 並在它正上方加標註；上一次建置寫入的標註連同區塊一起換掉，重複建置結果不變。
 const CORE_MARKER = marker('以下區塊', CORE_PROMPT);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-const coreBlock = (heading) => new RegExp(`^(${escapeRe(heading)}[^\\n]*\\n\\n+)(?:<!-- 以下區塊由 ${escapeRe(MARKER_SOURCE)} [^\\n]*-->\\n)?\`\`\`text\\n[\\s\\S]*?\\n\`\`\``, 'm');
+const coreBlock = (heading) => new RegExp(`^(${escapeRe(heading)}[^\\n]*\\n\\n+)(?:${escapeRe(markerPrefix('以下區塊'))}[^\\n]*-->\\n)?\`\`\`text\\n[\\s\\S]*?\\n\`\`\``, 'm');
 function embeddedFiles(files) {
   const master = files.find(f => f.path === CORE_PROMPT);
   if (!master) throw new Error(`要嵌入的母本不存在：${CORE_PROMPT}`);
@@ -88,8 +90,10 @@ function embeddedFiles(files) {
     const path = `${platformDir(platform)}${file}`;
     const target = files.find(f => f.path === path);
     if (!target) throw new Error(`${path} 不存在，但對照表宣告 ${platform} 要在它嵌入核心提示詞`);
+    const headings = target.content.split('\n').filter(line => line.startsWith(heading)).length;
+    if (headings !== 1) throw new Error(`${path} 有 ${headings} 行以「${heading}」開頭的標題，必須恰好一行，才知道要換哪個 \`\`\`text 區塊`);
     const block = coreBlock(heading);
     if (!block.test(target.content)) throw new Error(`${path} 找不到「${heading}」標題下緊接的 \`\`\`text 區塊`);
-    return { path, content: target.content.replace(block, (_, h) => `${h}${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``) };
+    return { path, content: target.content.replace(block, (_, headingLine) => `${headingLine}${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``) };
   }));
 }
