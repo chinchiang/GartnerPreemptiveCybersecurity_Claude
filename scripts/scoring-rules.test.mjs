@@ -25,11 +25,10 @@ test('示範引擎匯出唯讀的規則資料，涵蓋可能性、身分弱點�
   assert.deepEqual(R.confidence, { lowMissing: 3, inventoryThreshold: 80 });
 });
 
-test('示範頁的預設參數取自規則資料：權重與門檻相同', () => {
+test('示範頁的預設權重取自規則資料，但是可調整的複製品', () => {
   assert.deepEqual(DEMO.DEFAULTS.weights, DEMO.RULES.weights);
-  assert.deepEqual(DEMO.THRESHOLDS, DEMO.RULES.thresholds);
-  assert.ok(!Object.isFrozen(DEMO.DEFAULTS.weights), '網站會複製 DEFAULTS 再讓使用者調整，預設權重本身不必凍結，但不能直接是 RULES 的物件');
-  assert.notEqual(DEMO.DEFAULTS.weights, DEMO.RULES.weights);
+  assert.ok(!Object.isFrozen(DEMO.DEFAULTS.weights), '網站會讓使用者調整 DEFAULTS 的權重，它不能被凍結');
+  assert.notEqual(DEMO.DEFAULTS.weights, DEMO.RULES.weights, 'DEFAULTS.weights 必須是複製品，不能直接是 RULES 的物件');
 });
 
 // ---------------------------------------------------------------------------
@@ -98,12 +97,11 @@ test('找不到就失敗：定位文字被改掉或重複、文件沒有提供�
   const missing = scoringRuleDrift(repoDocs().filter(d => d.path !== C));
   assert.deepEqual(summary(missing), [`${C}｜（整份文件）`]);
 
-  const DEMO_RULES = DEMO.RULES;
-  const withoutHops = { ...DEMO_RULES, feasibility: { ...DEMO_RULES.feasibility, maxHops: undefined } };
+  const withoutHops = { ...DEMO.RULES, feasibility: { ...DEMO.RULES.feasibility, maxHops: undefined } };
   const noRule = scoringRuleDrift(repoDocs(), withoutHops);
   assert.deepEqual(summary(noRule), ['skills/shared/scoring-rules.md｜最大跳數']);
   assert.match(noRule[0].reason, /規則資料缺少/);
-  const noSection = scoringRuleDrift(repoDocs(), { ...DEMO_RULES, confidence: undefined });
+  const noSection = scoringRuleDrift(repoDocs(), { ...DEMO.RULES, confidence: undefined });
   assert.deepEqual(summary(noSection), [`${C}｜信心`, 'skills/shared/task-spec.md｜信心']);
 });
 
@@ -111,7 +109,7 @@ test('文件少了最後一個數字（例如漏寫一個信心等級）也算�
   const S = 'skills/shared/scoring-rules.md';
   const drift = scoringRuleDrift(withEdit(repoDocs(), S, '／+1.5（medium）／+1（low）', '／+1.5（medium）'));
   assert.deepEqual(summary(drift), [`${S}｜可能性：威脅情資`]);
-  assert.deepEqual(drift[0].actual, [2, 1.5]);
+  assert.deepEqual(drift[0].actual, ['+', 2, '+', 1.5]);
 });
 
 test('文件多出一個數字（例如新增一個因子）也算漂移', () => {
@@ -127,4 +125,53 @@ test('CRLF 換行的文件與 LF 的結果相同', () => {
   const edited = withEdit(repoDocs(), 'skills/shared/task-spec.md', 'tolerant → 70/50/25', 'tolerant → 70/55/25');
   assert.deepEqual(scoringRuleDrift(crlf(edited)), scoringRuleDrift(edited));
   assert.equal(scoringRuleDrift(edited).length, 1);
+});
+
+test('運算子也要一致：既有控制與跳數的扣分「−」被改成「+」時回報', () => {
+  const cases = [
+    ['skills/shared/core-prompt.md', '− min(2,既有控制數·0.6)', '+ min(2,既有控制數·0.6)', '可能性'],
+    ['skills/shared/core-prompt.md', '− (跳數−1)·0.6', '+ (跳數−1)·0.6', '路徑可行性與無發現節點取值'],
+    ['skills/shared/task-spec.md', '− min(2, controls·0.6)', '+ min(2, controls·0.6)', '可能性'],
+    ['skills/shared/task-spec.md', '− (hops−1)·0.6', '+ (hops−1)·0.6', '路徑可行性'],
+    ['skills/shared/scoring-rules.md', '| −0.8 × min(2, 數量 × 0.6) |', '| +0.8 × min(2, 數量 × 0.6) |', '可能性：既有控制'],
+    ['skills/shared/scoring-rules.md', '− (hops − 1) × 0.6', '+ (hops − 1) × 0.6', '路徑可行性']
+  ];
+  for (const [path, old, replacement, rule] of cases) {
+    assert.deepEqual(summary(scoringRuleDrift(withEdit(repoDocs(), path, old, replacement))), [`${path}｜${rule}`], `${path}：${old}`);
+  }
+});
+
+test('文件寫的係數含預設權重：權重 1 的因子（例如對外曝露）權重被改掉，文件的數字也算漂移', () => {
+  const R = DEMO.RULES;
+  const drift = scoringRuleDrift(repoDocs(), { ...R, weights: { ...R.weights, exposure: 1.2 } });
+  assert.deepEqual(summary(drift), [
+    'skills/shared/core-prompt.md｜可能性',
+    'skills/shared/task-spec.md｜可能性',
+    'skills/shared/scoring-rules.md｜可能性：對外曝露',
+    'skills/shared/scoring-rules.md｜可能性：EASM 議題'
+  ]);
+  const impact = scoringRuleDrift(repoDocs(), { ...R, weights: { ...R.weights, impact: 0.9 } });
+  assert.deepEqual(summary(impact), ['skills/shared/core-prompt.md｜影響', 'skills/shared/task-spec.md｜影響', 'skills/shared/scoring-rules.md｜影響']);
+  assert.equal(impact[0].expected[0], 1.4 * 0.9, '業務重要性係數也要乘上影響權重');
+});
+
+test('分數範圍由可能性與影響的上下限推得：可能性上限改了，分數範圍也要跟著改', () => {
+  const R = DEMO.RULES;
+  const drift = scoringRuleDrift(repoDocs(), { ...R, likelihood: { ...R.likelihood, range: [0, 5] } });
+  const scoreRange = drift.filter(d => d.rule === '分數範圍');
+  assert.deepEqual(summary(scoreRange), ['skills/shared/task-spec.md｜分數範圍', 'skills/shared/scoring-rules.md｜分數範圍']);
+  assert.deepEqual(scoreRange[0].expected, [0, 50]);
+});
+
+test('範圍也要一致：可能性、影響、路徑可行性的 0–10 與分數的 0–100', () => {
+  const cases = [
+    ['skills/shared/scoring-rules.md', '## 1. 可能性（likelihood，0–10）', '## 1. 可能性（likelihood，0–12）', '可能性範圍'],
+    ['skills/shared/scoring-rules.md', '## 2. 影響（impact，0–10）', '## 2. 影響（impact，1–10）', '影響範圍'],
+    ['skills/shared/scoring-rules.md', '## 4. 攻擊路徑可行性（0–10）', '## 4. 攻擊路徑可行性（0–5）', '路徑可行性範圍'],
+    ['skills/shared/scoring-rules.md', '`score = likelihood × impact`（0–100）', '`score = likelihood × impact`（0–10）', '分數範圍'],
+    ['skills/shared/task-spec.md', 'score = likelihood × impact  (0–100)', 'score = likelihood × impact  (0–1000)', '分數範圍']
+  ];
+  for (const [path, old, replacement, rule] of cases) {
+    assert.deepEqual(summary(scoringRuleDrift(withEdit(repoDocs(), path, old, replacement))), [`${path}｜${rule}`], `${path}：${old}`);
+  }
 });

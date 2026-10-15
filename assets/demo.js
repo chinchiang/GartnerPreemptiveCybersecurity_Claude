@@ -37,7 +37,6 @@
     inventoryCompleteness: 100, // 0-100：模擬資產清冊完整度
     riskAppetite: 'balanced'     // 'strict' | 'balanced' | 'tolerant'
   };
-  const THRESHOLDS = RULES.thresholds;
   const SCOPE_REQUIRED = ['organization', 'analysis_date', 'authorized_scope.in_scope_assets', 'authorized_scope.active_testing_authorized', 'authorized_scope.external_scanning_authorized', 'reporting.audience'];
 
   /** 驗證 scope（I1）。回傳缺少的欄位清單；空陣列表示可以分析。 */
@@ -56,7 +55,7 @@
 
   function analyze(data, params = DEFAULTS) {
     const P = { ...DEFAULTS, ...params, inputs: { ...DEFAULTS.inputs, ...(params.inputs || {}) }, weights: { ...DEFAULTS.weights, ...(params.weights || {}) } };
-    const th = THRESHOLDS[P.riskAppetite] || THRESHOLDS.balanced;
+    const th = RULES.thresholds[P.riskAppetite] || RULES.thresholds.balanced;
 
     // S1 範圍確認：沒有授權範圍就拒絕分析（task-spec 驗收第 7 項）
     const problems = scopeProblems(data.scope);
@@ -126,7 +125,7 @@
         if (epss >= 0.5) f.factors.push(`模擬 EPSS ${epss}`);
         if (kev) { likelihood += L.kev * P.weights.exploit; f.factors.push('模擬 KEV（已知遭利用）'); }
       } else { likelihood += (Number(v.cvss_base) / 10) * L.cvssFallback * P.weights.exploit; f.missing.push('EPSS/KEV（改用 CVSS 近似）'); }
-      // 3. 身分弱點（MFA 未啟用／部分啟用，或 90 天以上未登入）
+      // 3. 身分弱點（MFA 未啟用／部分啟用，或超過 RULES.identityIssue.staleLoginDays 天未登入）
       const idIss = identityIssues(v.asset_id);
       if (idIss.length) { likelihood += Math.min(L.identity.cap, idIss.length) * P.weights.identity; f.factors.push(`身分弱點 ×${idIss.length}`); }
       if (!P.inputs.identities) f.missing.push('身分與權限資料');
@@ -153,7 +152,7 @@
       if (entryNodes.has(v.asset_id)) { impact += I.entry * P.weights.impact; f.factors.push('可達 crown jewel 之入口（blast radius）'); }
       f.impact = clamp(impact, ...I.range);
       f.score = round1(f.likelihood * f.impact); // 0-100
-      // 信心：缺 0 類 → 高；缺 1–2 類 → 中；缺 3 類以上或清冊完整度 < 80% → 低
+      // 信心：缺 0 類 → 高；缺 RULES.confidence.lowMissing 類以上或清冊完整度 < inventoryThreshold% → 低；其餘 → 中
       f.confidence = (f.missing.length >= RULES.confidence.lowMissing || inventoryLow) ? '低' : f.missing.length === 0 ? '高' : '中';
       if (inventoryLow) f.missing.push(`資產清冊完整度 ${P.inventoryCompleteness}% < ${RULES.confidence.inventoryThreshold}%`);
       return f;
@@ -161,7 +160,7 @@
     for (const f of findings) f.priority = f.score >= th[0] ? 'P1' : f.score >= th[1] ? 'P2' : f.score >= th[2] ? 'P3' : 'P4';
     findings.sort((a, b) => b.score - a.score);
 
-    // S4 攻擊路徑假設：從 internet 出發，走 topology edges 到 crown jewels（簡單 DFS，最長 5 跳）
+    // S4 攻擊路徑假設：從 internet 出發，走 topology edges 到 crown jewels（簡單 DFS，跳數上限見 F.maxHops）
     const paths = [];
     if (P.inputs.topology) {
       const edges = data.topology.edges.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
@@ -313,7 +312,7 @@
     };
   }
 
-  const api = { analyze, toSchema, scopeProblems, RULES, DEFAULTS, THRESHOLDS };
+  const api = { analyze, toSchema, scopeProblems, RULES, DEFAULTS };
   if (typeof window !== 'undefined') window.DEMO = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
