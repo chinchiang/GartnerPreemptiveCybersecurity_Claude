@@ -1,4 +1,4 @@
-"""模型 adapter 測試的共用 helper：載入平臺腳本、假的 openai／anthropic／xai_sdk 模組、讓指定模組 import 失敗。
+"""模型 adapter 測試的共用 helper：載入平臺腳本、假的 openai（Chat Completions、Responses）／anthropic／xai_sdk 模組、讓指定模組 import 失敗。
 
 不連網、不需金鑰與 SDK。平臺腳本檔名含連字號（api-workflow.py），所以用 importlib 從路徑載入。
 """
@@ -39,6 +39,25 @@ def fake_openai(replies, reject_response_format=False):
         def __init__(self, api_key=None, base_url=None):
             record["clients"].append({"api_key": api_key, "base_url": base_url})
             self.chat = types.SimpleNamespace(completions=Completions())
+
+    return types.SimpleNamespace(OpenAI=OpenAI), record
+
+
+def fake_openai_responses(replies):
+    """回傳 (假的 openai 模組, 呼叫紀錄)，模擬 Responses API（client.responses.create）。replies 的字串
+    包成只有 output_text 的回應；其他物件原樣回傳（用來測 output_text 為空時從 output 收集文字）。"""
+    record = {"clients": [], "calls": []}
+
+    class Responses:
+        def create(self, **kwargs):
+            record["calls"].append(kwargs)
+            reply = replies.pop(0)
+            return types.SimpleNamespace(output_text=reply, output=[]) if isinstance(reply, str) else reply
+
+    class OpenAI:
+        def __init__(self, api_key=None, base_url=None):
+            record["clients"].append({"api_key": api_key, "base_url": base_url})
+            self.responses = Responses()
 
     return types.SimpleNamespace(OpenAI=OpenAI), record
 

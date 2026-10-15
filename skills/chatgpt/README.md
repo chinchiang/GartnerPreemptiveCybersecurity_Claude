@@ -56,7 +56,7 @@ skills/chatgpt/
 ├── project-instructions.md       ChatGPT Projects 的短版指令與附檔方式
 ├── preemptive-exposure-analysis/
 │   └── SKILL.md                  Agent Skills 標準格式的 Codex skill
-├── api-workflow.py               Responses API 腳本（含 --dry-run）
+├── api-workflow.py               ChatGPT 的模型 adapter：Responses API 兩段式呼叫（含 --dry-run）；流程由 ../shared/analysis_workflow.py 負責
 └── requirements.txt              openai>=1.0
 ```
 

@@ -29,7 +29,7 @@ platform: chatgpt
 | `skills/chatgpt/custom-gpt-instructions.md` | Custom GPT 的 Instructions 全文、名稱、描述、開場提示、Knowledge 清單 |
 | `skills/chatgpt/project-instructions.md` | ChatGPT Projects 的短版指令與附檔方式 |
 | `skills/chatgpt/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準格式的 Codex skill |
-| `skills/chatgpt/api-workflow.py`、`requirements.txt` | Responses API 腳本（含 `--dry-run`） |
+| `skills/chatgpt/api-workflow.py`、`requirements.txt` | Responses API 腳本（含 `--dry-run`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 ChatGPT 的模型 adapter |
 | `skills/shared/*` | 共用規格、核心提示詞、輸入／輸出 schema |
 | `examples/synthetic-org/*` | 合成範例資料（9 檔） |
 
@@ -78,7 +78,7 @@ V1：授權下外部版本確認 + 內部 BAS；**尚未授權主動測試**。
 |---|---|---|
 | Custom GPT／Project | ChatGPT 帳號（Custom GPT 建立需付費方案，方案名稱以官方為準） | 資料上傳至 OpenAI（依帳戶資料政策） |
 | Codex | Codex CLI／IDE 擴充／桌面版；本機檔案讀寫 | 檔案內容送至 OpenAI API |
-| API | `OPENAI_API_KEY`（環境變數）、`pip install openai` | 資料送至 OpenAI API |
+| API | `OPENAI_API_KEY`（環境變數）、`pip install -r skills/chatgpt/requirements.txt` | 資料送至 OpenAI API |
 
 不需要瀏覽、Actions 或任何掃描工具。
 
@@ -125,7 +125,11 @@ export OPENAI_MODEL=gpt-5.5                               # 以 platform.openai.
 python3 skills/chatgpt/api-workflow.py
 ```
 
-輸出：`output/chatgpt-report.md`、`output/chatgpt-output.json`。
+輸出：`output/chatgpt-report.md`、`output/chatgpt-output.json`（JSON 解析失敗時另存 `output/chatgpt-output.raw.txt`）。
+
+兩段式對話：第 1 段要 Markdown 報告，第 2 段延續同一對話（`instructions` 放系統提示，`input` 放整串訊息）、只要 JSON，output-schema.json 放在第 2 段。不啟用任何工具。
+
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含 API 回覆沒有文字內容）；4 JSON 解析失敗。JSON 缺少必填區塊等輸出後檢查只警告、仍是 0，完整判定請用 `node scripts/check-acceptance.mjs output/chatgpt-output.json`。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 

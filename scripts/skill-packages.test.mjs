@@ -250,10 +250,10 @@ test('SKILL.md 的「## 核心指令」標題與 ```text 區塊之間夾了文�
   assert.throws(() => generatedFiles(textBetween), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
 });
 
-test('改用分析工作流程核心的平臺（目前是 deepseek、glm、grok）另外帶上核心與它讀取的 input-schema.json', () => {
-  for (const platform of ['deepseek', 'glm', 'grok']) {
+test('改用分析工作流程核心的平臺（四個有 api-workflow.py 的平臺）另外帶上核心與它讀取的 input-schema.json', () => {
+  for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
     const got = paths(packageFiles(platform, repo));
     for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
   }
-  assert.ok(!paths(packageFiles('chatgpt', repo)).includes('skills/shared/analysis_workflow.py'), 'chatgpt 尚未搬遷，不該帶核心');
+  assert.ok(!paths(packageFiles('claude', repo)).includes('skills/shared/analysis_workflow.py'), 'claude 的 validate_inputs.py 尚未搬遷，不該帶核心');
 });
