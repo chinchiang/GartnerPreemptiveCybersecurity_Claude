@@ -7,7 +7,7 @@
 ### 技能與發布
 
 **平臺**：
-技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek。
+技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek。文件裡「曝險管理平臺」「PTI 平臺」這類指資安產品的「…平臺」只是一般用語，不屬於此詞條。
 _Avoid_: 供應商、模型、後端
 
 **技能包**：
