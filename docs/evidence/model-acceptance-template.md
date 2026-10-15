@@ -69,7 +69,7 @@
 | mes-srv-01 / SYN-2023-0044 | P1，72.5 | | |
 | web-portal-01 / SYN-2026-0210 | P1，68.7 | | |
 
-分級不一致時，先確認評分規則四處（`assets/demo.js`、`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A、`skills/shared/scoring-rules.md`）是否同步，再判斷是模型理解問題還是規格描述不夠明確。
+分級不一致時，先確認 `npm test` 的評分規則一致性檢查通過（示範引擎的規則資料與母本一致，見 `docs/guides/deployment.md` 第 4.1 節），再判斷是模型理解問題還是規格描述不夠明確。
 
 ## 五、結論
 

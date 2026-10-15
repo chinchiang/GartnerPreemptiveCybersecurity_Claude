@@ -1,21 +1,44 @@
 /* 案例互動展示引擎。
    重要：這裡的評分規則是本專案為了「示範輸入如何影響輸出」而設計的簡化規則，
    不是 Gartner 的官方公式，也不代表任何真實風險模型。所有數值皆基於合成資料。
-   規則全文見 skills/shared/task-spec.md 附錄 A 與 skills/shared/scoring-rules.md。 */
+   規則數值的唯一來源是下方的 RULES；母本（core-prompt.md、task-spec.md 附錄 A、scoring-rules.md）以散文陳述同一套規則，
+   由 scripts/scoring-rules.mjs 的一致性檢查比對數值（npm test）。 */
 (function () {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const round1 = (v) => Math.round(v * 10) / 10;
 
+  const deepFreeze = (o) => { Object.values(o).forEach(v => { if (v && typeof v === 'object') deepFreeze(v); }); return Object.freeze(o); };
+
+  /** 示範評分規則（唯讀）。min(cap, 數量 × perItem) × 權重；權重是 weights 的預設值（UI 可調整）。 */
+  const RULES = deepFreeze({
+    likelihood: {
+      exposed: 3, easmIssues: 0.5, exploitPublic: 2, epss: 3, kev: 3,
+      cvssFallback: 1.5,                          // 缺 EPSS/KEV：cvss_base / 10 × cvssFallback
+      identity: { cap: 2 },                       // × weights.identity
+      misconfig: { cap: 1.5, perItem: 0.75 },     // × weights.control
+      controls: { cap: 2, perItem: 0.6 },         // 降低；× weights.control
+      gaps: { cap: 1.5, perItem: 0.4 },           // × weights.control
+      intel: { high: 2, medium: 1.5, low: 1 },    // 依行為者信心；× weights.intel
+      range: [0, 10]
+    },
+    identityIssue: { staleLoginDays: 90 },        // MFA 未啟用／部分啟用，或超過此天數未登入
+    impact: { criticality: 1.4, dataWeight: { Restricted: 3, Confidential: 2, Internal: 1, Public: 0 }, crownJewel: 2, entry: 2, range: [0, 10] },
+    thresholds: { strict: [50, 30, 15], balanced: [60, 40, 20], tolerant: [70, 50, 25] }, // P1／P2／P3
+    feasibility: { entry: 0.5, weakest: 0.3, trustEdge: 1.0, perHop: 0.6, unknownNode: 3, maxHops: 5, range: [0, 10] },
+    confidence: { lowMissing: 3, inventoryThreshold: 80 }, // 缺 lowMissing 類以上或清冊完整度 < inventoryThreshold% → 低
+    weights: { exposure: 1.0, exploit: 1.0, identity: 0.8, control: 0.8, intel: 1.0, impact: 1.0 }
+  });
+  const L = RULES.likelihood, I = RULES.impact, F = RULES.feasibility;
+
   /** 預設參數（可由 UI 調整） */
   const DEFAULTS = {
     inputs: { threatIntel: true, identities: true, controls: true, misconfig: true, epss: true, topology: true, exposures: true },
-    weights: { exposure: 1.0, exploit: 1.0, identity: 0.8, control: 0.8, intel: 1.0, impact: 1.0 },
+    weights: { ...RULES.weights },
     inventoryCompleteness: 100, // 0-100：模擬資產清冊完整度
     riskAppetite: 'balanced'     // 'strict' | 'balanced' | 'tolerant'
   };
-  const THRESHOLDS = { strict: [50, 30, 15], balanced: [60, 40, 20], tolerant: [70, 50, 25] };
+  const THRESHOLDS = RULES.thresholds;
   const SCOPE_REQUIRED = ['organization', 'analysis_date', 'authorized_scope.in_scope_assets', 'authorized_scope.active_testing_authorized', 'authorized_scope.external_scanning_authorized', 'reporting.audience'];
-  const NO_FINDING_NODE_LIKELIHOOD = 3; // 路徑上「無任何發現」的節點取 3（未知）；有發現者取其可能性（可為 0）
 
   /** 驗證 scope（I1）。回傳缺少的欄位清單；空陣列表示可以分析。 */
   function scopeProblems(scope) {
@@ -59,9 +82,9 @@
 
     const controlsOf = (id) => P.inputs.controls ? data.controls.controls.filter(c => c.coverage_assets.includes(id)).map(c => c.name) : [];
     const gapsOf = (id) => P.inputs.controls ? data.controls.controls.filter(c => c.gaps.includes(id)).map(c => c.name) : [];
-    const identityIssues = (id) => P.inputs.identities ? data.identities.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > 90)) : [];
+    const identityIssues = (id) => P.inputs.identities ? data.identities.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
     const intelHits = (vulnIds) => P.inputs.threatIntel ? data.threatIntel.actors.filter(a => a.exploits_vuln_ids.some(v => vulnIds.includes(v))) : [];
-    const intelWeight = (a) => ({ high: 2, medium: 1.5, low: 1 })[a.confidence] ?? 1;
+    const intelWeight = (a) => L.intel[a.confidence] ?? L.intel.low; // 未標信心時以 low 計
     const misconfigs = (id) => P.inputs.misconfig ? data.misconfigurations.filter(m => m.asset_id === id && m.status === 'fail') : [];
     const exposureOf = (id) => P.inputs.exposures ? data.exposures.exposures.find(e => e.asset_id === id) : null;
     const crownJewels = (data.topology && data.topology.crown_jewels) || [];
@@ -82,7 +105,7 @@
     // 模擬資產清冊不完整：依完整度隱藏排序靠後的資產（示範用）
     const visibleIds = scopedAssets.map(a => a.asset_id).filter((_, idx, arr) => idx < Math.round(arr.length * P.inventoryCompleteness / 100));
     const hidden = scopedAssets.filter(a => !visibleIds.includes(a.asset_id));
-    const inventoryLow = P.inventoryCompleteness < 80;
+    const inventoryLow = P.inventoryCompleteness < RULES.confidence.inventoryThreshold;
 
     // S3 曝險評分
     const findings = (data.vulnerabilities || []).filter(v => visibleIds.includes(v.asset_id)).map(v => {
@@ -91,48 +114,48 @@
       let likelihood = 0;
       // 1. 外部曝露
       const exposed = a.internet_exposed === true;
-      if (exposed) { likelihood += 3 * P.weights.exposure; f.factors.push('對外曝露'); }
+      if (exposed) { likelihood += L.exposed * P.weights.exposure; f.factors.push('對外曝露'); }
       const ex = exposureOf(v.asset_id);
-      if (ex && ex.issues.length) { likelihood += 0.5 * P.weights.exposure; f.factors.push(`EASM 議題：${ex.issues.join('、')}`); }
+      if (ex && ex.issues.length) { likelihood += L.easmIssues * P.weights.exposure; f.factors.push(`EASM 議題：${ex.issues.join('、')}`); }
       if (!P.inputs.exposures) f.missing.push('外部曝險資料');
       // 2. 利用可能性（範例資料欄位 epss_sim／kev_sim 視同 epss／kev，皆為模擬值）
       const epss = Number(v.epss ?? v.epss_sim ?? 0), kev = (v.kev ?? v.kev_sim) === true;
-      if (v.exploit_public === true) { likelihood += 2 * P.weights.exploit; f.factors.push('公開利用程式'); }
+      if (v.exploit_public === true) { likelihood += L.exploitPublic * P.weights.exploit; f.factors.push('公開利用程式'); }
       if (P.inputs.epss) {
-        likelihood += 3 * epss * P.weights.exploit;
+        likelihood += L.epss * epss * P.weights.exploit;
         if (epss >= 0.5) f.factors.push(`模擬 EPSS ${epss}`);
-        if (kev) { likelihood += 3 * P.weights.exploit; f.factors.push('模擬 KEV（已知遭利用）'); }
-      } else { likelihood += (Number(v.cvss_base) / 10) * 1.5 * P.weights.exploit; f.missing.push('EPSS/KEV（改用 CVSS 近似）'); }
+        if (kev) { likelihood += L.kev * P.weights.exploit; f.factors.push('模擬 KEV（已知遭利用）'); }
+      } else { likelihood += (Number(v.cvss_base) / 10) * L.cvssFallback * P.weights.exploit; f.missing.push('EPSS/KEV（改用 CVSS 近似）'); }
       // 3. 身分弱點（MFA 未啟用／部分啟用，或 90 天以上未登入）
       const idIss = identityIssues(v.asset_id);
-      if (idIss.length) { likelihood += Math.min(2, idIss.length) * P.weights.identity; f.factors.push(`身分弱點 ×${idIss.length}`); }
+      if (idIss.length) { likelihood += Math.min(L.identity.cap, idIss.length) * P.weights.identity; f.factors.push(`身分弱點 ×${idIss.length}`); }
       if (!P.inputs.identities) f.missing.push('身分與權限資料');
       // 4. 設定偏差
       const mc = misconfigs(v.asset_id);
-      if (mc.length) { likelihood += Math.min(1.5, mc.length * 0.75) * P.weights.control; f.factors.push(`設定偏差 ×${mc.length}`); }
+      if (mc.length) { likelihood += Math.min(L.misconfig.cap, mc.length * L.misconfig.perItem) * P.weights.control; f.factors.push(`設定偏差 ×${mc.length}`); }
       if (!P.inputs.misconfig) f.missing.push('設定基準資料');
       // 5. 既有控制（降低）與缺口（提高）
       const ctl = controlsOf(v.asset_id), gaps = gapsOf(v.asset_id);
-      if (ctl.length) { likelihood -= Math.min(2, ctl.length * 0.6) * P.weights.control; f.factors.push(`既有控制：${ctl.join('、')}`); }
-      if (gaps.length) { likelihood += Math.min(1.5, gaps.length * 0.4) * P.weights.control; f.factors.push(`控制缺口：${gaps.join('、')}`); }
+      if (ctl.length) { likelihood -= Math.min(L.controls.cap, ctl.length * L.controls.perItem) * P.weights.control; f.factors.push(`既有控制：${ctl.join('、')}`); }
+      if (gaps.length) { likelihood += Math.min(L.gaps.cap, gaps.length * L.gaps.perItem) * P.weights.control; f.factors.push(`控制缺口：${gaps.join('、')}`); }
       if (!P.inputs.controls) f.missing.push('既有控制措施');
       // 6. 威脅情資
       const hits = intelHits([v.vuln_id]);
       if (hits.length) { likelihood += Math.max(...hits.map(intelWeight)) * P.weights.intel; f.factors.push(`威脅情資命中：${hits.map(h => `${h.name}（${h.confidence}）`).join('、')}`); }
       if (!P.inputs.threatIntel) f.missing.push('威脅情資');
       if (!P.inputs.topology) f.missing.push('網路拓樸／信任關係');
-      f.likelihood = clamp(likelihood, 0, 10);
+      f.likelihood = clamp(likelihood, ...L.range);
       // 影響
-      const dataW = { Restricted: 3, Confidential: 2, Internal: 1, Public: 0 }[a.data_classification] ?? 1;
-      let impact = (Number(a.business_criticality) * 1.4 + dataW) * P.weights.impact;
+      const dataW = I.dataWeight[a.data_classification] ?? I.dataWeight.Internal; // 未標資料等級時以 Internal 計
+      let impact = (Number(a.business_criticality) * I.criticality + dataW) * P.weights.impact;
       const cj = crownJewels.includes(v.asset_id);
-      if (cj) { impact += 2 * P.weights.impact; f.factors.push('crown jewel'); }
-      if (entryNodes.has(v.asset_id)) { impact += 2 * P.weights.impact; f.factors.push('可達 crown jewel 之入口（blast radius）'); }
-      f.impact = clamp(impact, 0, 10);
+      if (cj) { impact += I.crownJewel * P.weights.impact; f.factors.push('crown jewel'); }
+      if (entryNodes.has(v.asset_id)) { impact += I.entry * P.weights.impact; f.factors.push('可達 crown jewel 之入口（blast radius）'); }
+      f.impact = clamp(impact, ...I.range);
       f.score = round1(f.likelihood * f.impact); // 0-100
       // 信心：缺 0 類 → 高；缺 1–2 類 → 中；缺 3 類以上或清冊完整度 < 80% → 低
-      f.confidence = (f.missing.length >= 3 || inventoryLow) ? '低' : f.missing.length === 0 ? '高' : '中';
-      if (inventoryLow) f.missing.push(`資產清冊完整度 ${P.inventoryCompleteness}% < 80%`);
+      f.confidence = (f.missing.length >= RULES.confidence.lowMissing || inventoryLow) ? '低' : f.missing.length === 0 ? '高' : '中';
+      if (inventoryLow) f.missing.push(`資產清冊完整度 ${P.inventoryCompleteness}% < ${RULES.confidence.inventoryThreshold}%`);
       return f;
     });
     for (const f of findings) f.priority = f.score >= th[0] ? 'P1' : f.score >= th[1] ? 'P2' : f.score >= th[2] ? 'P3' : 'P4';
@@ -145,7 +168,7 @@
       const byFrom = {};
       for (const e of edges) (byFrom[e.from] ||= []).push(e);
       const dfs = (node, trail, seen) => {
-        if (trail.length > 5) return;
+        if (trail.length > F.maxHops) return;
         for (const e of byFrom[node] || []) {
           if (seen.has(e.to)) continue;
           const t = [...trail, e];
@@ -155,8 +178,8 @@
       };
       dfs('internet', [], new Set(['internet']));
     }
-    // 節點可能性：有發現者取最高可能性（可為 0）；完全無發現者取 NO_FINDING_NODE_LIKELIHOOD（未知）
-    const nodeLikelihood = (id) => { const ls = findings.filter(f => f.asset_id === id).map(f => f.likelihood); return ls.length ? Math.max(...ls) : NO_FINDING_NODE_LIKELIHOOD; };
+    // 節點可能性：有發現者取最高可能性（可為 0）；完全無發現者取 F.unknownNode（未知）
+    const nodeLikelihood = (id) => { const ls = findings.filter(f => f.asset_id === id).map(f => f.likelihood); return ls.length ? Math.max(...ls) : F.unknownNode; };
     const hypotheses = paths.map(p => {
       const nodes = p.map(e => e.to);
       const entry = nodes[0];
@@ -164,7 +187,7 @@
       const weakest = Math.min(...nodes.map(nodeLikelihood));
       const hops = p.length;
       const identityEdges = p.filter(e => e.trust === 'identity' || e.trust === 'misconfig').length;
-      const feasibility = clamp(entryLikelihood * 0.5 + weakest * 0.3 + identityEdges * 1.0 - (hops - 1) * 0.6, 0, 10);
+      const feasibility = clamp(entryLikelihood * F.entry + weakest * F.weakest + identityEdges * F.trustEdge - (hops - 1) * F.perHop, ...F.range);
       const target = nodes[nodes.length - 1];
       const blocking = P.inputs.controls ? [...new Set(nodes.flatMap(n => controlsOf(n)))] : [];
       return { nodes, edges: p, entry, target, hops, feasibility: round1(feasibility), targetName: assets.get(target)?.name, entryName: assets.get(entry)?.name, blockingControls: blocking, status: 'hypothesis' };
@@ -281,7 +304,7 @@
       },
       data_quality: { ...block('各檔案筆數與可用性'), files, out_of_scope_excluded: R.outOfScope, inventory_completeness_estimate: R.params.inventoryCompleteness },
       exposure_priorities: { ...block('可能性 × 影響（附錄 A 示範規則）'), items: R.findings.map(f => ({ finding_id: f.finding_id, asset_id: f.asset_id, asset_name: f.asset.name, vuln_id: f.vuln_id, title: f.title, priority: f.priority, score: f.score, likelihood: round1(f.likelihood), impact: round1(f.impact), factors: f.factors, missing: f.missing, confidence: f.confidence })), thresholds: { P1: R.thresholds[0], P2: R.thresholds[1], P3: R.thresholds[2] } },
-      attack_path_hypotheses: { ...block('拓樸邊 + 節點可能性的 DFS 推論（最長 5 跳）'), items: R.hypotheses.map(h => ({ id: h.id, entry: nameOf(h.entry), target: nameOf(h.target), entry_id: h.entry, target_id: h.target, nodes: ['internet', ...h.nodes.map(nameOf)], node_ids: h.nodes, edges: h.edges.map(e => `${nameOf(e.from)} → ${nameOf(e.to)}（${e.via}；${e.trust}）`), feasibility: h.feasibility, blocking_controls: h.blockingControls, status: 'hypothesis' })) },
+      attack_path_hypotheses: { ...block(`拓樸邊 + 節點可能性的 DFS 推論（最長 ${F.maxHops} 跳）`), items: R.hypotheses.map(h => ({ id: h.id, entry: nameOf(h.entry), target: nameOf(h.target), entry_id: h.entry, target_id: h.target, nodes: ['internet', ...h.nodes.map(nameOf)], node_ids: h.nodes, edges: h.edges.map(e => `${nameOf(e.from)} → ${nameOf(e.to)}（${e.via}；${e.trust}）`), feasibility: h.feasibility, blocking_controls: h.blockingControls, status: 'hypothesis' })) },
       remediation: { ...block('P1/P2 發現的規則對映'), items: R.recs.map(r => ({ finding_id: r.finding_id, asset_name: r.asset, priority: r.priority, action: r.action, owner: r.owner, effort: r.effort, verify: r.verify, approval_level: r.approval })), compensating_controls: R.compensating },
       validation_plan: { ...block('前 3 條路徑假設；僅提案'), items: R.validation.map(v => ({ id: v.id, hypothesis: `${v.hypothesis_id}：${nameOf(R.hypotheses.find(h => h.id === v.hypothesis_id)?.entry)} → ${nameOf(R.hypotheses.find(h => h.id === v.hypothesis_id)?.target)}`, method: v.method, authorization_required: v.requires, scope_exclusions: v.scope_exclusions, success_criteria: v.success })) },
       executive_summary: { ...block('面向 reporting.audience 的摘要'), audience: R.summary.audience, text: R.summary.text, decisions_requested: R.summary.decisions },
@@ -290,7 +313,7 @@
     };
   }
 
-  const api = { analyze, toSchema, scopeProblems, DEFAULTS, THRESHOLDS };
+  const api = { analyze, toSchema, scopeProblems, RULES, DEFAULTS, THRESHOLDS };
   if (typeof window !== 'undefined') window.DEMO = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

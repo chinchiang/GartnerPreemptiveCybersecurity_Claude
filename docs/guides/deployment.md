@@ -19,7 +19,7 @@ downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內�
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               母本（skills/shared/）、平臺檔案與建置產生的複本（各平臺 references/）；skills/shared/analysis_workflow.py 是 Python 的分析工作流程核心，改用它的平臺腳本只剩模型 adapter（理由見 docs/adr/0002）；Claude 技能的 validate_inputs.py 用建置產生的複本 scripts/analysis_workflow.py（見 docs/adr/0003）
 examples/             合成範例資料、預期輸出、示範引擎快照與驗收夾具
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）
 tests/                fixtures/scope-cases.json（授權範圍守門的共用案例，JS 與 Python 共用）、python/（Python 測試；不出貨）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
@@ -58,7 +58,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、評分規則一致性
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎驗收與快照、下載檔、機敏字串
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
@@ -67,11 +67,19 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 結果寫入 `verify-report.md`；截圖在 `verify-screenshots/`。任一項失敗時腳本以非零狀態結束。
 
-### 4.1 示範引擎快照
+### 4.1 評分規則與示範引擎快照
 
-評分規則同時存在於四個地方（`assets/demo.js`、`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A、`skills/shared/scoring-rules.md`）。各平臺 `references/` 裡的 `scoring-rules.md`、`task-spec.md` 是建置產生的複本，不算在內。`examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出，`verify:static` 會逐位元組比對，用來抓「改了一處忘了同步其他三處」。
+評分規則數值的唯一來源是示範引擎匯出的規則資料（`assets/demo.js` 的 `RULES`），引擎由它計算。三份母本——`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A（與第 5 節的信心規則）、`skills/shared/scoring-rules.md`——以手寫散文陳述同一套規則；`scripts/scoring-rules.mjs` 的一致性檢查從中抽出數值和規則資料比對，任一處不同，`npm test` 就失敗並列出文件、規則、預期值與實際值。各平臺 `references/` 裡的複本由建置產生，不在檢查範圍內。
 
-規則**刻意**變更時：先確認四處都已同步，再執行 `npm run snapshot` 更新快照，並在 PR 說明變更理由。
+ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md`、網站案例頁的規則卡（`assets/app.js`）與 `data/process.js` 的 S3／S4 說明也寫了規則數值，**尚未納入檢查**，修改規則時仍需手動同步。
+
+`examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出（規則資料套用在合成資料上的結果），`verify:static` 會逐位元組比對。
+
+規則**刻意**變更時：
+
+1. 改 `assets/demo.js` 的 `RULES`。
+2. 依 `npm test` 列出的漂移改三份母本，並手動同步上一段列出的改寫版與網站文字。
+3. `npm test` 通過後，執行 `npm run snapshot` 更新快照，並在 PR 說明變更理由。
 
 ### 4.2 來源連結檢查在哪裡跑
 
@@ -109,7 +117,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 範例資料 | `examples/synthetic-org/`（保持合成） | build；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
-| 評分規則 | `skills/shared/task-spec.md` 附錄 A、`core-prompt.md`、`assets/demo.js`、`skills/shared/scoring-rules.md` 需一致 | build + verify + `npm run snapshot` |
+| 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本（見第 4.1 節） | `npm test` + build + verify + `npm run snapshot` |
 
 `data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/`，忘記重建或直接改了複本、嵌入區塊都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
 
