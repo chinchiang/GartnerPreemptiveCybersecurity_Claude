@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "40a042a3524a",
+ "contentHash": "dabf68f710ad",
  "research": [
   {
    "id": "00-method",
@@ -84,7 +84,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/api-workflow.py",
    "platform": "chatgpt",
-   "bytes": 14701
+   "bytes": 15536
   },
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
@@ -164,7 +164,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
    "platform": "claude",
-   "bytes": 7793
+   "bytes": 8066
   },
   {
    "path": "skills/deepseek/README.md",
@@ -174,7 +174,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/api-workflow.py",
    "platform": "deepseek",
-   "bytes": 17717
+   "bytes": 18540
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
@@ -224,7 +224,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 19093
+   "bytes": 19916
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",
@@ -279,7 +279,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/api-workflow.py",
    "platform": "grok",
-   "bytes": 11486
+   "bytes": 12364
   },
   {
    "path": "skills/grok/requirements.txt",

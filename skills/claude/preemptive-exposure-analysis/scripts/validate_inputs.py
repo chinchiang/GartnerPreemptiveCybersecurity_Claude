@@ -41,12 +41,14 @@ def main(folder: str) -> int:
         return 3
     scope_missing = [k for k in ("organization", "analysis_date") if not scope.get(k)]
     auth = scope.get("authorized_scope", {}) if isinstance(scope.get("authorized_scope"), dict) else {}
-    if not auth.get("in_scope_assets"):
+    # in_scope_assets、audience 須為非空陣列（與網站示範引擎、四支 api-workflow.py 一致；案例見 tests/fixtures/scope-cases.json）
+    if not isinstance(auth.get("in_scope_assets"), list) or not auth.get("in_scope_assets"):
         scope_missing.append("authorized_scope.in_scope_assets")
     for flag in ("active_testing_authorized", "external_scanning_authorized"):
         if not isinstance(auth.get(flag), bool):
             scope_missing.append(f"authorized_scope.{flag}")
-    if not (isinstance(scope.get("reporting"), dict) and scope["reporting"].get("audience")):
+    audience = scope["reporting"].get("audience") if isinstance(scope.get("reporting"), dict) else None
+    if not isinstance(audience, list) or not audience:
         scope_missing.append("reporting.audience")
     if scope_missing:
         print("scope.json 缺少必填欄位：" + "、".join(scope_missing) + "。停止分析。")

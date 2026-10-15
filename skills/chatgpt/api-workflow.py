@@ -217,11 +217,29 @@ def call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
 # 主程式
 # ---------------------------------------------------------------------------
 
-def _get_path(obj, dotted: str):
-    node = obj
-    for k in dotted.split("."):
-        node = node.get(k) if isinstance(node, dict) else None
-    return node
+SCOPE_REQUIRED = ("organization", "analysis_date", "authorized_scope.in_scope_assets",
+                  "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized",
+                  "reporting.audience")
+
+
+def scope_problems(scope) -> list:
+    """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則與網站示範引擎 scopeProblems、
+    validate_inputs.py 相同，案例見 tests/fixtures/scope-cases.json：organization、analysis_date
+    不可缺、不可為空字串；in_scope_assets、audience 須為非空陣列；兩個 *_authorized 須為布林值。"""
+    problems = []
+    for path in SCOPE_REQUIRED:
+        node = scope
+        for key in path.split("."):
+            node = node.get(key) if isinstance(node, dict) else None
+        if node is None or node == "":
+            problems.append(path)
+        elif path in ("authorized_scope.in_scope_assets", "reporting.audience"):
+            if not isinstance(node, list) or not node:
+                problems.append(path)
+        elif path.endswith("_authorized") and not isinstance(node, bool):
+            problems.append(path)
+    return problems
+
 
 
 def main() -> int:
@@ -252,12 +270,9 @@ def main() -> int:
         scope_obj = json.loads((input_dir / "scope.json").read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         sys.exit(f"中止：scope.json 無法解析：{exc}")
-    scope_missing = [p for p in ("organization", "analysis_date", "authorized_scope.in_scope_assets",
-                                 "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized",
-                                 "reporting.audience")
-                     if _get_path(scope_obj, p) is None]
+    scope_missing = scope_problems(scope_obj)
     if scope_missing:
-        sys.exit("中止：scope.json 缺少必填欄位：" + ", ".join(scope_missing))
+        sys.exit("中止：scope.json 缺少或不合格的必填欄位：" + ", ".join(scope_missing) + "（in_scope_assets、audience 須為非空陣列；*_authorized 須為布林值）")
 
     for required_file in (CORE_PROMPT, OUTPUT_SCHEMA):
         if not required_file.exists():

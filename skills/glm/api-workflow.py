@@ -120,6 +120,30 @@ def count_records(name: str, raw: str) -> int | None:
     return None
 
 
+SCOPE_REQUIRED = ("organization", "analysis_date", "authorized_scope.in_scope_assets",
+                  "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized",
+                  "reporting.audience")
+
+
+def scope_problems(scope) -> list:
+    """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則與網站示範引擎 scopeProblems、
+    validate_inputs.py 相同，案例見 tests/fixtures/scope-cases.json：organization、analysis_date
+    不可缺、不可為空字串；in_scope_assets、audience 須為非空陣列；兩個 *_authorized 須為布林值。"""
+    problems = []
+    for path in SCOPE_REQUIRED:
+        node = scope
+        for key in path.split("."):
+            node = node.get(key) if isinstance(node, dict) else None
+        if node is None or node == "":
+            problems.append(path)
+        elif path in ("authorized_scope.in_scope_assets", "reporting.audience"):
+            if not isinstance(node, list) or not node:
+                problems.append(path)
+        elif path.endswith("_authorized") and not isinstance(node, bool):
+            problems.append(path)
+    return problems
+
+
 def load_inputs(input_dir: Path, exclude: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
     """讀入 9 個輸入檔。回傳 (已載入檔案列表, 缺少檔案列表)。缺 scope.json 直接中止；exclude 內的類別視同未提供。"""
     scope_path = input_dir / "scope.json"
@@ -135,22 +159,9 @@ def load_inputs(input_dir: Path, exclude: frozenset[str] = frozenset()) -> tuple
         scope = json.loads(scope_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         sys.exit(f"[中止] scope.json 不是合法 JSON：{exc}")
-    required = [
-        ("organization",), ("analysis_date",),
-        ("authorized_scope", "in_scope_assets"),
-        ("authorized_scope", "active_testing_authorized"),
-        ("authorized_scope", "external_scanning_authorized"),
-        ("reporting", "audience"),
-    ]
-    missing_fields = []
-    for keys in required:
-        node = scope
-        for k in keys:
-            node = node.get(k) if isinstance(node, dict) else None
-        if node is None:
-            missing_fields.append(".".join(keys))
+    missing_fields = scope_problems(scope)
     if missing_fields:
-        sys.exit("[中止] scope.json 缺少必填欄位：" + ", ".join(missing_fields))
+        sys.exit("[中止] scope.json 缺少或不合格的必填欄位：" + ", ".join(missing_fields) + "（in_scope_assets、audience 須為非空陣列；*_authorized 須為布林值）")
 
     loaded, missing = [], []
     for name, label, required_file in INPUT_FILES:
