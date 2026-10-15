@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
+      - name: Unit tests (node:test, Node built-ins only)
+        run: npm test
       - name: Build data files and downloads
         run: npm run build
       - name: Static verification (data, sources, schema, demo acceptance + snapshot, secrets scan)

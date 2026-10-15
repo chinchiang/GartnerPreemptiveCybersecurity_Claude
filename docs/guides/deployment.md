@@ -19,7 +19,7 @@ downloads/*.zip       由建置腳本產生的下載包
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               共用規格與五平台檔案（單一來源）
 examples/             合成範例資料、預期輸出、示範引擎快照與驗收夾具
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs、build-worker.mjs
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
 .gitattributes        強制文字檔使用 LF（見第 7 節）
@@ -57,6 +57,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
+npm test                # 單元測試（node:test，不需 npm install）：目前涵蓋技能包組裝器
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎驗收與快照、下載檔、機敏字串
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
 npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽器），輸出 link-check.md（見第 4.2 節）
