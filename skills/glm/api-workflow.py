@@ -68,7 +68,7 @@ class GlmAdapter:
     )
 
     def __init__(self):
-        self._client = None
+        self._clients = {}   # 兩種端點各自建立、各自快取 client
 
     def add_arguments(self, parser):
         parser.add_argument("--max-tokens", type=int, default=16000, help="每段回應的最大輸出 token")
@@ -77,7 +77,8 @@ class GlmAdapter:
 
     def describe(self, args):
         return [f"OpenAI 相容端點：{os.environ.get('GLM_BASE_URL', DEFAULT_BASE_URL)}"
-                + ("" if args.anthropic_compatible else "（本次使用）"),
+                + ("" if args.anthropic_compatible else "（本次使用）")
+                + f"；中國大陸 BigModel 可設 GLM_BASE_URL={ALT_BASE_URL_CN}",
                 f"Anthropic 相容端點（待驗證）：{os.environ.get('GLM_ANTHROPIC_BASE_URL', DEFAULT_ANTHROPIC_BASE_URL)}"
                 + ("（本次使用）" if args.anthropic_compatible else "")]
 
@@ -88,47 +89,46 @@ class GlmAdapter:
     def supports_json_mode(self, args):
         return False   # GLM 的 JSON 模式未經查證，一律以提示詞要求純 JSON
 
-    @staticmethod
-    def _api_key():
-        api_key = os.environ.get("GLM_API_KEY")
-        if not api_key:
-            raise analysis_workflow.Abort("[錯誤] 未設定環境變數 GLM_API_KEY（請勿寫入程式碼或提交到 git）。")
-        return api_key
-
     def send(self, messages, stage, args, json_mode):
         temperature = 0.2 if stage == "report" else 0.0
         if args.anthropic_compatible:
-            return self._send_anthropic_compatible(messages, temperature, args)
-        return self._send_openai_compatible(messages, temperature, args)
+            # Anthropic Messages API 的 system 是獨立參數，不放在 messages 裡
+            system, conversation = messages[0]["content"], messages[1:]
+            reply = self._anthropic_client().messages.create(model=args.model, system=system, max_tokens=args.max_tokens,
+                                                             temperature=temperature, messages=conversation)
+            return "".join(getattr(block, "text", "") for block in reply.content)
+        reply = self._openai_client().chat.completions.create(model=args.model, messages=messages,
+                                                              temperature=temperature, max_tokens=args.max_tokens)
+        return reply.choices[0].message.content or ""
 
-    def _send_openai_compatible(self, messages, temperature, args):
-        if self._client is None:
+    def _openai_client(self):
+        if "openai" not in self._clients:
             try:
                 from openai import OpenAI  # type: ignore  # 延遲載入：--dry-run 不需要 SDK
             except ImportError as exc:
                 raise analysis_workflow.Abort("[錯誤] 未安裝 openai SDK。請執行：pip install -r skills/glm/requirements.txt") from exc
-            self._client = OpenAI(api_key=self._api_key(), base_url=os.environ.get("GLM_BASE_URL", DEFAULT_BASE_URL))
-        reply = self._client.chat.completions.create(model=args.model, messages=messages,
-                                                     temperature=temperature, max_tokens=args.max_tokens)
-        return reply.choices[0].message.content or ""
+            self._clients["openai"] = OpenAI(api_key=_api_key(), base_url=os.environ.get("GLM_BASE_URL", DEFAULT_BASE_URL))
+        return self._clients["openai"]
 
-    def _send_anthropic_compatible(self, messages, temperature, args):
+    def _anthropic_client(self):
         """Anthropic 相容端點（GLM Coding Plan 所用）。狀態：PARTIALLY VERIFIED／待驗證。
         注意：第三方引述的 Z.ai 條款指出 Coding Plan 額度僅限在 Z.ai 認可的 coding 工具內使用；
         以此端點跑本腳本是否符合方案條款，請自行向 Z.ai 官方確認。"""
-        if self._client is None:
+        if "anthropic" not in self._clients:
             try:
                 import anthropic  # type: ignore  # 延遲載入：--dry-run 不需要 SDK
             except ImportError as exc:
                 raise analysis_workflow.Abort("[錯誤] 未安裝 anthropic SDK。請執行：pip install -r skills/glm/requirements.txt") from exc
-            self._client = anthropic.Anthropic(api_key=self._api_key(),
-                                               base_url=os.environ.get("GLM_ANTHROPIC_BASE_URL", DEFAULT_ANTHROPIC_BASE_URL))
-        # Anthropic Messages API 的 system 是獨立參數，不放在 messages 裡
-        system, conversation = messages[0]["content"], messages[1:]
-        reply = self._client.messages.create(model=args.model, system=system, max_tokens=args.max_tokens,
-                                             temperature=temperature, messages=conversation)
-        return "".join(getattr(block, "text", "") for block in reply.content)
+            self._clients["anthropic"] = anthropic.Anthropic(
+                api_key=_api_key(), base_url=os.environ.get("GLM_ANTHROPIC_BASE_URL", DEFAULT_ANTHROPIC_BASE_URL))
+        return self._clients["anthropic"]
 
+
+def _api_key() -> str:
+    api_key = os.environ.get("GLM_API_KEY")
+    if not api_key:
+        raise analysis_workflow.Abort("[錯誤] 未設定環境變數 GLM_API_KEY（請勿寫入程式碼或提交到 git）。")
+    return api_key
 
 if __name__ == "__main__":
     sys.exit(analysis_workflow.main(GlmAdapter()))

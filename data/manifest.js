@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "f167f794fa87",
+ "contentHash": "c3c12f454805",
  "research": [
   {
    "id": "00-method",
@@ -224,7 +224,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 8066
+   "bytes": 8089
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",

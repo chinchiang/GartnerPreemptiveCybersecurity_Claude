@@ -44,7 +44,7 @@ S1–S8；每區塊帶 `confidence`、`basis`、`missing_inputs`、`requires_hum
 
 ## 5. 輸出格式與完整範例
 
-Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同（P1：`vpn-gw-01 / SYN-2026-0101` 86.0 分；路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01` 可行性 6.4；驗證計畫標「尚未授權主動測試」；結尾聲明）。`meta.generated_by` 填「GLM via <承載方式>」。
+Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同（P1：`vpn-gw-01 / SYN-2026-0101` 86.0 分；路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01` 可行性 6.4；驗證計畫標「尚未授權主動測試」；結尾聲明）。`meta.generated_by` 填「GLM via <承載方式>」；用 API 腳本時會自動填成「GLM API（OpenAI 相容端點或 Anthropic 相容端點）/ <模型 ID> / skills/glm/api-workflow.py」。
 
 ## 6. 必要工具、連線及權限
 
