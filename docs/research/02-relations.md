@@ -66,7 +66,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **其他來源**：Hype Cycle for Security Operations 2026 的第三方摘要提到「威脅情資正在轉型」[V9]。
 
-**本專案推論**：在沒有 PTI 平台的組織，情資最務實的用法是「加權」：把已知遭利用、產業內活躍行為者的 TTP 與弱點對映到自己的曝險，提升優先序。本專案示範規則中的「情資命中」加權（依行為者信心 high 2／medium 1.5／low 1）即為此設計；它不是預測，只是加權。
+**本專案推論**：在沒有 PTI 平臺的組織，情資最務實的用法是「加權」：把已知遭利用、產業內活躍行為者的 TTP 與弱點對映到自己的曝險，提升優先序。本專案示範規則中的「情資命中」加權（依行為者信心 high 2／medium 1.5／low 1）即為此設計；它不是預測，只是加權。
 
 **與本流程的具體對應**：I9 威脅情資只要求 `actors[].exploits_vuln_ids`、`ttps` 與 `confidence` 三個欄位，正是 [G18] 三個成敗因子中「資料品質」的最低要求；`confidence` 決定加權幅度，避免低信心情資推高優先序。缺 I9 時流程不做加權並把信心下修一級，對應 [G12] 把 PTI 描述為「預警系統」——沒有預警，結論只能更保守。情資也回饋到 S8：`trending_weakness_classes` 可作為下次檢視時擴大 discovery 範圍的依據。
 
@@ -93,7 +93,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 - 「曝險管理廠商不先制就淘汰」[G22]："To survive and thrive, vendors must deliver preemptive exposure management solutions."；區隔技術包括 "ASCA, cyber ranges, predictive threat intelligence, autonomous adversarial emulation and cybersecurity knowledge graphs"。
 - 2026 年研究指出價值 "is rapidly shifting beyond just visibility and prioritization to autonomous validation and mitigation" [G32]；四種 PEM 類別：PEA、PEV、UEMP、DSEM。
 
-**其他來源**：統一曝險管理平台 "will capture 60% of the market by 2028" [G24]——此數字只見於 Picus／BleepingComputer 對 Gartner 文件的引用，未在 Gartner 公開摘要確認。
+**其他來源**：統一曝險管理平臺 "will capture 60% of the market by 2028" [G24]——此數字只見於 Picus／BleepingComputer 對 Gartner 文件的引用，未在 Gartner 公開摘要確認。
 
 **本專案推論**：Gartner 的先制型曝險管理強調「從發現到消除的時間窗口」；本流程的 S8 指標因此包含「對外曝露且 P1 的發現數（目標 7 天內歸零）」。
 
@@ -131,7 +131,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **本專案推論**：在流程中，欺敵不是分析步驟而是「改善建議」的一種選項：當路徑假設的阻斷成本高（例如 OT 無法修補），可建議在路徑節點部署誘餌帳號／憑證（honey accounts/tokens）作為補償控制，並列入 S8 指標。
 
-**與本流程的具體對應**：合成案例的 `controls.json` 把 "Deception (honey accounts/tokens)" 列為成熟度 none 的控制，因此 S3 對 ad-dc-01、erp-db-01、file-srv-01 各加一項「控制缺口」，S5 對無修補的 OT 主機建議部署誘餌憑證作為補償控制。這與 Gartner 把欺敵評為「質量低」並不矛盾：本流程只把它當成本低、可局部部署的選項，不假設組織已有欺敵平台；是否採用仍是 S5 人工決策點（變更委員會／OT 負責人）的判斷。
+**與本流程的具體對應**：合成案例的 `controls.json` 把 "Deception (honey accounts/tokens)" 列為成熟度 none 的控制，因此 S3 對 ad-dc-01、erp-db-01、file-srv-01 各加一項「控制缺口」，S5 對無修補的 OT 主機建議部署誘餌憑證作為補償控制。這與 Gartner 把欺敵評為「質量低」並不矛盾：本流程只把它當成本低、可局部部署的選項，不假設組織已有欺敵平臺；是否採用仍是 S5 人工決策點（變更委員會／OT 負責人）的判斷。
 
 ## 2.9 對照表：關聯的證據等級
 

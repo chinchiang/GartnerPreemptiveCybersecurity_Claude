@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
-  "description": "Gartner Preemptive Cybersecurity 研究、五平台 skills 與互動網站（純靜態，建置與驗證只用 Node 內建模組；Playwright 僅用於瀏覽器驗證）",
+  "description": "Gartner Preemptive Cybersecurity 研究、五平臺 skills 與互動網站（純靜態，建置與驗證只用 Node 內建模組；Playwright 僅用於瀏覽器驗證）",
   "engines": {
     "node": ">=22"
   },

@@ -25,10 +25,10 @@ function staticChecks() {
   }
   const w = ctx.window;
   ok('研究文件 ≥ 7 章', (w.RESEARCH_DOCS || []).length >= 7, `${(w.RESEARCH_DOCS || []).length} 章`);
-  ok('五個平台教學 + 部署文件', (w.GUIDE_DOCS || []).filter(g => g.platform).length === 5 && (w.GUIDE_DOCS || []).some(g => g.id === 'deployment'), (w.GUIDE_DOCS || []).map(g => g.id).join(','));
+  ok('五個平臺教學 + 部署文件', (w.GUIDE_DOCS || []).filter(g => g.platform).length === 5 && (w.GUIDE_DOCS || []).some(g => g.id === 'deployment'), (w.GUIDE_DOCS || []).map(g => g.id).join(','));
   const platforms = new Set((w.SKILL_FILES || []).map(s => s.platform));
-  ok('Skills 涵蓋五平台 + shared', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'shared'].every(p => platforms.has(p)), [...platforms].join(','));
-  ok('每個平台都有 SKILL.md 或 system-prompt.md', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek'].every(p => (w.SKILL_FILES || []).some(s => s.platform === p && /SKILL\.md$|system-prompt\.md$/.test(s.name))));
+  ok('Skills 涵蓋五平臺 + shared', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'shared'].every(p => platforms.has(p)), [...platforms].join(','));
+  ok('每個平臺都有 SKILL.md 或 system-prompt.md', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek'].every(p => (w.SKILL_FILES || []).some(s => s.platform === p && /SKILL\.md$|system-prompt\.md$/.test(s.name))));
   // 複本的標題要與母本相同：網站從 frontmatter 讀標題，標註若擋在 frontmatter 前面，標題就會變成空的
   const masterOf = (s) => (w.SKILL_FILES || []).find(m => m.path === `skills/shared/${s.name}`);
   const refCopies = (w.SKILL_FILES || []).filter(s => s.ext === 'md' && s.path.includes('/references/'));
@@ -216,9 +216,9 @@ async function browserChecks() {
   ok('Skills ZIP 下載', (await dl2.suggestedFilename()).endsWith('.zip'));
   await page.click('#toggle-view'); await page.waitForTimeout(50);
   ok('Skills 原始／渲染切換', await page.$eval('#file-rendered', el => !el.hidden));
-  // 教學平台切換
+  // 教學平臺切換
   await page.goto(base + '#/guides?platform=grok'); await page.waitForTimeout(100);
-  ok('教學平台切換 Grok', (await page.textContent('article')).includes('xAI'));
+  ok('教學平臺切換 Grok', (await page.textContent('article')).includes('xAI'));
   // 案例互動
   await page.goto(base + '#/case'); await page.waitForTimeout(200);
   const p1Before = await page.$$eval('#case-output .score.P1', s => s.length);

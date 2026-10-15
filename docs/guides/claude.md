@@ -88,7 +88,7 @@ platform: claude
 | claude.ai | Pro/Max/Team/Enterprise、啟用 code execution、Settings > Features 上傳權限 | 資料上傳至 claude.ai |
 | API | API key（環境變數 `ANTHROPIC_API_KEY`，勿寫入程式碼）、`/v1/skills` 與 code execution 工具 | 資料送至 Anthropic API |
 
-不需要任何對外掃描工具；本 skill 不連線到情資平台。企業使用者請確認資料處理協議。
+不需要任何對外掃描工具；本 skill 不連線到情資平臺。企業使用者請確認資料處理協議。
 
 ## 7. 逐步安裝或設定方式
 
@@ -138,8 +138,8 @@ curl https://api.anthropic.com/v1/skills \
 2. *claude.ai 上傳失敗？* 檢查方案是否支援、code execution 是否啟用、frontmatter 是否只含六個相容欄位。
 3. *數值和網站示範不同？* 示範頁使用確定性規則；模型推理可能有小差異，但 P1/P2 分級與主要依據應一致。
 4. *可以讓 Claude 直接掃描嗎？* 不行。本 skill 明確禁止；需由授權人員以合規工具執行。
-5. *可以接情資平台嗎？* 可透過 MCP 連接器提供只讀資料，仍須遵守授權範圍。
-6. *同一個 skill 能用在 Codex 或 GLM 嗎？* 可以，格式相同；見對應平台教學。
+5. *可以接情資平臺嗎？* 可透過 MCP 連接器提供只讀資料，仍須遵守授權範圍。
+6. *同一個 skill 能用在 Codex 或 GLM 嗎？* 可以，格式相同；見對應平臺教學。
 
 ## 9. 簡單、可重現的驗收方式
 

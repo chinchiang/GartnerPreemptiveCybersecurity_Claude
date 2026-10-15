@@ -1,9 +1,9 @@
 ---
-title: ChatGPT 平台說明
+title: ChatGPT 平臺說明
 role: readme
 ---
 
-# ChatGPT（OpenAI）平台說明：先制型曝險分析（PEA）
+# ChatGPT（OpenAI）平臺說明：先制型曝險分析（PEA）
 
 本目錄提供在 OpenAI 三種承載層上執行「先制型曝險分析」的檔案。任務定義、證據要求、評分規則與人工核准邊界一律以 `../shared/task-spec.md` 與 `../shared/core-prompt.md` 為準；本目錄的檔案只處理「怎麼把核心指令放進 ChatGPT／Codex／API」。
 

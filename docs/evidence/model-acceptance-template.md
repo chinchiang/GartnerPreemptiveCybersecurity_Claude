@@ -1,21 +1,21 @@
 # 真實模型驗收紀錄（範本）
 
-複製本檔為 `model-acceptance-<平台>-<YYYY-MM-DD>.md` 後填寫。**不要修改本範本本身**。
+複製本檔為 `model-acceptance-<平臺>-<YYYY-MM-DD>.md` 後填寫。**不要修改本範本本身**。
 
 驗收項目定義在 `skills/shared/acceptance.md`（7 項；各平臺 `references/acceptance.md` 為其複本）。其中可機器判定的部分由 `scripts/check-acceptance.mjs` 檢查，其餘必須人工判讀——本檔的目的就是留下那部分的判讀紀錄，而不是靠記憶。
 
 ## 兩條執行路徑
 
-| 平台 | 怎麼跑 | 誰檢查前 5 項 |
+| 平臺 | 怎麼跑 | 誰檢查前 5 項 |
 |---|---|---|
-| ChatGPT、Grok、GLM、DeepSeek | `.github/workflows/model-acceptance.yml`（手動觸發，選平台）；或本機 `python3 skills/<平台>/api-workflow.py --input-dir examples/synthetic-org --output-dir output/baseline` | `scripts/check-acceptance.mjs` |
+| ChatGPT、Grok、GLM、DeepSeek | `.github/workflows/model-acceptance.yml`（手動觸發，選平臺）；或本機 `python3 skills/<平臺>/api-workflow.py --input-dir examples/synthetic-org --output-dir output/baseline` | `scripts/check-acceptance.mjs` |
 | Claude | **只能手動**：Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），需在 Claude Code 或 claude.ai 依 `docs/guides/claude.md` 第 7 節安裝 skill 後執行 | 把模型輸出的 JSON 存成檔案，再手動跑 `node scripts/check-acceptance.mjs <檔案>` |
 
 輸入資料一律使用 `examples/synthetic-org/`（虛構組織 Northwind Precision）。**不得改用真實資料**：CI 會把輸出上傳成 artifact。
 
 ## 基本資訊
 
-- 平台：
+- 平臺：
 - 模型 ID（完整字串，不要只寫「最新版」）：
 - 執行日期：
 - 執行方式：Actions run #\_\_\_\_ ／ 本機 ／ 對話介面

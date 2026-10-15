@@ -90,7 +90,7 @@ summary: 逐項說明每個輸入的用途與必要性、資料來源與格式�
 ### I9 威脅情資（threat_intel）
 
 - **用途**：對應 Gartner PTI「early warning」與「prioritize preemptive mitigation」[G12][G-IR]；在本流程作為加權而非預測。
-- **來源／格式／頻率**：ISAC、商業情資、政府通報、PTI 平台；JSON；每日或每週。
+- **來源／格式／頻率**：ISAC、商業情資、政府通報、PTI 平臺；JSON；每日或每週。
 - **品質要求**：每個行為者有 `confidence`；`exploits_vuln_ids` 使用與 I3 相同的識別碼；`as_of` 日期。
 - **敏感程度**：中。
 - **缺漏替代**：不加權；標示「未納入威脅情資」；信心下修。

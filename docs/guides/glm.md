@@ -25,7 +25,7 @@ platform: glm
 
 | 檔案 | 用途 |
 |---|---|
-| `skills/glm/README.md` | 平台說明與查證狀態 |
+| `skills/glm/README.md` | 平臺說明與查證狀態 |
 | `skills/glm/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準 skill（與 Claude 版等效；結構不同：內嵌核心提示與評分規則，並附 `references/`；標記 GLM 後端） |
 | `skills/glm/claude-code-settings.example.json` | Claude Code 使用 GLM 後端的環境變數範例 |
 | `skills/glm/system-prompt.md` | 可直接複製的系統提示詞 |

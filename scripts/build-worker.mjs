@@ -2,7 +2,7 @@
 /**
  * build-worker.mjs
  * 把 skills/shared/core-prompt.md 內的 ```text 提示詞區塊嵌入 backend/worker.js 的 CORE_PROMPT，
- * 輸出到 backend/dist/worker.js（已列入 .gitignore，不提交）。這樣代理伺服器使用的系統提示與五平台共用的核心提示詞永遠一致。
+ * 輸出到 backend/dist/worker.js（已列入 .gitignore，不提交）。這樣代理伺服器使用的系統提示與五平臺共用的核心提示詞永遠一致。
  *
  * 用法：node scripts/build-worker.mjs
  * 之後：cd backend && wrangler deploy dist/worker.js（或在 wrangler.toml 指定 main = "dist/worker.js"）

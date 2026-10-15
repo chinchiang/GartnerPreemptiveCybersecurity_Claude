@@ -23,7 +23,7 @@ mkdirSync(out('downloads'), { recursive: true });
 const relPosix = (f) => relative(ROOT, f).split('\\').join('/');
 // readText：換行一律正規化為 LF，避免 CRLF 簽出時內容與 ZIP 位元組改變
 const readText = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
-// cmpPosix：以正規化後的路徑排序，讓兩個平台的檔案順序一致
+// cmpPosix：以正規化後的路徑排序，讓兩個平臺的檔案順序一致
 const cmpPosix = (a, b) => { const x = relPosix(a), y = relPosix(b); return x < y ? -1 : x > y ? 1 : 0; };
 
 const SKIP_DIRS = new Set(['__pycache__', 'node_modules', '.git', 'dist', 'output']);

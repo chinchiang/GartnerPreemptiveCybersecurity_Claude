@@ -6,7 +6,7 @@ version: 1.0.0
 
 # 共用任務規格：先制型曝險分析（Preemptive Exposure Analysis）
 
-> 本規格是五個平台（ChatGPT、Claude、Grok、GLM、DeepSeek）skill 或等效工作流程的**單一來源**。各平台檔案只在「載入方式、工具呼叫、檔案處理」上做調整，不改變本規格的任務定義、證據要求與人工核准邊界。
+> 本規格是五個平臺（ChatGPT、Claude、Grok、GLM、DeepSeek）skill 或等效工作流程的**單一來源**。各平臺檔案只在「載入方式、工具呼叫、檔案處理」上做調整，不改變本規格的任務定義、證據要求與人工核准邊界。
 >
 > 依據：Gartner 對 preemptive cybersecurity 的公開定義（以 AI/ML 在威脅成形前預測並中和；能力例如 predictive threat intelligence、advanced deception、automated moving target defense）與 Gartner CTEM 五階段（scoping、discovery、prioritization、validation、mobilization）。**本規格的步驟、欄位與評分方式為本專案推論，非 Gartner 官方方法論。**
 
@@ -92,9 +92,9 @@ version: 1.0.0
 | 對外掃描、主動探測、BAS、滲透測試 | **否** | 語言模型不執行；需 `external_scanning_authorized` / `active_testing_authorized` 為 true 且有人工書面授權才可由人員／工具執行 |
 | 正式環境變更 | **否** | 僅建議 |
 | 輸出含帳號、IP、主機名稱 | 視設定 | 對管理層摘要預設遮罩 |
-| 將資料送往第三方服務 | **否** | 除非使用者在平台層級已同意（例如企業版資料處理協議） |
+| 將資料送往第三方服務 | **否** | 除非使用者在平臺層級已同意（例如企業版資料處理協議） |
 
-## 7. 驗收方式（所有平台通用）
+## 7. 驗收方式（所有平臺通用）
 
 以 `examples/synthetic-org/` 的合成資料執行，檢查：
 

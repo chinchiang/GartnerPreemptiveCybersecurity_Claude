@@ -1,9 +1,9 @@
 ---
-title: Claude 平台說明
+title: Claude 平臺說明
 role: readme
 ---
 
-# Claude 平台說明
+# Claude 平臺說明
 
 ## 模型 vs. 承載應用
 
@@ -42,6 +42,6 @@ skills/claude/
 
 ## 能力限制
 
-- Skill 只是指令與參考檔；Claude 不會主動連到掃描器或情資平台。需要即時資料時，透過 MCP 連接器或由使用者上傳。
+- Skill 只是指令與參考檔；Claude 不會主動連到掃描器或情資平臺。需要即時資料時，透過 MCP 連接器或由使用者上傳。
 - 不執行任何主動測試；驗證計畫只是提案。
 - 同一個 skill 目錄可同時用於 Codex（`.agents/skills/`）與以 Claude Code 為宿主的 GLM／DeepSeek 後端，因為使用相同的開放標準。

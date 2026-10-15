@@ -1,6 +1,6 @@
 # 預期輸出（合成資料 Northwind Precision）
 
-> 本檔為以 `examples/synthetic-org/` 執行「先制型曝險分析」時的**參考輸出**。數值由確定性示範引擎（`node scripts/run-demo.mjs`）產生；語言模型執行各平台 skill 時，**分級（P1–P4）、主要依據與路徑存在性應一致，小數可不同**。所有資料皆為合成；評分規則為本專案示範規則，非 Gartner 公式。
+> 本檔為以 `examples/synthetic-org/` 執行「先制型曝險分析」時的**參考輸出**。數值由確定性示範引擎（`node scripts/run-demo.mjs`）產生；語言模型執行各平臺 skill 時，**分級（P1–P4）、主要依據與路徑存在性應一致，小數可不同**。所有資料皆為合成；評分規則為本專案示範規則，非 Gartner 公式。
 
 ## 資料品質
 

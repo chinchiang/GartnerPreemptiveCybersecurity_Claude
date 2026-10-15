@@ -1,9 +1,9 @@
 ---
-title: DeepSeek 平台說明
+title: DeepSeek 平臺說明
 role: readme
 ---
 
-# DeepSeek（V4）平台說明：先制型曝險分析（PEA）
+# DeepSeek（V4）平臺說明：先制型曝險分析（PEA）
 
 任務定義、證據要求、評分規則與人工核准邊界一律以 `../shared/task-spec.md` 與 `../shared/core-prompt.md` 為準；本目錄只處理「怎麼把核心指令放進 DeepSeek 的承載方式」，並刻意做到**不依賴特定模型版本**。
 

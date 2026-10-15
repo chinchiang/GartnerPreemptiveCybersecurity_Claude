@@ -25,7 +25,7 @@ platform: chatgpt
 
 | 檔案 | 用途 |
 |---|---|
-| `skills/chatgpt/README.md` | 平台說明與查證狀態 |
+| `skills/chatgpt/README.md` | 平臺說明與查證狀態 |
 | `skills/chatgpt/custom-gpt-instructions.md` | Custom GPT 的 Instructions 全文、名稱、描述、開場提示、Knowledge 清單 |
 | `skills/chatgpt/project-instructions.md` | ChatGPT Projects 的短版指令與附檔方式 |
 | `skills/chatgpt/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準格式的 Codex skill |

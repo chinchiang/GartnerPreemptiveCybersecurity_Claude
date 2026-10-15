@@ -1,4 +1,4 @@
-// 平台比較（查證日期 2026-09-09）。status: verified | partial | unverified（整體）
+// 平臺比較（查證日期 2026-09-09）。status: verified | partial | unverified（整體）
 window.PLATFORMS = [
   { id: 'chatgpt', name: 'ChatGPT', vendor: 'OpenAI', status: 'partial', sources: ['P-O1', 'P-O2', 'P-O3', 'P-O4', 'P-O5', 'P-AS1'],
     models: 'GPT-5.x；官方 SDK README 範例 `gpt-5.5`（已查證）。ChatGPT 選單顯示名稱：待驗證。',
@@ -52,9 +52,9 @@ window.PLATFORMS = [
     summary: '版本無關的 API 腳本；標準 SKILL.md 放入 skills-capable host；聊天端貼提示詞。' }
 ];
 
-window.PLATFORM_COMMON = `1. **單一來源**：\`skills/shared/task-spec.md\` 與 \`core-prompt.md\` 定義任務、證據要求與人工核准邊界；各平台檔案只處理載入方式、工具與檔案。
+window.PLATFORM_COMMON = `1. **單一來源**：\`skills/shared/task-spec.md\` 與 \`core-prompt.md\` 定義任務、證據要求與人工核准邊界；各平臺檔案只處理載入方式、工具與檔案。
 2. **同一份 SKILL.md 跨宿主**：Claude Code、Codex，以及以 GLM／DeepSeek 為後端的 Claude Code／OpenClaw／Deep Code，都使用 Agent Skills 開放標準。
-3. **無原生技能的平台**（Grok、GLM 與 DeepSeek 的聊天應用）：system prompt + API 腳本；所有腳本支援 \`--dry-run\`，無 API key 也能驗證提示詞組裝。
+3. **無原生技能的平臺**（Grok、GLM 與 DeepSeek 的聊天應用）：system prompt + API 腳本；所有腳本支援 \`--dry-run\`，無 API key 也能驗證提示詞組裝。
 4. **安全邊界一致**：對外掃描、主動驗證、正式環境變更只能提案；缺 scope 拒絕分析；攻擊路徑一律假設；管理摘要預設遮罩。
-5. **資料治理**：任何平台都會把輸入資料送到供應商 API；示範只用合成資料；GLM 與 DeepSeek 需評估資料出境政策。
+5. **資料治理**：任何平臺都會把輸入資料送到供應商 API；示範只用合成資料；GLM 與 DeepSeek 需評估資料出境政策。
 6. **待驗證項目**列入「證據與來源」頁，並附驗證方式。`;

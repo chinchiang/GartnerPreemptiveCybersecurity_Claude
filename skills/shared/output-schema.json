@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/skills/shared/output-schema.json",
   "title": "Preemptive Exposure Analysis — Output Bundle",
-  "description": "五平台共用的輸出格式。每個區塊都必須帶 confidence、basis、missing_inputs、requires_human。所有攻擊路徑的 status 固定為 hypothesis，除非另有已授權驗證結果。",
+  "description": "五平臺共用的輸出格式。每個區塊都必須帶 confidence、basis、missing_inputs、requires_human。所有攻擊路徑的 status 固定為 hypothesis，除非另有已授權驗證結果。",
   "type": "object",
   "required": ["meta", "data_quality", "exposure_priorities", "attack_path_hypotheses", "remediation", "validation_plan", "executive_summary", "metrics", "human_review_points"],
   "$defs": {
@@ -26,7 +26,7 @@
       "properties": {
         "organization": { "type": "string" },
         "analysis_date": { "type": "string" },
-        "generated_by": { "type": "string", "description": "平台／模型名稱與 skill 版本" },
+        "generated_by": { "type": "string", "description": "平臺／模型名稱與 skill 版本" },
         "scope_reference": { "type": "string" },
         "scoring_rules": { "type": "string", "description": "實際使用的評分規則說明（預設為本專案附錄 A 示範規則）" },
         "disclaimer": { "type": "string", "description": "必須聲明：語言模型未驗證實際曝險；所有路徑為假設；主動測試需授權" }

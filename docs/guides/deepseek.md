@@ -26,7 +26,7 @@ platform: deepseek
 
 | 檔案 | 用途 |
 |---|---|
-| `skills/deepseek/README.md` | 平台說明、V4 查證狀態、版本無關設計 |
+| `skills/deepseek/README.md` | 平臺說明、V4 查證狀態、版本無關設計 |
 | `skills/deepseek/system-prompt.md` | 可直接複製的系統提示詞 |
 | `skills/deepseek/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準 skill（供 OpenClaw、Deep Code 等 host） |
 | `skills/deepseek/api-workflow.py`、`requirements.txt` | OpenAI 相容端點腳本（含 `--dry-run`） |

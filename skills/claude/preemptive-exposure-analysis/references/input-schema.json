@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/skills/shared/input-schema.json",
   "title": "Preemptive Exposure Analysis — Input Bundle",
-  "description": "五平台共用的輸入格式。scope 與 assets 為必要；其餘為建議。所有內容皆須在授權範圍內。",
+  "description": "五平臺共用的輸入格式。scope 與 assets 為必要；其餘為建議。所有內容皆須在授權範圍內。",
   "type": "object",
   "required": ["scope", "assets"],
   "properties": {
