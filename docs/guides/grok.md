@@ -25,7 +25,7 @@ platform: grok
 
 | 檔案 | 用途 |
 |---|---|
-| `skills/grok/README.md` | 平台說明與查證狀態 |
+| `skills/grok/README.md` | 平臺說明與查證狀態 |
 | `skills/grok/system-prompt.md` | 可直接複製的系統提示詞 |
 | `skills/grok/api-workflow.py`、`requirements.txt` | `xai_sdk` 腳本（含 `--dry-run`、`--compat`） |
 | `skills/grok/tool-definitions.json` | function-calling 工具定義（客戶端 harness） |

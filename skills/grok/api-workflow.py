@@ -197,7 +197,7 @@ def main() -> int:
     user_prompt = build_user_prompt(input_dir, frozenset(args.exclude))
     print("=" * 78, file=sys.stderr)
     if args.dry_run:
-        print(f"[DRY-RUN] 平台：Grok  模型：{args.model}（未呼叫 API）")
+        print(f"[DRY-RUN] 平臺：Grok  模型：{args.model}（未呼叫 API）")
         print("\n=== system ===\n" + system_prompt)
         print("\n=== user（前 1500 字）===\n" + user_prompt[:1500] + "\n...")
         return 0

@@ -1,7 +1,7 @@
 ---
-title: 7. 五個平台的查證摘要與等效方案
+title: 7. 五個平臺的查證摘要與等效方案
 order: 7
-summary: 區分「模型」與「承載模型的應用程式或執行框架」，說明各平台現況、自訂機制、查證狀態與本專案採用的等效方案。
+summary: 區分「模型」與「承載模型的應用程式或執行框架」，說明各平臺現況、自訂機制、查證狀態與本專案採用的等效方案。
 ---
 
 > 查證日期 2026-09-09。完整證據檔：`docs/evidence/ai-platform-skills-evidence.md`。研究環境可直接開啟的官方站台僅 platform.claude.com、code.claude.com 與 GitHub；其餘以官方 URL 的搜尋摘錄為「部分查證」，只有第三方資訊者為「待驗證」。
@@ -11,9 +11,9 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 - 規格（已查證，`agentskills/agentskills` GitHub）：`SKILL.md` + 選用 `scripts/`、`references/`、`assets/`；frontmatter `name`（1–64 字元、小寫與連字號）、`description`（≤ 1024）、選用 `license`、`compatibility`、`metadata`、`allowed-tools`；建議主檔 < 500 行；漸進式載入（啟動只載名稱與描述）。
 - 採用清單（**部分查證**：官方站台資料檔宣告 50 項，研究環境只擷取到 45 項）：含 Claude、Claude Code、「ChatGPT & Codex (OpenAI)」、Gemini CLI、Cursor、GitHub Copilot、VS Code、OpenClaw、Deep Code（DeepSeek terminal assistant）等；在擷取到的 45 項中**未見** xAI、Zhipu/Z.ai 產品，DeepSeek 只有第三方 host——其餘 5 項未能檢視，列入待驗證清單。
 
-## 7.2 平台總表
+## 7.2 平臺總表
 
-| 平台 | 模型（查證時） | 承載應用 | 原生技能機制 | 本專案等效方案 | 狀態 |
+| 平臺 | 模型（查證時） | 承載應用 | 原生技能機制 | 本專案等效方案 | 狀態 |
 |---|---|---|---|---|---|
 | ChatGPT（OpenAI） | GPT-5.x（SDK 範例 `gpt-5.5`；已查證） | ChatGPT 應用（Custom Instructions／Projects／Custom GPTs）、Codex、Responses API | Codex 支援 Agent Skills（`.agents/skills`）；ChatGPT 應用無 SKILL.md 證據 | Custom GPT 指令 + Knowledge；Project 指令；Codex SKILL.md；API 腳本 | Codex 已查證／部分；應用部分／待驗證 |
 | Claude（Anthropic） | Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5（已查證） | claude.ai、Claude Code、Developer Platform（Skills API）、Agent SDK | **原生 Agent Skills**；六個跨介面欄位 | SKILL.md（單一來源） | 已查證 |
@@ -30,8 +30,8 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 
 ## 7.4 設計決策
 
-1. **單一來源**：`skills/shared/task-spec.md` 與 `core-prompt.md` 是所有平台的規格；平台檔只處理載入方式。
+1. **單一來源**：`skills/shared/task-spec.md` 與 `core-prompt.md` 是所有平臺的規格；平臺檔只處理載入方式。
 2. **同一份 SKILL.md 跨三個宿主**：Claude Code、Codex、以 GLM／DeepSeek 為後端的 Claude Code 或 OpenClaw，都吃相同格式。
-3. **無原生技能的平台**：Grok、GLM 聊天應用、DeepSeek 聊天應用 → system prompt + API 腳本；所有腳本支援 `--dry-run` 以便在無 API key 時驗證。
+3. **無原生技能的平臺**：Grok、GLM 聊天應用、DeepSeek 聊天應用 → system prompt + API 腳本；所有腳本支援 `--dry-run` 以便在無 API key 時驗證。
 4. **資料治理**：GLM 與 DeepSeek 的 API 由中國大陸公司營運，教學中明確提醒資料出境評估；所有示範只用合成資料。
 5. **待驗證項目**列入「證據與來源」頁的待驗證清單，附驗證方式。

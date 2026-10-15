@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 要驗收的平台
+        description: 要驗收的平臺
         required: true
         type: choice
         options: [chatgpt, grok, glm, deepseek]

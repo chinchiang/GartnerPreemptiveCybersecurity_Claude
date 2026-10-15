@@ -28,7 +28,7 @@ metadata:
 2. **先讀 `scope.json`**：不存在或缺必填欄位（`organization`、`analysis_date`、`authorized_scope.in_scope_assets`、`authorized_scope.active_testing_authorized`、`authorized_scope.external_scanning_authorized`、`reporting.audience`）就**停止**，列出需要的欄位，不做任何分析。
 3. **逐檔讀入**其餘檔案（用 Read 工具，不要用 shell 指令對外連線），回報每個檔案的筆數、缺欄位、異常值（CVSS > 10、重複 ID、`asset_id` 不在 `in_scope_assets`、EASM 未對應資產）。
 4. **依核心指令的八步流程**產出報告。評分時把每一項的 `factors[]` 寫清楚，讓人能回溯到輸入欄位。
-5. **輸出**：先在對話中給完整 Markdown 報告；若使用者要求存檔，寫到 `output/<平台>-report.md` 與 `output/<平台>-output.json`（JSON 需符合 `skills/shared/output-schema.json`）。`meta.generated_by` 填「GLM via Claude Code skill preemptive-exposure-analysis 1.0.0」（若後端不是 GLM，如實填寫）。
+5. **輸出**：先在對話中給完整 Markdown 報告；若使用者要求存檔，寫到 `output/<平臺>-report.md` 與 `output/<平臺>-output.json`（JSON 需符合 `skills/shared/output-schema.json`）。`meta.generated_by` 填「GLM via Claude Code skill preemptive-exposure-analysis 1.0.0」（若後端不是 GLM，如實填寫）。
 6. **不要**執行任何 nmap、curl 對外探測、BAS、滲透測試工具或正式環境變更；這些只能寫成「提案」並標示需人工書面授權。
 7. 完成後列出「人工審查點」（S1 授權人、S3 業務擁有者、S4 架構師、S5 變更委員會／OT 負責人、S6 CISO、S7 管理層）。
 

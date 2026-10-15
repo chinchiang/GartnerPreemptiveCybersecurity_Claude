@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "915631e49dd6",
+ "contentHash": "a0abe759c473",
  "research": [
   {
    "id": "00-method",
@@ -39,7 +39,7 @@ window.BUILD_MANIFEST = {
   },
   {
    "id": "07-platforms",
-   "title": "7. 五個平台的查證摘要與等效方案",
+   "title": "7. 五個平臺的查證摘要與等效方案",
    "path": "docs/research/07-platforms.md"
   }
  ],

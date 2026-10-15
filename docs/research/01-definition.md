@@ -44,7 +44,7 @@ Gartner 在 2025 年 9 月 18 日的新聞稿中給出目前最常被引用的�
 
 | 能力 | Gartner 公開描述 | 來源 |
 |---|---|---|
-| Predictive threat intelligence（PTI） | PTI 平台 "continuously collect information from a wide variety of sources — like security alerts, public online discussions, the dark web and records of past cyberattacks"，使組織能 "address vulnerabilities and exposures to boost your defenses before an attack even happens"；"serves as an early warning system to anticipate future attacks and prioritize preemptive mitigation" | [G3]、[G12] |
+| Predictive threat intelligence（PTI） | PTI 平臺 "continuously collect information from a wide variety of sources — like security alerts, public online discussions, the dark web and records of past cyberattacks"，使組織能 "address vulnerabilities and exposures to boost your defenses before an attack even happens"；"serves as an early warning system to anticipate future attacks and prioritize preemptive mitigation" | [G3]、[G12] |
 | Automated moving target defense（AMTD） | "AMTD leverages automation to dynamically adjust system configurations, ensuring a continuous and unpredictable environment."；Peer Insights 市場定義："a set of technologies and methods to make unpredictable automated changes to an IT environment, making it significantly harder for attackers to identify and exploit vulnerabilities" | [G3]、[G28] |
 | Advanced deception | "Advanced cyber deception is often combined with moving target defense to add even more layers of 'moving targets.'"；"can shift the balance against attackers, and empower a preemptive cyber defense strategy" | [G3]、[G12] |
 | 2026 年五大支柱 | "preemptive exposure management, adversary management and threat intelligence, adversary disruption, posture and policy management, and services and capabilities maturity" | [G27]（付費研究公開摘要） |

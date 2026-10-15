@@ -81,7 +81,7 @@
   };
   const NAV = [
     ['總覽', [['/', '首頁'], ['/methodology', '方法論導覽'], ['/process', '可執行流程'], ['/io', 'Inputs／Outputs 對照']]],
-    ['實作', [['/platforms', '平台比較'], ['/skills', 'Skills 專區'], ['/guides', '安裝與使用教學'], ['/case', '案例互動展示']]],
+    ['實作', [['/platforms', '平臺比較'], ['/skills', 'Skills 專區'], ['/guides', '安裝與使用教學'], ['/case', '案例互動展示']]],
     ['證據', [['/sources', '證據與來源'], ['/deploy', '部署與維護']]]
   ];
   let lastPath = null;
@@ -114,11 +114,11 @@
     const gartnerCount = D.sources.filter(s => s.type === 'gartner').length;
     el.innerHTML = `
       <div class="hero">
-        <h1>Gartner「Preemptive Cybersecurity（先制型資安）」研究與五平台 Skills Playbook</h1>
+        <h1>Gartner「Preemptive Cybersecurity（先制型資安）」研究與五平臺 Skills Playbook</h1>
         <p class="lead">從 Gartner 公開資料出發，拆解先制型資安的必要輸入、處理流程與可能輸出；再將可驗證的概念轉為可在 ChatGPT、Claude、Grok、GLM、DeepSeek 上執行的 skills 或等效工作流程，並以合成資料示範。</p>
         <div class="btn-row">
           <a class="btn" href="#/methodology">閱讀方法論研究</a>
-          <a class="btn secondary" href="#/skills">取得五平台 Skills</a>
+          <a class="btn secondary" href="#/skills">取得五平臺 Skills</a>
           <a class="btn secondary" href="#/case">互動案例</a>
         </div>
       </div>
@@ -134,9 +134,9 @@
         ${[['#/methodology', '方法論導覽', '定義、目標、與傳統偵測回應的關係、與 CTEM／威脅情資／攻擊面管理等概念的關聯，每項標明來源或推論。'],
       ['#/process', '可執行流程', '八個步驟：目的、輸入、處理、輸出、限制與人工決策點。可點選步驟查看對應的 inputs/outputs。'],
       ['#/io', 'Inputs／Outputs 對照', '依流程階段、必要性、使用對象篩選；每項含來源、格式、頻率、品質、敏感度、範例與缺漏替代方案。'],
-      ['#/platforms', '平台比較', '五個平台的模型、承載應用、自訂機制、工具呼叫、檔案與限制，含查證狀態。'],
-      ['#/skills', 'Skills 專區', '共用任務規格 + 各平台完整檔案，一鍵複製與下載（含 ZIP）。'],
-      ['#/guides', '安裝與使用教學', '切換平台查看逐步設定、使用範例、驗收方式與常見問題。'],
+      ['#/platforms', '平臺比較', '五個平臺的模型、承載應用、自訂機制、工具呼叫、檔案與限制，含查證狀態。'],
+      ['#/skills', 'Skills 專區', '共用任務規格 + 各平臺完整檔案，一鍵複製與下載（含 ZIP）。'],
+      ['#/guides', '安裝與使用教學', '切換平臺查看逐步設定、使用範例、驗收方式與常見問題。'],
       ['#/case', '案例互動展示', '以合成資料示範輸入如何影響優先序、攻擊路徑假設與輸出；可切換輸入與權重。'],
       ['#/sources', '證據與來源', '所有引用連結、發布日期、查閱日期、查證等級、付費牆狀態、原始證據檔與待驗證清單。']].map(([h, t, d]) => `<a class="card" href="${h}" style="text-decoration:none;color:inherit"><h3 style="margin-top:0">${t}</h3><p class="small">${d}</p></a>`).join('')}
       </div>
@@ -144,7 +144,7 @@
       <ol>
         <li>${TAG.fact} Gartner 將 preemptive cybersecurity 描述為在攻擊發生<strong>之前</strong>就預測、阻斷或轉移攻擊者的能力組合，並以 2030 年的市場預測凸顯其重要性。細節與原文引用見 <a href="#/methodology">方法論導覽</a>。</li>
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
-        <li>${TAG.rec} 五個平台各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平台比較</a>。</li>
+        <li>${TAG.rec} 五個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
       </ol>
       <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；實際部署時間見 GitHub Actions 紀錄）。所有內容以儲存庫為單一來源。</p>`;
   }
@@ -256,13 +256,13 @@
     draw();
   }
 
-  // ---------- 平台比較 ----------
+  // ---------- 平臺比較 ----------
   function viewPlatforms(el) {
     const ST = { verified: '<span class="pill fact">已查證</span>', partial: '<span class="pill infer">部分查證</span>', unverified: '<span class="pill todo">待驗證</span>' };
     const rows = [['模型（查證時）', 'models'], ['承載應用／執行框架', 'hosting'], ['原生自訂／技能機制', 'mechanism'], ['本專案採用的等效格式', 'skillFormat'], ['工具呼叫與連線', 'tools'], ['檔案與知識', 'files'], ['主要限制', 'limits'], ['查證狀態與備註', 'notes']];
     el.innerHTML = `
-      <h1>平台比較</h1>
-      <p class="lead">五個平台的支援方式、需求與限制。「模型」與「承載模型的應用程式／執行框架」分開描述。查證日期與來源見 <a href="#/sources">證據與來源</a>。</p>
+      <h1>平臺比較</h1>
+      <p class="lead">五個平臺的支援方式、需求與限制。「模型」與「承載模型的應用程式／執行框架」分開描述。查證日期與來源見 <a href="#/sources">證據與來源</a>。</p>
       <div class="table-wrap"><table>
         <thead><tr><th>面向</th>${D.platforms.map(p => `<th>${esc(p.name)}<br><span class="small">${esc(p.vendor)}</span><br>${ST[p.status] || ''}</th>`).join('')}</tr></thead>
         <tbody>${rows.map(([label, key]) => `<tr><th scope="row">${label}</th>${D.platforms.map(p => `<td>${md(p[key])}</td>`).join('')}</tr>`).join('')}
@@ -270,7 +270,7 @@
       </table></div>
       <h2>共通原則</h2>
       <div class="card">${md(window.PLATFORM_COMMON || '')}</div>
-      <h2>各平台摘要卡</h2>
+      <h2>各平臺摘要卡</h2>
       <div class="grid">${D.platforms.map(p => `<div class="card"><h3 style="margin-top:0">${esc(p.name)} ${ST[p.status] || ''}</h3><p class="small">${md(p.summary)}</p><div class="btn-row"><a class="btn small" href="#/skills?platform=${p.id}">查看 Skill</a><a class="btn small secondary" href="#/guides?platform=${p.id}">安裝教學</a></div></div>`).join('')}</div>`;
   }
 
@@ -283,13 +283,13 @@
     const dl = (D.manifest.downloads || []);
     el.innerHTML = `
       <h1>Skills 專區</h1>
-      <p class="lead">先閱讀「共用規格」，再選擇平台。所有檔案可一鍵複製或下載；ZIP 下載包由建置腳本產生。</p>
+      <p class="lead">先閱讀「共用規格」，再選擇平臺。所有檔案可一鍵複製或下載；ZIP 下載包由建置腳本產生。</p>
       <div class="btn-row">
         ${dl.includes('downloads/skills-all-platforms.zip') ? '<a class="btn" href="downloads/skills-all-platforms.zip" download>下載全部 Skills + 範例資料（ZIP）</a>' : ''}
         ${dl.includes('downloads/synthetic-example-data.zip') ? '<a class="btn secondary" href="downloads/synthetic-example-data.zip" download>下載合成範例資料（ZIP）</a>' : ''}
         <a class="btn secondary" href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/tree/main/skills" target="_blank" rel="noopener">在 GitHub 檢視 skills/</a>
       </div>
-      <div class="tabs" role="tablist" aria-label="平台">${platforms.map(p => tabButton(p, PLATFORM_META[p] || p, p === cur, 'platform', 'skills-panel')).join('')}</div>
+      <div class="tabs" role="tablist" aria-label="平臺">${platforms.map(p => tabButton(p, PLATFORM_META[p] || p, p === cur, 'platform', 'skills-panel')).join('')}</div>
       <div class="two-col">
         <div id="skills-panel" role="tabpanel" aria-labelledby="tab-${esc(cur)}">
           <div class="card">
@@ -326,8 +326,8 @@
     const r = g ? window.MD.render(g.body, { shift: 0 }) : { html: '<p>尚無教學。</p>', toc: [] };
     el.innerHTML = `
       <h1>安裝與使用教學</h1>
-      <p class="lead">切換平台查看逐步設定、輸入格式、使用範例、預期結果、驗收方式、常見問題與機敏資料邊界。</p>
-      <div class="tabs" role="tablist" aria-label="平台">${platforms.map(p => tabButton(p, PLATFORM_META[p] || p, p === cur, 'platform', 'guide-panel')).join('')}</div>
+      <p class="lead">切換平臺查看逐步設定、輸入格式、使用範例、預期結果、驗收方式、常見問題與機敏資料邊界。</p>
+      <div class="tabs" role="tablist" aria-label="平臺">${platforms.map(p => tabButton(p, PLATFORM_META[p] || p, p === cur, 'platform', 'guide-panel')).join('')}</div>
       <div class="two-col">
         <article class="doc card" id="guide-panel" role="tabpanel" aria-labelledby="tab-${esc(cur)}">${r.html}<div class="btn-row"><button class="btn small secondary" id="copy-guide">複製本教學 Markdown</button></div></article>
         <aside><nav class="card doc-toc" aria-label="目錄"><strong>目錄</strong>${r.toc.map(t => `<a class="${t.level >= 3 ? 'l3' : ''}" href="#/guides?platform=${cur}#${encodeURIComponent(t.id)}">${esc(t.text)}</a>`).join('')}</nav></aside>
@@ -416,7 +416,7 @@
 
   // ---------- 證據與來源 ----------
   function viewSources(el, q) {
-    const TYPE = { gartner: 'Gartner 官方', 'third-party': '第三方／媒體', vendor: '廠商', 'platform-doc': '平台官方文件', standard: '標準／公部門' };
+    const TYPE = { gartner: 'Gartner 官方', 'third-party': '第三方／媒體', vendor: '廠商', 'platform-doc': '平臺官方文件', standard: '標準／公部門' };
     const state = { type: q.type || 'all', verification: q.verification || 'all', text: '' };
     const evidence = D.extra.evidence || [];
     // 待處理與已完成分開呈現：混在一起時「（已完成）」前綴會被當成還沒做的事。
@@ -472,7 +472,7 @@
     }
     for (const i of D.io) idx.push({ kind: i.kind === 'input' ? 'Input' : 'Output', title: `${i.name} ${i.en}`, text: [i.purpose, i.sources, i.format, i.fallback, i.structure, i.example].join(' '), href: `#/io?focus=${i.id}` });
     for (const s of D.stages) idx.push({ kind: '流程', title: `步驟 ${s.n} ${s.name}`, text: [s.purpose, s.processing, s.limits, s.humanDecision].join(' '), href: `#/process?stage=${s.id}` });
-    for (const p of D.platforms) idx.push({ kind: '平台', title: p.name, text: [p.models, p.hosting, p.mechanism, p.limits, p.notes].join(' '), href: '#/platforms' });
+    for (const p of D.platforms) idx.push({ kind: '平臺', title: p.name, text: [p.models, p.hosting, p.mechanism, p.limits, p.notes].join(' '), href: '#/platforms' });
     for (const f of D.skills) idx.push({ kind: 'Skill', title: f.path, text: f.content, href: `#/skills?platform=${f.platform}&file=${encodeURIComponent(f.path)}` });
     for (const g of D.guides) idx.push({ kind: '教學', title: g.title, text: g.body, href: g.platform ? `#/guides?platform=${g.platform}` : '#/deploy' });
     for (const s of D.sources) idx.push({ kind: '來源', title: s.title, text: [s.url, s.publisher, s.note].join(' '), href: `#/sources?focus=${s.id}` });

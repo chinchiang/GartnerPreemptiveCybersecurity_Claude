@@ -1,9 +1,9 @@
 ---
-title: GLM 平台說明
+title: GLM 平臺說明
 role: readme
 ---
 
-# GLM（Zhipu AI / Z.ai）平台說明：先制型曝險分析（PEA）
+# GLM（Zhipu AI / Z.ai）平臺說明：先制型曝險分析（PEA）
 
 任務定義、證據要求、評分規則與人工核准邊界一律以 `../shared/task-spec.md` 與 `../shared/core-prompt.md` 為準；本目錄只處理「怎麼把核心指令放進 GLM 的各種承載方式」。
 

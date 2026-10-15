@@ -87,7 +87,7 @@ def load_core_prompt() -> str:
     m = re.search(r"```text\n(.*?)\n```", text, re.S)
     core = m.group(1).strip() if m else text.strip()
     platform_note = (
-        "\n\n7. 平台備註（GLM）\n"
+        "\n\n7. 平臺備註（GLM）\n"
         "- 你正透過 Z.ai / BigModel API 被呼叫，沒有檔案系統或工具；所有輸入都已貼在使用者訊息中。\n"
         "- 若使用者要求 JSON，只輸出單一 JSON 物件，不要加 Markdown 圍欄或說明文字。\n"
         "- 你自身的知識（例如對 CVE 或廠商的認知）一律標示「模型知識，需查證」。"
@@ -351,7 +351,7 @@ def main() -> int:
 
     if args.dry_run:
         print("=" * 78)
-        print(f"[DRY-RUN] 平台：GLM  模型：{args.model}")
+        print(f"[DRY-RUN] 平臺：GLM  模型：{args.model}")
         print(f"[DRY-RUN] OpenAI 相容端點：{os.environ.get('GLM_BASE_URL', DEFAULT_BASE_URL)}"
               f"（替代：{ALT_BASE_URL_CN}；請以官方文件確認）")
         print(f"[DRY-RUN] Anthropic 相容端點：{os.environ.get('GLM_ANTHROPIC_BASE_URL', DEFAULT_ANTHROPIC_BASE_URL)}（待驗證）")
