@@ -4,6 +4,8 @@ Python 的分析工作流程核心放在 `skills/shared/analysis_workflow.py`。
 
 理由：平臺腳本執行時本來就要讀 `skills/shared/` 的核心提示詞與 schema，`skills/<平臺>/` 資料夾從來不是單獨可跑的；複製只會多出數份 Python 複本，也得為 `.py` 另訂一種複本標註，換不到任何好處。
 
+例外：Claude 技能的資料夾會被單獨安裝，改附一份建置產生的核心複本，見 ADR 0003。
+
 ## Considered Options
 
 - **由建置把核心複製到每個 `skills/<平臺>/` 資料夾，直接 `import`**：否決。複本一多，Python 這邊又回到「改一處要同步多份」的狀態，正是這次重構要消除的問題。

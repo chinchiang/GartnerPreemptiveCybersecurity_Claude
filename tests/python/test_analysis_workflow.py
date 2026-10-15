@@ -127,6 +127,7 @@ class InputChecksTest(unittest.TestCase):
             ("vulnerabilities.csv", ",A01,", ",A99,", "指向不存在資產 A99"),
             ("identities.csv", "A04;A05;A06", "A04;A98", "指向不存在資產 A98"),
             ("topology.json", '"to": "A06"', '"to": "A97"', "A97"),
+            ("topology.json", '"from": "A01"', '"from": "A96"', "A96"),
         ]
         for name, old, new, expected in cases:
             with self.subTest(name=name, expected=expected):

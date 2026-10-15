@@ -97,6 +97,11 @@ def _check(value, node: dict, path: str) -> list:
     return []
 
 
+def required_scope_fields(input_schema: dict) -> list:
+    """scope.json 的必填末端欄位（缺少 scope.json 時列給使用者看）。"""
+    return _required_leaves(input_schema["properties"]["scope"], "")
+
+
 def scope_problems(scope, input_schema: dict) -> list:
     """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則全部來自 input-schema.json 的 scope 定義；
     網站示範引擎的 scopeProblems 是手寫的同一套規則，兩邊由 tests/fixtures/scope-cases.json 守住一致。"""
@@ -123,6 +128,7 @@ class Inputs:
     scope: dict
     files: list = field(default_factory=list)      # [{name, category, label, raw, data, records}]，會送進提示詞
     missing: list = field(default_factory=list)    # 本次未提供的輸入（含 --exclude 與無法解析者）
+    unparsable: dict = field(default_factory=dict)  # 無法解析的檔案：{檔名: 錯誤訊息}（也列在 missing）
     warnings: list = field(default_factory=list)   # 腳本預檢結果：只警告、不中止
 
 
@@ -152,7 +158,7 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
     --exclude 的類別與無法解析的檔案都視為未提供，不送進提示詞。"""
     scope_path = input_dir / "scope.json"
     if "scope" in exclude or not scope_path.exists():
-        fields = ", ".join(_required_leaves(input_schema["properties"]["scope"], ""))
+        fields = ", ".join(required_scope_fields(input_schema))
         raise Abort("[中止] 找不到 scope.json（授權範圍與分析參數）。依共用任務規格第 2.1 節，無授權範圍不得分析。"
                     f"請提供含下列欄位的 scope.json：{fields}")
     try:
@@ -177,6 +183,7 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
             data, columns = _parse(name, raw)
         except (ValueError, UnicodeDecodeError, csv.Error) as exc:
             inputs.missing.append(f"{name}（{label}；無法解析：{exc}）")
+            inputs.unparsable[name] = str(exc)
             continue
         inputs.files.append({"name": name, "category": category, "label": label, "raw": raw, "data": data,
                              "columns": columns, "records": count_records(data)})
@@ -189,7 +196,7 @@ def check_inputs(inputs: Inputs, input_schema: dict) -> list:
     任何一列資料缺值或型別不對，都只會變成警告，不會讓預檢本身失敗。"""
     loaded = {f["name"]: f for f in inputs.files}
     return (_required_file_warnings(loaded) + _schema_field_warnings(inputs.files, input_schema)
-            + _integrity_warnings(loaded, inputs.scope))
+            + [f"{name}：{message}" for name, message in integrity_findings(inputs)])
 
 
 def _required_file_warnings(loaded: dict) -> list:
@@ -205,6 +212,12 @@ def _required_file_warnings(loaded: dict) -> list:
     return warnings
 
 
+def required_columns(category: str, input_schema: dict) -> list:
+    """CSV 類輸入（schema 是陣列）每一列的必填欄位；不是陣列的類別回傳空清單。"""
+    node = input_schema["properties"].get(category, {})
+    return node.get("items", {}).get("required", []) if node.get("type") == "array" else []
+
+
 def _schema_field_warnings(files: list, input_schema: dict) -> list:
     """input-schema.json 的必填欄位：CSV 看欄位標頭，JSON 清單看每一筆，JSON 物件看物件本身與其中清單的每一筆。"""
     warnings = []
@@ -214,7 +227,7 @@ def _schema_field_warnings(files: list, input_schema: dict) -> list:
         if f["category"] == "scope":
             continue
         if node.get("type") == "array":
-            required = node.get("items", {}).get("required", [])
+            required = required_columns(f["category"], input_schema)
             if f["columns"] is not None:
                 absent = [k for k in required if k not in f["columns"]]
                 if absent:
@@ -244,55 +257,60 @@ def _in_range(value, low: float, high: float):
         return None
 
 
-def _integrity_warnings(loaded: dict, scope: dict) -> list:
-    """資料完整性（與 Claude 技能的 validate_inputs.py 相同的檢查）：重複、範圍外、數值範圍、懸空參照、
-    拓樸的邊、未納入清冊的對外資產。"""
-    warnings = []
-    authorized = scope.get("authorized_scope") if isinstance(scope.get("authorized_scope"), dict) else {}
+def integrity_findings(inputs: Inputs) -> list:
+    """資料完整性：重複、範圍外、數值範圍、懸空參照、拓樸的邊、未納入清冊的對外資產。
+    回傳 [(檔名, 訊息)]：提示詞的預檢結果把它寫成「檔名：訊息」，Claude 技能的 validate_inputs.py 依檔名分到各行。"""
+    findings = []
+    loaded = {f["name"]: f for f in inputs.files}
+    authorized = inputs.scope.get("authorized_scope") if isinstance(inputs.scope.get("authorized_scope"), dict) else {}
     in_scope = set(authorized.get("in_scope_assets") or [])
     assets = loaded.get("assets.csv", {}).get("data") or []
     asset_ids = {r.get("asset_id") for r in assets}
     if assets:
         dup = len(assets) - len(asset_ids)
         if dup:
-            warnings.append(f"assets.csv：重複 asset_id ×{dup}")
+            findings.append(("assets.csv", f"重複 asset_id ×{dup}"))
         outside = sorted(a for a in asset_ids - in_scope if a)
         if outside:
-            warnings.append(f"assets.csv：範圍外資產（分析時應排除）：{', '.join(outside)}")
+            findings.append(("assets.csv", f"範圍外資產（分析時應排除）：{', '.join(outside)}"))
         for r in assets:
             ok = _in_range(r.get("business_criticality"), 1, 5)
             if ok is None:
-                warnings.append(f"assets.csv：{r.get('asset_id')} business_criticality 無效")
+                findings.append(("assets.csv", f"{r.get('asset_id')} business_criticality 無效"))
             elif not ok:
-                warnings.append(f"assets.csv：{r.get('asset_id')} business_criticality 超出 1–5")
+                findings.append(("assets.csv", f"{r.get('asset_id')} business_criticality 超出 1–5"))
     for r in loaded.get("vulnerabilities.csv", {}).get("data") or []:
         ok = _in_range(r.get("cvss_base"), 0, 10)
         if ok is None:
-            warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} cvss_base 無效")
+            findings.append(("vulnerabilities.csv", f"{r.get('finding_id')} cvss_base 無效"))
         elif not ok:
-            warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} cvss_base 超出 0–10")
+            findings.append(("vulnerabilities.csv", f"{r.get('finding_id')} cvss_base 超出 0–10"))
         if asset_ids and r.get("asset_id") not in asset_ids:
-            warnings.append(f"vulnerabilities.csv：{r.get('finding_id')} 指向不存在資產 {r.get('asset_id')}")
+            findings.append(("vulnerabilities.csv", f"{r.get('finding_id')} 指向不存在資產 {r.get('asset_id')}"))
     for r in loaded.get("identities.csv", {}).get("data") or []:
         for a in str(r.get("linked_assets") or "").split(";"):
             if a and asset_ids and a not in asset_ids:
-                warnings.append(f"identities.csv：{r.get('identity_id')} linked_assets 指向不存在資產 {a}")
+                findings.append(("identities.csv", f"{r.get('identity_id')} linked_assets 指向不存在資產 {a}"))
     topology = loaded.get("topology.json", {}).get("data")
     if isinstance(topology, dict) and asset_ids:
         for e in topology.get("edges", []) if isinstance(topology.get("edges"), list) else []:
             if not isinstance(e, dict):
-                warnings.append(f"topology.json：edges 裡有不是物件的項目（{e!r}）")
+                findings.append(("topology.json", f"edges 裡有不是物件的項目（{e!r}）"))
                 continue
-            for end in ("from", "to"):
-                node_id = e.get(end)
-                if node_id != "internet" and node_id not in asset_ids:
-                    warnings.append(f"topology.json：邊 {e.get('from')}→{e.get('to')} 指向不存在資產 {node_id}")
-    exposures = loaded.get("exposures.json", {}).get("data")
-    if isinstance(exposures, dict) and isinstance(exposures.get("exposures"), list):
-        unlisted = [e.get("hostname") for e in exposures["exposures"] if isinstance(e, dict) and not e.get("asset_id")]
-        if unlisted:
-            warnings.append(f"exposures.json：未納入清冊的對外資產 {', '.join(str(h) for h in unlisted)}")
-    return warnings
+            dangling = [str(e.get(end)) for end in ("from", "to") if e.get(end) != "internet" and e.get(end) not in asset_ids]
+            if dangling:  # 一條邊一筆，validate_inputs.py 以筆數作為「指向不存在資產的邊」
+                findings.append(("topology.json", f"邊 {e.get('from')}→{e.get('to')} 指向不存在資產 {', '.join(dangling)}"))
+    hosts = unlisted_hosts(loaded.get("exposures.json", {}).get("data"))
+    if hosts:
+        findings.append(("exposures.json", f"未納入清冊的對外資產 {', '.join(str(h) for h in hosts)}"))
+    return findings
+
+
+def unlisted_hosts(exposures) -> list:
+    """exposures.json 裡沒有對應 asset_id 的對外資產（未納入清冊），回傳其 hostname。"""
+    if not isinstance(exposures, dict) or not isinstance(exposures.get("exposures"), list):
+        return []
+    return [e.get("hostname") for e in exposures["exposures"] if isinstance(e, dict) and not e.get("asset_id")]
 
 
 # ---------------------------------------------------------------------------

@@ -77,4 +77,4 @@ metadata:
 - `references/scoring-rules.md`：示範評分規則、路徑可行性、指標定義、缺漏替代。
 - `references/input-schema.json`、`references/output-schema.json`。
 - `references/acceptance.md`：驗收清單與預期結果。
-- `scripts/validate_inputs.py`：輸入結構檢查（純標準函式庫）。
+- `scripts/validate_inputs.py`：輸入結構檢查（純標準函式庫）；`scripts/analysis_workflow.py` 是它使用的共用檢查規則，不需直接執行。

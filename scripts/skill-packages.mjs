@@ -11,10 +11,12 @@ const CORE_PROMPT = `${SHARED_DIR}core-prompt.md`;
 const EXAMPLES_DIR = 'examples/synthetic-org/';
 const platformDir = (platform) => `skills/${platform}/`;
 const referencePath = (platform, name) => `${platformDir(platform)}preemptive-exposure-analysis/references/${name}`;
-// 建置寫入的標註（HTML 註解，網站渲染時 md.js 會略過）：複本放檔首，嵌入區塊放在區塊正上方
+const scriptPath = (platform, name) => `${platformDir(platform)}preemptive-exposure-analysis/scripts/${name}`;
+// 建置寫入的標註（.md 用 HTML 註解，網站渲染時 md.js 會略過；.py 用 # 註解）：複本放檔首，嵌入區塊放在區塊正上方
 const MARKER_SOURCE = 'scripts/build-data.mjs';
 const markerPrefix = (lead) => `<!-- ${lead}由 ${MARKER_SOURCE} `;
-const marker = (lead, master) => `${markerPrefix(lead)}從 ${master} 產生，請改母本後執行 npm run build，勿手動編輯 -->`;
+const markerText = (lead, master) => `${lead}由 ${MARKER_SOURCE} 從 ${master} 產生，請改母本後執行 npm run build，勿手動編輯`;
+const marker = (lead, master) => `<!-- ${markerText(lead, master)} -->`;
 
 // 核心提示詞＝core-prompt.md 裡第一個 ```text 區塊；找不到就拋錯，讓建置中止。
 export function extractCorePrompt(md) {
@@ -26,6 +28,7 @@ export function extractCorePrompt(md) {
 // 對照表：skills/ 底下每個目錄一列。
 // needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成範例資料（腳本的預設輸入）；
 // copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀；
+// scripts＝要複製進 preemptive-exposure-analysis/scripts/ 的 Python 母本（選填），讓技能資料夾單獨安裝時腳本仍可執行（見 ADR 0003）；
 // embeds＝含核心提示詞嵌入區塊的手寫檔（file 相對於 skills/<平臺>/）與區塊所在的標題：標題行以 heading 開頭（前綴比對），全檔只能有一行。
 const SCRIPT_NEEDS = [CORE_PROMPT, `${SHARED_DIR}output-schema.json`]; // 四支 api-workflow.py 共同讀取
 // 改用分析工作流程核心的平臺另外需要核心本身，以及核心用來推導守門規則的 input-schema.json
@@ -36,7 +39,8 @@ const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading:
 const PACKAGES = {
   chatgpt:  { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [] },
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
-              copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [] }, // SKILL.md 不引用 task-spec
+              copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [], // SKILL.md 不引用 task-spec
+              scripts: ['analysis_workflow.py'] },        // validate_inputs.py 用的核心複本：技能資料夾會被單獨複製或上傳
   deepseek: { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
   glm:      { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
   grok:     { needs: WORKFLOW_NEEDS, examples: true, copies: [], embeds: [SYSTEM_PROMPT_EMBED] }, // 沒有原生 skills，也就沒有 references/
@@ -53,25 +57,29 @@ export function packageFiles(platform, files) {
   return files.filter(wanted).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
-// 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 的複本，以及含嵌入區塊的手寫檔。
+// 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 與 scripts/ 的複本，以及含嵌入區塊的手寫檔。
 // files：repo 檔案清單，須含 skills/shared/ 的母本與對照表 embeds 宣告的手寫檔。
 export function generatedFiles(files) {
   return [...referenceCopies(files), ...embeddedFiles(files)];
 }
 
-// 複本：.json 與母本位元組相同；.md 加一行標註，有 frontmatter 時放在它之後（build-data.mjs 的 parseFrontmatter 才讀得到標題）。
+// 複本：.json 與母本位元組相同；.py 檔首加一行 # 標註；.md 加一行標註，有 frontmatter 時放在它之後
+// （build-data.mjs 的 parseFrontmatter 才讀得到標題）。
 function referenceCopies(files) {
   const copies = [];
   for (const [platform, pkg] of Object.entries(PACKAGES)) {
-    for (const name of pkg.copies) {
+    const wanted = [...pkg.copies.map(name => [name, referencePath(platform, name)]),
+                    ...(pkg.scripts || []).map(name => [name, scriptPath(platform, name)])];
+    for (const [name, path] of wanted) {
       const master = files.find(f => f.path === `${SHARED_DIR}${name}`);
       if (!master) throw new Error(`${platform} 技能包要複製的母本不存在：${SHARED_DIR}${name}`);
-      copies.push({ path: referencePath(platform, name), content: copyContent(name, master.content) });
+      copies.push({ path, content: copyContent(name, master.content) });
     }
   }
   return copies;
 }
 function copyContent(name, content) {
+  if (name.endsWith('.py')) return `# ${markerText('', `${SHARED_DIR}${name}`)}\n${content}`;
   if (!name.endsWith('.md')) return content;
   const line = `${marker('', `${SHARED_DIR}${name}`)}\n`;
   const fm = content.match(/^---\n[\s\S]*?\n---\n/);

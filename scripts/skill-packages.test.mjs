@@ -102,9 +102,10 @@ for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
   });
 }
 
-// 母本：模擬 skills/shared/ 的五份會被複製的檔案
+// 母本：模擬 skills/shared/ 的六份會被複製的檔案
 const masters = [
   { path: 'skills/shared/acceptance.md', content: '# 驗收清單\n\n| # | 檢查 |\n' },
+  { path: 'skills/shared/analysis_workflow.py', content: '"""分析工作流程核心。"""\n\nimport json\n' },
   { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入"\n}\n' },
   { path: 'skills/shared/output-schema.json', content: '{\n  "title": "輸出"\n}\n' },
   { path: 'skills/shared/scoring-rules.md', content: '# 示範評分規則\n\n規則內容。\n' },
@@ -143,12 +144,24 @@ test('有 frontmatter 的 .md 複本，frontmatter 原封不動留在檔首，�
     '\n# 共用任務規格\n');
 });
 
+test('.py 複本放在 Claude 技能的 scripts/ 底下，檔首加一行 Python 註解標註，其後是母本原文', () => {
+  const copy = copyAt(generatedFiles(sources), 'skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py');
+  assert.equal(copy.content,
+    '# 由 scripts/build-data.mjs 從 skills/shared/analysis_workflow.py 產生，請改母本後執行 npm run build，勿手動編輯\n' +
+    '"""分析工作流程核心。"""\n\nimport json\n');
+});
+
+test('要放進 scripts/ 的母本不存在時中止，錯誤訊息指出平臺與缺少的母本', () => {
+  const withoutCore = sources.filter(f => f.path !== 'skills/shared/analysis_workflow.py');
+  assert.throws(() => generatedFiles(withoutCore), { message: /claude.*母本不存在.*skills\/shared\/analysis_workflow\.py/ });
+});
+
 test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本', () => {
   const withoutTaskSpec = sources.filter(f => f.path !== 'skills/shared/task-spec.md');
   assert.throws(() => generatedFiles(withoutTaskSpec), { message: /母本不存在.*skills\/shared\/task-spec\.md/ });
 });
 
-test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
+test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec、另有 scripts/ 的核心複本，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
   assert.deepEqual(paths(generatedFiles(sources)).sort(), [
     'skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md',
     'skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json',
@@ -159,6 +172,7 @@ test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-s
     'skills/claude/preemptive-exposure-analysis/references/input-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/output-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py',
     'skills/deepseek/preemptive-exposure-analysis/SKILL.md',
     'skills/deepseek/preemptive-exposure-analysis/references/acceptance.md',
     'skills/deepseek/preemptive-exposure-analysis/references/input-schema.json',
@@ -255,5 +269,5 @@ test('改用分析工作流程核心的平臺（四個有 api-workflow.py 的平
     const got = paths(packageFiles(platform, repo));
     for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
   }
-  assert.ok(!paths(packageFiles('claude', repo)).includes('skills/shared/analysis_workflow.py'), 'claude 的 validate_inputs.py 尚未搬遷，不該帶核心');
+  assert.ok(!paths(packageFiles('claude', repo)).includes('skills/shared/analysis_workflow.py'), 'claude 用技能內 scripts/ 的核心複本，不帶母本');
 });

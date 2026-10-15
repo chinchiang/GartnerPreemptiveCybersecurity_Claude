@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "b0d17f1290d6",
+ "contentHash": "7f9d0204d61b",
  "research": [
   {
    "id": "00-method",
@@ -134,12 +134,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/README.md",
    "platform": "claude",
-   "bytes": 3257
+   "bytes": 3411
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/SKILL.md",
    "platform": "claude",
-   "bytes": 6191
+   "bytes": 6279
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/acceptance.md",
@@ -162,9 +162,14 @@ window.BUILD_MANIFEST = {
    "bytes": 4018
   },
   {
+   "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
+   "platform": "claude",
+   "bytes": 28243
+  },
+  {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
    "platform": "claude",
-   "bytes": 8103
+   "bytes": 5686
   },
   {
    "path": "skills/deepseek/README.md",
@@ -224,7 +229,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 8089
+   "bytes": 8090
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",
@@ -304,7 +309,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 26944
+   "bytes": 28112
   },
   {
    "path": "skills/shared/core-prompt.md",

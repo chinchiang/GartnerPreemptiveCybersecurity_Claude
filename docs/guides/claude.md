@@ -24,7 +24,7 @@ platform: claude
 
 - `skills/claude/preemptive-exposure-analysis/SKILL.md`（主指令）
 - `references/scoring-rules.md`、`references/acceptance.md`、`references/input-schema.json`、`references/output-schema.json`
-- `scripts/validate_inputs.py`
+- `scripts/validate_inputs.py`、`scripts/analysis_workflow.py`（前者使用的分析工作流程核心；由 `skills/shared/analysis_workflow.py` 建置產生的複本，勿手改）
 - 範例資料：`examples/synthetic-org/`（9 個合成檔案）
 
 取得方式：網站「Skills 專區 → Claude」逐檔複製或下載 `downloads/skills-claude.zip`；或 `git clone` 儲存庫。
