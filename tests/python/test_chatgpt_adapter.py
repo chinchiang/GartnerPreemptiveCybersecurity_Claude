@@ -84,7 +84,6 @@ class ChatGptAdapterTest(unittest.TestCase):
                 self.assertIn("API 回覆沒有文字內容", err)
                 self.assertFalse((self.out / "chatgpt-output.json").exists())
 
-
     def test_missing_api_key_exits_1_before_creating_client(self):
         os.environ.pop("OPENAI_API_KEY")
         openai, record = fake_openai_responses([])
@@ -97,7 +96,7 @@ class ChatGptAdapterTest(unittest.TestCase):
         with blocked("openai"):
             code, out, err = self.run_main()
         self.assertEqual(code, 1)
-        self.assertIn("未安裝 openai 套件", err)
+        self.assertIn("未安裝 openai SDK", err)
         self.assertIn("pip install -r skills/chatgpt/requirements.txt", err)
 
     def test_model_from_env_and_flag(self):
@@ -136,6 +135,7 @@ class ChatGptAdapterTest(unittest.TestCase):
         self.assertNotIn("已載入檔案與筆數", out)  # 資訊訊息在 stderr
         self.assertIn("已載入檔案與筆數", err)
         self.assertFalse(self.out.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

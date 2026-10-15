@@ -91,7 +91,7 @@ class ChatGptAdapter:
             try:
                 from openai import OpenAI  # type: ignore  # 延遲載入：--dry-run 不需要 SDK
             except ImportError as exc:
-                raise analysis_workflow.Abort("[錯誤] 未安裝 openai 套件。請執行：pip install -r skills/chatgpt/requirements.txt") from exc
+                raise analysis_workflow.Abort("[錯誤] 未安裝 openai SDK。請執行：pip install -r skills/chatgpt/requirements.txt") from exc
             if not os.environ.get("OPENAI_API_KEY"):
                 raise analysis_workflow.Abort("[錯誤] 未設定環境變數 OPENAI_API_KEY（請勿把金鑰寫進程式或檔案）。")
             self._client = OpenAI()   # 自動讀取 OPENAI_API_KEY；可選 OPENAI_BASE_URL
