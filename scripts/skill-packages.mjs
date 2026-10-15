@@ -34,7 +34,7 @@ const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 
 const SYSTEM_PROMPT_EMBED = { file: 'system-prompt.md', heading: '## 可直接複製的提示詞' };
 const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
 const PACKAGES = {
-  chatgpt:  { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [] },
+  chatgpt:  { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [] },
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
               copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [] }, // SKILL.md 不引用 task-spec
   deepseek: { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },

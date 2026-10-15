@@ -1,332 +1,115 @@
 #!/usr/bin/env python3
 """先制型曝險分析（PEA）— OpenAI Responses API 工作流程。
 
-用途：
-  1. 讀取 examples/synthetic-org/（或 --input-dir 指定的資料夾）內的 9 個輸入檔。
-  2. 以 skills/shared/core-prompt.md 組成系統提示（instructions）。
-  3. 透過官方 openai SDK 的 Responses API（client.responses.create）取得
-     正體中文 Markdown 報告 + 符合 output-schema.json 的 JSON。
-  4. 存到 output/chatgpt-report.md 與 output/chatgpt-output.json。
+用途
+  以 skills/shared/core-prompt.md 作為系統提示（instructions），讀入 examples/synthetic-org/
+  （或 --input-dir 指定的資料夾）的 9 個輸入檔，透過官方 openai SDK 的 Responses API
+  （client.responses.create）產出正體中文 Markdown 報告與符合 output-schema.json 的 JSON。
+  載入輸入、授權範圍守門、組提示詞、兩段式對話、解析與存檔都由 skills/shared/analysis_workflow.py
+  （分析工作流程核心）負責；本檔只是 ChatGPT 的模型 adapter。
 
-安全：
-  - API 金鑰只從環境變數 OPENAI_API_KEY 讀取，絕不寫在程式或檔案內。
-  - 沒有 scope.json 就中止（task-spec.md 第 2.1 節 I1）。
-  - 不啟用任何工具（無 web search、無 code interpreter、無 function calling）；
-    所有輸入以文字送出。資料會離開本機，送到 OpenAI API；請先確認組織政策。
-  - --dry-run 只印出組好的提示，不呼叫 API，也不需要安裝 openai 套件。
+兩段式呼叫
+  第 1 段：產出人可讀的 Markdown 報告（正體中文）。
+  第 2 段：延續同一對話（整串訊息放在 input），只輸出符合 output-schema.json 的 JSON 物件。
 
-依賴：Python 3.9+ 標準函式庫 + openai>=1.0（僅在非 dry-run 時載入）。
+環境變數（勿寫入程式碼、勿提交到 git）
+  OPENAI_API_KEY   必要（--dry-run 時不需要）
+  OPENAI_MODEL     預設 gpt-5.5（依 github.com/openai/openai-python README 範例，2026-09-09 查證；
+                   實際可用的模型 ID 請在 platform.openai.com 的 Models 頁面確認）
+  OPENAI_BASE_URL  選用；由 openai SDK 自行讀取
+
+用法
+  python3 skills/chatgpt/api-workflow.py --dry-run            # 只跑流程、印出提示詞，不呼叫 API、不需 SDK
+  python3 skills/chatgpt/api-workflow.py                      # 需 pip install -r skills/chatgpt/requirements.txt
+  python3 skills/chatgpt/api-workflow.py --input-dir <dir>    # 自己的資料夾
+  python3 skills/chatgpt/api-workflow.py --dry-run --exclude threat_intel   # 模擬缺漏（驗收第 6 項）
+  python3 skills/chatgpt/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
+
+輸出與結束碼
+  output/chatgpt-report.md、output/chatgpt-output.json（JSON 解析失敗時另存 output/chatgpt-output.raw.txt）
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗
+  輸出後檢查只警告；完整判定交給 scripts/check-acceptance.mjs
+
+安全邊界
+  不啟用任何工具（無 web search、無 code interpreter、無 function calling）；所有輸入以文字送出。
+  資料會離開本機，送到 OpenAI API；請先確認組織政策。
+  本腳本只做「資料整理 → 呼叫語言模型 → 存檔」；不掃描、不探測、不變更任何系統。
+  授權範圍（scope.json）缺少或不合格時，在呼叫 API 之前中止。
 """
 
 from __future__ import annotations
 
-import argparse
-import csv
-import io
-import json
 import os
-import re
 import sys
 from pathlib import Path
 
-# 模型 ID：預設 gpt-5.5（依 github.com/openai/openai-python README 範例，2026-09-09 查證）。
-# 實際可用的模型 ID 必須在 platform.openai.com 的 Models 頁面確認；以環境變數 OPENAI_MODEL 覆蓋。
-DEFAULT_MODEL = "gpt-5.5"
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INPUT_DIR = REPO_ROOT / "examples" / "synthetic-org"
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "output"
-CORE_PROMPT = REPO_ROOT / "skills" / "shared" / "core-prompt.md"
-OUTPUT_SCHEMA = REPO_ROOT / "skills" / "shared" / "output-schema.json"
-
-# 9 個輸入檔：檔名 → (輸入類別, 是否必要)
-INPUT_FILES = [
-    ("scope.json", "scope", True),
-    ("assets.csv", "assets", True),
-    ("vulnerabilities.csv", "vulnerabilities", True),
-    ("exposures.json", "exposures", False),
-    ("identities.csv", "identities", False),
-    ("misconfigurations.csv", "misconfigurations", False),
-    ("controls.json", "controls", False),
-    ("threat-intel.json", "threat_intel", False),
-    ("topology.json", "topology", False),
-]
-
-SKILL_VERSION = "1.0.0"
-EXCLUDE_CHOICES = ["scope", "assets", "vulnerabilities", "exposures", "identities", "misconfigurations", "controls", "threat_intel", "topology"]
-FILE_CATEGORY = {"scope.json": "scope", "assets.csv": "assets", "vulnerabilities.csv": "vulnerabilities", "exposures.json": "exposures", "identities.csv": "identities", "misconfigurations.csv": "misconfigurations", "controls.json": "controls", "threat-intel.json": "threat_intel", "topology.json": "topology"}
+# 分析工作流程核心在 skills/shared/（ZIP 維持 repo 目錄結構，解壓後同樣找得到）
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
+import analysis_workflow  # noqa: E402
 
 
-# ---------------------------------------------------------------------------
-# 輸入載入
-# ---------------------------------------------------------------------------
-
-def extract_core_prompt(md_text: str) -> str:
-    """從 core-prompt.md 取出 ```text 圍欄內的核心指令；取不到就用全文。"""
-    m = re.search(r"```text\s*\n(.*?)\n```", md_text, re.S)
-    return m.group(1).strip() if m else md_text.strip()
-
-
-def count_records(name: str, text: str) -> int | None:
-    """回報筆數（CSV：資料列；JSON：主要陣列長度），供資料品質檢查。"""
-    try:
-        if name.endswith(".csv"):
-            rows = list(csv.DictReader(io.StringIO(text)))
-            return len(rows)
-        data = json.loads(text)
-        if isinstance(data, list):
-            return len(data)
-        if isinstance(data, dict):
-            for key in ("exposures", "controls", "actors", "edges"):
-                if isinstance(data.get(key), list):
-                    return len(data[key])
-        return None
-    except (json.JSONDecodeError, csv.Error):
-        return None
-
-
-def load_inputs(input_dir: Path, exclude: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
-    """讀入 9 個檔案；回傳 (已載入清單, 缺少的必要檔清單)。exclude 內的類別視同未提供（模擬缺漏）。"""
-    loaded: list[dict] = []
-    missing_required: list[str] = []
-    for filename, category, required in INPUT_FILES:
-        path = input_dir / filename
-        if category in exclude or not path.exists():
-            if required:
-                missing_required.append(filename)
-            loaded.append({"name": filename, "category": category, "present": False, "text": "", "records": None})
-            continue
-        text = path.read_text(encoding="utf-8-sig")
-        loaded.append({
-            "name": filename,
-            "category": category,
-            "present": True,
-            "text": text,
-            "records": count_records(filename, text),
-        })
-    return loaded, missing_required
-
-
-def build_system_prompt() -> str:
-    core = extract_core_prompt(CORE_PROMPT.read_text(encoding="utf-8"))
-    schema = OUTPUT_SCHEMA.read_text(encoding="utf-8")
-    return (
-        f"{core}\n\n"
-        "7. 本次執行環境（OpenAI Responses API，無任何工具）\n"
-        "- 你沒有網路、沒有程式執行工具；所有計算請在回覆中逐項列出代入值。\n"
-        "- 欄位對應：vulnerabilities 中的 epss_sim 視同 epss、kev_sim 視同 kev；linked_assets 以分號分隔。\n"
-        f"- meta.generated_by 請填「ChatGPT API / <模型 ID> / preemptive-exposure-analysis {SKILL_VERSION}」。\n"
-        "- 回覆結構：先是完整 Markdown 報告，最後恰好一個以 ```json 開頭、``` 結尾的區塊，內容為符合下列 schema 的 JSON。\n\n"
-        "output-schema.json：\n"
-        f"```json\n{schema}\n```"
+class ChatGptAdapter:
+    platform = "chatgpt"
+    display_name = "ChatGPT"
+    model_env = "OPENAI_MODEL"
+    default_model = "gpt-5.5"   # 請在 platform.openai.com 確認模型 ID
+    platform_note = (
+        "7. 平臺備註（ChatGPT）\n"
+        "- 你正透過 OpenAI Responses API 被呼叫，沒有網路、檔案系統或任何工具；所有輸入都已貼在使用者訊息中，"
+        "所有計算請在回覆中逐項列出代入值。\n"
+        "- 若使用者要求 JSON，只輸出單一 JSON 物件，不要加 Markdown 圍欄或說明文字。\n"
+        "- 你自身的知識（例如對 CVE 或廠商的認知）一律標示「模型知識，需查證」。"
     )
 
+    def __init__(self):
+        self._client = None
 
-def build_user_prompt(loaded: list[dict], input_dir: Path) -> str:
-    parts = [
-        "請對以下輸入資料執行完整的先制型曝險分析（S1–S8）。",
-        f"輸入資料夾：{input_dir}",
-        "",
-        "檔案清單與本機初步筆數（供你在 S2 交叉核對）：",
-    ]
-    for item in loaded:
-        status = f"{item['records']} 筆" if item["records"] is not None else ("已提供" if item["present"] else "未提供")
-        parts.append(f"- {item['name']}（{item['category']}）：{status}")
-    parts.append("")
-    for item in loaded:
-        if not item["present"]:
-            parts.append(f"===== {item['name']}（{item['category']}）：未提供，請依規則處理缺漏 =====\n")
-            continue
-        lang = "csv" if item["name"].endswith(".csv") else "json"
-        parts.append(f"===== {item['name']}（{item['category']}）=====\n```{lang}\n{item['text'].rstrip()}\n```\n")
-    parts.append("請先輸出 Markdown 報告，再輸出 JSON 區塊。")
-    return "\n".join(parts)
+    def add_arguments(self, parser):
+        pass
 
+    def describe(self, args):
+        return ["OpenAI Responses API（client.responses.create）；未啟用任何工具"]
 
-# ---------------------------------------------------------------------------
-# 輸出處理
-# ---------------------------------------------------------------------------
+    def generated_by(self, args):
+        return f"ChatGPT API（Responses API）/ {args.model} / skills/chatgpt/api-workflow.py"
 
-def split_report_and_json(text: str) -> tuple[str, dict | None, str | None]:
-    """取最後一個 ```json 區塊解析為 JSON；回傳 (markdown, json_obj, 錯誤訊息)。"""
-    blocks = re.findall(r"```json\s*\n(.*?)\n```", text, re.S)
-    if not blocks:
-        return text, None, "回覆中找不到 ```json 區塊"
-    candidate = blocks[-1]
-    try:
-        return text, json.loads(candidate), None
-    except json.JSONDecodeError as exc:
-        return text, None, f"JSON 解析失敗：{exc}"
+    def supports_json_mode(self, args):
+        return False   # 照舊以提示詞要求純 JSON，存檔前做寬鬆解析
 
+    def send(self, messages, stage, args, json_mode):
+        # Responses API：system 放 instructions，其餘訊息依序放 input。
+        # 照搬原本的設定：不傳 tools（不需要 web search / code interpreter / function calling），也不指定 temperature。
+        response = self._openai_client().responses.create(model=args.model, instructions=messages[0]["content"],
+                                                          input=messages[1:])
+        text = _response_text(response)
+        if not text:
+            raise analysis_workflow.Abort("[錯誤] API 回覆沒有文字內容；請檢查模型 ID 與帳戶權限。")
+        return text
 
-def basic_output_checks(obj: dict) -> list[str]:
-    """對照 output-schema.json 的 required 與 task-spec 第 7 節做最小檢查。"""
-    problems: list[str] = []
-    try:
-        required = json.loads(OUTPUT_SCHEMA.read_text(encoding="utf-8")).get("required", [])
-    except json.JSONDecodeError:
-        required = []
-    for key in required:
-        if key not in obj:
-            problems.append(f"缺少頂層鍵：{key}")
-    for path in obj.get("attack_path_hypotheses", {}).get("items", []) or []:
-        if path.get("status") != "hypothesis":
-            problems.append(f"攻擊路徑 {path.get('id')} 的 status 不是 hypothesis")
-    summary = obj.get("executive_summary", {}).get("text", "") or ""
-    if len(summary) > 300:
-        problems.append(f"管理摘要 {len(summary)} 字，超過 300 字")
-    return problems
+    def _openai_client(self):
+        if self._client is None:
+            try:
+                from openai import OpenAI  # type: ignore  # 延遲載入：--dry-run 不需要 SDK
+            except ImportError as exc:
+                raise analysis_workflow.Abort("[錯誤] 未安裝 openai SDK。請執行：pip install -r skills/chatgpt/requirements.txt") from exc
+            if not os.environ.get("OPENAI_API_KEY"):
+                raise analysis_workflow.Abort("[錯誤] 未設定環境變數 OPENAI_API_KEY（請勿把金鑰寫進程式或檔案）。")
+            self._client = OpenAI()   # 自動讀取 OPENAI_API_KEY；可選 OPENAI_BASE_URL
+        return self._client
 
 
-# ---------------------------------------------------------------------------
-# API 呼叫（僅非 dry-run 時載入 openai）
-# ---------------------------------------------------------------------------
-
-def call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
-    try:
-        from openai import OpenAI  # 延遲載入，讓 --dry-run 不需安裝 SDK
-    except ImportError:
-        sys.exit("未安裝 openai 套件：pip install -r skills/chatgpt/requirements.txt")
-
-    if not os.environ.get("OPENAI_API_KEY"):
-        sys.exit("未設定環境變數 OPENAI_API_KEY（請勿把金鑰寫進程式或檔案）。")
-
-    client = OpenAI()  # 自動讀取 OPENAI_API_KEY；可選 OPENAI_BASE_URL
-    # Responses API：github.com/openai/openai-python README 建議優先於 Chat Completions。
-    # 不傳 tools：本任務不需要 web search / code interpreter / function calling。
-    response = client.responses.create(
-        model=model,
-        instructions=system_prompt,
-        input=user_prompt,
-    )
+def _response_text(response) -> str:
+    """優先用 output_text；沒有時保守處理（不同 SDK 版本的輸出結構若有差異），逐一收集 output 裡的文字片段。"""
     text = getattr(response, "output_text", None)
-    if not text:
-        # 保守處理：不同 SDK 版本的輸出結構若有差異，逐一收集文字片段
-        chunks = []
-        for item in getattr(response, "output", []) or []:
-            for part in getattr(item, "content", []) or []:
-                if getattr(part, "type", "") in ("output_text", "text"):
-                    chunks.append(getattr(part, "text", ""))
-        text = "\n".join(chunks)
-    if not text:
-        sys.exit("API 回覆沒有文字內容；請檢查模型 ID 與帳戶權限。")
-    return text
-
-
-# ---------------------------------------------------------------------------
-# 主程式
-# ---------------------------------------------------------------------------
-
-SCOPE_REQUIRED = ("organization", "analysis_date", "authorized_scope.in_scope_assets",
-                  "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized",
-                  "reporting.audience")
-
-
-def scope_problems(scope) -> list:
-    """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則與網站示範引擎 scopeProblems、
-    validate_inputs.py 相同，案例見 tests/fixtures/scope-cases.json：organization、analysis_date
-    須為非空字串；in_scope_assets、audience 須為非空陣列；兩個 *_authorized 須為布林值。"""
-    problems = []
-    for path in SCOPE_REQUIRED:
-        node = scope
-        for key in path.split("."):
-            node = node.get(key) if isinstance(node, dict) else None
-        if node is None or node == "":
-            problems.append(path)
-        elif path in ("organization", "analysis_date"):
-            if not isinstance(node, str):
-                problems.append(path)
-        elif path in ("authorized_scope.in_scope_assets", "reporting.audience"):
-            if not isinstance(node, list) or not node:
-                problems.append(path)
-        elif path.endswith("_authorized") and not isinstance(node, bool):
-            problems.append(path)
-    return problems
-
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="先制型曝險分析 — OpenAI Responses API 工作流程")
-    parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT_DIR, help="輸入資料夾（預設 examples/synthetic-org）")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="輸出資料夾（預設 output/）")
-    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL), help="模型 ID（預設取環境變數 OPENAI_MODEL，否則 gpt-5.5）")
-    parser.add_argument("--dry-run", action="store_true", help="只印出組好的提示，不呼叫 API")
-    parser.add_argument("--exclude", action="append", choices=EXCLUDE_CHOICES, default=[],
-                        help="模擬缺漏：排除某類輸入（可重複）；排除 scope 會直接中止（驗收第 6、7 項）")
-    args = parser.parse_args()
-    exclude = frozenset(args.exclude)
-
-    input_dir: Path = args.input_dir.resolve()
-    if not input_dir.is_dir():
-        sys.exit(f"輸入資料夾不存在：{input_dir}")
-
-    # I1 守門：沒有 scope.json 就中止，不得分析。
-    if "scope" in exclude or not (input_dir / "scope.json").exists():
-        sys.exit(
-            "中止：找不到 scope.json（授權範圍與分析參數）。依 task-spec.md 第 2.1 節，無授權範圍不得分析。\n"
-            "請提供含 organization、analysis_date、authorized_scope.in_scope_assets、"
-            "authorized_scope.active_testing_authorized、authorized_scope.external_scanning_authorized、"
-            "reporting.audience 的 scope.json。"
-        )
-
-    try:
-        scope_obj = json.loads((input_dir / "scope.json").read_text(encoding="utf-8-sig"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        sys.exit(f"中止：scope.json 無法解析：{exc}")
-    scope_missing = scope_problems(scope_obj)
-    if scope_missing:
-        sys.exit("中止：scope.json 缺少或不合格的必填欄位：" + ", ".join(scope_missing) + "（in_scope_assets、audience 須為非空陣列；*_authorized 須為布林值）")
-
-    for required_file in (CORE_PROMPT, OUTPUT_SCHEMA):
-        if not required_file.exists():
-            sys.exit(f"缺少共用檔案：{required_file}")
-
-    loaded, missing_required = load_inputs(input_dir, exclude)
-    if missing_required:
-        print(f"警告：缺少必要輸入 {missing_required}；模型將依規則只產出曝險面清單並詢問是否繼續。", file=sys.stderr)
-
-    system_prompt = build_system_prompt()
-    user_prompt = build_user_prompt(loaded, input_dir)
-
-    print("=== 輸入檔案筆數 ===")
-    for item in loaded:
-        print(f"  {item['name']:<24} {item['records'] if item['records'] is not None else ('已提供' if item['present'] else '未提供')}")
-    print(f"=== 模型：{args.model}（請在 platform.openai.com 確認此 ID 可用）===")
-
-    if args.dry_run:
-        print("\n=== [DRY-RUN] 系統提示（instructions）===\n")
-        print(system_prompt)
-        print("\n=== [DRY-RUN] 使用者輸入（input）===\n")
-        print(user_prompt)
-        print(f"\n[DRY-RUN] 未呼叫 API。系統提示 {len(system_prompt)} 字元，使用者輸入 {len(user_prompt)} 字元。")
-        return 0
-
-    text = call_openai(system_prompt, user_prompt, args.model)
-
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    report_path = args.output_dir / "chatgpt-report.md"
-    json_path = args.output_dir / "chatgpt-output.json"
-
-    markdown, obj, err = split_report_and_json(text)
-    report_path.write_text(markdown, encoding="utf-8")
-    print(f"已寫入 {report_path}")
-
-    if obj is None:
-        print(f"警告：{err}；JSON 未寫出，請檢查 {report_path}。", file=sys.stderr)
-        return 2
-
-    json_path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"已寫入 {json_path}")
-
-    problems = basic_output_checks(obj)
-    if problems:
-        print("輸出檢查發現問題：", file=sys.stderr)
-        for p in problems:
-            print(f"  - {p}", file=sys.stderr)
-        return 3
-    print("輸出檢查通過（頂層鍵齊全、路徑皆為 hypothesis、摘要 ≤ 300 字）。")
-    return 0
+    if text:
+        return text
+    chunks = []
+    for item in getattr(response, "output", []) or []:
+        for part in getattr(item, "content", []) or []:
+            if getattr(part, "type", "") in ("output_text", "text"):
+                chunks.append(getattr(part, "text", ""))
+    return "\n".join(chunks)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(analysis_workflow.main(ChatGptAdapter()))
