@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "dabf68f710ad",
+ "contentHash": "1cd96d94cdb5",
  "research": [
   {
    "id": "00-method",
@@ -84,7 +84,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/api-workflow.py",
    "platform": "chatgpt",
-   "bytes": 15536
+   "bytes": 15660
   },
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
@@ -104,7 +104,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "chatgpt",
-   "bytes": 6539
+   "bytes": 6586
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/output-schema.json",
@@ -149,7 +149,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "claude",
-   "bytes": 6539
+   "bytes": 6586
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/output-schema.json",
@@ -164,7 +164,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
    "platform": "claude",
-   "bytes": 8066
+   "bytes": 8103
   },
   {
    "path": "skills/deepseek/README.md",
@@ -174,7 +174,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/api-workflow.py",
    "platform": "deepseek",
-   "bytes": 18540
+   "bytes": 6304
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
@@ -189,7 +189,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "deepseek",
-   "bytes": 6539
+   "bytes": 6586
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/output-schema.json",
@@ -224,7 +224,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 19916
+   "bytes": 20040
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",
@@ -244,7 +244,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "glm",
-   "bytes": 6539
+   "bytes": 6586
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/output-schema.json",
@@ -279,7 +279,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/api-workflow.py",
    "platform": "grok",
-   "bytes": 12364
+   "bytes": 12488
   },
   {
    "path": "skills/grok/requirements.txt",
@@ -302,6 +302,11 @@ window.BUILD_MANIFEST = {
    "bytes": 1463
   },
   {
+   "path": "skills/shared/analysis_workflow.py",
+   "platform": "shared",
+   "bytes": 23866
+  },
+  {
    "path": "skills/shared/core-prompt.md",
    "platform": "shared",
    "bytes": 5013
@@ -309,7 +314,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/input-schema.json",
    "platform": "shared",
-   "bytes": 6539
+   "bytes": 6586
   },
   {
    "path": "skills/shared/output-schema.json",

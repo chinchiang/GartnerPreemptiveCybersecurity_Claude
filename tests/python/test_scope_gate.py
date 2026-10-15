@@ -5,6 +5,7 @@
 """
 import copy
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -52,7 +53,8 @@ class ScopeGateTest(unittest.TestCase):
             shutil.copytree(SYNTHETIC, input_dir)
             (input_dir / "scope.json").write_text(json.dumps(apply_case(self.base, case), ensure_ascii=False), encoding="utf-8")
             return subprocess.run([sys.executable, *[str(a).replace("{input}", str(input_dir)).replace("{output}", str(Path(tmp) / "out")) for a in argv]],
-                                  capture_output=True, text=True, encoding="utf-8", cwd=tmp)
+                                  capture_output=True, text=True, encoding="utf-8", cwd=tmp,
+                                  env={**os.environ, "PYTHONUTF8": "1"})  # 子程序也用 UTF-8 輸出（繁中 Windows 預設 cp950）
 
     def test_api_workflows_follow_shared_cases(self):
         for platform in API_PLATFORMS:

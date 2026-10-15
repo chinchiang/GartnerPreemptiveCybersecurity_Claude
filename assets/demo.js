@@ -24,6 +24,7 @@
     return SCOPE_REQUIRED.filter(p => {
       const v = get(p);
       if (v === undefined || v === null || v === '') return true;
+      if (p === 'organization' || p === 'analysis_date') return typeof v !== 'string';
       if (p === 'authorized_scope.in_scope_assets' || p === 'reporting.audience') return !Array.isArray(v) || v.length === 0;
       if (p.endsWith('_authorized')) return typeof v !== 'boolean';
       return false;

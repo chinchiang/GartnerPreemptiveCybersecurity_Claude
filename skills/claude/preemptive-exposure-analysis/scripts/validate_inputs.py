@@ -39,7 +39,7 @@ def main(folder: str) -> int:
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         print(f"scope.json 無法解析：{exc}。停止分析。")
         return 3
-    scope_missing = [k for k in ("organization", "analysis_date") if not scope.get(k)]
+    scope_missing = [k for k in ("organization", "analysis_date") if not isinstance(scope.get(k), str) or not scope.get(k)]
     auth = scope.get("authorized_scope", {}) if isinstance(scope.get("authorized_scope"), dict) else {}
     # in_scope_assets、audience 須為非空陣列（與網站示範引擎、四支 api-workflow.py 一致；案例見 tests/fixtures/scope-cases.json）
     if not isinstance(auth.get("in_scope_assets"), list) or not auth.get("in_scope_assets"):

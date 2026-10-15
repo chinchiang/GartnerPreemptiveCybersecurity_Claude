@@ -95,7 +95,7 @@ SCOPE_REQUIRED = ("organization", "analysis_date", "authorized_scope.in_scope_as
 def scope_problems(scope) -> list:
     """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則與網站示範引擎 scopeProblems、
     validate_inputs.py 相同，案例見 tests/fixtures/scope-cases.json：organization、analysis_date
-    不可缺、不可為空字串；in_scope_assets、audience 須為非空陣列；兩個 *_authorized 須為布林值。"""
+    須為非空字串；in_scope_assets、audience 須為非空陣列；兩個 *_authorized 須為布林值。"""
     problems = []
     for path in SCOPE_REQUIRED:
         node = scope
@@ -103,6 +103,9 @@ def scope_problems(scope) -> list:
             node = node.get(key) if isinstance(node, dict) else None
         if node is None or node == "":
             problems.append(path)
+        elif path in ("organization", "analysis_date"):
+            if not isinstance(node, str):
+                problems.append(path)
         elif path in ("authorized_scope.in_scope_assets", "reporting.audience"):
             if not isinstance(node, list) or not node:
                 problems.append(path)

@@ -33,7 +33,7 @@ jobs:
           }
       - name: Python skills compile and dry-run (no API keys)
         run: |
-          python3 -m py_compile skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
+          python3 -m py_compile skills/shared/*.py skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
           for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run >/dev/null; done
           python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
       - name: Scope gate follows shared cases (four api-workflow.py + validate_inputs.py, stdlib unittest)
