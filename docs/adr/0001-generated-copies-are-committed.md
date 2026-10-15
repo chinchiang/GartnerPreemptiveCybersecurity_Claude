@@ -1,6 +1,6 @@
 # 複本由建置產生，並且提交進 git
 
-各平臺技能包 `references/` 裡的複本（schema、task-spec、acceptance、scoring-rules）由 `npm run build` 從 `skills/shared/` 的母本產生，而且**連同產物一起提交**，不加進 `.gitignore`。理由：
+各平臺技能包 `references/` 裡的複本（schema、task-spec、acceptance、scoring-rules）由 `npm run build` 從 `skills/shared/` 的母本產生，而且**連同產物一起提交**，不加進 `.gitignore`。同一決策也適用於嵌入區塊：Grok／GLM／DeepSeek `system-prompt.md` 裡的核心提示詞區塊由建置寫入，整個檔案照樣提交。理由：
 
 - `git clone` 之後技能資料夾要能直接使用；技能包脫離 repo 時仍要讀得到完整規格（各 SKILL.md 的承諾）。
 - 網站與 `file://` 讀的是已提交的檔案。

@@ -1,12 +1,22 @@
 /**
  * skill-packages.mjs
- * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本與依賴。
- * interface 以純函式為主——輸入母本內容、回傳結果，寫檔交給呼叫端（build-data.mjs、build-worker.mjs），
- * 因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。純 Node 內建模組，無第三方相依。
+ * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴。
+ * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
+ * 寫檔交給呼叫端（build-data.mjs、build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
+ * 純 Node 內建模組，無第三方相依。所有輸入只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
  */
 
-// 核心提示詞＝skills/shared/core-prompt.md 裡第一個 ```text 區塊；找不到就拋錯，讓建置中止。
-// 只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
+const SHARED_DIR = 'skills/shared/';
+const CORE_PROMPT = `${SHARED_DIR}core-prompt.md`;
+const EXAMPLES_DIR = 'examples/synthetic-org/';
+const platformDir = (platform) => `skills/${platform}/`;
+const referencePath = (platform, name) => `${platformDir(platform)}preemptive-exposure-analysis/references/${name}`;
+const systemPromptPath = (platform) => `${platformDir(platform)}system-prompt.md`;
+// 建置寫入的標註（HTML 註解，網站渲染時 md.js 會略過）：複本放檔首，嵌入區塊放在區塊正上方
+const MARKER_SOURCE = 'scripts/build-data.mjs';
+const marker = (lead, master) => `<!-- ${lead}由 ${MARKER_SOURCE} 從 ${master} 產生，請改母本後執行 npm run build，勿手動編輯 -->`;
+
+// 核心提示詞＝core-prompt.md 裡第一個 ```text 區塊；找不到就拋錯，讓建置中止。
 export function extractCorePrompt(md) {
   const m = md.match(/```text\n([\s\S]*?)\n```/);
   if (!m) throw new Error('找不到 core-prompt.md 內的 ```text 區塊');
@@ -16,19 +26,18 @@ export function extractCorePrompt(md) {
 // 對照表：skills/ 底下每個目錄一列。
 // needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成範例資料（腳本的預設輸入）；
 // copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀；
-// systemPrompt＝skills/<平臺>/system-prompt.md 的核心提示詞區塊由母本嵌入（其餘內容是手寫的平臺說明）。
-const SCRIPT_NEEDS = ['skills/shared/core-prompt.md', 'skills/shared/output-schema.json']; // 四支 api-workflow.py 共同讀取
+// systemPrompt＝skills/<平臺>/system-prompt.md 含核心提示詞的嵌入區塊（其餘內容是手寫的平臺說明）。
+const SCRIPT_NEEDS = [CORE_PROMPT, `${SHARED_DIR}output-schema.json`]; // 四支 api-workflow.py 共同讀取
 const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 'scoring-rules.md', 'task-spec.md'];
 const PACKAGES = {
-  chatgpt:  { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES },
+  chatgpt:  { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, systemPrompt: false },
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
-              copies: REFERENCES.filter(n => n !== 'task-spec.md') },   // SKILL.md 不引用 task-spec
+              copies: REFERENCES.filter(n => n !== 'task-spec.md'), systemPrompt: false }, // SKILL.md 不引用 task-spec
   deepseek: { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, systemPrompt: true },
   glm:      { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, systemPrompt: true },
   grok:     { needs: SCRIPT_NEEDS, examples: true, copies: [], systemPrompt: true }, // 沒有原生 skills，也就沒有 references/
-  shared:   { needs: [], examples: false, copies: [] }  // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
+  shared:   { needs: [], examples: false, copies: [], systemPrompt: false } // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
 };
-const EXAMPLES_DIR = 'examples/synthetic-org/';
 
 // 回傳某個技能包 ZIP 要放的檔案。files：repo 檔案清單 [{ path, content }]，path 以 / 分隔、相對於 repo 根目錄。
 export function packageFiles(platform, files) {
@@ -36,52 +45,50 @@ export function packageFiles(platform, files) {
   if (!pkg) throw new Error(`技能包對照表沒有 skills/${platform}/ 這一列，請在 scripts/skill-packages.mjs 的 PACKAGES 補上`);
   const missing = pkg.needs.filter(n => !files.some(f => f.path === n));
   if (missing.length) throw new Error(`${platform} 技能包需要的母本不存在：${missing.join('、')}`);
-  const wanted = (f) => f.path.startsWith(`skills/${platform}/`) || pkg.needs.includes(f.path) || (pkg.examples && f.path.startsWith(EXAMPLES_DIR));
+  const wanted = (f) => f.path.startsWith(platformDir(platform)) || pkg.needs.includes(f.path) || (pkg.examples && f.path.startsWith(EXAMPLES_DIR));
   return files.filter(wanted).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
-// .md 複本加一行 HTML 註解，提醒改母本（網站渲染時 md.js 會略過 HTML 註解）；.json 不能加註解，與母本位元組相同。
-// 有 frontmatter 時標註放在它之後，build-data.mjs 的 parseFrontmatter 才讀得到標題。
-function copyContent(name, content) {
-  if (!name.endsWith('.md')) return content;
-  const marker = `<!-- 由 scripts/build-data.mjs 從 skills/shared/${name} 產生，請改母本後執行 npm run build，勿手動編輯 -->\n`;
-  const fm = content.match(/^---\n[\s\S]*?\n---\n/);
-  return fm ? fm[0] + marker + content.slice(fm[0].length) : marker + content;
+// 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 的複本，以及含嵌入區塊的系統提示詞。
+// files：repo 檔案清單，須含 skills/shared/ 的母本與對照表宣告要嵌入區塊的 skills/<平臺>/system-prompt.md。
+export function generatedFiles(files) {
+  return [...referenceCopies(files), ...embeddedSystemPrompts(files)];
 }
 
-// 回傳所有要由建置寫入的複本 [{ path, content }]。files：至少要含 skills/shared/ 的母本。
-// 只認 LF 換行（frontmatter 判斷也是）：呼叫端讀檔後須先把 CRLF 正規化為 LF。
-// 複本放在 skills/<平臺>/preemptive-exposure-analysis/references/<檔名>。
-export function generateCopies(files) {
+// 複本：.json 與母本位元組相同；.md 加一行標註，有 frontmatter 時放在它之後（build-data.mjs 的 parseFrontmatter 才讀得到標題）。
+function referenceCopies(files) {
   const copies = [];
-  let core; // 核心提示詞：有平臺要嵌入時才擷取，只擷取一次
-  const corePrompt = () => {
-    if (core !== undefined) return core;
-    const master = files.find(f => f.path === 'skills/shared/core-prompt.md');
-    if (!master) throw new Error('要嵌入系統提示詞的母本不存在：skills/shared/core-prompt.md');
-    return (core = extractCorePrompt(master.content));
-  };
   for (const [platform, pkg] of Object.entries(PACKAGES)) {
     for (const name of pkg.copies) {
-      const master = files.find(f => f.path === `skills/shared/${name}`);
-      if (!master) throw new Error(`${platform} 技能包要複製的母本不存在：skills/shared/${name}`);
-      copies.push({ path: `skills/${platform}/preemptive-exposure-analysis/references/${name}`, content: copyContent(name, master.content) });
-    }
-    if (pkg.systemPrompt) {
-      const path = `skills/${platform}/system-prompt.md`;
-      const target = files.find(f => f.path === path);
-      if (!target) throw new Error(`${path} 不存在，但對照表宣告 ${platform} 要嵌入核心提示詞`);
-      if (!CORE_BLOCK.test(target.content)) throw new Error(`${path} 找不到要嵌入核心提示詞的 \`\`\`text 區塊`);
-      copies.push({ path, content: embedCorePrompt(target.content, corePrompt()) });
+      const master = files.find(f => f.path === `${SHARED_DIR}${name}`);
+      if (!master) throw new Error(`${platform} 技能包要複製的母本不存在：${SHARED_DIR}${name}`);
+      copies.push({ path: referencePath(platform, name), content: copyContent(name, master.content) });
     }
   }
   return copies;
 }
+function copyContent(name, content) {
+  if (!name.endsWith('.md')) return content;
+  const line = `${marker('', `${SHARED_DIR}${name}`)}\n`;
+  const fm = content.match(/^---\n[\s\S]*?\n---\n/);
+  return fm ? fm[0] + line + content.slice(fm[0].length) : line + content;
+}
 
-// 系統提示詞＝手寫的平臺說明＋核心提示詞：只換掉第一個 ```text 區塊（後面的範例區塊是手寫的），並在它正上方加標註。
-// 上一次建置寫入的標註連同區塊一起換掉，重複建置結果不變。
-const CORE_MARKER = '<!-- 以下區塊由 scripts/build-data.mjs 從 skills/shared/core-prompt.md 產生，請改母本後執行 npm run build，勿手動編輯 -->';
-const CORE_BLOCK = /(?:<!-- 以下區塊由 scripts\/build-data\.mjs [^\n]*-->\n)?```text\n[\s\S]*?\n```/;
-function embedCorePrompt(target, core) {
-  return target.replace(CORE_BLOCK, () => `${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``);
+// 嵌入區塊：系統提示詞＝手寫的平臺說明＋核心提示詞。只換掉「## 可直接複製的提示詞」標題下緊接的 ```text 區塊
+// （後面的範例區塊是手寫的），並在它正上方加標註；上一次建置寫入的標註連同區塊一起換掉，重複建置結果不變。
+const CORE_MARKER = marker('以下區塊', CORE_PROMPT);
+const CORE_HEADING = '## 可直接複製的提示詞';
+const CORE_BLOCK = new RegExp(`(${CORE_HEADING}\\n\\n+)(?:<!-- 以下區塊由 ${MARKER_SOURCE.replace(/[./]/g, '\\$&')} [^\\n]*-->\\n)?\`\`\`text\\n[\\s\\S]*?\\n\`\`\``);
+function embeddedSystemPrompts(files) {
+  const platforms = Object.keys(PACKAGES).filter(platform => PACKAGES[platform].systemPrompt);
+  const master = files.find(f => f.path === CORE_PROMPT);
+  if (!master) throw new Error(`要嵌入系統提示詞的母本不存在：${CORE_PROMPT}`);
+  const core = extractCorePrompt(master.content);
+  return platforms.map(platform => {
+    const path = systemPromptPath(platform);
+    const target = files.find(f => f.path === path);
+    if (!target) throw new Error(`${path} 不存在，但對照表宣告 ${platform} 要嵌入核心提示詞`);
+    if (!CORE_BLOCK.test(target.content)) throw new Error(`${path} 找不到「${CORE_HEADING}」標題下緊接的 \`\`\`text 區塊`);
+    return { path, content: target.content.replace(CORE_BLOCK, (_, heading) => `${heading}${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``) };
+  });
 }
