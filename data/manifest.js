@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "d02f4b2ef1dd",
+ "contentHash": "40a042a3524a",
  "research": [
   {
    "id": "00-method",
@@ -179,7 +179,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
    "platform": "deepseek",
-   "bytes": 10811
+   "bytes": 10955
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/acceptance.md",
@@ -234,7 +234,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/SKILL.md",
    "platform": "glm",
-   "bytes": 10206
+   "bytes": 10350
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/acceptance.md",
