@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "c3c12f454805",
+ "contentHash": "d434c7ea5090",
  "research": [
   {
    "id": "00-method",
@@ -274,17 +274,17 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/README.md",
    "platform": "grok",
-   "bytes": 3152
+   "bytes": 3230
   },
   {
    "path": "skills/grok/api-workflow.py",
    "platform": "grok",
-   "bytes": 12488
+   "bytes": 7377
   },
   {
    "path": "skills/grok/requirements.txt",
    "platform": "grok",
-   "bytes": 27
+   "bytes": 87
   },
   {
    "path": "skills/grok/system-prompt.md",

@@ -27,7 +27,7 @@ platform: grok
 |---|---|
 | `skills/grok/README.md` | 平臺說明與查證狀態 |
 | `skills/grok/system-prompt.md` | 可直接複製的系統提示詞 |
-| `skills/grok/api-workflow.py`、`requirements.txt` | `xai_sdk` 腳本（含 `--dry-run`、`--compat`） |
+| `skills/grok/api-workflow.py`、`requirements.txt` | `xai_sdk` 腳本（含 `--dry-run`、`--compat`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 Grok 的模型 adapter |
 | `skills/grok/tool-definitions.json` | function-calling 工具定義（客戶端 harness） |
 | `skills/shared/*`、`examples/synthetic-org/*` | 共用規格與合成資料 |
 
@@ -65,7 +65,7 @@ Markdown 報告 + JSON（符合 `output-schema.json`）。縮短版合成範例�
 
 | 承載方式 | 需要 | 資料流向 |
 |---|---|---|
-| xAI API | `XAI_API_KEY`（環境變數）、`pip install xai-sdk pydantic` | 資料送至 xAI API；**不啟用**伺服器端工具即不會觸發額外處理 |
+| xAI API | `XAI_API_KEY`（環境變數）、`pip install -r skills/grok/requirements.txt`（xai-sdk、pydantic；`--compat` 用的 openai） | 資料送至 xAI API；**不啟用**伺服器端工具即不會觸發額外處理 |
 | grok.com | 帳號；自訂指令／Workspace 功能待驗證 | 資料上傳至 grok.com |
 
 ## 7. 逐步安裝或設定方式
@@ -86,9 +86,15 @@ export XAI_MODEL=grok-4.6                           # 以 docs.x.ai 確認
 python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.md、grok-output.json
 ```
 
-`--compat` 改走 OpenAI 相容端點（`https://api.x.ai/v1`，相容性待驗證，需 `pip install openai`）。
+`--compat` 改走 OpenAI 相容端點（預設 `https://api.x.ai/v1`，可用環境變數 `XAI_COMPAT_BASE_URL` 改寫；相容性待驗證；openai 套件已列在 `requirements.txt`）。
 
-若要使用 function calling：把 `tool-definitions.json` 的 `tools` 傳入 SDK 的 `tool()` 定義，並在你的程式中實作三個函式（可直接呼叫 `skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py` 的邏輯做 `load_input_bundle`）。
+輸出：`output/grok-report.md`、`output/grok-output.json`（JSON 解析失敗時另存 `output/grok-output.raw.txt`）。
+
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
+
+兩段式對話：第 1 段要 Markdown 報告，第 2 段延續同一對話、只要一次 JSON。腳本不傳入任何工具，也不讀取 `tool-definitions.json`。
+
+若要使用 function calling（腳本不會自動接上）：把 `tool-definitions.json` 的 `tools` 傳入 SDK 的 `tool()` 定義，並在你的程式中實作三個函式（可直接呼叫 `skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py` 的邏輯做 `load_input_bundle`）。
 
 ## 8. 使用範例、預期結果及常見問題
 
@@ -96,10 +102,10 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 **FAQ**
 
-1. *`xai_sdk` 的方法名稱不同？* SDK 更新可能改變 API；以 `github.com/xai-org/xai-sdk-python` README 為準修改 `call_xai_sdk`。
+1. *`xai_sdk` 的方法名稱不同？* SDK 更新可能改變 API；以 `github.com/xai-org/xai-sdk-python` README 為準修改 `api-workflow.py` 的 `GrokAdapter`（`send` 與 `_xai_client_and_roles`）。
 2. *可以開啟 web_search 讓 Grok 查 CVE？* 不建議：本任務禁止上網補造資料，且會把內容送往額外處理流程；若組織核准，需另行標示所有外部知識「需查證」。
 3. *grok.com 沒有自訂指令欄？* 直接把提示詞貼在對話第一則。
-4. *JSON 解析失敗？* 原始回應會存為 `output/grok-output.raw.txt`；可再送一次「只輸出 JSON」。
+4. *JSON 解析失敗？* 腳本以結束碼 4 結束，原始回應會存為 `output/grok-output.raw.txt`；可人工檢查或重跑。
 5. *Structured outputs 能保證 schema？* SDK 支援 Pydantic 解析（已查證），但 `output-schema.json` 較複雜，建議先以兩段式取得 JSON 再用 schema 驗證。
 
 ## 9. 簡單、可重現的驗收方式

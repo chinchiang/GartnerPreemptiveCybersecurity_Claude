@@ -58,7 +58,9 @@ test('平臺技能包含自己的檔案、腳本依賴的母本與合成範例�
     'examples/synthetic-org/scope.json',
     'skills/grok/README.md',
     'skills/grok/api-workflow.py',
+    'skills/shared/analysis_workflow.py',
     'skills/shared/core-prompt.md',
+    'skills/shared/input-schema.json',
     'skills/shared/output-schema.json'
   ]);
   assert.equal(packageFiles('grok', repo).find(f => f.path === 'skills/shared/core-prompt.md').content, '內容：skills/shared/core-prompt.md');
@@ -248,10 +250,10 @@ test('SKILL.md 的「## 核心指令」標題與 ```text 區塊之間夾了文�
   assert.throws(() => generatedFiles(textBetween), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
 });
 
-test('改用分析工作流程核心的平臺（目前是 deepseek、glm）另外帶上核心與它讀取的 input-schema.json', () => {
-  for (const platform of ['deepseek', 'glm']) {
+test('改用分析工作流程核心的平臺（目前是 deepseek、glm、grok）另外帶上核心與它讀取的 input-schema.json', () => {
+  for (const platform of ['deepseek', 'glm', 'grok']) {
     const got = paths(packageFiles(platform, repo));
     for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
   }
-  assert.ok(!paths(packageFiles('grok', repo)).includes('skills/shared/analysis_workflow.py'), 'grok 尚未搬遷，不該帶核心');
+  assert.ok(!paths(packageFiles('chatgpt', repo)).includes('skills/shared/analysis_workflow.py'), 'chatgpt 尚未搬遷，不該帶核心');
 });
