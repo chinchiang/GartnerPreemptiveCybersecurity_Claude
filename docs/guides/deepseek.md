@@ -44,7 +44,7 @@ S1–S8；每區塊帶 `confidence`、`basis`、`missing_inputs`、`requires_hum
 
 ## 5. 輸出格式與完整範例
 
-Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同（P1：`vpn-gw-01 / SYN-2026-0101`；路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`；驗證計畫標「尚未授權主動測試」；結尾聲明）。`meta.generated_by` 填「DeepSeek <模型 ID> via <承載方式>」。
+Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同（P1：`vpn-gw-01 / SYN-2026-0101`；路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`；驗證計畫標「尚未授權主動測試」；結尾聲明）。`meta.generated_by` 填「DeepSeek <模型 ID> via <承載方式>」；用 API 腳本時會自動填成「DeepSeek API / <模型 ID> / skills/deepseek/api-workflow.py」。
 
 ## 6. 必要工具、連線及權限
 

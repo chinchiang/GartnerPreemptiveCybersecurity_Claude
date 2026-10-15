@@ -38,7 +38,7 @@ const PACKAGES = {
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
               copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [] }, // SKILL.md 不引用 task-spec
   deepseek: { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
-  glm:      { needs: SCRIPT_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
+  glm:      { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED] },
   grok:     { needs: SCRIPT_NEEDS, examples: true, copies: [], embeds: [SYSTEM_PROMPT_EMBED] }, // 沒有原生 skills，也就沒有 references/
   shared:   { needs: [], examples: false, copies: [], embeds: [] } // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
 };

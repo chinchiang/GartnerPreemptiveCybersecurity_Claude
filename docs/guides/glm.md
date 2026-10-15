@@ -29,7 +29,7 @@ platform: glm
 | `skills/glm/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準 skill（與 Claude 版等效；結構不同：內嵌核心提示與評分規則，並附 `references/`；標記 GLM 後端） |
 | `skills/glm/claude-code-settings.example.json` | Claude Code 使用 GLM 後端的環境變數範例 |
 | `skills/glm/system-prompt.md` | 可直接複製的系統提示詞 |
-| `skills/glm/api-workflow.py`、`requirements.txt` | OpenAI 相容／Anthropic 相容端點腳本（含 `--dry-run`） |
+| `skills/glm/api-workflow.py`、`requirements.txt` | OpenAI 相容／Anthropic 相容端點腳本（含 `--dry-run`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 GLM 的模型 adapter |
 | `skills/shared/*`、`examples/synthetic-org/*` | 共用規格與合成資料 |
 
 取得：網站「Skills 專區 → GLM」或 `downloads/skills-glm.zip`。
@@ -44,7 +44,7 @@ S1–S8；每區塊帶 `confidence`、`basis`、`missing_inputs`、`requires_hum
 
 ## 5. 輸出格式與完整範例
 
-Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同（P1：`vpn-gw-01 / SYN-2026-0101` 86.0 分；路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01` 可行性 6.4；驗證計畫標「尚未授權主動測試」；結尾聲明）。`meta.generated_by` 填「GLM via <承載方式>」。
+Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同（P1：`vpn-gw-01 / SYN-2026-0101` 86.0 分；路徑 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01` 可行性 6.4；驗證計畫標「尚未授權主動測試」；結尾聲明）。`meta.generated_by` 填「GLM via <承載方式>」；用 API 腳本時會自動填成「GLM API（OpenAI 相容端點或 Anthropic 相容端點）/ <模型 ID> / skills/glm/api-workflow.py」。
 
 ## 6. 必要工具、連線及權限
 
@@ -87,7 +87,9 @@ export GLM_MODEL=glm-5.3                                    # 以官方模型列
 python3 skills/glm/api-workflow.py                          # 或 --anthropic-compatible
 ```
 
-輸出：`output/glm-report.md`、`output/glm-output.json`。
+輸出：`output/glm-report.md`、`output/glm-output.json`（JSON 解析失敗時另存 `output/glm-output.raw.txt`）。
+
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 

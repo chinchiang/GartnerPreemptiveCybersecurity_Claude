@@ -248,8 +248,10 @@ test('SKILL.md 的「## 核心指令」標題與 ```text 區塊之間夾了文�
   assert.throws(() => generatedFiles(textBetween), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
 });
 
-test('改用分析工作流程核心的平臺（目前是 deepseek）另外帶上核心與它讀取的 input-schema.json', () => {
-  const got = paths(packageFiles('deepseek', repo));
-  for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `deepseek 技能包缺少 ${p}`);
-  assert.ok(!paths(packageFiles('glm', repo)).includes('skills/shared/analysis_workflow.py'), 'glm 尚未搬遷，不該帶核心');
+test('改用分析工作流程核心的平臺（目前是 deepseek、glm）另外帶上核心與它讀取的 input-schema.json', () => {
+  for (const platform of ['deepseek', 'glm']) {
+    const got = paths(packageFiles(platform, repo));
+    for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
+  }
+  assert.ok(!paths(packageFiles('grok', repo)).includes('skills/shared/analysis_workflow.py'), 'grok 尚未搬遷，不該帶核心');
 });
