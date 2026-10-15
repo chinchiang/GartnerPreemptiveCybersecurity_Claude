@@ -6,7 +6,7 @@
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --variant no-intel
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --json
  *
- * 對應 skills/claude/preemptive-exposure-analysis/references/acceptance.md 的 7 項驗收：
+ * 對應 skills/shared/acceptance.md（各平臺 references/acceptance.md 為其複本）的 7 項驗收：
  *   1–5   baseline 變體（本腳本檢查）
  *   6     no-intel 變體（本腳本檢查）
  *   7     移除 scope.json 應拒絕分析 —— 由呼叫端檢查腳本是否以非零狀態結束，本腳本不處理

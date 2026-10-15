@@ -1,7 +1,7 @@
 /* 案例互動展示引擎。
    重要：這裡的評分規則是本專案為了「示範輸入如何影響輸出」而設計的簡化規則，
    不是 Gartner 的官方公式，也不代表任何真實風險模型。所有數值皆基於合成資料。
-   規則全文見 skills/shared/task-spec.md 附錄 A 與 skills/claude/preemptive-exposure-analysis/references/scoring-rules.md。 */
+   規則全文見 skills/shared/task-spec.md 附錄 A 與 skills/shared/scoring-rules.md。 */
 (function () {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const round1 = (v) => Math.round(v * 10) / 10;

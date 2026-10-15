@@ -1,3 +1,4 @@
+<!-- 由 scripts/build-data.mjs 從 skills/shared/scoring-rules.md 產生，請改母本後執行 npm run build，勿手動編輯 -->
 # 示範評分規則（本專案推論，非 Gartner 公式）
 
 使用者若提供自己的風險模型，改用之並在輸出 `meta.scoring_rules` 說明。
