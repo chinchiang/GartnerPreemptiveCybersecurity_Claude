@@ -6,8 +6,9 @@
   <title>先制型資安 Playbook · Gartner Preemptive Cybersecurity 研究與五平臺 Skills</title>
   <meta name="description" content="研究 Gartner Preemptive Cybersecurity（先制型資安）方法論，拆解輸入、流程與輸出，並提供 ChatGPT、Claude、Grok、GLM、DeepSeek 的 skills 或等效工作流程、安裝教學與合成案例。">
   <!-- 內容安全政策：本站無外部相依，因此除自身之外一律不允許。
-       style-src 需要 'unsafe-inline'——assets/app.js 有 18 處 style="..." 屬性（例如聚焦來源列的外框）；
+       style-src 需要 'unsafe-inline'——assets/app.js 有十餘處 style="..." 屬性（例如聚焦來源列的外框）；
        img-src 需要 data:——favicon 是內嵌的 SVG。
+       字型自載於 assets/fonts/（Inter、JetBrains Mono，OFL），font-src 'self' 即可，不需外部網域。
        frame-ancestors 與 report-uri 在 <meta> 傳遞時會被瀏覽器忽略，故不列入。
        改動本站資源載入方式（例如加入外部字型或分析工具）時，這一行必須一起改。 -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
@@ -23,6 +24,7 @@
   <meta name="twitter:title" content="先制型資安 Playbook · Gartner Preemptive Cybersecurity 研究與五平臺 Skills">
   <meta name="twitter:description" content="拆解先制型資安的輸入、流程與輸出，並提供五個 AI 平臺的 skills 與教學。所有示範資料皆為合成。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b5fa8'/%3E%3Cpath d='M32 12 L50 20 V34 C50 46 40 52 32 54 C24 52 14 46 14 34 V20 Z' fill='%23fff'/%3E%3Cpath d='M22 32 l8 8 l14 -16' stroke='%230b5fa8' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
   <link rel="stylesheet" href="assets/styles.css">
   <script src="assets/md.js" defer></script>
   <script src="assets/demo.js" defer></script>
@@ -40,15 +42,19 @@
 </head>
 <body>
   <a class="skip-link" href="#main">跳至主要內容</a>
+  <!-- 環境光斑：純裝飾，固定定位、不可點 -->
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
   <header class="topbar">
     <button class="icon-btn menu-btn" id="menu-btn" aria-label="開啟導覽選單" aria-expanded="false" aria-controls="sidebar">☰</button>
-    <a class="brand" href="#/"><span class="badge">PCS</span><span class="title">先制型資安 Playbook</span></a>
+    <a class="brand" href="#/" aria-label="先制型資安 Playbook 首頁"><span class="badge brand-mark" aria-hidden="true">PCS</span><span><strong class="title">先制型資安 Playbook</strong><small>Preemptive Cybersecurity</small></span></a>
     <div class="search-box">
       <label for="search" class="sr-only">全站搜尋</label>
       <input type="search" id="search" placeholder="搜尋研究、inputs/outputs、skills、來源…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="search-results" aria-expanded="false">
       <div class="search-results" id="search-results" role="listbox" aria-label="搜尋結果"></div>
     </div>
     <div class="spacer"></div>
+    <span class="live-chip"><span class="pulse" aria-hidden="true"></span><span>公開資料 · 合成示範</span></span>
     <button class="icon-btn" id="theme-btn" aria-label="切換色彩主題"><span aria-hidden="true">◐</span><span class="btn-text"> 主題</span></button>
     <!-- 儲存庫為公開，因此此連結預設顯示。
          若日後改回 private，把 assets/app.js 的 REPO_PUBLIC 改成 false，這個按鈕與頁尾的
@@ -59,10 +65,16 @@
     <aside class="sidebar" id="sidebar" aria-label="主要導覽"><nav></nav></aside>
     <main id="main" tabindex="-1"></main>
   </div>
+  <!-- 行動版底部 dock（≤ 900px 顯示），內容由 assets/app.js 依 NAV 的子集渲染 -->
+  <nav class="mobile-dock" id="mobile-dock" aria-label="行動版導覽"></nav>
   <footer class="site-footer">
-    本站內容以正體中文撰寫，保留必要英文專有名詞。Gartner 為 Gartner, Inc. 之商標；本站與 Gartner 無關，引用僅限公開資料並標示來源。所有示範資料皆為合成。
-    <!-- 與 topbar 的 GitHub 按鈕同受 assets/app.js 的 REPO_PUBLIC 控制。 -->
-    <span id="repo-footer">儲存庫：<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">chinchiang/GartnerPreemptiveCybersecurity_Claude</a></span>
+    <div class="foot-brand">
+      <strong>先制型資安 Playbook</strong>
+      <span>Evidence → Inputs → Outputs → Skills</span>
+      <!-- 與 topbar 的 GitHub 按鈕同受 assets/app.js 的 REPO_PUBLIC 控制。 -->
+      <span id="repo-footer">儲存庫：<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">chinchiang/GartnerPreemptiveCybersecurity_Claude</a></span>
+    </div>
+    <p>本站內容以正體中文撰寫，保留必要英文專有名詞。Gartner 為 Gartner, Inc. 之商標；本站與 Gartner 無關，引用僅限公開資料並標示來源。所有示範資料皆為合成。</p>
   </footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
