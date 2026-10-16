@@ -16,6 +16,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 
@@ -59,6 +60,19 @@ _TYPE_CHECKS = {
 }
 
 
+def _is_full_date(value: str) -> bool:
+    """RFC 3339 full-date（schema 的 format: date）：恰好 YYYY-MM-DD，而且是存在的日期。
+    不用 date.fromisoformat：它也接受 20260908 與週日期；數字寫 [0-9]，因為 \\d 與 int() 都接受全形數字，JS 那邊不接受。"""
+    m = re.fullmatch(r"([0-9]{4})-([0-9]{2})-([0-9]{2})", value)
+    if not m:
+        return False
+    try:
+        date(*map(int, m.groups()))
+    except ValueError:
+        return False
+    return True
+
+
 def _join(prefix: str, key: str) -> str:
     return f"{prefix}.{key}" if prefix else key
 
@@ -79,7 +93,7 @@ def _required_leaves(node: dict, prefix: str) -> list:
 
 
 def _check(value, node: dict, path: str) -> list:
-    """依 schema 節點檢查一個欄位：必填是否存在、type、minLength、minItems；物件則往下檢查其必填欄位。"""
+    """依 schema 節點檢查一個欄位：必填是否存在、type、minLength、format: date、pattern、minItems、items；物件則往下檢查其必填欄位。"""
     if value is None:
         return _required_leaves(node, path)
     expected = node.get("type")
@@ -87,8 +101,14 @@ def _check(value, node: dict, path: str) -> list:
         return _required_leaves(node, path)
     if expected == "string" and len(value) < node.get("minLength", 0):
         return [path]
+    if expected == "string" and node.get("format") == "date" and not _is_full_date(value):
+        return [path]
+    if expected == "string" and "pattern" in node and not re.search(node["pattern"], value):  # JSON Schema 的 pattern 不錨定
+        return [path]
     if expected == "array" and len(value) < node.get("minItems", 0):
         return [path]
+    if expected == "array" and "items" in node and any(_check(item, node["items"], path) for item in value):
+        return [path]  # 任一項目不合格就回報整個陣列欄位，不細到第幾項
     if expected == "object":
         problems = []
         for key in node.get("required", []):
@@ -108,14 +128,36 @@ def scope_problems(scope, input_schema: dict) -> list:
     return _check(scope if isinstance(scope, dict) else {}, input_schema["properties"]["scope"], "")
 
 
+# schema 的「至少一個非空白字元」：明確列出空白字元，取 Python 與 JS 兩邊 \s 的聯集。
+# 不用 \S：Python 把 U+001C–U+001F、U+0085 當空白而 JS 不當，JS 把 U+FEFF 當空白而 Python 不當
+NON_BLANK_PATTERN = r"[^\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]"
+
+
+def _rule_text(node: dict) -> str:
+    """一個必填欄位的 schema 節點寫成給使用者看的規則（scope_rule_note 用）。"""
+    kind = node.get("type")
+    if kind == "string":
+        if node.get("format") == "date":
+            return "須為 YYYY-MM-DD 的有效日期"
+        if node.get("pattern") == NON_BLANK_PATTERN:
+            return "須含非空白字元"
+        return "須為非空字串" if node.get("minLength") else "須為字串"
+    if kind == "array":
+        text = "須為非空陣列" if node.get("minItems") else "須為陣列"
+        items = node.get("items") or {}
+        if items.get("type") == "string":
+            text += "，且每項為非空白字串" if items.get("pattern") == NON_BLANK_PATTERN else "，且每項為字串"
+        return text
+    if kind == "boolean":
+        return "須為布林值"
+    return "須提供"
+
+
 def scope_rule_note(input_schema: dict) -> str:
     """把 schema 的 scope 規則寫成給使用者看的說明，附在守門的錯誤訊息後面（規則改了，說明跟著改）。"""
     groups = {}
     for path, node in _required_leaf_nodes(input_schema["properties"]["scope"], ""):
-        rule = {("string", True): "須為非空字串", ("array", True): "須為非空陣列", ("boolean", False): "須為布林值",
-                ("string", False): "須為字串", ("array", False): "須為陣列"}.get(
-            (node.get("type"), bool(node.get("minLength") or node.get("minItems"))), "須提供")
-        groups.setdefault(rule, []).append(path.rsplit(".", 1)[-1])
+        groups.setdefault(_rule_text(node), []).append(path.rsplit(".", 1)[-1])
     return "（" + "；".join(f"{'、'.join(names)} {rule}" for rule, names in groups.items()) + "）"
 
 

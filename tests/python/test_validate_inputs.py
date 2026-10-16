@@ -137,8 +137,14 @@ class ValidateInputsTest(unittest.TestCase):
                 code, out, err = self.run_script()
                 self.assertEqual(code, 3, out + err)
                 self.assertNotIn("Traceback", err)
-                self.assertIn("scope.json 缺少必填欄位：organization、analysis_date", out)
+                self.assertIn("scope.json 缺少或不合格的必填欄位：organization、analysis_date", out)
                 self.assertIn("停止分析", out)
+
+    def test_unqualified_scope_field_is_reported_as_missing_or_unqualified(self):
+        self.edit("scope.json", '"analysis_date": "2026-09-08"', '"analysis_date": "2026-02-30"')
+        code, out, err = self.run_script()
+        self.assertEqual(code, 3, out + err)
+        self.assertIn("scope.json 缺少或不合格的必填欄位：analysis_date。停止分析。", out.splitlines())
 
     def test_missing_folder_exits_2(self):
         code, out, err = self.run_script(folder=Path(self.tmp.name) / "nope")
