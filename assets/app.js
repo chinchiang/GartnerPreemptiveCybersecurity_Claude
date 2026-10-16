@@ -299,7 +299,7 @@
               ${dl.includes(`downloads/skills-${cur}.zip`) ? `<a class="btn small secondary" href="downloads/skills-${cur}.zip" download>下載 ${PLATFORM_META[cur]} ZIP</a>` : ''}
               <button class="btn small secondary" id="toggle-view" aria-pressed="false">切換：原始／渲染</button>
             </div>
-            <div id="file-rendered" class="doc" hidden>${curFile && curFile.ext === 'md' ? md(curFile.content, { shift: 1 }) : ''}</div>
+            <div id="file-rendered" class="doc" hidden>${curFile && curFile.ext === 'md' ? md(curFile.content.slice(curFile.bodyStart || 0), { shift: 1 }) : ''}</div>
             <pre id="file-raw"><code>${esc(curFile?.content || '')}</code></pre>
           </div>
         </div>
