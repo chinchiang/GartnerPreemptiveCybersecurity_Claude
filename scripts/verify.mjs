@@ -212,10 +212,21 @@ async function browserChecks() {
   ok('Skills 一鍵複製（剪貼簿）', clip.includes('preemptive-exposure-analysis'), `${clip.length} 字元`);
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#dl-file')]);
   ok('Skills 檔案下載', (await dl.suggestedFilename()) === 'SKILL.md', await dl.suggestedFilename());
+  // 原始碼檢視、複製、下載都是含 frontmatter 的原文（SKILL.md 要靠 frontmatter 才能被各平臺讀取）
+  const skillMd = await page.evaluate(() => window.SKILL_FILES.find(f => f.path === 'skills/claude/preemptive-exposure-analysis/SKILL.md').content);
+  const rawView = await page.textContent('#file-raw code');
+  const downloaded = readFileSync(await dl.path(), 'utf8');
+  ok('Skills 原始碼檢視、複製、下載保留 frontmatter', skillMd.startsWith('---\n') && rawView === skillMd && clip === skillMd && downloaded === skillMd,
+    [rawView === skillMd ? '' : '原始碼檢視', clip === skillMd ? '' : '複製', downloaded === skillMd ? '' : '下載'].filter(Boolean).join('、') + (rawView === skillMd && clip === skillMd && downloaded === skillMd ? '與原文相同' : ' 與原文不同'));
   const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('a[href="downloads/skills-claude.zip"]')]);
   ok('Skills ZIP 下載', (await dl2.suggestedFilename()).endsWith('.zip'));
   await page.click('#toggle-view'); await page.waitForTimeout(50);
   ok('Skills 原始／渲染切換', await page.$eval('#file-rendered', el => !el.hidden));
+  // 渲染檢視略過 frontmatter：從正文第一個標題開始，看不到欄位文字與分隔線
+  const rendered = await page.$eval('#file-rendered', el => ({ text: el.textContent, first: el.firstElementChild?.tagName || '' }));
+  const leaked = ['name: preemptive-exposure-analysis', 'description:'].filter(t => rendered.text.includes(t));
+  ok('Skills 渲染檢視略過 frontmatter', leaked.length === 0 && /^H[1-6]$/.test(rendered.first),
+    leaked.length ? `畫面出現 frontmatter：${leaked.join('、')}` : `第一個元素：${rendered.first}`);
   // 教學平臺切換
   await page.goto(base + '#/guides?platform=grok'); await page.waitForTimeout(100);
   ok('教學平臺切換 Grok', (await page.textContent('article')).includes('xAI'));
