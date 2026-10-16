@@ -167,7 +167,7 @@
       const byFrom = {};
       for (const e of edges) (byFrom[e.from] ||= []).push(e);
       const dfs = (node, trail, seen) => {
-        if (trail.length > F.maxHops) return;
+        if (trail.length >= F.maxHops) return; // trail 已有 maxHops 條邊就不再延伸
         for (const e of byFrom[node] || []) {
           if (seen.has(e.to)) continue;
           const t = [...trail, e];
