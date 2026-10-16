@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
 import { packageFiles, generatedFiles } from './skill-packages.mjs';
+import { parseFrontmatter } from './frontmatter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = (p) => join(ROOT, p);
@@ -37,16 +38,6 @@ function walk(dir) {
     else if (!SKIP_FILES.test(name)) res.push(p);
   }
   return res.sort(cmpPosix);
-}
-function parseFrontmatter(md) {
-  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!m) return { meta: {}, body: md };
-  const meta = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const i = line.indexOf(':');
-    if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^"|"$/g, '');
-  }
-  return { meta, body: md.slice(m[0].length) };
 }
 function parseCSV(text) {
   const rows = [];
@@ -99,8 +90,11 @@ const skillFiles = walk(skillsDir).map(f => {
   const rel = relPosix(f);
   const platform = rel.split('/')[1];
   const content = readText(f);
-  const { meta } = f.endsWith('.md') ? parseFrontmatter(content) : { meta: {} };
-  return { path: rel, platform, name: basename(f), ext: extname(f).slice(1), title: meta.title || '', role: meta.role || '', content };
+  // .md 另記 bodyStart（frontmatter 的長度）：網站的渲染檢視從這裡開始，原始碼檢視、複製、下載仍用含 frontmatter 的 content
+  const fm = f.endsWith('.md') ? parseFrontmatter(content) : null;
+  const meta = fm ? fm.meta : {};
+  return { path: rel, platform, name: basename(f), ext: extname(f).slice(1), title: meta.title || '', role: meta.role || '', content,
+           ...(fm && { bodyStart: fm.bodyStart }) };
 });
 writeFileSync(out('data/skills.js'), jsExport('SKILL_FILES', skillFiles));
 
