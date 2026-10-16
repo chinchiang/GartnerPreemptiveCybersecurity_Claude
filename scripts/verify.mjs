@@ -90,14 +90,14 @@ function staticChecks() {
   ok('引擎 JSON 符合 output-schema 結構', missTop.length === 0 && blocksOK && hypOK && valOK && remOK && (S.executive_summary.text.length <= 300), missTop.join(',') || 'required、block 欄位、items 必填鍵、摘要長度');
   const R2 = w.DEMO.analyze(w.CASE_DATA, { inputs: { threatIntel: false } });
   ok('驗收 6：移除情資後信心下修並標示', R2.findings.every(f => f.confidence === '中') && R2.missingSummary.includes('威脅情資'));
-  // 示範引擎 golden snapshot：評分規則同時存在於 assets/demo.js、skills/shared/core-prompt.md、
-  // skills/shared/task-spec.md 附錄 A 與 skills/shared/scoring-rules.md，此檢查用來抓「改了一處忘了同步其他處」。
+  // 示範引擎 golden snapshot：規則資料（assets/demo.js 的 RULES）套用在合成資料上的結果；
+  // 規則與母本是否一致由 npm test 的評分規則一致性檢查（scripts/scoring-rules.mjs）負責。
   const snapPath = join(ROOT, 'examples/demo-snapshot.txt');
   try {
     const actual = execFileSync(process.execPath, [join(ROOT, 'scripts/run-demo.mjs')], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
     const expected = readFileSync(snapPath, 'utf8').replace(/\r\n/g, '\n');
     ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
-      actual === expected ? `${actual.split('\n').length} 行` : '評分規則已變動：確認 demo.js／core-prompt.md／task-spec.md／scoring-rules.md 四處已同步後執行 npm run snapshot 更新快照');
+      actual === expected ? `${actual.split('\n').length} 行` : '示範引擎輸出已變動：若是刻意變更評分規則，先讓 npm test 的評分規則一致性檢查通過，再執行 npm run snapshot 更新快照');
   } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
   // check-acceptance.mjs 契約回歸
   const checker = join(ROOT, 'scripts/check-acceptance.mjs');
