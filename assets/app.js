@@ -89,7 +89,10 @@
   const DOCK = ['/', '/process', '/skills', '/case', '/sources'];
   const navItem = (path) => NAV.flatMap(g => g[1]).find(r => r[0] === path);
   /** 每頁標題上方的 eyebrow 小標（CRW 式區段標題） */
-  const heading = (path, h1) => `<div class="section-heading"><div><p class="eyebrow">${esc(navItem(path)?.[3] || '')}</p><h1>${h1}</h1></div></div>`;
+  // 頁面標題（h1）：eyebrow 取自導覽表；note 為右側說明（可省略）
+  const heading = (path, h1, note) => `<div class="section-heading"><div><p class="eyebrow">${esc(navItem(path)?.[3] || '')}</p><h1>${h1}</h1></div>${note ? `<p class="section-note">${note}</p>` : ''}</div>`;
+  // 頁內次級區段標題（h2）：eyebrow ＋ 大標 ＋ 可選的右側說明，標題層級維持 h2
+  const subheading = (eyebrow, h2, note) => `<div class="section-heading"><div><p class="eyebrow">${esc(eyebrow)}</p><h2>${h2}</h2></div>${note ? `<p class="section-note">${note}</p>` : ''}</div>`;
   let lastPath = null;
   function render() {
     const hash = location.hash || '#/';
@@ -227,7 +230,7 @@
           <dt>語言模型角色</dt><dd>${inline(cur.llmRole)}</dd>
           <dt>依據</dt><dd>${inline(cur.basisNote)} ${srcLinks(cur.sources)}</dd>
         </dl></div>` : ''}
-      <h2>整體流程圖</h2>
+      ${subheading('LOOP', '整體流程圖')}
       <div class="card"><pre>${esc(stages.map(s => `[${s.n}] ${s.name}`).join('  →  '))}
        ↑                                                                        │
        └──────────────── 追蹤指標回饋、範圍再確認（每週／每次重大變更）──────────┘</pre>
@@ -298,14 +301,14 @@
     el.innerHTML = `
       ${heading('/platforms', '平臺比較')}
       <p class="lead">五個平臺的支援方式、需求與限制。「模型」與「承載模型的應用程式／執行框架」分開描述。查證日期與來源見 <a href="#/sources">證據與來源</a>。</p>
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="matrix-table">
         <thead><tr><th>面向</th>${D.platforms.map(p => `<th>${esc(p.name)}<br><span class="small">${esc(p.vendor)}</span><br>${ST[p.status] || ''}</th>`).join('')}</tr></thead>
         <tbody>${rows.map(([label, key]) => `<tr><th scope="row">${label}</th>${D.platforms.map(p => `<td>${md(p[key])}</td>`).join('')}</tr>`).join('')}
         <tr><th scope="row">來源</th>${D.platforms.map(p => `<td>${srcLinks(p.sources)}</td>`).join('')}</tr></tbody>
       </table></div>
-      <h2>共通原則</h2>
+      ${subheading('COMMON PRINCIPLES', '共通原則')}
       <div class="card">${md(window.PLATFORM_COMMON || '')}</div>
-      <h2>各平臺摘要卡</h2>
+      ${subheading('PLATFORM CARDS', '各平臺摘要卡')}
       <div class="grid">${D.platforms.map(p => `<div class="card"><h3 style="margin-top:0">${esc(p.name)} ${ST[p.status] || ''}</h3><p class="small">${md(p.summary)}</p><div class="btn-row"><a class="btn small" href="#/skills?platform=${p.id}">查看 Skill</a><a class="btn small secondary" href="#/guides?platform=${p.id}">安裝教學</a></div></div>`).join('')}</div>`;
   }
 
@@ -398,7 +401,7 @@
           <div class="card" id="rules-card"><strong>示範規則摘要</strong><p class="small">${window.DEMO.rulesSummary().map(esc).join('<br>')}</p></div>
         </aside>
       </div>
-      <h2>附錄</h2>
+      ${subheading('APPENDIX', '附錄')}
       ${data.expectedOutput ? docDetails('預期輸出（examples/expected-output.md）', data.expectedOutput, { shift: 2 }) : ''}
       ${D.extra.syntheticReadme ? docDetails('合成資料說明（examples/synthetic-org/README.md）', D.extra.syntheticReadme, { shift: 2 }) : ''}`;
     let last;
@@ -463,18 +466,18 @@
       <p class="lead">所有引用之來源、發布日期（如有）、查閱日期、查證等級與付費牆狀態。Gartner 付費牆內容僅引用公開摘要或新聞稿；未讀全文者一律標示。查證等級：${Object.entries(VERIFICATION).map(([k, [l, c]]) => `<span class="pill ${c}">${l}</span>`).join('')}</p>
       <div class="filters" role="search" aria-label="篩選來源"><label>類型 <select id="s-type"><option value="all">全部</option>${Object.entries(TYPE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label><label>查證等級 <select id="s-ver"><option value="all">全部</option>${Object.entries(VERIFICATION).map(([k, [l]]) => `<option value="${k}">${l}</option>`).join('')}</select></label><label>關鍵字 <input type="text" id="s-text" placeholder="標題、網址、備註"></label><span class="small" id="s-count" role="status"></span></div>
       <div id="src-list"></div>
-      <h2>待驗證清單（${pendingTodo.length} 項待處理）</h2>
+      ${subheading('OPEN ITEMS', `待驗證清單（${pendingTodo.length} 項待處理）`)}
       ${todoTable(pendingTodo, ['項目', '為何待驗證', '下一步'])}
       ${doneTodo.length ? `<h3>已完成（保留作為紀錄）</h3>${todoTable(doneTodo, ['項目', '結果', '後續'], true)}` : ''}
-      <h2>連結檢查結果</h2>
+      ${subheading('LINK CHECK', '連結檢查結果')}
       <div class="card">${md(window.LINK_CHECK_NOTE || '尚未記錄。')}${D.extra.linkCheck ? docDetails('完整連結檢查表（link-check.md）', D.extra.linkCheck, { shift: 2 }) : ''}</div>
-      ${evidence.length ? `<h2>原始證據檔（研究代理的查證紀錄，英文）</h2><p class="small">這些是研究過程中逐條記錄的原始證據與查證等級，供核對「證據與來源」表使用；正體中文的整理版見 <a href="#/methodology">方法論導覽</a>。</p>${evidence.map(e => docDetails(e.title, e.body, { shift: 2 })).join('')}` : ''}`;
+      ${evidence.length ? `${subheading('RAW EVIDENCE', '原始證據檔（研究代理的查證紀錄，英文）')}<p class="small">這些是研究過程中逐條記錄的原始證據與查證等級，供核對「證據與來源」表使用；正體中文的整理版見 <a href="#/methodology">方法論導覽</a>。</p>${evidence.map(e => docDetails(e.title, e.body, { shift: 2 })).join('')}` : ''}`;
     const verLabel = (s) => { const v = s.verification || (s.paywalled ? 'summary' : undefined); const m = VERIFICATION[v]; return m ? `<span class="pill ${m[1]}">${m[0]}</span>` : '<span class="pill">未標示</span>'; };
     const searchable = (s) => [s.id, s.title, s.publisher, s.url, s.note, s.date].join(' ').toLowerCase();
     function draw() {
       const list = D.sources.filter(s => (state.type === 'all' || s.type === state.type) && (state.verification === 'all' || (s.verification || (s.paywalled ? 'summary' : '')) === state.verification) && (!state.text || searchable(s).includes(state.text.toLowerCase())));
       $('#s-count').textContent = `顯示 ${list.length} / ${D.sources.length} 筆`;
-      $('#src-list').innerHTML = `<div class="table-wrap"><table><thead><tr><th>ID</th><th>標題</th><th>發布者</th><th>發布日期</th><th>查閱日期</th><th>類型</th><th>查證等級</th><th>付費牆</th><th>備註／用途</th></tr></thead><tbody>${list.map(s => `<tr id="src-${esc(s.id)}" ${q.focus === s.id ? 'style="outline:2px solid var(--accent)"' : ''}><td>${esc(s.id)}</td><td>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : `${esc(s.title)} <span class="pill">無公開連結</span>`}</td><td>${esc(s.publisher)}</td><td>${esc(s.date || '未標示')}</td><td>${esc(s.accessed)}</td><td>${TYPE[s.type] || esc(s.type)}</td><td>${verLabel(s)}</td><td>${s.paywalled ? (s.readFull ? '<span class="pill fact">是（已讀授權轉載全文）</span>' : '<span class="pill todo">是（僅公開摘要）</span>') : '否'}</td><td class="small">${md(s.note)}</td></tr>`).join('')}</tbody></table></div>`;
+      $('#src-list').innerHTML = `<div class="table-wrap"><table class="src-table"><thead><tr><th>ID</th><th>標題</th><th>發布者</th><th>發布日期</th><th>查閱日期</th><th>類型</th><th>查證等級</th><th>付費牆</th><th>備註／用途</th></tr></thead><tbody>${list.map(s => `<tr id="src-${esc(s.id)}" ${q.focus === s.id ? 'class="is-focus"' : ''}><td>${esc(s.id)}</td><td>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : `${esc(s.title)} <span class="pill">無公開連結</span>`}</td><td>${esc(s.publisher)}</td><td>${esc(s.date || '未標示')}</td><td>${esc(s.accessed)}</td><td>${TYPE[s.type] || esc(s.type)}</td><td>${verLabel(s)}</td><td>${s.paywalled ? (s.readFull ? '<span class="pill fact">是（已讀授權轉載全文）</span>' : '<span class="pill todo">是（僅公開摘要）</span>') : '否'}</td><td class="small">${md(s.note)}</td></tr>`).join('')}</tbody></table></div>`;
       if (q.focus) { const f = document.getElementById(`src-${q.focus}`); if (f) f.scrollIntoView({ block: 'center' }); q.focus = null; }
     }
     $('#s-type').value = state.type; $('#s-ver').value = state.verification;
@@ -488,7 +491,7 @@
   function viewDeploy(el) {
     const g = D.guides.find(x => x.id === 'deployment') || D.guides.find(x => x.platform === '' && /deploy/i.test(x.id));
     el.innerHTML = `${heading('/deploy', '部署與維護')}<article class="doc card">${g ? md(g.body, { shift: 0 }) : '<p>尚無部署文件。</p>'}</article>
-      <h2>附錄</h2>
+      ${subheading('APPENDIX', '附錄')}
       ${D.extra.verifyReport ? docDetails('最近一次驗證報告（verify-report.md）', D.extra.verifyReport, { shift: 2 }) : ''}
       ${D.extra.backendReadme ? docDetails('選用後端：模型 API 代理（backend/README.md）', D.extra.backendReadme, { shift: 2 }) : ''}
       ${D.extra.readme ? docDetails('儲存庫 README', D.extra.readme, { shift: 2 }) : ''}`;
