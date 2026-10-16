@@ -49,7 +49,7 @@ metadata:
 5. **S5 改善建議**：對 P1/P2 給行動、負責人、工作量、驗證方式、核准層級；列補償控制缺口。
 6. **S6 安全驗證計畫**：對前 3 條路徑假設提出方法與授權需求。只提案。若 `active_testing_authorized` 或 `external_scanning_authorized` 任一為 false，每項標「尚未授權主動測試」（對外驗證需兩者皆 true）。
 7. **S7 管理摘要**：面向 `reporting.audience`，≤ 300 字，含現況、最急迫、決策請求、限制。
-8. **S8 追蹤指標**：至少 6 項（見 `references/scoring-rules.md` 第 4 節）與下次檢視時間。
+8. **S8 追蹤指標**：至少 6 項（見 `references/scoring-rules.md` 第 5 節）與下次檢視時間。
 
 ## 4. 信心水準
 
