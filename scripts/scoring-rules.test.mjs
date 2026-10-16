@@ -37,11 +37,14 @@ test('示範頁的預設權重取自規則資料，但是可調整的複製品',
 const ROOT = new URL('../', import.meta.url);
 const repoDocs = () => DOCUMENTS.map(d => ({ path: d.path, content: readFileSync(new URL(d.path, ROOT), 'utf8').replace(/\r\n/g, '\n') }));
 // 在記憶體中改一份文件：old 必須恰好出現一次，免得測試改錯地方
-const withEdit = (docs, path, old, replacement) => docs.map(d => {
-  if (d.path !== path) return d;
-  assert.equal(d.content.split(old).length - 1, 1, `${path} 裡「${old}」必須恰好出現一次`);
-  return { ...d, content: d.content.replace(old, replacement) };
-});
+const withEdit = (docs, path, old, replacement) => {
+  assert.ok(docs.some(d => d.path === path), `對照表沒有 ${path}`);
+  return docs.map(d => {
+    if (d.path !== path) return d;
+    assert.equal(d.content.split(old).length - 1, 1, `${path} 裡「${old}」必須恰好出現一次`);
+    return { ...d, content: d.content.replace(old, replacement) };
+  });
+};
 const summary = (drift) => drift.map(d => `${d.path}｜${d.rule}`);
 
 test('repo 現有的母本與規則資料一致：沒有漂移', () => {
@@ -99,10 +102,10 @@ test('找不到就失敗：定位文字被改掉或重複、文件沒有提供�
 
   const withoutHops = { ...DEMO.RULES, feasibility: { ...DEMO.RULES.feasibility, maxHops: undefined } };
   const noRule = scoringRuleDrift(repoDocs(), withoutHops);
-  assert.deepEqual(summary(noRule), ['skills/shared/scoring-rules.md｜最大跳數']);
+  assert.deepEqual(summary(noRule), ['skills/shared/scoring-rules.md｜最大跳數', 'data/process.js｜S4：最大跳數']);
   assert.match(noRule[0].reason, /規則資料缺少/);
   const noSection = scoringRuleDrift(repoDocs(), { ...DEMO.RULES, confidence: undefined });
-  assert.deepEqual(summary(noSection), [`${C}｜信心`, 'skills/shared/task-spec.md｜信心']);
+  assert.deepEqual(summary(noSection), [`${C}｜信心`, 'skills/shared/task-spec.md｜信心', 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md｜信心', 'skills/chatgpt/custom-gpt-instructions.md｜信心']);
 });
 
 test('文件少了最後一個數字（例如漏寫一個信心等級）也算漂移', () => {
@@ -148,18 +151,21 @@ test('文件寫的係數含預設權重：權重 1 的因子（例如對外曝�
     'skills/shared/core-prompt.md｜可能性',
     'skills/shared/task-spec.md｜可能性',
     'skills/shared/scoring-rules.md｜可能性：對外曝露',
-    'skills/shared/scoring-rules.md｜可能性：EASM 議題'
+    'skills/shared/scoring-rules.md｜可能性：EASM 議題',
+    'skills/chatgpt/preemptive-exposure-analysis/SKILL.md｜可能性',
+    'skills/chatgpt/custom-gpt-instructions.md｜可能性'
   ]);
   const impact = scoringRuleDrift(repoDocs(), { ...R, weights: { ...R.weights, impact: 0.9 } });
-  assert.deepEqual(summary(impact), ['skills/shared/core-prompt.md｜影響', 'skills/shared/task-spec.md｜影響', 'skills/shared/scoring-rules.md｜影響']);
+  assert.deepEqual(summary(impact), ['skills/shared/core-prompt.md｜影響', 'skills/shared/task-spec.md｜影響', 'skills/shared/scoring-rules.md｜影響',
+    'skills/chatgpt/preemptive-exposure-analysis/SKILL.md｜影響', 'skills/chatgpt/custom-gpt-instructions.md｜影響']);
   assert.equal(impact[0].expected[0], 1.4 * 0.9, '業務重要性係數也要乘上影響權重');
 });
 
 test('分數範圍由可能性與影響的上下限推得：可能性上限改了，分數範圍也要跟著改', () => {
   const R = DEMO.RULES;
   const drift = scoringRuleDrift(repoDocs(), { ...R, likelihood: { ...R.likelihood, range: [0, 5] } });
-  const scoreRange = drift.filter(d => d.rule === '分數範圍');
-  assert.deepEqual(summary(scoreRange), ['skills/shared/task-spec.md｜分數範圍', 'skills/shared/scoring-rules.md｜分數範圍']);
+  const scoreRange = drift.filter(d => d.rule.endsWith('分數範圍'));
+  assert.deepEqual(summary(scoreRange), ['skills/shared/task-spec.md｜分數範圍', 'skills/shared/scoring-rules.md｜分數範圍', 'data/process.js｜S3：分數範圍']);
   assert.deepEqual(scoreRange[0].expected, [0, 50]);
 });
 
@@ -170,6 +176,35 @@ test('範圍也要一致：可能性、影響、路徑可行性的 0–10 與分
     ['skills/shared/scoring-rules.md', '## 4. 攻擊路徑可行性（0–10）', '## 4. 攻擊路徑可行性（0–5）', '路徑可行性範圍'],
     ['skills/shared/scoring-rules.md', '`score = likelihood × impact`（0–100）', '`score = likelihood × impact`（0–10）', '分數範圍'],
     ['skills/shared/task-spec.md', 'score = likelihood × impact  (0–100)', 'score = likelihood × impact  (0–1000)', '分數範圍']
+  ];
+  for (const [path, old, replacement, rule] of cases) {
+    assert.deepEqual(summary(scoringRuleDrift(withEdit(repoDocs(), path, old, replacement))), [`${path}｜${rule}`], `${path}：${old}`);
+  }
+});
+
+test('改寫版與網站流程文字也受檢查：Codex SKILL.md、Custom GPT 指示、流程資料的 S3／S4 說明', () => {
+  const X = 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md';
+  const G = 'skills/chatgpt/custom-gpt-instructions.md';
+  const P = 'data/process.js';
+  const cases = [
+    [X, '設定偏差數·0.75)·0.8', '設定偏差數·0.7)·0.8', '可能性'],
+    [X, '（缺 epss/kev：以 cvss_base/10·1.5', '（缺 epss/kev：以 cvss_base/10·2', 'CVSS 近似'],
+    [X, 'Internal 1, Public 0}', 'Internal 2, Public 0}', '影響'],
+    [X, '嚴格 50/30/15', '嚴格 50/35/15', '分數門檻'],
+    [X, '− (跳數−1)·0.6', '+ (跳數−1)·0.6', '路徑可行性'],
+    [X, '（無任何發現的節點取 3', '（無任何發現的節點取 2', '無發現節點取值'],
+    [X, '`last_login_days` > 90', '`last_login_days` > 60', '身分弱點定義'],
+    [X, '缺 3 類以上或資產清冊完整度 < 80%', '缺 3 類以上或資產清冊完整度 < 70%', '信心'],
+    [G, 'low 1）, 0, 10)', 'low 0.5）, 0, 10)', '可能性'],
+    [G, '或 last_login_days > 90）', '或 last_login_days > 30）', 'CVSS 近似與身分弱點定義'],
+    [G, 'Internal 1, Public 0}', 'Internal 1, Public 1}', '影響'],
+    [G, '寬鬆：70／50／25', '寬鬆：70／50／30', '分數門檻'],
+    [G, '無任何發現的節點可能性取 3', '無任何發現的節點可能性取 4', '路徑可行性與無發現節點取值'],
+    [G, '缺 1–2 類 → 中', '缺 1–3 類 → 中', '信心'],
+    [P, '分數 0–100', '分數 0–10', 'S3：分數範圍'],
+    [P, '最多 5 跳', '最多 6 跳', 'S4：最大跳數'],
+    [P, '最弱節點×0.3', '最弱節點×0.4', 'S4：路徑可行性'],
+    [P, '身分／設定邊數×1 − (跳數−1)', '身分／設定邊數×1 + (跳數−1)', 'S4：路徑可行性']
   ];
   for (const [path, old, replacement, rule] of cases) {
     assert.deepEqual(summary(scoringRuleDrift(withEdit(repoDocs(), path, old, replacement))), [`${path}｜${rule}`], `${path}：${old}`);
