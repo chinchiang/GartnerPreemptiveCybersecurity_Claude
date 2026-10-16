@@ -119,6 +119,7 @@ likelihood = clamp(
   # 缺 epss/kev：以 cvss_base/10·1.5 取代 3·epss + 3·[kev]，並標示「改用 CVSS 近似」
   # identity_issues = 連結到該資產且（mfa_enabled 為 false 或 partial、或 last_login_days > 90）的身分數
 impact = clamp(business_criticality·1.4 + data_weight(Restricted=3, Confidential=2, Internal=1, Public=0) + 2·[crown_jewel] + 2·[entry_to_crown_jewel], 0, 10)
+  # entry_to_crown_jewel：至少一條 S4 攻擊路徑假設以該資產為入口（節點範圍與跳數上限同 S4）
 score = likelihood × impact  (0–100)
 priority: balanced（預設）→ P1 ≥ 60, P2 ≥ 40, P3 ≥ 20, 其餘 P4；strict → 50/30/15；tolerant → 70/50/25
 path_feasibility = clamp(entry_likelihood·0.5 + weakest_node·0.3 + identity_or_misconfig_edges·1.0 − (hops−1)·0.6, 0, 10)

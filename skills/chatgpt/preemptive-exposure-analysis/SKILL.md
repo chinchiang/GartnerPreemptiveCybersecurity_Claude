@@ -80,6 +80,7 @@ likelihood = clamp(3·[對外曝露] + 0.5·[EASM 議題] + 2·[公開利用程�
              （缺 epss/kev：以 cvss_base/10·1.5 取代 3·epss + 3·[kev]，並標示「改用 CVSS 近似」）
 impact     = clamp(business_criticality·1.4 + 資料等級權重{Restricted 3, Confidential 2, Internal 1, Public 0}
              + 2·[crown jewel] + 2·[可達 crown jewel 之入口], 0, 10)
+             （可達 crown jewel 之入口：至少一條 S4 攻擊路徑假設以該資產為入口，節點範圍與跳數上限同 S4）
 score      = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20、其餘 P4；嚴格 50/30/15；寬鬆 70/50/25
 路徑可行性 = clamp(入口可能性·0.5 + 最弱節點·0.3 + 身分/設定邊數·1.0 − (跳數−1)·0.6, 0, 10)
              （無任何發現的節點取 3；有發現者取其最高可能性，可為 0）
