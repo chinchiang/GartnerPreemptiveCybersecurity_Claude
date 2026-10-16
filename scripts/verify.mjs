@@ -65,7 +65,7 @@ function staticChecks() {
     try { JSON.parse(readFileSync(join(ROOT, f), 'utf8')); ok(`JSON 有效 ${f}`, true); } catch (e) { ok(`JSON 有效 ${f}`, false, e.message); }
   }
   // 示範引擎驗收
-  vm.runInContext(readFileSync(join(ROOT, 'assets/demo.js'), 'utf8'), ctx);
+  for (const f of ['assets/scope-gate.js', 'assets/demo.js']) vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx); // 守門由 scope-gate.js 判定，須先載入
   const R = w.DEMO.analyze(w.CASE_DATA, {});
   const vpn = R.findings.find(f => f.vuln_id === 'SYN-2026-0101');
   ok('驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據', vpn && vpn.priority === 'P1' && ['對外曝露', '公開利用程式', '模擬 KEV', '威脅情資命中'].every(k => vpn.factors.some(x => x.includes(k))), vpn ? `${vpn.priority} ${vpn.score}` : '找不到');

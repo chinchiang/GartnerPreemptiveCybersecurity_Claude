@@ -1,6 +1,6 @@
-"""授權範圍守門：四支 api-workflow.py 與 Claude 的 validate_inputs.py，對共用案例的判定必須與網站示範引擎一致。
+"""授權範圍守門：四支 api-workflow.py 與 Claude 的 validate_inputs.py，對共用案例的判定必須與 JS 的守門（assets/scope-gate.js，網站示範引擎與選用後端代理共用）一致。
 
-案例在 tests/fixtures/scope-cases.json（JS 那邊由 scripts/scope-cases.test.mjs 套在 demo.js 上）。
+案例在 tests/fixtures/scope-cases.json（JS 那邊由 scripts/scope-cases.test.mjs 套在示範引擎與選用後端代理上）。
 這裡只看腳本的外部行為：結束碼與輸出訊息。執行：python3 -m unittest discover -s tests/python
 """
 import copy

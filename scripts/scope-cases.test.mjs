@@ -1,9 +1,13 @@
 // 授權範圍守門的共用案例（tests/fixtures/scope-cases.json）套在網站示範引擎與選用後端代理（backend/worker.js）上：
-// demo.js 的 scopeProblems 是判定基準，Python 那邊（tests/python/test_scope_gate.py）用同一份案例。
+// 兩者都委派給 assets/scope-gate.js（規則只來自 schema，見 docs/adr/0004）；Python 那邊（tests/python/test_scope_gate.py）用同一份案例。
 // worker 送真的 Request 給它的 fetch，只看回應與有沒有往上游送請求；上游的 globalThis.fetch 換成假的。
 import { test, describe, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import worker from '../backend/worker.js';
 
@@ -46,6 +50,23 @@ describe('後端代理（backend/worker.js）', () => {
   before(() => { globalThis.fetch = async () => { upstreamCalls += 1; return new Response('{}', { status: 200 }); }; });
   after(() => { globalThis.fetch = realFetch; });
   afterEach(() => { upstreamCalls = 0; });
+
+  test('後端代理守門：建置出的部署用 Worker（scope-gate.js 已內嵌）對空物件 scope 回 400，不往上游送請求', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pea-worker-'));
+    try {
+      const built = join(dir, 'worker.mjs');
+      execFileSync(process.execPath, [fileURLToPath(new URL('./build-worker.mjs', import.meta.url)), built], { stdio: 'pipe' });
+      const { default: deployed } = await import(pathToFileURL(built).href);
+      const r = await deployed.fetch(new Request('https://worker.example/api/analyze', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': '198.51.100.250' },
+        body: JSON.stringify({ bundle: { scope: {} } })
+      }), { PROVIDER: 'openai', MODEL: 'test-model', PROVIDER_API_KEY: 'test-key' });
+      assert.equal(r.status, 400);
+      assert.equal(upstreamCalls, 0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   test('後端代理守門：scope 是空物件時回 400，不往上游送請求', async () => {
     const r = await analyze({});
