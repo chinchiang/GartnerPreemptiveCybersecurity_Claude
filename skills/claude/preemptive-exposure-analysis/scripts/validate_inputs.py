@@ -99,8 +99,11 @@ def main(folder: str) -> int:
         elif name == "threat-intel.json":
             print(f"[{name}] 行為者={len(_list_at(data, 'actors'))} 趨勢弱點類別={len(_list_at(data, 'trending_weakness_classes'))}")
         elif name == "topology.json":
-            bad = sum(1 for n, _ in findings if n == name)
-            print(f"[{name}] crown_jewels={data.get('crown_jewels')} edges={len(_list_at(data, 'edges'))} 指向不存在資產的邊={bad}")
+            topology_findings = [m for n, m in findings if n == name]
+            bad = sum(1 for m in topology_findings if m.startswith("邊 "))   # 核心的懸空邊訊息以「邊 」開頭，一條邊一筆
+            anomalies = [m for m in topology_findings if not m.startswith("邊 ")]
+            print(f"[{name}] crown_jewels={data.get('crown_jewels')} edges={len(_list_at(data, 'edges'))} "
+                  f"指向不存在資產的邊={bad} 異常={anomalies or '無'}")
         elif name == "exposures.json":
             unknown = analysis_workflow.unlisted_hosts(data)
             print(f"[{name}] 筆數={len(_list_at(data, 'exposures'))} 未納入清冊的對外資產={unknown or '無'}")
