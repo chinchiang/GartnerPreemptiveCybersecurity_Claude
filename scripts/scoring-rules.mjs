@@ -37,6 +37,8 @@ const likelihoodFormula = (R) => {
     '+', ...e.intel, ...L.range
   ];
 };
+// 缺 EPSS/KEV：以 cvss_base/10 × cvssFallback 取代「epss + kev」兩項
+const cvssApproximation = (R) => { const e = effective(R); return [10, e.cvssFallback, e.epss, '+', e.kev]; };
 const impactFormula = (R) => { const e = effective(R); return [e.criticality, '+', ...e.dataWeights, '+', e.crownJewel, '+', e.entry, ...R.impact.range]; };
 const thresholdOrder = ({ thresholds: T }) => [...T.balanced, ...T.strict, ...T.tolerant]; // 平衡（預設）、嚴格、寬鬆
 const feasibilityTerms = ({ feasibility: F }) => [F.entry, '+', F.weakest, '+', F.trustEdge, '−', '−', 1, F.perHop]; // − (跳數 − 1) × perHop
@@ -45,26 +47,27 @@ const scoreRange = ({ likelihood: L, impact: I }) => [L.range[0] * I.range[0], L
 // 缺 0 類 → 高；缺 1–(lowMissing−1) 類 → 中；缺 lowMissing 類以上或清冊完整度 < inventoryThreshold% → 低
 const confidenceRule = ({ confidence: C }) => [0, 1, C.lowMissing - 1, C.lowMissing, C.inventoryThreshold];
 
-// 對照表：每份要檢查的文件一列——三份母本、兩份刻意改寫的版本（Codex SKILL.md、Custom GPT 指示）與網站流程資料；
-// 複本與嵌入區塊由建置與 CI 的 git diff 守住，不放這裡。
-// checks：rule＝規則名稱（回報用）；start＝定位用的文字，必須在文件中恰好出現一次；end＝區段結尾（預設到行尾，含 end 本身）；
-// expect＝從規則資料排出這段文字裡應該依序出現的記號（文件寫死的常數，例如 cvss_base/10 的 10，直接寫在這裡）。
-// 核心提示詞的評分規則與信心兩節；Custom GPT 指示刻意改寫，但這兩節的公式寫法與核心提示詞相同，共用這組檢查
-const CORE_PROMPT_CHECKS = [
+// 核心提示詞與 Custom GPT 指示共用的檢查：兩份的評分規則與信心兩節公式寫法相同（Custom GPT 指示的其他措辭刻意改寫）。
+// 任一份改了這兩節的寫法，就把它拆成自己的一組檢查。
+const CORE_PROMPT_AND_CUSTOM_GPT_CHECKS = [
   { rule: '可能性', start: 'likelihood = clamp(', expect: likelihoodFormula },
   { rule: 'CVSS 近似與身分弱點定義', start: '缺 epss/kev 時：',
-    expect: (R) => { const e = effective(R); return [10, e.cvssFallback, e.epss, '+', e.kev, R.identityIssue.staleLoginDays]; } },
+    expect: (R) => [...cvssApproximation(R), R.identityIssue.staleLoginDays] },
   { rule: '影響', start: 'impact = clamp(', expect: impactFormula },
   { rule: '分數門檻', start: 'score = likelihood × impact', expect: thresholdOrder },
   { rule: '路徑可行性與無發現節點取值', start: '路徑可行性 = clamp(', expect: (R) => [...feasibilityFormula(R), R.feasibility.unknownNode, 0] },
   { rule: '信心', start: '缺 0 類建議輸入', expect: confidenceRule }
 ];
 
+// 對照表：每份要檢查的文件一列——三份母本、兩份刻意改寫的版本（Codex SKILL.md、Custom GPT 指示）與網站流程資料；
+// 複本與嵌入區塊由建置與 CI 的 git diff 守住，不放這裡。
+// checks：rule＝規則名稱（回報用）；start＝定位用的文字，必須在文件中恰好出現一次；end＝區段結尾（預設到行尾，含 end 本身）；
+// expect＝從規則資料排出這段文字裡應該依序出現的記號（文件寫死的常數，例如 cvss_base/10 的 10，直接寫在這裡）。
 export const DOCUMENTS = [
-  { path: 'skills/shared/core-prompt.md', checks: CORE_PROMPT_CHECKS },
+  { path: 'skills/shared/core-prompt.md', checks: CORE_PROMPT_AND_CUSTOM_GPT_CHECKS },
   { path: 'skills/shared/task-spec.md', checks: [ // 附錄 A 的程式碼區塊，以及第 5 節的信心規則
     { rule: '可能性', start: 'likelihood = clamp(', end: ', 0, 10)', expect: likelihoodFormula },
-    { rule: 'CVSS 近似', start: '# 缺 epss/kev：', expect: (R) => { const e = effective(R); return [10, e.cvssFallback, e.epss, '+', e.kev]; } },
+    { rule: 'CVSS 近似', start: '# 缺 epss/kev：', expect: cvssApproximation },
     { rule: '身分弱點定義', start: '# identity_issues =', expect: (R) => [R.identityIssue.staleLoginDays] },
     { rule: '影響', start: 'impact = clamp(', expect: impactFormula },
     { rule: '分數範圍', start: 'score = likelihood × impact', expect: scoreRange },
@@ -102,7 +105,7 @@ export const DOCUMENTS = [
   ] },
   { path: 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md', checks: [ // Codex 用的改寫版：評分規則的程式碼區塊、定義段落與信心一節
     { rule: '可能性', start: 'likelihood = clamp(', end: ', 0, 10)', expect: likelihoodFormula },
-    { rule: 'CVSS 近似', start: '（缺 epss/kev：', expect: (R) => { const e = effective(R); return [10, e.cvssFallback, e.epss, '+', e.kev]; } },
+    { rule: 'CVSS 近似', start: '（缺 epss/kev：', expect: cvssApproximation },
     { rule: '影響', start: 'impact     = clamp(', end: ', 0, 10)', expect: impactFormula },
     { rule: '分數門檻', start: 'score      = likelihood × impact', expect: thresholdOrder },
     { rule: '路徑可行性', start: '路徑可行性 = clamp(', expect: feasibilityFormula },
@@ -110,7 +113,7 @@ export const DOCUMENTS = [
     { rule: '身分弱點定義', start: '定義：「身分弱點數」', end: '的身分數', expect: (R) => [R.identityIssue.staleLoginDays] },
     { rule: '信心', start: '缺 0 類建議輸入', expect: confidenceRule }
   ] },
-  { path: 'skills/chatgpt/custom-gpt-instructions.md', checks: CORE_PROMPT_CHECKS }, // 只比數值；措辭為字數限制刻意精簡
+  { path: 'skills/chatgpt/custom-gpt-instructions.md', checks: CORE_PROMPT_AND_CUSTOM_GPT_CHECKS }, // 只比數值與運算子；措辭為字數限制刻意精簡
   { path: 'data/process.js', checks: [ // 網站流程頁的 S3、S4 說明
     { rule: 'S3：分數範圍', start: '；分數 ', end: '依風險胃納', expect: scoreRange },
     { rule: 'S4：最大跳數', start: '沿 edges 深度優先搜尋至 crown jewel', end: '跳', expect: (R) => [R.feasibility.maxHops] },
