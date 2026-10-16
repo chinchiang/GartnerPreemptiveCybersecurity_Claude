@@ -26,6 +26,8 @@
 
 `impact = clamp(business_criticality × 1.4 + data_weight + 2 × [crown_jewel] + 2 × [可達 crown jewel 之入口], 0, 10)`，其中 data_weight：Restricted 3、Confidential 2、Internal 1、Public 0。
 
+可達 crown jewel 之入口：至少一條第 4 節的攻擊路徑以該資產為入口（節點範圍與跳數上限同第 4 節）。
+
 ## 3. 分數與分級
 
 `score = likelihood × impact`（0–100）。

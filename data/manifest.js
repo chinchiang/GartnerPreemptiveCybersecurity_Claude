@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "7a117d23aad5",
+ "contentHash": "26445dc7ad8e",
  "research": [
   {
    "id": "00-method",
@@ -89,12 +89,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
    "platform": "chatgpt",
-   "bytes": 9026
+   "bytes": 9155
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/SKILL.md",
    "platform": "chatgpt",
-   "bytes": 10421
+   "bytes": 10563
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md",
@@ -114,12 +114,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/scoring-rules.md",
    "platform": "chatgpt",
-   "bytes": 4018
+   "bytes": 4156
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "chatgpt",
-   "bytes": 10883
+   "bytes": 11005
   },
   {
    "path": "skills/chatgpt/project-instructions.md",
@@ -159,7 +159,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/scoring-rules.md",
    "platform": "claude",
-   "bytes": 4018
+   "bytes": 4156
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
@@ -184,7 +184,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
    "platform": "deepseek",
-   "bytes": 10955
+   "bytes": 11084
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/acceptance.md",
@@ -204,12 +204,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/scoring-rules.md",
    "platform": "deepseek",
-   "bytes": 4018
+   "bytes": 4156
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "deepseek",
-   "bytes": 10883
+   "bytes": 11005
   },
   {
    "path": "skills/deepseek/requirements.txt",
@@ -219,7 +219,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/system-prompt.md",
    "platform": "deepseek",
-   "bytes": 5968
+   "bytes": 6097
   },
   {
    "path": "skills/glm/README.md",
@@ -239,7 +239,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/SKILL.md",
    "platform": "glm",
-   "bytes": 10350
+   "bytes": 10479
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/acceptance.md",
@@ -259,12 +259,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/scoring-rules.md",
    "platform": "glm",
-   "bytes": 4018
+   "bytes": 4156
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "glm",
-   "bytes": 10883
+   "bytes": 11005
   },
   {
    "path": "skills/glm/requirements.txt",
@@ -274,7 +274,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/system-prompt.md",
    "platform": "glm",
-   "bytes": 5898
+   "bytes": 6027
   },
   {
    "path": "skills/grok/README.md",
@@ -294,7 +294,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/system-prompt.md",
    "platform": "grok",
-   "bytes": 5975
+   "bytes": 6104
   },
   {
    "path": "skills/grok/tool-definitions.json",
@@ -314,7 +314,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/core-prompt.md",
    "platform": "shared",
-   "bytes": 5013
+   "bytes": 5142
   },
   {
    "path": "skills/shared/input-schema.json",
@@ -329,12 +329,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/scoring-rules.md",
    "platform": "shared",
-   "bytes": 3884
+   "bytes": 4022
   },
   {
    "path": "skills/shared/task-spec.md",
    "platform": "shared",
-   "bytes": 10753
+   "bytes": 10875
   }
  ],
  "downloads": [

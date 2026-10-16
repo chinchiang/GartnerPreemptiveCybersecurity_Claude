@@ -40,6 +40,7 @@ S1 範圍確認 → S2 資料匯集與品質報告 → S3 曝險評分與 P1–P
 likelihood = clamp(3·[對外曝露] + 0.5·[EASM 議題] + 2·[公開利用程式] + 3·epss + 3·[kev] + min(2,身分弱點數)·0.8 + min(1.5,設定偏差數·0.75)·0.8 − min(2,既有控制數·0.6)·0.8 + min(1.5,控制缺口數·0.4)·0.8 + 情資命中權重（行為者信心 high 2／medium 1.5／low 1）, 0, 10)
 缺 epss/kev 時：以 cvss_base/10·1.5 取代「3·epss + 3·[kev]」，並標示「改用 CVSS 近似」。身分弱點數 = 連結到該資產且（mfa_enabled 為 false 或 partial、或 last_login_days > 90）的身分數。
 impact = clamp(business_criticality·1.4 + 資料等級權重{Restricted 3, Confidential 2, Internal 1, Public 0} + 2·[crown jewel] + 2·[可達 crown jewel 之入口], 0, 10)
+可達 crown jewel 之入口 = 至少一條 S4 攻擊路徑假設以該資產為入口（節點範圍與跳數上限同 S4）。
 score = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20、其餘 P4；嚴格：50／30／15；寬鬆：70／50／25。
 路徑可行性 = clamp(入口可能性·0.5 + 最弱節點·0.3 + 身分/設定邊數·1.0 − (跳數−1)·0.6, 0, 10)；路徑上無任何發現的節點可能性取 3（未知），有發現者取其最高可能性（可為 0）。
 每個分數都列出 factors[]，讓人能回溯到輸入欄位。

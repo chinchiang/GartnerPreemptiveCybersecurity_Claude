@@ -88,23 +88,25 @@
     const exposureOf = (id) => P.inputs.exposures ? data.exposures.exposures.find(e => e.asset_id === id) : null;
     const crownJewels = (data.topology && data.topology.crown_jewels) || [];
 
-    // 可達 crown jewel 的入口節點（blast radius 因子）
-    const entryNodes = new Set();
-    if (P.inputs.topology) {
-      const byFrom0 = {};
-      for (const e of data.topology.edges) (byFrom0[e.from] ||= []).push(e);
-      const reach = (node, seen) => {
-        if (crownJewels.includes(node)) return true;
-        for (const e of byFrom0[node] || []) if (!seen.has(e.to) && reach(e.to, new Set([...seen, e.to]))) return true;
-        return false;
-      };
-      for (const e of byFrom0['internet'] || []) if (reach(e.to, new Set([e.to]))) entryNodes.add(e.to);
-    }
-
     // 模擬資產清冊不完整：依完整度隱藏排序靠後的資產（示範用）
     const visibleIds = scopedAssets.map(a => a.asset_id).filter((_, idx, arr) => idx < Math.round(arr.length * P.inventoryCompleteness / 100));
     const hidden = scopedAssets.filter(a => !visibleIds.includes(a.asset_id));
     const inventoryLow = P.inventoryCompleteness < RULES.confidence.inventoryThreshold;
+
+    // 可達 crown jewel 的入口節點（blast radius 因子）
+    const entryNodes = new Set();
+    if (P.inputs.topology) {
+      const byFrom0 = {};
+      const visibleEdges = data.topology.edges.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
+      for (const e of visibleEdges) (byFrom0[e.from] ||= []).push(e);
+      const reach = (node, seen, hops) => { // hops：從 internet 走到 node 已用的邊數
+        if (crownJewels.includes(node)) return true;
+        if (hops >= F.maxHops) return false;
+        for (const e of byFrom0[node] || []) if (!seen.has(e.to) && reach(e.to, new Set([...seen, e.to]), hops + 1)) return true;
+        return false;
+      };
+      for (const e of byFrom0['internet'] || []) if (reach(e.to, new Set([e.to]), 1)) entryNodes.add(e.to);
+    }
 
     // S3 曝險評分
     const findings = (data.vulnerabilities || []).filter(v => visibleIds.includes(v.asset_id)).map(v => {
