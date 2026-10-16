@@ -1,9 +1,11 @@
-// 授權範圍守門的共用案例（tests/fixtures/scope-cases.json）套在網站示範引擎上：
+// 授權範圍守門的共用案例（tests/fixtures/scope-cases.json）套在網站示範引擎與選用後端代理（backend/worker.js）上：
 // demo.js 的 scopeProblems 是判定基準，Python 那邊（tests/python/test_scope_gate.py）用同一份案例。
-import { test } from 'node:test';
+// worker 送真的 Request 給它的 fetch，只看回應與有沒有往上游送請求；上游的 globalThis.fetch 換成假的。
+import { test, describe, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import worker from '../backend/worker.js';
 
 const require = createRequire(import.meta.url);
 const DEMO = require('../assets/demo.js');
@@ -24,3 +26,37 @@ for (const c of cases) {
     assert.deepEqual(DEMO.scopeProblems(applyCase(base, c)), c.problems);
   });
 }
+
+let upstreamCalls = 0;
+let ip = 0; // worker 每個 IP 每分鐘只放行 5 次，每個請求用不同的 IP
+const analyze = (scope) => worker.fetch(new Request('https://worker.example/api/analyze', {
+  method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': `203.0.113.${++ip}` },
+  body: JSON.stringify({ bundle: { scope } })
+}), { PROVIDER: 'openai', MODEL: 'test-model', PROVIDER_API_KEY: 'test-key' });
+
+describe('後端代理（backend/worker.js）', () => {
+  const realFetch = globalThis.fetch;
+  before(() => { globalThis.fetch = async () => { upstreamCalls += 1; return new Response('{}', { status: 200 }); }; });
+  after(() => { globalThis.fetch = realFetch; });
+  afterEach(() => { upstreamCalls = 0; });
+
+  test('後端代理守門：scope 是空物件時回 400，不往上游送請求', async () => {
+    const r = await analyze({});
+    assert.equal(r.status, 400);
+    assert.equal(upstreamCalls, 0);
+  });
+
+  for (const c of cases) {
+    test(`後端代理守門：${c.name}`, async () => {
+      const r = await analyze(applyCase(base, c));
+      if (c.problems.length === 0) {
+        assert.equal(r.status, 200);
+        assert.equal(upstreamCalls, 1);
+        return;
+      }
+      assert.equal(r.status, 400);
+      assert.equal(upstreamCalls, 0);
+      assert.equal(await r.text(), `缺少 scope 或必填欄位：${c.problems.join('、')}；無授權範圍不得分析`);
+    });
+  }
+});
