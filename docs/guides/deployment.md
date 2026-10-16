@@ -6,11 +6,12 @@ platform: ""
 
 ## 1. 網站架構
 
-純靜態網站，無建置框架、無外部相依（無 CDN、無追蹤）：
+純靜態網站，無建置框架、無外部相依（無 CDN、無追蹤；字型自載於 `assets/fonts/`）：
 
 ```
 index.html            單頁應用程式殼
-assets/styles.css     樣式（淺／深色、行動裝置、列印）
+assets/styles.css     樣式（淺／深色兩套設計 token、行動裝置、列印）
+assets/fonts/         自載字型 Inter 與 JetBrains Mono（woff2 拉丁子集，SIL OFL 1.1；中文用系統字型）。仍無外部請求，CSP font-src 'self' 即可
 assets/md.js          極簡 Markdown 渲染器
 assets/demo.js        案例互動展示的確定性引擎
 assets/app.js         hash 路由、各頁面、全站搜尋、複製／下載
