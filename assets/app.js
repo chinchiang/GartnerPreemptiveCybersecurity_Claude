@@ -360,7 +360,7 @@
         <aside>
           <div class="card"><strong>輸入資料檔</strong><div class="doc-toc">${['assets.csv', 'vulnerabilities.csv', 'identities.csv', 'misconfigurations.csv', 'controls.json', 'threat-intel.json', 'topology.json', 'exposures.json', 'scope.json'].map(f => `<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/examples/synthetic-org/${f}" target="_blank" rel="noopener">${f}</a>`).join('')}</div>
           <p class="small">授權範圍：${esc(data.scope.authorized_scope.authorization_reference)}；主動測試授權：<strong>${data.scope.authorized_scope.active_testing_authorized ? '是' : '否'}</strong>；外部掃描授權：<strong>${data.scope.authorized_scope.external_scanning_authorized ? '是' : '否'}</strong>；管理摘要遮罩識別資訊：<strong>${data.scope.reporting?.mask_identifiers === false ? '否' : '是（預設）'}</strong></p></div>
-          <div class="card"><strong>示範規則摘要</strong><p class="small">可能性 = 對外曝露 3 + EASM 議題 0.5 + 公開利用程式 2 + EPSS×3 + KEV 3 + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 2／1.5／1）（各乘權重，上限 10）；缺 EPSS/KEV 時以 CVSS/10×1.5 近似<br>影響 = 業務重要性×1.4 + 資料等級（Restricted 3／Confidential 2／Internal 1／Public 0）+2 若為 crown jewel +2 若為可達 crown jewel 的入口（上限 10）<br>分數 = 可能性 × 影響（0–100）；平衡胃納 P1 ≥ 60、P2 ≥ 40、P3 ≥ 20（嚴格 50/30/15；寬鬆 70/50/25）。<br>信心：缺 0 類 → 高；缺 1–2 類 → 中；缺 3 類以上或清冊完整度 &lt; 80% → 低。攻擊路徑可行性 = 入口可能性×0.5 + 最弱節點×0.3 + 身分／設定邊×1 − (跳數−1)×0.6；無任何發現的節點取 3。</p></div>
+          <div class="card" id="rules-card"><strong>示範規則摘要</strong><p class="small">${window.DEMO.rulesSummary().map(esc).join('<br>')}</p></div>
         </aside>
       </div>
       <h2>附錄</h2>
