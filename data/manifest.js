@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "10489a242142",
+ "contentHash": "7a117d23aad5",
  "research": [
   {
    "id": "00-method",

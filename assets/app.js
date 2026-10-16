@@ -79,11 +79,17 @@
     '/': viewHome, '/methodology': viewMethodology, '/process': viewProcess, '/io': viewIO, '/platforms': viewPlatforms,
     '/skills': viewSkills, '/guides': viewGuides, '/case': viewCase, '/sources': viewSources, '/deploy': viewDeploy
   };
+  // [路由, 名稱, 側欄圖示（幾何符號，不用 emoji 以維持字型一致）, 英文 eyebrow]
   const NAV = [
-    ['總覽', [['/', '首頁'], ['/methodology', '方法論導覽'], ['/process', '可執行流程'], ['/io', 'Inputs／Outputs 對照']]],
-    ['實作', [['/platforms', '平臺比較'], ['/skills', 'Skills 專區'], ['/guides', '安裝與使用教學'], ['/case', '案例互動展示']]],
-    ['證據', [['/sources', '證據與來源'], ['/deploy', '部署與維護']]]
+    ['總覽', [['/', '首頁', '⌂', 'OVERVIEW'], ['/methodology', '方法論導覽', '◆', 'METHODOLOGY'], ['/process', '可執行流程', '⇄', 'EXECUTABLE PROCESS'], ['/io', 'Inputs／Outputs 對照', '▦', 'INPUTS & OUTPUTS']]],
+    ['實作', [['/platforms', '平臺比較', '⬡', 'PLATFORM MATRIX'], ['/skills', 'Skills 專區', '✎', 'SKILLS LIBRARY'], ['/guides', '安裝與使用教學', '▶', 'SETUP GUIDES'], ['/case', '案例互動展示', '◎', 'INTERACTIVE CASE']]],
+    ['證據', [['/sources', '證據與來源', '≡', 'EVIDENCE & SOURCES'], ['/deploy', '部署與維護', '⚙', 'DEPLOYMENT']]]
   ];
+  // 行動版底部 dock 只放最常用的五個路由
+  const DOCK = ['/', '/process', '/skills', '/case', '/sources'];
+  const navItem = (path) => NAV.flatMap(g => g[1]).find(r => r[0] === path);
+  /** 每頁標題上方的 eyebrow 小標（CRW 式區段標題） */
+  const heading = (path, h1) => `<div class="section-heading"><div><p class="eyebrow">${esc(navItem(path)?.[3] || '')}</p><h1>${h1}</h1></div></div>`;
   let lastPath = null;
   function render() {
     const hash = location.hash || '#/';
@@ -100,7 +106,7 @@
     main.innerHTML = '';
     lastPath = path;
     document.title = `${(NAV.flatMap(g => g[1]).find(r => r[0] === path) || ['', 'Preemptive Cybersecurity'])[1]} · 先制型資安 Playbook`;
-    $$('.sidebar nav a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${path}` ? 'page' : 'false'));
+    $$('.sidebar nav a, .mobile-dock a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${path}` ? 'page' : 'false'));
     $('.sidebar').classList.remove('open'); $('#menu-btn').setAttribute('aria-expanded', 'false');
     try { view(main, parseQuery(hash)); } catch (e) { main.innerHTML = `<div class="callout danger"><strong>頁面渲染錯誤：</strong>${esc(e.message)}</div>`; console.error(e); }
     let anchor = hash.split('#')[2];
@@ -110,42 +116,71 @@
   }
 
   // ---------- 首頁 ----------
+  /** 主視覺：純 SVG 幾何圖（盾牌＋雷達環＋三節點攻擊路徑），顏色全部來自 token，淺／深色自動切換 */
+  const HERO_SVG = `<svg viewBox="0 0 320 320" role="img" aria-label="先制型資安示意：雷達掃描中的盾牌與被標記的攻擊路徑" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="hg-shield" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--violet)"/><stop offset=".55" stop-color="var(--pink)"/><stop offset="1" stop-color="var(--orange)"/></linearGradient>
+      <linearGradient id="hg-path" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--cyan)"/><stop offset="1" stop-color="var(--blue)"/></linearGradient>
+      <radialGradient id="hg-sweep" cx="160" cy="160" r="140" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient>
+    </defs>
+    <g fill="none" stroke="var(--accent)" stroke-opacity=".28" stroke-width="1.2"><circle cx="160" cy="160" r="140"/><circle cx="160" cy="160" r="104"/><circle cx="160" cy="160" r="68"/><path d="M160 20v280M20 160h280"/></g>
+    <path d="M160 160L160 20A140 140 0 0 1 281 90Z" fill="url(#hg-sweep)"/>
+    <path d="M160 72l62 26v46c0 42-30 72-62 84-32-12-62-42-62-84V98z" fill="url(#hg-shield)" opacity=".95"/>
+    <path d="M160 86l48 20v38c0 34-23 59-48 69-25-10-48-35-48-69v-38z" fill="var(--surface-solid)" fill-opacity=".92"/>
+    <path d="M136 160l16 16 32-36" fill="none" stroke="url(#hg-shield)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <g stroke="url(#hg-path)" stroke-width="2.5" stroke-dasharray="6 5" fill="none"><path d="M40 262c40-18 54-70 96-84M262 236c-26-30-54-26-72-60"/></g>
+    <g><circle cx="40" cy="262" r="9" fill="var(--pink)"/><circle cx="40" cy="262" r="16" fill="none" stroke="var(--pink)" stroke-opacity=".35" stroke-width="2"/><circle cx="262" cy="236" r="9" fill="var(--orange)"/><circle cx="262" cy="236" r="16" fill="none" stroke="var(--orange)" stroke-opacity=".35" stroke-width="2"/><circle cx="190" cy="176" r="6" fill="var(--cyan)"/></g>
+    <g font-family="var(--mono)" font-size="10" font-weight="700" fill="var(--ink-3)" letter-spacing=".08em"><text x="56" y="266">ENTRY</text><text x="214" y="240">LATERAL</text><text x="114" y="300">EXPOSURE</text><text x="202" y="300">PRIORITY</text></g>
+  </svg>`;
   function viewHome(el) {
     const gartnerCount = D.sources.filter(s => s.type === 'gartner').length;
-    el.innerHTML = `
-      <div class="hero">
-        <h1>Gartner「Preemptive Cybersecurity（先制型資安）」研究與五平臺 Skills Playbook</h1>
-        <p class="lead">從 Gartner 公開資料出發，拆解先制型資安的必要輸入、處理流程與可能輸出；再將可驗證的概念轉為可在 ChatGPT、Claude、Grok、GLM、DeepSeek 上執行的 skills 或等效工作流程，並以合成資料示範。</p>
-        <div class="btn-row">
-          <a class="btn" href="#/methodology">閱讀方法論研究</a>
-          <a class="btn secondary" href="#/skills">取得五平臺 Skills</a>
-          <a class="btn secondary" href="#/case">互動案例</a>
-        </div>
-      </div>
-      <div class="callout warn"><strong>誠實聲明：</strong>本站區分四種內容標記：${TAG.fact}${TAG.third}${TAG.infer}${TAG.todo}。凡標示「本專案推論」的流程、分類與評分規則，均為本專案依證據整理的實作框架，<strong>不是 Gartner 官方方法論</strong>。付費牆內的 Gartner 研究僅引用公開摘要，未宣稱讀過全文；唯一讀過全文的 Gartner 文件是使用者提供的授權轉載版《Emerging Tech Impact Radar: Preemptive Cybersecurity》。</div>
-      <div class="grid">
-        <div class="card"><div class="stat"><span class="v">${D.research.length}</span><span class="l">研究文件章節</span></div></div>
-        <div class="card"><div class="stat"><span class="v">${D.io.filter(i => i.kind === 'input').length} / ${D.io.filter(i => i.kind === 'output').length}</span><span class="l">Inputs / Outputs 項目</span></div></div>
-        <div class="card"><div class="stat"><span class="v">${D.skills.length}</span><span class="l">Skill 與等效檔案（${PLATFORM_ORDER.filter(p => D.skills.some(s => s.platform === p)).length} 個目錄）</span></div></div>
-        <div class="card"><div class="stat"><span class="v">${D.sources.length}</span><span class="l">引用來源（其中 ${gartnerCount} 筆為 Gartner 官方公開資料）</span></div></div>
-      </div>
-      <h2>本站導覽</h2>
-      <div class="grid">
-        ${[['#/methodology', '方法論導覽', '定義、目標、與傳統偵測回應的關係、與 CTEM／威脅情資／攻擊面管理等概念的關聯，每項標明來源或推論。'],
+    const inputs = D.io.filter(i => i.kind === 'input').length, outputs = D.io.filter(i => i.kind === 'output').length;
+    const dirs = PLATFORM_ORDER.filter(p => D.skills.some(s => s.platform === p)).length;
+    const TILES = [['#/methodology', '方法論導覽', '定義、目標、與傳統偵測回應的關係、與 CTEM／威脅情資／攻擊面管理等概念的關聯，每項標明來源或推論。'],
       ['#/process', '可執行流程', '八個步驟：目的、輸入、處理、輸出、限制與人工決策點。可點選步驟查看對應的 inputs/outputs。'],
       ['#/io', 'Inputs／Outputs 對照', '依流程階段、必要性、使用對象篩選；每項含來源、格式、頻率、品質、敏感度、範例與缺漏替代方案。'],
       ['#/platforms', '平臺比較', '五個平臺的模型、承載應用、自訂機制、工具呼叫、檔案與限制，含查證狀態。'],
       ['#/skills', 'Skills 專區', '共用任務規格 + 各平臺完整檔案，一鍵複製與下載（含 ZIP）。'],
       ['#/guides', '安裝與使用教學', '切換平臺查看逐步設定、使用範例、驗收方式與常見問題。'],
       ['#/case', '案例互動展示', '以合成資料示範輸入如何影響優先序、攻擊路徑假設與輸出；可切換輸入與權重。'],
-      ['#/sources', '證據與來源', '所有引用連結、發布日期、查閱日期、查證等級、付費牆狀態、原始證據檔與待驗證清單。']].map(([h, t, d]) => `<a class="card" href="${h}" style="text-decoration:none;color:inherit"><h3 style="margin-top:0">${t}</h3><p class="small">${d}</p></a>`).join('')}
+      ['#/sources', '證據與來源', '所有引用連結、發布日期、查閱日期、查證等級、付費牆狀態、原始證據檔與待驗證清單。']];
+    el.innerHTML = `
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Gartner Preemptive Cybersecurity · Research &amp; Skills</p>
+          <h1><span>Gartner Preemptive Cybersecurity</span><span class="gradient-text">先制型資安 Playbook</span></h1>
+          <p class="hero-lede">從 Gartner 公開資料出發，拆解先制型資安的必要輸入、處理流程與可能輸出；再將可驗證的概念轉為可在 ChatGPT、Claude、Grok、GLM、DeepSeek 上執行的 skills 或等效工作流程，並以合成資料示範。</p>
+          <div class="btn-row hero-actions">
+            <a class="btn" href="#/methodology">閱讀方法論研究 <span aria-hidden="true">↘</span></a>
+            <a class="btn secondary" href="#/skills">取得五平臺 Skills</a>
+            <a class="btn secondary" href="#/case">互動案例</a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="orbit orbit-one" aria-hidden="true"></div>
+          <div class="orbit orbit-two" aria-hidden="true"></div>
+          ${HERO_SVG}
+          <div class="signal-card signal-top" aria-hidden="true"><span class="signal-dot"></span><span>GARTNER PUBLIC SOURCES</span></div>
+          <div class="signal-card signal-bottom" aria-hidden="true"><span class="signal-dot verified"></span><span>SYNTHETIC DATA ONLY</span></div>
+        </div>
+      </section>
+      <section class="metrics" aria-label="站點概況">
+        <a class="metric-card accent-violet" href="#/methodology"><div class="metric-topline"><span>Research</span><span class="metric-icon" aria-hidden="true">◆</span></div><strong>${D.research.length} <em>章</em></strong><small>研究文件章節，全文呈現並標示來源或推論</small></a>
+        <a class="metric-card accent-orange" href="#/io"><div class="metric-topline"><span>Inputs / Outputs</span><span class="metric-icon" aria-hidden="true">▦</span></div><strong>${inputs} <em>IN</em> · ${outputs} <em>OUT</em></strong><small>可依流程階段、必要性與使用對象篩選</small></a>
+        <a class="metric-card accent-blue" href="#/skills"><div class="metric-topline"><span>Skills</span><span class="metric-icon" aria-hidden="true">✎</span></div><strong>${D.skills.length} <em>檔</em></strong><small>Skill 與等效檔案，分布於 ${dirs} 個目錄，可複製與下載</small></a>
+        <a class="metric-card accent-pink" href="#/sources"><div class="metric-topline"><span>Sources</span><span class="metric-icon" aria-hidden="true">≡</span></div><strong>${D.sources.length} <em>筆</em></strong><small>引用來源，其中 ${gartnerCount} 筆為 Gartner 官方公開資料</small></a>
+      </section>
+      <div class="callout warn"><strong>誠實聲明：</strong>本站區分四種內容標記：${TAG.fact}${TAG.third}${TAG.infer}${TAG.todo}。凡標示「本專案推論」的流程、分類與評分規則，均為本專案依證據整理的實作框架，<strong>不是 Gartner 官方方法論</strong>。付費牆內的 Gartner 研究僅引用公開摘要，未宣稱讀過全文；唯一讀過全文的 Gartner 文件是使用者提供的授權轉載版《Emerging Tech Impact Radar: Preemptive Cybersecurity》。</div>
+      <div class="section-heading"><div><p class="eyebrow">Site Map</p><h2 style="margin-top:0">本站導覽</h2></div><span class="panel-note">八個區域，點選即前往</span></div>
+      <div class="zone-tiles">
+        ${TILES.map(([h, t, d], i) => `<a class="zone-tile c${i + 1}" href="${h}"><span class="scope-number">0${i + 1}</span><span class="zt-label">${t}</span><p class="zt-desc">${d}</p><span class="zt-arrow" aria-hidden="true">→</span></a>`).join('')}
       </div>
-      <h2>三句話總結</h2>
-      <ol>
+      <div class="section-heading"><div><p class="eyebrow">Summary</p><h2 style="margin-top:0">三句話總結</h2></div></div>
+      <div class="card"><ol>
         <li>${TAG.fact} Gartner 將 preemptive cybersecurity 描述為在攻擊發生<strong>之前</strong>就預測、阻斷或轉移攻擊者的能力組合，並以 2030 年的市場預測凸顯其重要性。細節與原文引用見 <a href="#/methodology">方法論導覽</a>。</li>
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
         <li>${TAG.rec} 五個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
-      </ol>
+      </ol></div>
       <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；實際部署時間見 GitHub Actions 紀錄）。所有內容以儲存庫為單一來源。</p>`;
   }
 
@@ -156,7 +191,7 @@
     if (!cur) { el.innerHTML = '<p>尚無研究文件。</p>'; return; }
     const r = window.MD.render(cur.body, { shift: 1 });
     el.innerHTML = `
-      <h1>方法論導覽</h1>
+      ${heading('/methodology', '方法論導覽')}
       <p class="lead">研究文件完整呈現於本站。內容標記：${TAG.fact}${TAG.third}${TAG.infer}${TAG.rec}${TAG.todo}</p>
       <div class="tabs" role="tablist" aria-label="研究章節">${docs.map(d => tabButton(d.id, esc(d.title), d.id === cur.id, 'doc', 'doc-panel')).join('')}</div>
       <div class="two-col">
@@ -177,7 +212,7 @@
     const ioById = (id) => D.io.find(i => i.id === id);
     const stagePill = (id) => { const s = stages.find(x => x.id === id); return s ? `<a href="#/process?stage=${id}" class="pill">S${s.n} ${esc(s.name)}</a>` : esc(id); };
     el.innerHTML = `
-      <h1>可執行流程（本專案推論框架）</h1>
+      ${heading('/process', '可執行流程 <span class="small">本專案推論框架</span>')}
       <p class="lead">${TAG.infer} 以下八個步驟是本專案依 Gartner 公開描述與 CTEM 五階段整理出的實作框架，並非 Gartner 官方流程。每步標示目的、輸入、處理、輸出、限制與人工決策點。</p>
       <div class="flow" role="group" aria-label="流程步驟">${stages.map(s => `<button class="stage" aria-pressed="${s.id === cur.id}" data-stage="${s.id}"><div class="n">步驟 ${s.n}</div><div class="t">${esc(s.name)}</div><div class="small">${esc(s.en)}</div></button>`).join('')}</div>
       ${cur ? `<div class="card">
@@ -205,7 +240,7 @@
     const state = { kind: q.kind || 'all', stage: q.stage || 'all', necessity: q.necessity || 'all', audience: q.audience || 'all', text: q.text || '' };
     const audiences = [...new Set(D.io.flatMap(i => i.audience || []))];
     el.innerHTML = `
-      <h1>Inputs／Outputs 對照</h1>
+      ${heading('/io', 'Inputs／Outputs 對照')}
       <p class="lead">${TAG.infer} 輸入與輸出的分類、必要性與品質要求由本專案整理。可依流程階段、必要性、使用對象篩選。點選項目展開細節。</p>
       <div class="filters" role="search" aria-label="篩選 Inputs／Outputs">
         <label>類型 <select id="f-kind"><option value="all">全部</option><option value="input">Inputs</option><option value="output">Outputs</option></select></label>
@@ -261,7 +296,7 @@
     const ST = { verified: '<span class="pill fact">已查證</span>', partial: '<span class="pill infer">部分查證</span>', unverified: '<span class="pill todo">待驗證</span>' };
     const rows = [['模型（查證時）', 'models'], ['承載應用／執行框架', 'hosting'], ['原生自訂／技能機制', 'mechanism'], ['本專案採用的等效格式', 'skillFormat'], ['工具呼叫與連線', 'tools'], ['檔案與知識', 'files'], ['主要限制', 'limits'], ['查證狀態與備註', 'notes']];
     el.innerHTML = `
-      <h1>平臺比較</h1>
+      ${heading('/platforms', '平臺比較')}
       <p class="lead">五個平臺的支援方式、需求與限制。「模型」與「承載模型的應用程式／執行框架」分開描述。查證日期與來源見 <a href="#/sources">證據與來源</a>。</p>
       <div class="table-wrap"><table>
         <thead><tr><th>面向</th>${D.platforms.map(p => `<th>${esc(p.name)}<br><span class="small">${esc(p.vendor)}</span><br>${ST[p.status] || ''}</th>`).join('')}</tr></thead>
@@ -282,7 +317,7 @@
     const curFile = files.find(f => f.path === q.file) || files.find(f => /^SKILL\.md$/i.test(f.name)) || files.find(f => /task-spec\.md$|README\.md$/i.test(f.name)) || files[0];
     const dl = (D.manifest.downloads || []);
     el.innerHTML = `
-      <h1>Skills 專區</h1>
+      ${heading('/skills', 'Skills 專區')}
       <p class="lead">先閱讀「共用規格」，再選擇平臺。所有檔案可一鍵複製或下載；ZIP 下載包由建置腳本產生。</p>
       <div class="btn-row">
         ${dl.includes('downloads/skills-all-platforms.zip') ? '<a class="btn" href="downloads/skills-all-platforms.zip" download>下載全部 Skills + 範例資料（ZIP）</a>' : ''}
@@ -325,7 +360,7 @@
     const g = D.guides.find(x => x.platform === cur);
     const r = g ? window.MD.render(g.body, { shift: 0 }) : { html: '<p>尚無教學。</p>', toc: [] };
     el.innerHTML = `
-      <h1>安裝與使用教學</h1>
+      ${heading('/guides', '安裝與使用教學')}
       <p class="lead">切換平臺查看逐步設定、輸入格式、使用範例、預期結果、驗收方式、常見問題與機敏資料邊界。</p>
       <div class="tabs" role="tablist" aria-label="平臺">${platforms.map(p => tabButton(p, PLATFORM_META[p] || p, p === cur, 'platform', 'guide-panel')).join('')}</div>
       <div class="two-col">
@@ -343,7 +378,7 @@
     const params = JSON.parse(JSON.stringify(window.DEMO.DEFAULTS));
     const WEIGHT_LABEL = { exposure: '外部曝露', exploit: '利用可能性', identity: '身分弱點', control: '控制缺口', intel: '威脅情資', impact: '業務影響' };
     el.innerHTML = `
-      <h1>案例互動展示：Northwind Precision（合成資料）</h1>
+      ${heading('/case', '案例互動展示：Northwind Precision <span class="small">合成資料</span>')}
       <div class="callout danger"><strong>示範規則與限制：</strong>本頁所有資料皆為<strong>合成</strong>（公司、主機、帳號、弱點編號 <code>SYN-*</code>、威脅行為者皆虛構）。評分規則是本專案為了展示「輸入如何影響輸出」而設計的簡化規則，<strong>不是 Gartner 的公式，也不是任何真實風險模型</strong>。輸出僅為「假設」，未經任何實際驗證；真實環境必須經授權的安全驗證與人工審查。</div>
       <div class="two-col">
         <div>
@@ -424,7 +459,7 @@
     const doneTodo = D.todo.filter(t => t.status === 'done');
     const todoTable = (items, heads, withDate = false) => `<div class="table-wrap"><table><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}${withDate ? '<th>完成日</th>' : ''}</tr></thead><tbody>${items.map(t => `<tr><td>${md(t.item)}</td><td>${md(t.why)}</td><td>${md(t.how)}</td>${withDate ? `<td>${esc(t.resolvedAt || '')}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
     el.innerHTML = `
-      <h1>證據與來源</h1>
+      ${heading('/sources', '證據與來源')}
       <p class="lead">所有引用之來源、發布日期（如有）、查閱日期、查證等級與付費牆狀態。Gartner 付費牆內容僅引用公開摘要或新聞稿；未讀全文者一律標示。查證等級：${Object.entries(VERIFICATION).map(([k, [l, c]]) => `<span class="pill ${c}">${l}</span>`).join('')}</p>
       <div class="filters" role="search" aria-label="篩選來源"><label>類型 <select id="s-type"><option value="all">全部</option>${Object.entries(TYPE).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label><label>查證等級 <select id="s-ver"><option value="all">全部</option>${Object.entries(VERIFICATION).map(([k, [l]]) => `<option value="${k}">${l}</option>`).join('')}</select></label><label>關鍵字 <input type="text" id="s-text" placeholder="標題、網址、備註"></label><span class="small" id="s-count" role="status"></span></div>
       <div id="src-list"></div>
@@ -452,7 +487,7 @@
   // ---------- 部署 ----------
   function viewDeploy(el) {
     const g = D.guides.find(x => x.id === 'deployment') || D.guides.find(x => x.platform === '' && /deploy/i.test(x.id));
-    el.innerHTML = `<h1>部署與維護</h1><article class="doc card">${g ? md(g.body, { shift: 0 }) : '<p>尚無部署文件。</p>'}</article>
+    el.innerHTML = `${heading('/deploy', '部署與維護')}<article class="doc card">${g ? md(g.body, { shift: 0 }) : '<p>尚無部署文件。</p>'}</article>
       <h2>附錄</h2>
       ${D.extra.verifyReport ? docDetails('最近一次驗證報告（verify-report.md）', D.extra.verifyReport, { shift: 2 }) : ''}
       ${D.extra.backendReadme ? docDetails('選用後端：模型 API 代理（backend/README.md）', D.extra.backendReadme, { shift: 2 }) : ''}
@@ -529,7 +564,9 @@
 
   // ---------- 初始化 ----------
   function init() {
-    $('.sidebar nav').innerHTML = NAV.map(([g, items]) => `<div class="group">${g}</div>${items.map(([h, t]) => `<a href="#${h}">${t}</a>`).join('')}`).join('');
+    $('.sidebar nav').innerHTML = `<div class="side-title">COMMAND CENTER</div>` + NAV.map(([g, items]) => `<div class="group">${g}</div>${items.map(([h, t, icon]) => `<a href="#${h}" data-icon="${icon}">${t}</a>`).join('')}`).join('');
+    const dock = $('#mobile-dock');
+    if (dock) dock.innerHTML = DOCK.map(navItem).filter(Boolean).map(([h, t, icon]) => `<a href="#${h}"><span aria-hidden="true">${icon}</span><small>${t.replace(/（.*）|／.*$/, '').slice(0, 5)}</small></a>`).join('');
     if (!REPO_PUBLIC) for (const id of ['#repo-link', '#repo-footer']) { const n = $(id); if (n) n.hidden = true; }
     $('#menu-btn').addEventListener('click', () => { const s = $('.sidebar'); s.classList.toggle('open'); $('#menu-btn').setAttribute('aria-expanded', s.classList.contains('open')); });
     const themeBtn = $('#theme-btn');

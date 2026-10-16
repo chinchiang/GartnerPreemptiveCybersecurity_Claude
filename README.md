@@ -14,7 +14,7 @@
 ## 儲存庫結構
 
 ```
-index.html, assets/, data/        靜態網站（無框架、無外部相依）
+index.html, assets/, data/        靜態網站（無框架、無外部相依；assets/fonts/ 自載 Inter／JetBrains Mono，OFL）
 docs/research/                    研究文件 00–07（方法、定義、關聯、流程、輸入、輸出、案例、平臺）
 docs/guides/                      五平臺安裝與使用教學 + 部署與維護
 docs/evidence/                    英文證據檔（Gartner 與平臺查證原始紀錄）
