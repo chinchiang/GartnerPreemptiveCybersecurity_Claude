@@ -221,6 +221,10 @@ async function browserChecks() {
   ok('教學平臺切換 Grok', (await page.textContent('article')).includes('xAI'));
   // 案例互動
   await page.goto(base + '#/case'); await page.waitForTimeout(200);
+  const rulesCard = await page.textContent('#rules-card p');
+  const rulesExpected = await page.evaluate(() => window.DEMO.rulesSummary().join(''));
+  ok('案例：規則卡由示範引擎的規則資料渲染', rulesCard === rulesExpected && rulesCard.includes(`P1 ≥ ${await page.evaluate(() => window.DEMO.RULES.thresholds.balanced[0])}`),
+    rulesCard === rulesExpected ? '與 DEMO.rulesSummary() 相同' : `卡片：${rulesCard.slice(0, 60)}…`);
   const p1Before = await page.$$eval('#case-output .score.P1', s => s.length);
   await page.uncheck('input[data-input="threatIntel"]'); await page.waitForTimeout(100);
   const warn = await page.textContent('#case-output .callout');

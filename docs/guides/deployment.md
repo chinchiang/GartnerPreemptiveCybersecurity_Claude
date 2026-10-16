@@ -71,7 +71,7 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 評分規則數值的唯一來源是示範引擎匯出的規則資料（`assets/demo.js` 的 `RULES`），引擎由它計算。三份母本——`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A（與第 5 節的信心規則）、`skills/shared/scoring-rules.md`——以手寫散文陳述同一套規則；`scripts/scoring-rules.mjs` 的一致性檢查從中抽出數值和規則資料比對，任一處不同，`npm test` 就失敗並列出文件、規則、預期值與實際值。各平臺 `references/` 裡的複本由建置產生，不在檢查範圍內。
 
-ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md`、網站案例頁的規則卡（`assets/app.js`）與 `data/process.js` 的 S3／S4 說明也寫了規則數值，**尚未納入檢查**，修改規則時仍需手動同步。
+網站案例頁的「示範規則摘要」卡片由引擎的 `rulesSummary()` 依規則資料產生，不需要另外同步。ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md` 與 `data/process.js` 的 S3／S4 說明也寫了規則數值，**尚未納入檢查**，修改規則時仍需手動同步。
 
 `examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出（規則資料套用在合成資料上的結果），`verify:static` 會逐位元組比對。
 

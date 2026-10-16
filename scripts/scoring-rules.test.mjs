@@ -31,6 +31,31 @@ test('示範頁的預設權重取自規則資料，但是可調整的複製品',
   assert.notEqual(DEMO.DEFAULTS.weights, DEMO.RULES.weights, 'DEFAULTS.weights 必須是複製品，不能直接是 RULES 的物件');
 });
 
+test('網站規則卡的文字由引擎依規則資料產生：預設規則與改動前的卡片逐字相同', () => {
+  assert.deepEqual(DEMO.rulesSummary(), [
+    '可能性 = 對外曝露 3 + EASM 議題 0.5 + 公開利用程式 2 + EPSS×3 + KEV 3 + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 2／1.5／1）（各乘權重，上限 10）；缺 EPSS/KEV 時以 CVSS/10×1.5 近似',
+    '影響 = 業務重要性×1.4 + 資料等級（Restricted 3／Confidential 2／Internal 1／Public 0）+2 若為 crown jewel +2 若為可達 crown jewel 的入口（上限 10）',
+    '分數 = 可能性 × 影響（0–100）；平衡胃納 P1 ≥ 60、P2 ≥ 40、P3 ≥ 20（嚴格 50/30/15；寬鬆 70/50/25）。',
+    '信心：缺 0 類 → 高；缺 1–2 類 → 中；缺 3 類以上或清冊完整度 < 80% → 低。攻擊路徑可行性 = 入口可能性×0.5 + 最弱節點×0.3 + 身分／設定邊×1 − (跳數−1)×0.6；無任何發現的節點取 3。'
+  ]);
+});
+
+test('規則卡的數字全部取自規則資料：卡片用到的每個欄位都換成不同的值，卡片逐一跟著改', () => {
+  const changed = {
+    likelihood: { exposed: 11, easmIssues: 12, exploitPublic: 13, epss: 14, kev: 15, cvssFallback: 16, intel: { high: 17, medium: 18, low: 19 }, range: [1, 20] },
+    impact: { criticality: 21, dataWeight: { Restricted: 22, Confidential: 23, Internal: 24, Public: 25 }, crownJewel: 26, entry: 27, range: [2, 28] },
+    thresholds: { balanced: [31, 32, 33], strict: [34, 35, 36], tolerant: [37, 38, 39] },
+    feasibility: { entry: 41, weakest: 42, trustEdge: 43, perHop: 44, unknownNode: 45 },
+    confidence: { lowMissing: 46, inventoryThreshold: 47 }
+  };
+  assert.deepEqual(DEMO.rulesSummary(changed), [
+    '可能性 = 對外曝露 11 + EASM 議題 12 + 公開利用程式 13 + EPSS×14 + KEV 15 + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 17／18／19）（各乘權重，上限 20）；缺 EPSS/KEV 時以 CVSS/10×16 近似',
+    '影響 = 業務重要性×21 + 資料等級（Restricted 22／Confidential 23／Internal 24／Public 25）+26 若為 crown jewel +27 若為可達 crown jewel 的入口（上限 28）',
+    '分數 = 可能性 × 影響（2–560）；平衡胃納 P1 ≥ 31、P2 ≥ 32、P3 ≥ 33（嚴格 34/35/36；寬鬆 37/38/39）。',
+    '信心：缺 0 類 → 高；缺 1–45 類 → 中；缺 46 類以上或清冊完整度 < 47% → 低。攻擊路徑可行性 = 入口可能性×41 + 最弱節點×42 + 身分／設定邊×43 − (跳數−1)×44；無任何發現的節點取 45。'
+  ]);
+});
+
 // ---------------------------------------------------------------------------
 // 一致性檢查：輸入文件（路徑與內容），回傳漂移清單
 // ---------------------------------------------------------------------------
