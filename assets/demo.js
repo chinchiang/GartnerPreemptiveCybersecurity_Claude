@@ -88,23 +88,31 @@
     const exposureOf = (id) => P.inputs.exposures ? data.exposures.exposures.find(e => e.asset_id === id) : null;
     const crownJewels = (data.topology && data.topology.crown_jewels) || [];
 
-    // 可達 crown jewel 的入口節點（blast radius 因子）
-    const entryNodes = new Set();
-    if (P.inputs.topology) {
-      const byFrom0 = {};
-      for (const e of data.topology.edges) (byFrom0[e.from] ||= []).push(e);
-      const reach = (node, seen) => {
-        if (crownJewels.includes(node)) return true;
-        for (const e of byFrom0[node] || []) if (!seen.has(e.to) && reach(e.to, new Set([...seen, e.to]))) return true;
-        return false;
-      };
-      for (const e of byFrom0['internet'] || []) if (reach(e.to, new Set([e.to]))) entryNodes.add(e.to);
-    }
-
     // 模擬資產清冊不完整：依完整度隱藏排序靠後的資產（示範用）
     const visibleIds = scopedAssets.map(a => a.asset_id).filter((_, idx, arr) => idx < Math.round(arr.length * P.inventoryCompleteness / 100));
     const hidden = scopedAssets.filter(a => !visibleIds.includes(a.asset_id));
     const inventoryLow = P.inventoryCompleteness < RULES.confidence.inventoryThreshold;
+
+    // S4 攻擊路徑：從 internet 出發，只走清冊看得到的節點到 crown jewels（簡單 DFS，跳數上限見 F.maxHops）。
+    // 路徑本身不依賴 S3 的分數，所以先找；S3 的入口加分與 S4 的可行性都用這組路徑
+    const paths = [];
+    if (P.inputs.topology) {
+      const edges = data.topology.edges.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
+      const byFrom = {};
+      for (const e of edges) (byFrom[e.from] ||= []).push(e);
+      const dfs = (node, trail, seen) => {
+        if (trail.length >= F.maxHops) return; // trail 已有 maxHops 條邊就不再延伸
+        for (const e of byFrom[node] || []) {
+          if (seen.has(e.to)) continue;
+          const t = [...trail, e];
+          if (crownJewels.includes(e.to)) paths.push(t);
+          else dfs(e.to, t, new Set([...seen, e.to]));
+        }
+      };
+      dfs('internet', [], new Set(['internet']));
+    }
+    // 可達 crown jewel 的入口節點（blast radius 因子）：至少一條攻擊路徑以它為入口
+    const entryNodes = new Set(paths.map(p => p[0].to));
 
     // S3 曝險評分
     const findings = (data.vulnerabilities || []).filter(v => visibleIds.includes(v.asset_id)).map(v => {
@@ -160,23 +168,7 @@
     for (const f of findings) f.priority = f.score >= th[0] ? 'P1' : f.score >= th[1] ? 'P2' : f.score >= th[2] ? 'P3' : 'P4';
     findings.sort((a, b) => b.score - a.score);
 
-    // S4 攻擊路徑假設：從 internet 出發，走 topology edges 到 crown jewels（簡單 DFS，跳數上限見 F.maxHops）
-    const paths = [];
-    if (P.inputs.topology) {
-      const edges = data.topology.edges.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
-      const byFrom = {};
-      for (const e of edges) (byFrom[e.from] ||= []).push(e);
-      const dfs = (node, trail, seen) => {
-        if (trail.length >= F.maxHops) return; // trail 已有 maxHops 條邊就不再延伸
-        for (const e of byFrom[node] || []) {
-          if (seen.has(e.to)) continue;
-          const t = [...trail, e];
-          if (crownJewels.includes(e.to)) paths.push(t);
-          else dfs(e.to, t, new Set([...seen, e.to]));
-        }
-      };
-      dfs('internet', [], new Set(['internet']));
-    }
+    // S4 攻擊路徑假設：上面找到的路徑，配合 S3 的節點可能性計算可行性
     // 節點可能性：有發現者取最高可能性（可為 0）；完全無發現者取 F.unknownNode（未知）
     const nodeLikelihood = (id) => { const ls = findings.filter(f => f.asset_id === id).map(f => f.likelihood); return ls.length ? Math.max(...ls) : F.unknownNode; };
     const hypotheses = paths.map(p => {

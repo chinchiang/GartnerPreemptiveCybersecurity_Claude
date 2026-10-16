@@ -59,7 +59,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門與攻擊路徑跳數上限、選用後端代理的授權範圍守門、評分規則一致性
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、選用後端代理的授權範圍守門、評分規則一致性
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎驗收與快照、下載檔、機敏字串
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
