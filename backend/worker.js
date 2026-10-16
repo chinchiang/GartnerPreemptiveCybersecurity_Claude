@@ -6,6 +6,21 @@
 const CORE_PROMPT = `（部署時以 build 步驟把 skills/shared/core-prompt.md 的提示詞區塊貼入此處）`;
 const DEFAULT_BASE = { openai: 'https://api.openai.com/v1', xai: 'https://api.x.ai/v1', glm: 'https://api.z.ai/api/paas/v4', deepseek: 'https://api.deepseek.com', anthropic: 'https://api.anthropic.com' };
 const hits = new Map();
+// 授權範圍守門：與網站示範引擎（assets/demo.js 的 scopeProblems）同一套規則，由 tests/fixtures/scope-cases.json 的共用案例守住一致。
+// Worker 獨立部署，不能載入 demo.js，所以在這裡自帶一份；規則改了要同時改兩處。回傳缺少的欄位清單；空陣列表示可以分析。
+const SCOPE_REQUIRED = ['organization', 'analysis_date', 'authorized_scope.in_scope_assets', 'authorized_scope.active_testing_authorized', 'authorized_scope.external_scanning_authorized', 'reporting.audience'];
+function scopeProblems(scope) {
+  if (!scope || typeof scope !== 'object') return [...SCOPE_REQUIRED];
+  const get = (p) => p.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope);
+  return SCOPE_REQUIRED.filter(p => {
+    const v = get(p);
+    if (v === undefined || v === null || v === '') return true;
+    if (p === 'organization' || p === 'analysis_date') return typeof v !== 'string';
+    if (p === 'authorized_scope.in_scope_assets' || p === 'reporting.audience') return !Array.isArray(v) || v.length === 0;
+    if (p.endsWith('_authorized')) return typeof v !== 'boolean';
+    return false;
+  });
+}
 
 export default {
   async fetch(request, env) {
@@ -21,7 +36,8 @@ export default {
     const len = Number(request.headers.get('content-length') || 0);
     if (len > 512 * 1024) return new Response('Payload too large', { status: 413, headers: cors });
     let body; try { body = await request.json(); } catch { return new Response('Bad JSON', { status: 400, headers: cors }); }
-    if (!body?.bundle?.scope) return new Response('缺少 scope：無授權範圍不得分析', { status: 400, headers: cors });
+    const missing = scopeProblems(body?.bundle?.scope);
+    if (missing.length) return new Response(`缺少 scope 或必填欄位：${missing.join('、')}；無授權範圍不得分析`, { status: 400, headers: cors });
     const user = `請依系統指令進行先制型曝險分析。輸入：\n\`\`\`json\n${JSON.stringify(body.bundle).slice(0, 400000)}\n\`\`\``;
     const provider = env.PROVIDER || 'openai';
     const base = env.BASE_URL || DEFAULT_BASE[provider];
