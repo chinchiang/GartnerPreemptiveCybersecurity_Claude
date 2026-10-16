@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "f39537736152",
+ "contentHash": "2adfd176c55f",
  "research": [
   {
    "id": "00-method",
@@ -104,7 +104,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "chatgpt",
-   "bytes": 6586
+   "bytes": 6640
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/output-schema.json",
@@ -149,7 +149,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "claude",
-   "bytes": 6586
+   "bytes": 6640
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/output-schema.json",
@@ -164,12 +164,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 28419
+   "bytes": 30003
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
    "platform": "claude",
-   "bytes": 6117
+   "bytes": 6132
   },
   {
    "path": "skills/deepseek/README.md",
@@ -194,7 +194,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "deepseek",
-   "bytes": 6586
+   "bytes": 6640
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/output-schema.json",
@@ -249,7 +249,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/input-schema.json",
    "platform": "glm",
-   "bytes": 6586
+   "bytes": 6640
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/output-schema.json",
@@ -309,7 +309,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 28288
+   "bytes": 29872
   },
   {
    "path": "skills/shared/core-prompt.md",
@@ -319,7 +319,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/input-schema.json",
    "platform": "shared",
-   "bytes": 6586
+   "bytes": 6640
   },
   {
    "path": "skills/shared/output-schema.json",

@@ -33,7 +33,8 @@ class ScopeGateFromSchemaTest(unittest.TestCase):
 class ScopeRuleNoteTest(unittest.TestCase):
     def test_rule_note_is_derived_from_the_schema(self):
         self.assertEqual(aw.scope_rule_note(INPUT_SCHEMA),
-                         "（organization、analysis_date 須為非空字串；in_scope_assets、audience 須為非空陣列；"
+                         "（organization 須含非空白字元；analysis_date 須為 YYYY-MM-DD 的有效日期；"
+                         "in_scope_assets、audience 須為非空陣列，且每項為非空白字串；"
                          "active_testing_authorized、external_scanning_authorized 須為布林值）")
 
 

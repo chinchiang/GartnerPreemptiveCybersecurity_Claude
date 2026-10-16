@@ -27,6 +27,13 @@ for (const c of cases) {
   });
 }
 
+test('示範引擎守門：必填欄位有填但不合格時拒絕分析，reason 說明缺少或不合格', () => {
+  const R = DEMO.analyze({ scope: { ...base, analysis_date: '2026-02-30' } });
+  assert.equal(R.refused, true);
+  assert.equal(R.reason, '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。');
+  assert.deepEqual(R.missingFields, ['analysis_date']);
+});
+
 let upstreamCalls = 0;
 let ip = 0; // worker 每個 IP 每分鐘只放行 5 次，每個請求用不同的 IP
 const analyze = (scope) => worker.fetch(new Request('https://worker.example/api/analyze', {
@@ -56,7 +63,7 @@ describe('後端代理（backend/worker.js）', () => {
       }
       assert.equal(r.status, 400);
       assert.equal(upstreamCalls, 0);
-      assert.equal(await r.text(), `缺少 scope 或必填欄位：${c.problems.join('、')}；無授權範圍不得分析`);
+      assert.equal(await r.text(), `缺少 scope 或必填欄位不合格：${c.problems.join('、')}；無授權範圍不得分析`);
     });
   }
 });

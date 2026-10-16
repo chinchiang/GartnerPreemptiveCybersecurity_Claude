@@ -43,7 +43,7 @@ def main(folder: str) -> int:
         return 3
     scope_missing = analysis_workflow.scope_problems(scope, input_schema)
     if scope_missing:
-        print("scope.json 缺少必填欄位：" + "、".join(scope_missing) + "。停止分析。")
+        print("scope.json 缺少或不合格的必填欄位：" + "、".join(scope_missing) + "。停止分析。")
         return 3
     in_scope = set(scope.get("authorized_scope", {}).get("in_scope_assets", []))
     print(f"[scope] 組織={scope.get('organization')} 日期={scope.get('analysis_date')} "

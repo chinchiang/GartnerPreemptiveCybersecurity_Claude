@@ -1,5 +1,5 @@
 {
-  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。Python（四支 api-workflow.py、validate_inputs.py）、網站示範引擎（demo.js scopeProblems）與選用後端代理（backend/worker.js）都用這份案例測試，判定必須一致。規則（來自 skills/shared/input-schema.json）：organization、analysis_date 須為非空字串；in_scope_assets、audience 必須是非空陣列；兩個 *_authorized 必須是布林值。",
+  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。Python（四支 api-workflow.py、validate_inputs.py）、網站示範引擎（demo.js scopeProblems）與選用後端代理（backend/worker.js）都用這份案例測試，判定必須一致。規則（來自 skills/shared/input-schema.json）：organization 須含非空白字元（不 trim）；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 必須是非空陣列，且每項為非空白字串（重複不擋）；兩個 *_authorized 必須是布林值。",
   "cases": [
     { "name": "合成資料原樣", "set": {}, "remove": [], "problems": [] },
     { "name": "issue #26 的重現範例", "set": { "authorized_scope.in_scope_assets": [], "authorized_scope.active_testing_authorized": "no", "reporting.audience": [] }, "remove": [],
@@ -17,6 +17,22 @@
       "problems": ["authorized_scope.in_scope_assets", "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized"] },
     { "name": "authorized_scope 是字串而不是物件", "set": { "authorized_scope": "全部" }, "remove": [],
       "problems": ["authorized_scope.in_scope_assets", "authorized_scope.active_testing_authorized", "authorized_scope.external_scanning_authorized"] },
-    { "name": "缺整個 reporting", "set": {}, "remove": ["reporting"], "problems": ["reporting.audience"] }
+    { "name": "缺整個 reporting", "set": {}, "remove": ["reporting"], "problems": ["reporting.audience"] },
+    { "name": "analysis_date 不是日期", "set": { "analysis_date": "not a date" }, "remove": [], "problems": ["analysis_date"] },
+    { "name": "analysis_date 是不存在的日期 2 月 30 日", "set": { "analysis_date": "2026-02-30" }, "remove": [], "problems": ["analysis_date"] },
+    { "name": "analysis_date 是非閏年的 2 月 29 日", "set": { "analysis_date": "2026-02-29" }, "remove": [], "problems": ["analysis_date"] },
+    { "name": "analysis_date 是閏年的 2 月 29 日（可以分析）", "set": { "analysis_date": "2024-02-29" }, "remove": [], "problems": [] },
+    { "name": "analysis_date 沒有連字號", "set": { "analysis_date": "20260908" }, "remove": [], "problems": ["analysis_date"] },
+    { "name": "analysis_date 的月與日沒有補零", "set": { "analysis_date": "2026-9-8" }, "remove": [], "problems": ["analysis_date"] },
+    { "name": "analysis_date 帶時間", "set": { "analysis_date": "2026-09-08T00:00:00Z" }, "remove": [], "problems": ["analysis_date"] },
+    { "name": "organization 只有半形空白", "set": { "organization": "   " }, "remove": [], "problems": ["organization"] },
+    { "name": "organization 只有全形空白", "set": { "organization": "　　" }, "remove": [], "problems": ["organization"] },
+    { "name": "organization 前後有空白（可以分析，不 trim）", "set": { "organization": " Northwind " }, "remove": [], "problems": [] },
+    { "name": "in_scope_assets 含 null", "set": { "authorized_scope.in_scope_assets": [null] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
+    { "name": "in_scope_assets 含空字串", "set": { "authorized_scope.in_scope_assets": ["A01", ""] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
+    { "name": "in_scope_assets 含只有全形空白的項目", "set": { "authorized_scope.in_scope_assets": ["A01", "　"] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
+    { "name": "in_scope_assets 有重複項目（可以分析）", "set": { "authorized_scope.in_scope_assets": ["A01", "A01"] }, "remove": [], "problems": [] },
+    { "name": "audience 含數字", "set": { "reporting.audience": ["CISO", 1] }, "remove": [], "problems": ["reporting.audience"] },
+    { "name": "audience 含只有空白的項目", "set": { "reporting.audience": ["  "] }, "remove": [], "problems": ["reporting.audience"] }
   ]
 }
