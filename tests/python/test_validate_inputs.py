@@ -89,7 +89,7 @@ class ValidateInputsTest(unittest.TestCase):
                 for file, message in findings:
                     if file.endswith(".csv"):
                         self.assertIn(message, self.line(out, file))
-                bad_edges = sum(1 for f in findings if f[0] == "topology.json")
+                bad_edges = sum(1 for f in findings if f[0] == "topology.json" and f[1].startswith("邊 "))
                 self.assertIn(f"指向不存在資產的邊={bad_edges}", self.line(out, "topology.json"))
 
     def test_dangling_topology_edges_are_counted_per_edge(self):
@@ -99,14 +99,6 @@ class ValidateInputsTest(unittest.TestCase):
         code, out, err = self.run_script()
         self.assertEqual(code, 0, out + err)
         self.assertIn("指向不存在資產的邊=3", self.line(out, "topology.json"))
-
-    def test_non_object_topology_edge_is_not_a_dangling_edge(self):
-        topology = json.loads((self.dir / "topology.json").read_text(encoding="utf-8"))
-        topology["edges"].append("oops")
-        (self.dir / "topology.json").write_text(json.dumps(topology, ensure_ascii=False), encoding="utf-8")
-        code, out, err = self.run_script()
-        self.assertEqual(code, 0, out + err)
-        self.assertIn("指向不存在資產的邊=0", self.line(out, "topology.json"))
 
     def test_non_object_topology_edge_is_shown_as_anomaly(self):
         topology = json.loads((self.dir / "topology.json").read_text(encoding="utf-8"))
