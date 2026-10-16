@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-10-16T05:54:39.972Z
-模式：full
-結果：106/106 通過
+執行時間：2026-10-16T05:55:50.261Z
+模式：--static
+結果：59/59 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -65,50 +65,3 @@
 | 下載檔存在 downloads/skills-all-platforms.zip | ✅ |  |
 | 下載檔存在 downloads/synthetic-example-data.zip | ✅ |  |
 | 無 API 金鑰樣式字串 | ✅ |  |
-| 首頁渲染 | ✅ |  |
-| 導覽 #/methodology | ✅ | 方法論導覽 |
-| 導覽 #/process | ✅ | 可執行流程 本專案推論框架 |
-| 導覽 #/io | ✅ | Inputs／Outputs 對照 |
-| 導覽 #/platforms | ✅ | 平臺比較 |
-| 導覽 #/skills | ✅ | Skills 專區 |
-| 導覽 #/guides | ✅ | 安裝與使用教學 |
-| 導覽 #/case | ✅ | 案例互動展示：Northwind Precision 合成資 |
-| 導覽 #/sources | ✅ | 證據與來源 |
-| 導覽 #/deploy | ✅ | 部署與維護 |
-| 方法論章節切換 | ✅ | /methodology?doc=01-definition |
-| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=131 |
-| Tabs 方向鍵切換 | ✅ | /methodology?doc=02-relations |
-| Skip link 不改變頁面 | ✅ |  |
-| 全站搜尋回傳結果 | ✅ | 12 筆 |
-| 搜尋 ARIA：aria-expanded 更新且結果為 option | ✅ |  |
-| 搜尋鍵盤導覽：aria-activedescendant | ✅ |  |
-| 搜尋片段含 mark | ✅ |  |
-| I/O 必要性篩選 | ✅ | 16 → 7 |
-| I/O 階段篩選 | ✅ |  |
-| Skills 一鍵複製（剪貼簿） | ✅ | 3768 字元 |
-| Skills 檔案下載 | ✅ | SKILL.md |
-| Skills 原始碼檢視、複製、下載保留 frontmatter | ✅ | 三者皆與原文（含 frontmatter）相同 |
-| Skills ZIP 下載 | ✅ |  |
-| Skills 原始／渲染切換 | ✅ |  |
-| Skills 渲染檢視略過 frontmatter | ✅ | 第一個元素：H2 |
-| 教學平臺切換 Grok | ✅ |  |
-| 案例：規則卡由示範引擎的規則資料渲染 | ✅ | 與 DEMO.rulesSummary() 相同，且含預設門檻與無發現節點取值 |
-| 案例：移除情資後顯示缺漏警示 | ✅ |  |
-| 案例：移除拓樸後無路徑假設 | ✅ |  |
-| 案例：清冊完整度調整 | ✅ |  |
-| 案例：風險胃納切換改變 P1 數 | ✅ | 10 → 12 |
-| 案例：輸出 JSON 下載 | ✅ |  |
-| 案例：複製報告 Markdown | ✅ |  |
-| 來源頁所有連結為 http(s) | ✅ | 55 個連結 |
-| 來源頁類型篩選 | ✅ |  |
-| 來源頁查證等級篩選 | ✅ |  |
-| 來源頁：證據檔附錄可展開 | ✅ |  |
-| 部署頁：標題層級無跳級 | ✅ |  |
-| 行動裝置 390px：所有路由無水平捲動 | ✅ |  |
-| 行動裝置 320px：無水平捲動 | ✅ |  |
-| 行動裝置：漢堡選單開啟 | ✅ |  |
-| 無障礙：skip link、lang、aria-current | ✅ |  |
-| 對比：主要按鈕 ≥ 4.5 | ✅ | 18.58 |
-| 對比：深色主題強調色元素 ≥ 4.5 | ✅ | 5.14 |
-| 儲存庫連結顯示狀態符合 REPO_PUBLIC=true | ✅ | 實際 顯示 |
-| 無 JS 執行錯誤 | ✅ |  |
