@@ -69,16 +69,16 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 ### 4.1 評分規則與示範引擎快照
 
-評分規則數值的唯一來源是示範引擎匯出的規則資料（`assets/demo.js` 的 `RULES`），引擎由它計算。三份母本——`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A（與第 5 節的信心規則）、`skills/shared/scoring-rules.md`——以手寫散文陳述同一套規則；`scripts/scoring-rules.mjs` 的一致性檢查從中抽出數值和規則資料比對，任一處不同，`npm test` 就失敗並列出文件、規則、預期值與實際值。各平臺 `references/` 裡的複本由建置產生，不在檢查範圍內。
+評分規則數值的唯一來源是示範引擎匯出的規則資料（`assets/demo.js` 的 `RULES`），引擎由它計算。三份母本——`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A（與第 5 節的信心規則）、`skills/shared/scoring-rules.md`——以手寫散文陳述同一套規則；兩份刻意改寫的版本（ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的 S3／S4 說明也寫了規則數值。`scripts/scoring-rules.mjs` 的一致性檢查從這些文件抽出數值與運算子，和規則資料比對（改寫版只比數值與運算子，措辭可以不同），任一處不同，`npm test` 就失敗並列出文件、規則、預期值與實際值。各平臺 `references/` 裡的複本由建置產生，不在檢查範圍內。
 
-網站案例頁的「示範規則摘要」卡片由引擎的 `rulesSummary()` 依規則資料產生，不需要另外同步。ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md` 與 `data/process.js` 的 S3／S4 說明也寫了規則數值，**尚未納入檢查**，修改規則時仍需手動同步。
+網站案例頁的「示範規則摘要」卡片由引擎的 `rulesSummary()` 依規則資料產生，不需要另外同步。
 
 `examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出（規則資料套用在合成資料上的結果），`verify:static` 會逐位元組比對。
 
 規則**刻意**變更時：
 
 1. 改 `assets/demo.js` 的 `RULES`。
-2. 依 `npm test` 列出的漂移改三份母本，並手動同步上一段列出的改寫版與網站文字。
+2. 依 `npm test` 列出的漂移改母本、改寫版與流程資料（網站規則卡由規則資料產生，不必改）。
 3. `npm test` 通過後，執行 `npm run snapshot` 更新快照，並在 PR 說明變更理由。
 
 ### 4.2 來源連結檢查在哪裡跑
@@ -117,7 +117,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 範例資料 | `examples/synthetic-org/`（保持合成） | build；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
-| 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本（見第 4.1 節） | `npm test` + build + verify + `npm run snapshot` |
+| 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本、改寫版（Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的流程說明（見第 4.1 節） | `npm test` + build + verify + `npm run snapshot` |
 
 `data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/`，忘記重建或直接改了複本、嵌入區塊都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
 
