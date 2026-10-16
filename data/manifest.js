@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "26445dc7ad8e",
+ "contentHash": "85e021071d5e",
  "research": [
   {
    "id": "00-method",
@@ -169,7 +169,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
    "platform": "claude",
-   "bytes": 5831
+   "bytes": 6117
   },
   {
    "path": "skills/deepseek/README.md",
