@@ -216,8 +216,9 @@ async function browserChecks() {
   const skillMd = await page.evaluate(() => window.SKILL_FILES.find(f => f.path === 'skills/claude/preemptive-exposure-analysis/SKILL.md').content);
   const rawView = await page.textContent('#file-raw code');
   const downloaded = readFileSync(await dl.path(), 'utf8');
-  ok('Skills 原始碼檢視、複製、下載保留 frontmatter', skillMd.startsWith('---\n') && rawView === skillMd && clip === skillMd && downloaded === skillMd,
-    [rawView === skillMd ? '' : '原始碼檢視', clip === skillMd ? '' : '複製', downloaded === skillMd ? '' : '下載'].filter(Boolean).join('、') + (rawView === skillMd && clip === skillMd && downloaded === skillMd ? '與原文相同' : ' 與原文不同'));
+  const notOriginal = [['原始碼檢視', rawView], ['複製', clip], ['下載', downloaded]].filter(([, text]) => text !== skillMd).map(([name]) => name);
+  ok('Skills 原始碼檢視、複製、下載保留 frontmatter', skillMd.startsWith('---\n') && notOriginal.length === 0,
+    notOriginal.length ? `${notOriginal.join('、')}與原文不同` : '三者皆與原文（含 frontmatter）相同');
   const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('a[href="downloads/skills-claude.zip"]')]);
   ok('Skills ZIP 下載', (await dl2.suggestedFilename()).endsWith('.zip'));
   await page.click('#toggle-view'); await page.waitForTimeout(50);
