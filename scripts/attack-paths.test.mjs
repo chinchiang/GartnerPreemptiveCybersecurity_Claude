@@ -24,10 +24,6 @@ const chain = (hops) => {
 };
 const hopsOf = (data) => DEMO.analyze(data).hypotheses.map(h => h.hops);
 
-test('跳數上限是 5（規則資料與文件都寫「最多 5 跳」）', () => {
-  assert.equal(DEMO.RULES.feasibility.maxHops, 5);
-});
-
 test('恰好 5 跳的鏈產生一條 5 跳的路徑；6 跳、7 跳的鏈不產生路徑', () => {
   assert.deepEqual(hopsOf(chain(5)), [5]);
   assert.deepEqual(hopsOf(chain(6)), []);
