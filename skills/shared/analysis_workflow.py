@@ -128,20 +128,25 @@ def scope_problems(scope, input_schema: dict) -> list:
     return _check(scope if isinstance(scope, dict) else {}, input_schema["properties"]["scope"], "")
 
 
+# schema 的「至少一個非空白字元」：明確列出空白字元，取 Python 與 JS 兩邊 \s 的聯集。
+# 不用 \S：Python 把 U+001C–U+001F、U+0085 當空白而 JS 不當，JS 把 U+FEFF 當空白而 Python 不當
+NON_BLANK_PATTERN = r"[^\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]"
+
+
 def _rule_text(node: dict) -> str:
     """一個必填欄位的 schema 節點寫成給使用者看的規則（scope_rule_note 用）。"""
     kind = node.get("type")
     if kind == "string":
         if node.get("format") == "date":
             return "須為 YYYY-MM-DD 的有效日期"
-        if node.get("pattern") == r"\S":
+        if node.get("pattern") == NON_BLANK_PATTERN:
             return "須含非空白字元"
         return "須為非空字串" if node.get("minLength") else "須為字串"
     if kind == "array":
         text = "須為非空陣列" if node.get("minItems") else "須為陣列"
         items = node.get("items") or {}
         if items.get("type") == "string":
-            text += "，且每項為非空白字串" if items.get("pattern") == r"\S" else "，且每項為字串"
+            text += "，且每項為非空白字串" if items.get("pattern") == NON_BLANK_PATTERN else "，且每項為字串"
         return text
     if kind == "boolean":
         return "須為布林值"

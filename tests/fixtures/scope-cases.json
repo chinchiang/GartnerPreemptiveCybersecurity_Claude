@@ -33,6 +33,8 @@
     { "name": "in_scope_assets 含只有全形空白的項目", "set": { "authorized_scope.in_scope_assets": ["A01", "　"] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
     { "name": "in_scope_assets 有重複項目（可以分析）", "set": { "authorized_scope.in_scope_assets": ["A01", "A01"] }, "remove": [], "problems": [] },
     { "name": "audience 含數字", "set": { "reporting.audience": ["CISO", 1] }, "remove": [], "problems": ["reporting.audience"] },
-    { "name": "audience 含只有空白的項目", "set": { "reporting.audience": ["  "] }, "remove": [], "problems": ["reporting.audience"] }
+    { "name": "audience 含只有空白的項目", "set": { "reporting.audience": ["  "] }, "remove": [], "problems": ["reporting.audience"] },
+    { "name": "organization 只有 U+FEFF（JS 的 \\s 當空白、Python 的不當）", "set": { "organization": "\ufeff" }, "remove": [], "problems": ["organization"] },
+    { "name": "in_scope_assets 含只有 U+0085 的項目（Python 的 \\s 當空白、JS 的不當）", "set": { "authorized_scope.in_scope_assets": ["A01", "\u0085"] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] }
   ]
 }

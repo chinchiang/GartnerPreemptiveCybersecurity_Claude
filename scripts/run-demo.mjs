@@ -24,7 +24,7 @@ if (args.includes('--json')) { console.log(JSON.stringify(ctx.window.DEMO.toSche
 if (R.refused) {
   console.log('== 拒絕分析 ==');
   console.log(R.reason);
-  console.log('缺少欄位：', R.missingFields.join('、'));
+  console.log('缺少或不合格的欄位：', R.problemFields.join('、'));
   console.log('必要欄位：', R.requiredFields.join('、'));
   process.exit(2);
 }

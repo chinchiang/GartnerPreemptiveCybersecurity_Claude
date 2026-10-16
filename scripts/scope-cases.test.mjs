@@ -31,7 +31,7 @@ test('示範引擎守門：必填欄位有填但不合格時拒絕分析，reaso
   const R = DEMO.analyze({ scope: { ...base, analysis_date: '2026-02-30' } });
   assert.equal(R.refused, true);
   assert.equal(R.reason, '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。');
-  assert.deepEqual(R.missingFields, ['analysis_date']);
+  assert.deepEqual(R.problemFields, ['analysis_date']);
 });
 
 let upstreamCalls = 0;
