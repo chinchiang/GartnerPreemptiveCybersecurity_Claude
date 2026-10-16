@@ -315,13 +315,13 @@
   /** 網站案例頁「示範規則摘要」卡片的文字（逐行、純文字，由呼叫端跳脫與排版）；數字全部取自規則資料。
       列的是基本值，示範頁調整的權重另外相乘（卡片上寫「各乘權重」）。 */
   function rulesSummary(rules = RULES) {
-    const { likelihood: Lk, impact: Im, thresholds: T, feasibility: Fe, confidence: C } = rules;
-    const dw = Im.dataWeight;
+    const { likelihood, impact, thresholds, feasibility, confidence } = rules;
+    const dataWeight = impact.dataWeight;
     return [
-      `可能性 = 對外曝露 ${Lk.exposed} + EASM 議題 ${Lk.easmIssues} + 公開利用程式 ${Lk.exploitPublic} + EPSS×${Lk.epss} + KEV ${Lk.kev} + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 ${Lk.intel.high}／${Lk.intel.medium}／${Lk.intel.low}）（各乘權重，上限 ${Lk.range[1]}）；缺 EPSS/KEV 時以 CVSS/10×${Lk.cvssFallback} 近似`,
-      `影響 = 業務重要性×${Im.criticality} + 資料等級（Restricted ${dw.Restricted}／Confidential ${dw.Confidential}／Internal ${dw.Internal}／Public ${dw.Public}）+${Im.crownJewel} 若為 crown jewel +${Im.entry} 若為可達 crown jewel 的入口（上限 ${Im.range[1]}）`,
-      `分數 = 可能性 × 影響（${Lk.range[0] * Im.range[0]}–${Lk.range[1] * Im.range[1]}）；平衡胃納 P1 ≥ ${T.balanced[0]}、P2 ≥ ${T.balanced[1]}、P3 ≥ ${T.balanced[2]}（嚴格 ${T.strict.join('/')}；寬鬆 ${T.tolerant.join('/')}）。`,
-      `信心：缺 0 類 → 高；缺 1–${C.lowMissing - 1} 類 → 中；缺 ${C.lowMissing} 類以上或清冊完整度 < ${C.inventoryThreshold}% → 低。攻擊路徑可行性 = 入口可能性×${Fe.entry} + 最弱節點×${Fe.weakest} + 身分／設定邊×${Fe.trustEdge} − (跳數−1)×${Fe.perHop}；無任何發現的節點取 ${Fe.unknownNode}。`
+      `可能性 = 對外曝露 ${likelihood.exposed} + EASM 議題 ${likelihood.easmIssues} + 公開利用程式 ${likelihood.exploitPublic} + EPSS×${likelihood.epss} + KEV ${likelihood.kev} + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 ${likelihood.intel.high}／${likelihood.intel.medium}／${likelihood.intel.low}）（各乘權重，上限 ${likelihood.range[1]}）；缺 EPSS/KEV 時以 CVSS/10×${likelihood.cvssFallback} 近似`,
+      `影響 = 業務重要性×${impact.criticality} + 資料等級（Restricted ${dataWeight.Restricted}／Confidential ${dataWeight.Confidential}／Internal ${dataWeight.Internal}／Public ${dataWeight.Public}）+${impact.crownJewel} 若為 crown jewel +${impact.entry} 若為可達 crown jewel 的入口（上限 ${impact.range[1]}）`,
+      `分數 = 可能性 × 影響（${likelihood.range[0] * impact.range[0]}–${likelihood.range[1] * impact.range[1]}）；平衡胃納 P1 ≥ ${thresholds.balanced[0]}、P2 ≥ ${thresholds.balanced[1]}、P3 ≥ ${thresholds.balanced[2]}（嚴格 ${thresholds.strict.join('/')}；寬鬆 ${thresholds.tolerant.join('/')}）。`,
+      `信心：缺 0 類 → 高；缺 1–${confidence.lowMissing - 1} 類 → 中；缺 ${confidence.lowMissing} 類以上或清冊完整度 < ${confidence.inventoryThreshold}% → 低。攻擊路徑可行性 = 入口可能性×${feasibility.entry} + 最弱節點×${feasibility.weakest} + 身分／設定邊×${feasibility.trustEdge} − (跳數−1)×${feasibility.perHop}；無任何發現的節點取 ${feasibility.unknownNode}。`
     ];
   }
 

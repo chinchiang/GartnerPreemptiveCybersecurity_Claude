@@ -221,10 +221,13 @@ async function browserChecks() {
   ok('教學平臺切換 Grok', (await page.textContent('article')).includes('xAI'));
   // 案例互動
   await page.goto(base + '#/case'); await page.waitForTimeout(200);
+  // 規則卡：頁面上的文字等於引擎產生的文字（接線），且含預設規則的字面值錨點（規則刻意變更時，這裡和快照一起更新）
   const rulesCard = await page.textContent('#rules-card p');
   const rulesExpected = await page.evaluate(() => window.DEMO.rulesSummary().join(''));
-  ok('案例：規則卡由示範引擎的規則資料渲染', rulesCard === rulesExpected && rulesCard.includes(`P1 ≥ ${await page.evaluate(() => window.DEMO.RULES.thresholds.balanced[0])}`),
-    rulesCard === rulesExpected ? '與 DEMO.rulesSummary() 相同' : `卡片：${rulesCard.slice(0, 60)}…`);
+  const missingAnchors = ['平衡胃納 P1 ≥ 60、P2 ≥ 40、P3 ≥ 20', '無任何發現的節點取 3'].filter(a => !rulesCard.includes(a));
+  ok('案例：規則卡由示範引擎的規則資料渲染', rulesCard === rulesExpected && missingAnchors.length === 0,
+    rulesCard !== rulesExpected ? `卡片與 DEMO.rulesSummary() 不同：${rulesCard.slice(0, 60)}…`
+      : missingAnchors.length ? `卡片缺少預設規則：${missingAnchors.join('、')}` : '與 DEMO.rulesSummary() 相同，且含預設門檻與無發現節點取值');
   const p1Before = await page.$$eval('#case-output .score.P1', s => s.length);
   await page.uncheck('input[data-input="threatIntel"]'); await page.waitForTimeout(100);
   const warn = await page.textContent('#case-output .callout');
