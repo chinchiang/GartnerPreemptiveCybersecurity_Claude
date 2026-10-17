@@ -31,6 +31,17 @@ test('突變被測試抓到：結束碼 0，檔案還原', () => {
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('突變照字面寫入：to 裡的 $&、$$ 不當替換樣式展開（寫入的內容與清單、--json 紀錄一致）', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b /* $& $$ */', note: '含替換樣式的字元' }]);
+  try {
+    // 測試指令先把它讀到的 calc.js 存成 seen.txt；最後一次執行是突變那一次
+    writeFileSync(join(dir, 'save.js'), "require('fs').copyFileSync(__dirname + '/calc.js', __dirname + '/seen.txt');\n");
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node save.js && node check.js'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(readFileSync(join(dir, 'seen.txt'), 'utf8'), 'module.exports = (a, b) => a - b /* $& $$ */;\n', r.stdout + r.stderr);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('有突變存活：結束碼 1，點名存活的那一種', () => {
   const dir = project([
     { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' },

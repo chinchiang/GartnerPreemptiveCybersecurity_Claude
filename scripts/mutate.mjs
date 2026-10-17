@@ -64,7 +64,7 @@ for (const m of mutations) {
   const original = readFileSync(m.file, 'utf8');
   current = { file: m.file, original };
   try {
-    writeFileSync(m.file, original.replace(m.from, m.to));
+    writeFileSync(m.file, original.replace(m.from, () => m.to));
     results.push({ ...m, caught: await runTests() !== 0 });
   } finally {
     writeFileSync(m.file, original);
