@@ -21,7 +21,7 @@ downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內�
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               母本（skills/shared/）、平臺檔案與建置產生的複本（各平臺 references/）；skills/shared/analysis_workflow.py 是 Python 的分析工作流程核心，改用它的平臺腳本只剩模型 adapter（理由見 docs/adr/0002）；Claude 技能的 validate_inputs.py 用建置產生的複本 scripts/analysis_workflow.py（見 docs/adr/0003），只渲染核心的授權範圍守門與腳本預檢
 examples/             合成資料、預期輸出、示範引擎快照與驗收 fixture
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
 tests/                fixtures/scope-cases.json（授權範圍守門的共用案例，JS 與 Python 共用）、python/（Python 測試；不出貨）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
@@ -60,7 +60,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）、突變工具（`scripts/mutate.test.mjs`）
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎的行為檢查與快照、下載檔、機敏字串（驗收在 npm test）
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙

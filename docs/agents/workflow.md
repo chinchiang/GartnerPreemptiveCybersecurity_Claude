@@ -16,6 +16,10 @@
 
 本機沒有 Playwright；完整的瀏覽器檢查（`node scripts/verify.mjs`，會寫入 `verify-report.md`）只在 CI 的 browser job 執行。
 
+## 突變測試：`scripts/mutate.mjs`
+
+確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`，不提交），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；有存活就以結束碼 1 結束。`--json` 的輸出可以直接整理成 PR 說明的突變紀錄。
+
 ## 改了來源就重建，產物一起提交
 
 改了什麼來源要重建、要一起提交哪些產物，以部署指南第 5 節的維護表為準（`docs/guides/deployment.md`）。原則是：改完來源就執行 `node scripts/build-data.mjs`，把產生的變動一起提交；CI 建置後會檢查整份工作樹必須沒有變動（生成檔為什麼要提交，見 ADR 0001）。
