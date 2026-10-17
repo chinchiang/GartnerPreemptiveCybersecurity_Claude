@@ -4,6 +4,7 @@
 """
 import contextlib
 import io
+import copy
 import json
 import shutil
 import sys
@@ -28,6 +29,31 @@ class ScopeGateFromSchemaTest(unittest.TestCase):
         for case in CASES:
             with self.subTest(case=case["name"]):
                 self.assertEqual(aw.scope_problems(apply_case(SYNTHETIC_SCOPE, case), INPUT_SCHEMA), case["problems"])
+
+
+class ScopeGateKeywordTest(unittest.TestCase):
+    """schema 用到不認得的關鍵字就丟出錯誤、點名該關鍵字；註記關鍵字放行（與 assets/scope-gate.js 同一組，見 docs/adr/0004）。"""
+
+    def schema_with(self, **extra):
+        schema = copy.deepcopy(INPUT_SCHEMA)
+        schema["properties"]["scope"]["properties"]["organization"].update(extra)
+        return schema
+
+    def test_unknown_keyword_raises_and_names_it(self):
+        for extra, keyword in (({"maxLength": 3}, "maxLength"), ({"enum": ["x"]}, "enum")):
+            with self.subTest(keyword=keyword):
+                with self.assertRaisesRegex(ValueError, keyword):
+                    aw.scope_problems(SYNTHETIC_SCOPE, self.schema_with(**extra))
+
+    def test_unsupported_format_raises(self):
+        schema = copy.deepcopy(INPUT_SCHEMA)
+        schema["properties"]["scope"]["properties"]["analysis_date"]["format"] = "date-time"
+        with self.assertRaisesRegex(ValueError, "format"):
+            aw.scope_problems(SYNTHETIC_SCOPE, schema)
+
+    def test_annotation_keywords_are_allowed(self):
+        schema = self.schema_with(default="x", description="組織名稱", title="組織", **{"$comment": "註記"})
+        self.assertEqual(aw.scope_problems(SYNTHETIC_SCOPE, schema), [])
 
 
 class ScopeRuleNoteTest(unittest.TestCase):

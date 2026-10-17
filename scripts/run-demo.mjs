@@ -11,7 +11,7 @@ import vm from 'node:vm';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ctx = { window: {} };
 vm.createContext(ctx);
-for (const f of ['data/case.js', 'assets/demo.js']) vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx);
+for (const f of ['data/case.js', 'assets/scope-gate.js', 'assets/demo.js']) vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx);
 const args = process.argv.slice(2);
 const params = { inputs: {}, inventoryCompleteness: 100, riskAppetite: 'balanced' };
 const flags = { '--no-intel': 'threatIntel', '--no-topology': 'topology', '--no-identities': 'identities', '--no-controls': 'controls', '--no-misconfig': 'misconfig', '--no-epss': 'epss', '--no-exposures': 'exposures' };

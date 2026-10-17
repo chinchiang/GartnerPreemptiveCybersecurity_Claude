@@ -14,6 +14,7 @@ assets/styles.css     樣式（淺／深色兩套設計 token、行動裝置、�
 assets/fonts/         自載字型 Inter 與 JetBrains Mono（woff2 拉丁子集，SIL OFL 1.1；中文用系統字型）。仍無外部請求，CSP font-src 'self' 即可
 assets/md.js          極簡 Markdown 渲染器
 assets/demo.js        案例互動展示的確定性引擎
+assets/scope-gate.js  授權範圍守門的 JS schema 解讀（示範引擎與選用後端代理共用；scope 定義由建置以嵌入區塊寫入）
 assets/app.js         hash 路由、各頁面、全站搜尋、複製／下載
 data/*.js             由 scripts/build-data.mjs 產生（research、guides、skills、case、manifest）或手動維護（process、io、platforms、sources）
 downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內容（平臺檔案＋腳本依賴的母本＋合成範例資料，解壓即可執行）由 scripts/skill-packages.mjs 的對照表決定
@@ -118,10 +119,10 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 範例資料 | `examples/synthetic-org/`（保持合成） | build；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
-| 授權範圍守門規則 | `skills/shared/input-schema.json`（Python 分析工作流程核心依它判定）、`assets/demo.js` 與 `backend/worker.js` 的 `scopeProblems`（兩份手寫、內容相同），三處一起改；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例 | `npm test` + Python unittest + build |
+| 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例 | build（重寫 `scope-gate.js` 的嵌入區塊，提交）+ `npm test` + Python unittest |
 | 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本、改寫版（Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的流程說明（見第 4.1 節） | `npm test` + build + verify + `npm run snapshot` |
 
-`data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/`，忘記重建或直接改了複本、嵌入區塊都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
+`data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/ assets/scope-gate.js`，忘記重建或直接改了複本、嵌入區塊都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
 
 建議每季重新查證：Gartner 新文件（尤其 Impact Radar 與 Hype Cycle 更新）、五個平臺的模型與功能變動（見待驗證清單）。這件事已由 `.github/workflows/quarterly-review.yml` 每季（1／4／7／10 月 1 日）自動開一個 issue，內容是 `data/sources.js` 中 `status: 'pending'` 的項目所組成的勾選清單（`node scripts/todo-checklist.mjs` 可在本機預覽）。查證完成後把該項改成 `status: 'done'` 並填 `resolvedAt`——`verify:static` 會檢查 `pending` 項目都寫出了下一步、`done` 項目都有日期。
 

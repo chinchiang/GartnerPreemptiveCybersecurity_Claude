@@ -114,6 +114,18 @@ const caseData = {
 };
 writeFileSync(out('data/case.js'), jsExport('CASE_DATA', caseData));
 
+// ---------- 4a. 授權範圍守門的 scope 定義（嵌入區塊，見 docs/adr/0004） ----------
+// 把 input-schema.json 的 properties.scope 寫進 assets/scope-gate.js 標註下緊接的 const SCOPE_SCHEMA = …; 一行起的區塊；
+// 標註或區塊找不到就中止。JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判
+{
+  const gatePath = out('assets/scope-gate.js');
+  const scopeSchema = JSON.parse(readText(out('skills/shared/input-schema.json'))).properties.scope;
+  const block = /(\/\/ 以下區塊由 scripts\/build-data\.mjs 從 skills\/shared\/input-schema\.json[^\n]*\n(\s*)const SCOPE_SCHEMA = )[\s\S]*?;\n/;
+  const gate = readText(gatePath);
+  if (!block.test(gate)) { console.error('assets/scope-gate.js 找不到 SCOPE_SCHEMA 的嵌入區塊'); process.exit(1); }
+  writeFileSync(gatePath, gate.replace(block, (_, head, indent) => `${head}${JSON.stringify(scopeSchema, null, 2).replace(/\n/g, `\n${indent}`)};\n`));
+}
+
 // ---------- 4b. 其他站上需要的文件（證據檔、README、驗證報告、連結檢查） ----------
 const readIf = (p) => existsSync(out(p)) ? readText(out(p)) : '';
 const evidenceDir = out('docs/evidence');

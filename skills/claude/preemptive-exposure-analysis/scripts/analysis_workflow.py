@@ -93,6 +93,24 @@ def _required_leaves(node: dict, prefix: str) -> list:
     return [path for path, _ in _required_leaf_nodes(node, prefix)]
 
 
+# 兩份解讀（這裡與 assets/scope-gate.js）只認得同一組關鍵字；註記關鍵字不影響判定，放行（見 docs/adr/0004）
+_RULE_KEYWORDS = {"type", "required", "properties", "minLength", "minItems", "format", "pattern", "items"}
+_NOTE_KEYWORDS = {"default", "description", "title", "$comment"}
+
+
+def _assert_supported(node: dict, path: str) -> None:
+    """整個節點（含 properties、items 底下）只能用認得的關鍵字，format 只支援 date；否則丟出 ValueError，避免規則被默默略過。"""
+    for key in node:
+        if key not in _RULE_KEYWORDS | _NOTE_KEYWORDS:
+            raise ValueError(f"授權範圍守門不認得 schema 關鍵字 {key}（{path or 'scope'}）；兩份解讀都要實作它，見 docs/adr/0004")
+    if "format" in node and node["format"] != "date":
+        raise ValueError(f"授權範圍守門不支援 schema 關鍵字 format: {node['format']}（{path or 'scope'}），只支援 date；見 docs/adr/0004")
+    for key, child in node.get("properties", {}).items():
+        _assert_supported(child, _join(path, key))
+    if "items" in node:
+        _assert_supported(node["items"], path)
+
+
 def _check(value, node: dict, path: str) -> list:
     """依 schema 節點檢查一個欄位：必填是否存在、type、minLength、format: date、pattern、minItems、items；物件則往下檢查其必填欄位。"""
     if value is None:
@@ -124,8 +142,9 @@ def required_scope_fields(input_schema: dict) -> list:
 
 
 def scope_problems(scope, input_schema: dict) -> list:
-    """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則全部來自 input-schema.json 的 scope 定義；
-    網站示範引擎的 scopeProblems 是手寫的同一套規則，兩邊由 tests/fixtures/scope-cases.json 守住一致。"""
+    """授權範圍守門：回傳不合格的必填欄位（空清單＝可以分析）。規則全部來自 input-schema.json 的 scope 定義；
+    JS 那邊由 assets/scope-gate.js 依同一份 schema 判定（見 docs/adr/0004），兩邊由 tests/fixtures/scope-cases.json 守住一致。"""
+    _assert_supported(input_schema["properties"]["scope"], "")
     return _check(scope if isinstance(scope, dict) else {}, input_schema["properties"]["scope"], "")
 
 

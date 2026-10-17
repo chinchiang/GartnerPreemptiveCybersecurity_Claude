@@ -37,34 +37,10 @@
     inventoryCompleteness: 100, // 0-100：模擬資產清冊完整度
     riskAppetite: 'balanced'     // 'strict' | 'balanced' | 'tolerant'
   };
-  const SCOPE_REQUIRED = ['organization', 'analysis_date', 'authorized_scope.in_scope_assets', 'authorized_scope.active_testing_authorized', 'authorized_scope.external_scanning_authorized', 'reporting.audience'];
-
-  // 至少一個非空白字元（schema 的 pattern）：明確列出空白字元，取 Python 與 JS 兩邊 \s 的聯集，三份守門判定一致
-  const NON_BLANK = /[^\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]/;
-  // RFC 3339 full-date（schema 的 format: date）：恰好 YYYY-MM-DD，而且是存在的日期。不用 Date：它會把 2026-02-30 換算成 3 月 2 日；
-  // 年份從 1 起算，與 Python 的 date 一致
-  const isFullDate = (s) => {
-    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(s);
-    if (!m) return false;
-    const [y, mo, d] = m.slice(1).map(Number);
-    const days = [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    return y >= 1 && mo >= 1 && mo <= 12 && d >= 1 && d <= days[mo - 1];
-  };
+  // 授權範圍守門：規則只來自 schema，由 assets/scope-gate.js 判定（瀏覽器與 vm 從 window 取得，require 載入時改用 require）
+  const GATE = (typeof window !== 'undefined' && window.SCOPE_GATE) || require('./scope-gate.js');
   /** 授權範圍守門：回傳缺少或不合格的必填欄位清單；空陣列表示可以分析。 */
-  function scopeProblems(scope) {
-    if (!scope || typeof scope !== 'object') return [...SCOPE_REQUIRED];
-    const get = (p) => p.split('.').reduce((o, k) => (o == null ? undefined : o[k]), scope);
-    return SCOPE_REQUIRED.filter(p => {
-      const v = get(p);
-      if (v === undefined || v === null || v === '') return true;
-      if (p === 'organization') return typeof v !== 'string' || !NON_BLANK.test(v);
-      if (p === 'analysis_date') return typeof v !== 'string' || !isFullDate(v);
-      if (p === 'authorized_scope.in_scope_assets' || p === 'reporting.audience') // 非空陣列，每項都是含非空白字元的字串
-        return !Array.isArray(v) || v.length === 0 || !v.every(x => typeof x === 'string' && NON_BLANK.test(x));
-      if (p.endsWith('_authorized')) return typeof v !== 'boolean';
-      return false;
-    });
-  }
+  const scopeProblems = (scope) => GATE.scopeProblems(scope);
 
   function analyze(data, params = DEFAULTS) {
     const P = { ...DEFAULTS, ...params, inputs: { ...DEFAULTS.inputs, ...(params.inputs || {}) }, weights: { ...DEFAULTS.weights, ...(params.weights || {}) } };
@@ -74,7 +50,7 @@
     const problems = scopeProblems(data.scope);
     if (problems.length) {
       return {
-        refused: true, reason: '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。', requiredFields: SCOPE_REQUIRED, problemFields: problems,
+        refused: true, reason: '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。', requiredFields: GATE.requiredScopeFields(), problemFields: problems,
         params: P, findings: [], hypotheses: [], recs: [], compensating: [], validation: [], metrics: [], reviewPoints: [], missingSummary: ['授權範圍（scope）'], hidden: [], outOfScope: [], thresholds: th
       };
     }
