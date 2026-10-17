@@ -141,7 +141,7 @@ def required_scope_fields(input_schema: dict) -> list:
 
 
 def scope_problems(scope, input_schema: dict) -> list:
-    """I1 守門：回傳不合格的必填欄位（空清單＝可以分析）。規則全部來自 input-schema.json 的 scope 定義；
+    """授權範圍守門：回傳不合格的必填欄位（空清單＝可以分析）。規則全部來自 input-schema.json 的 scope 定義；
     JS 那邊由 assets/scope-gate.js 依同一份 schema 判定（見 docs/adr/0004），兩邊由 tests/fixtures/scope-cases.json 守住一致。"""
     _assert_supported(input_schema["properties"]["scope"], "")
     return _check(scope if isinstance(scope, dict) else {}, input_schema["properties"]["scope"], "")

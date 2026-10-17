@@ -3,9 +3,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const GATE = require('../assets/scope-gate.js');
+
+test('嵌入的 scope 定義等於母本 input-schema.json 的 properties.scope（手改嵌入區塊或改了母本忘了重建都會失敗）', () => {
+  const schema = JSON.parse(readFileSync(new URL('../skills/shared/input-schema.json', import.meta.url), 'utf8'));
+  assert.deepEqual(GATE.scopeSchema(), schema.properties.scope);
+});
 
 test('必填欄位清單來自 schema，順序與 Python 的 required_scope_fields 相同', () => {
   assert.deepEqual(GATE.requiredScopeFields(), [

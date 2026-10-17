@@ -172,7 +172,10 @@
   /** 授權範圍的必填欄位，順序與 Python 的 required_scope_fields 相同。 */
   const requiredScopeFields = () => requiredLeaves(SCOPE_SCHEMA, '');
 
-  const api = { scopeProblems, requiredScopeFields, problemsAgainst };
+  /** 嵌入的 scope 定義（複本，改了也不影響守門）。 */
+  const scopeSchema = () => JSON.parse(JSON.stringify(SCOPE_SCHEMA));
+
+  const api = { scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

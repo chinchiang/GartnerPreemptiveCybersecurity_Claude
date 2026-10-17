@@ -40,7 +40,7 @@ test('示範引擎守門：必填欄位有填但不合格時拒絕分析，reaso
 
 let upstreamCalls = 0;
 let ip = 0; // worker 每個 IP 每分鐘只放行 5 次，每個請求用不同的 IP
-const analyze = (scope) => worker.fetch(new Request('https://worker.example/api/analyze', {
+const analyze = (scope, target = worker) => target.fetch(new Request('https://worker.example/api/analyze', {
   method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': `203.0.113.${++ip}` },
   body: JSON.stringify({ bundle: { scope } })
 }), { PROVIDER: 'openai', MODEL: 'test-model', PROVIDER_API_KEY: 'test-key' });
@@ -57,10 +57,7 @@ describe('後端代理（backend/worker.js）', () => {
       const built = join(dir, 'worker.mjs');
       execFileSync(process.execPath, [fileURLToPath(new URL('./build-worker.mjs', import.meta.url)), built], { stdio: 'pipe' });
       const { default: deployed } = await import(pathToFileURL(built).href);
-      const r = await deployed.fetch(new Request('https://worker.example/api/analyze', {
-        method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': '198.51.100.250' },
-        body: JSON.stringify({ bundle: { scope: {} } })
-      }), { PROVIDER: 'openai', MODEL: 'test-model', PROVIDER_API_KEY: 'test-key' });
+      const r = await analyze({}, deployed);
       assert.equal(r.status, 400);
       assert.equal(upstreamCalls, 0);
     } finally {
