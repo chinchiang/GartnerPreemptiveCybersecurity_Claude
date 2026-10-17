@@ -320,7 +320,7 @@ def _file_severity(name: str) -> str:
 def script_preflight(inputs: Inputs, input_schema: dict) -> list:
     """腳本預檢（見 GLOSSARY.md）：回傳有順序的 [PreflightFinding]。順序＝提示詞「腳本預檢結果」的順序：
     必要檔案 → schema 必填欄位 → 資料完整性；提示詞不列的「無法解析」「結構不是物件」排在最後。
-    任何一列資料缺值或型別不對，都只會變成預檢發現，不會讓預檢本身失敗。
+    任何一列資料缺值或型別不對，都只會變成預檢發現，不會讓腳本預檢本身失敗。
 
     嚴重度放在這裡、而不是交給各渲染端：哪一種問題該擋下分析是規則，不是呈現方式，只能有一份。
     但它只給 Claude 技能的 validate_inputs.py 用（依它決定結束碼）；四支 api-workflow.py 刻意不看嚴重度——

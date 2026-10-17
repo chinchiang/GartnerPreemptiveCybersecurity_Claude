@@ -16,6 +16,14 @@
 
 本機沒有 Playwright；完整的瀏覽器檢查（`node scripts/verify.mjs`，會寫入 `verify-report.md`）只在 CI 的 browser job 執行。
 
+## 搜尋：用 `rg`
+
+搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 技能的核心複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與詞彙表測試都會跟著略過。
+
+## 突變測試：`scripts/mutate.mjs`
+
+確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`，不提交），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；有存活就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處），或測試在突變前就失敗，以結束碼 2 結束，一個檔案都不改。`--json` 的輸出可以直接整理成 PR 說明的突變紀錄。
+
 ## 改了來源就重建，產物一起提交
 
 改了什麼來源要重建、要一起提交哪些產物，以部署指南第 5 節的維護表為準（`docs/guides/deployment.md`）。原則是：改完來源就執行 `node scripts/build-data.mjs`，把產生的變動一起提交；CI 建置後會檢查整份工作樹必須沒有變動（生成檔為什麼要提交，見 ADR 0001）。

@@ -1,0 +1,11 @@
+# 由建置產生的檔案（node scripts/build-data.mjs）：搜尋工具（ripgrep）與詞彙表測試都略過它們，改母本或來源就好
+# data/ 只列建置寫入的六個；process.js、io.js、platforms.js、sources.js 是手寫的，要搜得到
+data/case.js
+data/extra.js
+data/guides.js
+data/manifest.js
+data/research.js
+data/skills.js
+downloads/
+skills/*/preemptive-exposure-analysis/references/
+skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py

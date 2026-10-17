@@ -34,7 +34,7 @@ platform: deepseek
 
 取得：網站「Skills 專區 → DeepSeek」或 `downloads/skills-deepseek.zip`。
 
-## 3. 輸入格式、必填欄位與範例資料
+## 3. 輸入格式、必填欄位與合成資料
 
 同共用規格；欄位見 `skills/shared/input-schema.json`；範例 `examples/synthetic-org/`。
 

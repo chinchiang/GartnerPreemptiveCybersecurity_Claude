@@ -34,7 +34,7 @@ platform: glm
 
 取得：網站「Skills 專區 → GLM」或 `downloads/skills-glm.zip`。
 
-## 3. 輸入格式、必填欄位與範例資料
+## 3. 輸入格式、必填欄位與合成資料
 
 同共用規格；欄位定義見 `skills/shared/input-schema.json`；範例 `examples/synthetic-org/`。
 

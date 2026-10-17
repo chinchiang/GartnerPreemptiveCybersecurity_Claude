@@ -21,7 +21,7 @@ downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內�
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               母本（skills/shared/）、平臺檔案與建置產生的複本（各平臺 references/）；skills/shared/analysis_workflow.py 是 Python 的分析工作流程核心，改用它的平臺腳本只剩模型 adapter（理由見 docs/adr/0002）；Claude 技能的 validate_inputs.py 用建置產生的複本 scripts/analysis_workflow.py（見 docs/adr/0003），只渲染核心的授權範圍守門與腳本預檢
 examples/             合成資料、預期輸出、示範引擎快照與驗收 fixture
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查，單元測試與整個 repo 的檢查在 glossary.test.mjs）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
 tests/                fixtures/scope-cases.json（授權範圍守門的共用案例，JS 與 Python 共用）、python/（Python 測試；不出貨）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
@@ -60,7 +60,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）、突變工具（`scripts/mutate.test.mjs`）、手寫檔案不使用專指的 _Avoid_ 詞（`scripts/glossary.test.mjs`）
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎的行為檢查與快照、下載檔、機敏字串（驗收在 npm test）
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
@@ -117,6 +117,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 核心提示詞（系統提示詞的嵌入區塊、選用後端代理） | `skills/shared/core-prompt.md` | `npm run build`（重寫三份 `system-prompt.md` 與兩份 `SKILL.md` 的嵌入區塊，提交；第 0 節「- scope 必填欄位的規則：」那一行也由建置從 schema 產生，見下一列）；`node scripts/build-worker.mjs` 產生 `backend/dist/worker.js`（不提交） |
 | 流程／I-O／平臺比較 | `data/process.js`、`data/io.js`、`data/platforms.js` | 無需 build |
 | Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），以及核心提示詞母本與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）的規則說明行（見「授權範圍守門規則」一列），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
+| 新增建置產生的檔案 | 建置（`scripts/build-data.mjs`、`scripts/skill-packages.mjs` 的對照表）多寫出一個檔案或目錄時，把它的路徑加進根目錄的 `.ignore`：`rg` 搜尋與詞彙表測試都依它略過生成檔（見 `docs/agents/workflow.md`） | `npm run build`（產物一起提交）；`npm test` |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 合成資料 | `examples/synthetic-org/`（保持合成）；筆數變了就同步改 `skills/shared/acceptance.md` 第 1 項與 `scripts/acceptance.test.mjs` 的預期筆數字面值 | build；`npm test`；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
 | 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例。模型側守門的規則說明也由建置從 schema 產生（`scope-gate.js` 的 `scopeRuleNote()`），寫進核心提示詞與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）以「- scope 必填欄位的規則：」開頭的那一行；要用到規則說明還不會描述的規則時，`scopeRuleNote()` 與 Python 的 `scope_rule_note` 兩份都要實作，否則建置會丟出錯誤（見 `docs/adr/0005-model-side-gate-rule-note-is-generated-into-the-core-prompt.md`） | build（重寫 `scope-gate.js` 的嵌入區塊與四份檔案的規則說明行，提交）+ `npm test` + Python unittest |

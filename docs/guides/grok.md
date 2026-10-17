@@ -33,7 +33,7 @@ platform: grok
 
 取得：網站「Skills 專區 → Grok」或 `downloads/skills-grok.zip`。
 
-## 3. 輸入格式、必填欄位與範例資料
+## 3. 輸入格式、必填欄位與合成資料
 
 同共用規格（`scope.json`、`assets.csv`、`vulnerabilities.csv` 必要；其餘建議）。API 腳本會把 9 檔內容以文字附在使用者訊息中；grok.com 對話則以附件或貼上內容提供（附件限制待驗證）。
 

@@ -8,7 +8,7 @@ version: 1.0.0
 
 > **用法**：
 > - **Z.ai API Platform／BigModel API**：作為 `system` 訊息（見 `api-workflow.py`）。
-> - **chat.z.ai／智譜清言**：若提供「智能體（自訂助理）／自訂指令／知識庫」功能（**待驗證**，介面名稱以官方為準），將下方文字貼入指令欄並把範例資料上傳為知識檔；若沒有，於每次新對話的第一則訊息貼入。
+> - **chat.z.ai／智譜清言**：若提供「智能體（自訂助理）／自訂指令／知識庫」功能（**待驗證**，介面名稱以官方為準），將下方文字貼入指令欄並把合成資料上傳為知識檔；若沒有，於每次新對話的第一則訊息貼入。
 > - **Claude Code + GLM 後端**：不需要本檔，直接使用 `preemptive-exposure-analysis/SKILL.md`。
 >
 > 本提示詞與 `skills/shared/core-prompt.md` 完全一致，只加上本說明。

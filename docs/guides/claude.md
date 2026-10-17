@@ -25,11 +25,11 @@ platform: claude
 - `skills/claude/preemptive-exposure-analysis/SKILL.md`（主指令）
 - `references/scoring-rules.md`、`references/acceptance.md`、`references/input-schema.json`、`references/output-schema.json`
 - `scripts/validate_inputs.py`、`scripts/analysis_workflow.py`（前者使用的分析工作流程核心；由 `skills/shared/analysis_workflow.py` 建置產生的複本，勿手改）
-- 範例資料：`examples/synthetic-org/`（9 個合成檔案）
+- 合成資料：`examples/synthetic-org/`（9 個合成檔案）
 
 取得方式：網站「Skills 專區 → Claude」逐檔複製或下載 `downloads/skills-claude.zip`；或 `git clone` 儲存庫。
 
-## 3. 輸入格式、必填欄位與範例資料
+## 3. 輸入格式、必填欄位與合成資料
 
 | 檔案 | 必要性 | 必填欄位 |
 |---|---|---|
@@ -114,7 +114,7 @@ claude            # 啟動 Claude Code
 
 1. 將 `skills/claude/preemptive-exposure-analysis/` 整個資料夾壓成 zip（zip 根目錄須是該資料夾）。
 2. claude.ai → Settings → Features（介面名稱以官方為準）→ 上傳 skill zip；需 Pro/Max/Team/Enterprise 且已啟用 code execution。
-3. 建立一個 Project（選用），把 `task-spec.md` 與範例資料放入專案知識。
+3. 建立一個 Project（選用），把 `task-spec.md` 與合成資料放入專案知識。
 4. 新對話：附上 9 個資料檔，輸入「請以 preemptive-exposure-analysis 進行先制型曝險分析」。
 
 ### C. Claude Developer Platform（API）

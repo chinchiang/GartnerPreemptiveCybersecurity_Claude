@@ -323,8 +323,8 @@
       ${heading('/skills', 'Skills 專區')}
       <p class="lead">先閱讀「共用規格」，再選擇平臺。所有檔案可一鍵複製或下載；ZIP 下載包由建置腳本產生。</p>
       <div class="btn-row">
-        ${dl.includes('downloads/skills-all-platforms.zip') ? '<a class="btn" href="downloads/skills-all-platforms.zip" download>下載全部 Skills + 範例資料（ZIP）</a>' : ''}
-        ${dl.includes('downloads/synthetic-example-data.zip') ? '<a class="btn secondary" href="downloads/synthetic-example-data.zip" download>下載合成範例資料（ZIP）</a>' : ''}
+        ${dl.includes('downloads/skills-all-platforms.zip') ? '<a class="btn" href="downloads/skills-all-platforms.zip" download>下載全部 Skills + 合成資料（ZIP）</a>' : ''}
+        ${dl.includes('downloads/synthetic-example-data.zip') ? '<a class="btn secondary" href="downloads/synthetic-example-data.zip" download>下載合成資料（ZIP）</a>' : ''}
         <a class="btn secondary" href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/tree/main/skills" target="_blank" rel="noopener">在 GitHub 檢視 skills/</a>
       </div>
       <div class="tabs" role="tablist" aria-label="平臺">${platforms.map(p => tabButton(p, PLATFORM_META[p] || p, p === cur, 'platform', 'skills-panel')).join('')}</div>
