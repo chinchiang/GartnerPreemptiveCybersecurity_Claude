@@ -57,11 +57,11 @@ const ALLOWED = [
   { term: 'pipeline', phrase: 'retrieval pipelines', reason: '證據檔逐字引用外部原文' },
   { term: '主檔', phrase: '建議主檔', reason: 'agentskills 規格的用語，指 SKILL.md 主檔，不是指母本' },
   { term: 'demo engine', phrase: 'demo engine checks', reason: 'CI 步驟名稱慣例用英文' },
-  { term: '副本', phrase: '本副本', reason: 'GLM SKILL.md 是模型讀的文字，改動另議' },
-  { term: '範例資料', phrase: '用範例資料', reason: 'Custom GPT 指示是模型讀的文字，改動另議' },
-  { term: '範例資料', phrase: '下的檔案：合成範例資料', reason: 'Custom GPT 指示是模型讀的文字，改動另議' },
-  { term: '範例資料', phrase: 'Knowledge 內的合成範例資料', reason: 'Custom GPT 指示是模型讀的文字，改動另議' },
-  { term: '範例資料', phrase: '範例資料的 `epss_sim`', reason: 'scoring-rules.md 與 Claude SKILL.md 是模型讀的文字，改動另議' }
+  { term: '副本', phrase: '本副本', reason: '模型讀的文字，依 CODING_STANDARDS.md §3 不在工具類 PR 改；見 #66' },
+  { term: '範例資料', phrase: '用範例資料', reason: '模型讀的文字，依 CODING_STANDARDS.md §3 不在工具類 PR 改；見 #66' },
+  { term: '範例資料', phrase: '下的檔案：合成範例資料', reason: '模型讀的文字，依 CODING_STANDARDS.md §3 不在工具類 PR 改；見 #66' },
+  { term: '範例資料', phrase: 'Knowledge 內的合成範例資料', reason: '模型讀的文字，依 CODING_STANDARDS.md §3 不在工具類 PR 改；見 #66' },
+  { term: '範例資料', phrase: '範例資料的 `epss_sim`', reason: '模型讀的文字，依 CODING_STANDARDS.md §3 不在工具類 PR 改；見 #66' }
 ];
 const TEXT_FILE = /\.(md|mjs|js|py|yml|json|html)$/;
 // 不掃描：詞彙表本身（_Avoid_ 詞的定義處），以及這支測試（單元測試的輸入與上面兩份清單本來就寫著 _Avoid_ 詞）

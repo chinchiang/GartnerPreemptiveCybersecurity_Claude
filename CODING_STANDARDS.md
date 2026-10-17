@@ -1,6 +1,6 @@
 # 寫作規範（審查用）
 
-審查時逐條套用。這裡只收需要判斷的規則；能自動檢查的已經由 `npm test`、CI 的整份工作樹檢查與詞彙表測試守住，不在這裡重複。領域用詞以 `GLOSSARY.md` 為準，設計決定以 `docs/adr/` 為準。
+審查時逐條套用。這裡只收需要判斷的規則；能自動檢查的已經由單元測試（`node --test scripts/*.test.mjs`，在 WSL 不要用 `npm test`，見 `docs/agents/workflow.md`）、CI 的整份工作樹檢查與詞彙表測試守住，不在這裡重複。領域用詞以 `GLOSSARY.md` 為準，設計決定以 `docs/adr/` 為準。
 
 ## 1. 改了行為或來源，文件同步
 
