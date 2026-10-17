@@ -110,7 +110,7 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 7 項執行。第 6、7 項可直接用旗標模擬缺漏，不必另建資料夾：
+依 `task-spec.md` 第 7 節 8 項執行。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項可直接用旗標模擬缺漏，不必另建資料夾：
 
 ```bash
 python3 skills/grok/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項：提示詞標示 threat-intel 未提供

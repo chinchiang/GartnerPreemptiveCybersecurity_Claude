@@ -94,11 +94,12 @@
 
   const join = (prefix, key) => (prefix ? `${prefix}.${key}` : key);
 
-  /** 必填的末端欄位路徑（物件往下展開其 required），順序同 schema。 */
-  function requiredLeaves(node, prefix) {
-    if (node.type !== 'object' || !node.required) return [prefix];
-    return node.required.flatMap(key => requiredLeaves((node.properties || {})[key] || {}, join(prefix, key)));
+  /** 必填的末端欄位與它們的 schema 節點 [[路徑, 節點]]（物件往下展開其 required），順序同 schema。 */
+  function requiredLeafNodes(node, prefix) {
+    if (node.type !== 'object' || !node.required) return [[prefix, node]];
+    return node.required.flatMap(key => requiredLeafNodes((node.properties || {})[key] || {}, join(prefix, key)));
   }
+  const requiredLeaves = (node, prefix) => requiredLeafNodes(node, prefix).map(([path]) => path);
 
   // 兩份解讀（這裡與 Python 核心）只認得同一組關鍵字；註記關鍵字不影響判定，放行
   const RULE_KEYWORDS = ['type', 'required', 'properties', 'minLength', 'minItems', 'format', 'pattern', 'items'];
@@ -172,10 +173,55 @@
   /** 授權範圍的必填欄位，順序與 Python 的 required_scope_fields 相同。 */
   const requiredScopeFields = () => requiredLeaves(SCOPE_SCHEMA, '');
 
+  // schema 的「至少一個非空白字元」（與 Python 核心的 NON_BLANK_PATTERN 相同），規則說明寫成「非空白」
+  const NON_BLANK_PATTERN = '[^\\u0009-\\u000d\\u001c-\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]';
+
+  /** 一個必填欄位的 schema 節點寫成給人看的規則（與 Python 核心的 _rule_text 相同）。說明必須涵蓋節點的每一條規則：
+      寫不出來的就丟出錯誤，不退回比較寬鬆的說明——模型側守門只看得到這段說明（見 docs/adr/0005）。 */
+  function ruleText(node, path) {
+    const unsupported = (keyword) => {
+      throw new Error(`授權範圍的規則說明寫不出 schema 關鍵字 ${keyword}（${path}）；兩份規則說明都要實作它，見 docs/adr/0005`);
+    };
+    if (node.type === 'string') {
+      if (node.minLength > 1) unsupported(`minLength: ${node.minLength}`);
+      if (node.format === 'date') return 'pattern' in node ? unsupported('pattern') : '須為 YYYY-MM-DD 的有效日期';
+      if ('pattern' in node) return node.pattern === NON_BLANK_PATTERN ? '須含非空白字元' : unsupported('pattern');
+      return node.minLength ? '須為非空字串' : '須為字串';
+    }
+    if (node.type === 'array') {
+      if (node.minItems > 1) unsupported(`minItems: ${node.minItems}`);
+      return (node.minItems ? '須為非空陣列' : '須為陣列') + (node.items ? itemsText(node.items, unsupported) : '');
+    }
+    if (node.type === 'boolean') return '須為布林值';
+    if (node.type === undefined) return '須提供';
+    return unsupported(`type: ${node.type}`);
+  }
+  function itemsText(items, unsupported) {
+    if (items.type !== 'string') unsupported('items');
+    if (items.minLength > 1) unsupported(`minLength: ${items.minLength}`);
+    if ('format' in items) unsupported('format');
+    if ('pattern' in items) return items.pattern === NON_BLANK_PATTERN ? '，且每項為非空白字串' : unsupported('pattern');
+    return items.minLength ? '，且每項為非空字串' : '，且每項為字串';
+  }
+
+  /** 依 scope 定義寫出規則說明：規則相同的欄位併成一組，欄位只寫最後一段名稱（與 Python 的 scope_rule_note 相同，不加括號）。 */
+  function ruleNoteAgainst(node) {
+    assertSupported(node, ''); // 守門不認得的關鍵字，說明也寫不出來：先擋下，不讓建置寫出比較寬鬆的規則說明行
+    const groups = new Map();
+    for (const [path, leaf] of requiredLeafNodes(node, '')) {
+      const rule = ruleText(leaf, path);
+      groups.set(rule, [...(groups.get(rule) || []), path.split('.').pop()]);
+    }
+    return [...groups].map(([rule, names]) => `${names.join('、')} ${rule}`).join('；');
+  }
+
+  /** 模型側守門的規則說明（嵌入的 scope 定義寫成給人看的句子；建置把它寫進核心提示詞，見 docs/adr/0005）。 */
+  const scopeRuleNote = () => ruleNoteAgainst(SCOPE_SCHEMA);
+
   /** 嵌入的 scope 定義（複本，改了也不影響守門）。 */
   const scopeSchema = () => JSON.parse(JSON.stringify(SCOPE_SCHEMA));
 
-  const api = { scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema };
+  const api = { scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

@@ -99,7 +99,7 @@ python3 skills/chatgpt/api-workflow.py --input-dir examples/synthetic-org --outp
 node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 ```
 
-`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）七項驗收中可機器判定的部分：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
+`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）八項驗收中可機器判定的部分：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
 
 刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
 
@@ -114,12 +114,12 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 研究內容 | `docs/research/*.md`（frontmatter `order`、`title`、`summary`） | `npm run build` |
 | 來源、待驗證清單、連結檢查紀錄 | `data/sources.js`（每筆來源需有 `verification` 等級；待驗證項目需有 `status`） | 無需 build |
 | 證據檔、README、驗證報告、連結檢查表（站上附錄） | `docs/evidence/*.md`、`README.md`、`verify-report.md`、`link-check.md` | `npm run build`（嵌入 `data/extra.js`） |
-| 核心提示詞（系統提示詞的嵌入區塊、選用後端代理） | `skills/shared/core-prompt.md` | `npm run build`（重寫三份 `system-prompt.md` 與兩份 `SKILL.md` 的嵌入區塊，提交）；`node scripts/build-worker.mjs` 產生 `backend/dist/worker.js`（不提交） |
+| 核心提示詞（系統提示詞的嵌入區塊、選用後端代理） | `skills/shared/core-prompt.md` | `npm run build`（重寫三份 `system-prompt.md` 與兩份 `SKILL.md` 的嵌入區塊，提交；第 0 節「- scope 必填欄位的規則：」那一行也由建置從 schema 產生，見下一列）；`node scripts/build-worker.mjs` 產生 `backend/dist/worker.js`（不提交） |
 | 流程／I-O／平臺比較 | `data/process.js`、`data/io.js`、`data/platforms.js` | 無需 build |
-| Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
+| Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），以及核心提示詞母本與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）的規則說明行（見「授權範圍守門規則」一列），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 範例資料 | `examples/synthetic-org/`（保持合成） | build；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
-| 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例 | build（重寫 `scope-gate.js` 的嵌入區塊，提交）+ `npm test` + Python unittest |
+| 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例。模型側守門的規則說明也由建置從 schema 產生（`scope-gate.js` 的 `scopeRuleNote()`），寫進核心提示詞與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）以「- scope 必填欄位的規則：」開頭的那一行；要用到規則說明還不會描述的規則時，`scopeRuleNote()` 與 Python 的 `scope_rule_note` 兩份都要實作，否則建置會丟出錯誤（見 `docs/adr/0005-model-side-gate-rule-note-is-generated-into-the-core-prompt.md`） | build（重寫 `scope-gate.js` 的嵌入區塊與四份檔案的規則說明行，提交）+ `npm test` + Python unittest |
 | 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本、改寫版（Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的流程說明（見第 4.1 節） | `npm test` + build + verify + `npm run snapshot` |
 
 `data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/ assets/scope-gate.js`，忘記重建或直接改了複本、嵌入區塊都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。

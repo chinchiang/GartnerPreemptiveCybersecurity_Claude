@@ -2,7 +2,7 @@
 // 執行：npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractCorePrompt, packageFiles, generatedFiles } from './skill-packages.mjs';
+import { extractCorePrompt, packageFiles, generatedFiles, RULE_NOTE_TARGETS } from './skill-packages.mjs';
 
 test('從核心提示詞母本擷取 ```text 區塊的內容', () => {
   const md = [
@@ -106,7 +106,7 @@ for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
 const masters = [
   { path: 'skills/shared/acceptance.md', content: '# 驗收清單\n\n| # | 檢查 |\n' },
   { path: 'skills/shared/analysis_workflow.py', content: '"""分析工作流程核心。"""\n\nimport json\n' },
-  { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入"\n}\n' },
+  { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入",\n  "properties": { "scope": { "type": "object", "required": ["organization"], "properties": { "organization": { "type": "string", "minLength": 1 } } } }\n}\n' },
   { path: 'skills/shared/output-schema.json', content: '{\n  "title": "輸出"\n}\n' },
   { path: 'skills/shared/scoring-rules.md', content: '# 示範評分規則\n\n規則內容。\n' },
   { path: 'skills/shared/task-spec.md', content: '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n\n# 共用任務規格\n' }
@@ -115,10 +115,18 @@ const masters = [
 const systemPromptMd = (name) => `---\ntitle: ${name} 系統提示詞\n---\n\n# ${name}\n\n> 用法說明。\n\n## 可直接複製的提示詞\n\n\`\`\`text\n舊的提示詞\n\`\`\`\n\n## 建議的第一則使用者訊息（範例）\n\n\`\`\`text\n請開始分析。\n\`\`\`\n`;
 // 平臺技能的 SKILL.md：frontmatter（平臺讀取技能的依據）＋手寫步驟＋核心指令區塊＋其他手寫章節
 const skillMd = (name) => `---\nname: preemptive-exposure-analysis\ndescription: 先制型曝險分析。\nmetadata:\n  backend: ${name}\n---\n\n# 先制型曝險分析\n\n## 執行步驟\n\n1. 依核心指令的八步流程產出報告。\n\n## 核心指令（與 \`skills/shared/core-prompt.md\` 一致；評分細則見 \`references/scoring-rules.md\`）\n\n\`\`\`text\n舊的核心指令\n\`\`\`\n\n## 輸出格式\n\n\`\`\`json\n{ "meta": {} }\n\`\`\`\n`;
-// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md）
+// 授權範圍的規則說明行（見 docs/adr/0005）：固定開頭＋上面那份 scope 定義的規則說明＋句號
+const RULE_LINE = '- scope 必填欄位的規則：organization 須為非空字串。';
+const OLD_RULE_LINE = '- scope 必填欄位的規則：舊的說明。';
+const CORE_TEXT = `你是先制型曝險分析助理。\n${RULE_LINE}`;
+// 改寫版：手寫的內容裡有一行規則說明（Custom GPT 指示、Codex 與 Claude 的 SKILL.md）
+const RULE_NOTE_REWRITES = RULE_NOTE_TARGETS.filter(path => path !== 'skills/shared/core-prompt.md');
+const rewriteMd = (path) => `# ${path}\n\n## 安全與授權邊界\n\n- 未提供 scope 就拒絕分析。\n${OLD_RULE_LINE}\n- 不執行攻擊指令。\n`;
+// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md、改寫版）
 const sources = [
   ...masters,
-  { path: 'skills/shared/core-prompt.md', content: '---\ntitle: 核心提示詞\n---\n\n```text\n你是先制型曝險分析助理。\n```\n' },
+  { path: 'skills/shared/core-prompt.md', content: `---\ntitle: 核心提示詞\n---\n\n\`\`\`text\n你是先制型曝險分析助理。\n${OLD_RULE_LINE}\n\`\`\`\n` },
+  ...RULE_NOTE_REWRITES.map(path => ({ path, content: rewriteMd(path) })),
   ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPromptMd(p) })),
   ...['glm', 'deepseek'].map(p => ({ path: `skills/${p}/preemptive-exposure-analysis/SKILL.md`, content: skillMd(p) }))
 ];
@@ -163,11 +171,14 @@ test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本',
 
 test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec、另有 scripts/ 的核心複本，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
   assert.deepEqual(paths(generatedFiles(sources)).sort(), [
+    'skills/chatgpt/custom-gpt-instructions.md',
+    'skills/chatgpt/preemptive-exposure-analysis/SKILL.md',
     'skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md',
     'skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json',
     'skills/chatgpt/preemptive-exposure-analysis/references/output-schema.json',
     'skills/chatgpt/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/chatgpt/preemptive-exposure-analysis/references/task-spec.md',
+    'skills/claude/preemptive-exposure-analysis/SKILL.md',
     'skills/claude/preemptive-exposure-analysis/references/acceptance.md',
     'skills/claude/preemptive-exposure-analysis/references/input-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/output-schema.json',
@@ -187,7 +198,8 @@ test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-s
     'skills/glm/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/glm/preemptive-exposure-analysis/references/task-spec.md',
     'skills/glm/system-prompt.md',
-    'skills/grok/system-prompt.md'
+    'skills/grok/system-prompt.md',
+    'skills/shared/core-prompt.md'
   ]);
 });
 
@@ -197,7 +209,7 @@ test('系統提示詞的第一個 ```text 區塊換成核心提示詞並加上�
   const copy = copyAt(generatedFiles(sources), 'skills/grok/system-prompt.md');
   assert.equal(copy.content,
     '---\ntitle: grok 系統提示詞\n---\n\n# grok\n\n> 用法說明。\n\n## 可直接複製的提示詞\n\n' +
-    CORE_MARKER + '\n```text\n你是先制型曝險分析助理。\n```\n\n' +
+    CORE_MARKER + `\n\`\`\`text\n${CORE_TEXT}\n\`\`\`\n\n` +
     '## 建議的第一則使用者訊息（範例）\n\n```text\n請開始分析。\n```\n');
 });
 
@@ -234,7 +246,7 @@ test('SKILL.md 的「## 核心指令」標題下的區塊換成核心提示詞�
   assert.equal(copy.content,
     '---\nname: preemptive-exposure-analysis\ndescription: 先制型曝險分析。\nmetadata:\n  backend: glm\n---\n\n# 先制型曝險分析\n\n## 執行步驟\n\n1. 依核心指令的八步流程產出報告。\n\n' +
     '## 核心指令（與 `skills/shared/core-prompt.md` 一致；評分細則見 `references/scoring-rules.md`）\n\n' +
-    CORE_MARKER + '\n```text\n你是先制型曝險分析助理。\n```\n\n' +
+    CORE_MARKER + `\n\`\`\`text\n${CORE_TEXT}\n\`\`\`\n\n` +
     '## 輸出格式\n\n```json\n{ "meta": {} }\n```\n');
 });
 
@@ -270,4 +282,33 @@ test('改用分析工作流程核心的平臺（四個有 api-workflow.py 的平
     for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
   }
   assert.ok(!paths(packageFiles('claude', repo)).includes('skills/shared/analysis_workflow.py'), 'claude 用技能內 scripts/ 的核心複本，不帶母本');
+});
+
+test('核心提示詞母本的規則說明行換成由 scope 定義產生的說明，其餘內容不變', () => {
+  assert.equal(copyAt(generatedFiles(sources), 'skills/shared/core-prompt.md').content,
+    `---\ntitle: 核心提示詞\n---\n\n\`\`\`text\n${CORE_TEXT}\n\`\`\`\n`);
+});
+
+test('改寫版（Custom GPT 指示、Codex 與 Claude 的 SKILL.md）的規則說明行換成同一行，其餘手寫內容不變', () => {
+  const generated = generatedFiles(sources);
+  for (const path of RULE_NOTE_REWRITES) {
+    assert.equal(copyAt(generated, path).content, rewriteMd(path).replace(OLD_RULE_LINE, RULE_LINE), path);
+  }
+});
+
+test('規則說明行已是最新時再產生一次結果不變', () => {
+  const once = generatedFiles(sources);
+  const rebuilt = sources.map(f => once.find(c => c.path === f.path) || f);
+  for (const path of ['skills/shared/core-prompt.md', ...RULE_NOTE_REWRITES]) {
+    assert.equal(copyAt(generatedFiles(rebuilt), path).content, copyAt(once, path).content, path);
+  }
+});
+
+test('規則說明行不是恰好一行時中止，錯誤訊息指出檔案', () => {
+  for (const path of ['skills/shared/core-prompt.md', ...RULE_NOTE_REWRITES]) {
+    const without = sources.map(f => f.path === path ? { ...f, content: f.content.replace(`${OLD_RULE_LINE}\n`, '') } : f);
+    assert.throws(() => generatedFiles(without), { message: new RegExp(`${path.replace(/[./]/g, '\\$&')}.*0 行`) }, path);
+    const twice = sources.map(f => f.path === path ? { ...f, content: f.content.replace(OLD_RULE_LINE, `${OLD_RULE_LINE}\n${OLD_RULE_LINE}`) } : f);
+    assert.throws(() => generatedFiles(twice), { message: new RegExp(`${path.replace(/[./]/g, '\\$&')}.*2 行`) }, path);
+  }
 });

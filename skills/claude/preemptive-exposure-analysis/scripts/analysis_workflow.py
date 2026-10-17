@@ -153,32 +153,53 @@ def scope_problems(scope, input_schema: dict) -> list:
 NON_BLANK_PATTERN = r"[^\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]"
 
 
-def _rule_text(node: dict) -> str:
-    """一個必填欄位的 schema 節點寫成給使用者看的規則（scope_rule_note 用）。"""
+def _rule_text(node: dict, path: str) -> str:
+    """一個必填欄位的 schema 節點寫成給人看的規則（scope_rule_note 用，與 assets/scope-gate.js 的 ruleText 相同）。
+    說明必須涵蓋節點的每一條規則：寫不出來的就丟出 ValueError，不退回比較寬鬆的說明——模型側守門只看得到這段說明（見 docs/adr/0005）。"""
+    def unsupported(keyword):
+        raise ValueError(f"授權範圍的規則說明寫不出 schema 關鍵字 {keyword}（{path}）；兩份規則說明都要實作它，見 docs/adr/0005")
+
     kind = node.get("type")
     if kind == "string":
+        if node.get("minLength", 0) > 1:
+            unsupported(f"minLength: {node['minLength']}")
         if node.get("format") == "date":
-            return "須為 YYYY-MM-DD 的有效日期"
-        if node.get("pattern") == NON_BLANK_PATTERN:
-            return "須含非空白字元"
+            return unsupported("pattern") if "pattern" in node else "須為 YYYY-MM-DD 的有效日期"
+        if "pattern" in node:
+            return "須含非空白字元" if node["pattern"] == NON_BLANK_PATTERN else unsupported("pattern")
         return "須為非空字串" if node.get("minLength") else "須為字串"
     if kind == "array":
+        if node.get("minItems", 0) > 1:
+            unsupported(f"minItems: {node['minItems']}")
         text = "須為非空陣列" if node.get("minItems") else "須為陣列"
-        items = node.get("items") or {}
-        if items.get("type") == "string":
-            text += "，且每項為非空白字串" if items.get("pattern") == NON_BLANK_PATTERN else "，且每項為字串"
-        return text
+        return text + (_items_text(node["items"], unsupported) if "items" in node else "")
     if kind == "boolean":
         return "須為布林值"
-    return "須提供"
+    if kind is None:
+        return "須提供"
+    return unsupported(f"type: {kind}")
+
+
+def _items_text(items: dict, unsupported) -> str:
+    if items.get("type") != "string":
+        unsupported("items")
+    if items.get("minLength", 0) > 1:
+        unsupported(f"minLength: {items['minLength']}")
+    if "format" in items:
+        unsupported("format")
+    if "pattern" in items:
+        return "，且每項為非空白字串" if items["pattern"] == NON_BLANK_PATTERN else unsupported("pattern")
+    return "，且每項為非空字串" if items.get("minLength") else "，且每項為字串"
 
 
 def scope_rule_note(input_schema: dict) -> str:
-    """把 schema 的 scope 規則寫成給使用者看的說明，附在守門的錯誤訊息後面（規則改了，說明跟著改）。"""
+    """把 schema 的 scope 規則寫成給人看的說明（規則改了，說明跟著改），不加括號。守門的中止訊息附上它；
+    JS 那邊 assets/scope-gate.js 的 scopeRuleNote() 產生同一段，由建置寫進核心提示詞（見 docs/adr/0005）。"""
+    _assert_supported(input_schema["properties"]["scope"], "")  # 守門不認得的關鍵字，說明也寫不出來：先擋下，不寫出比較寬鬆的說明
     groups = {}
     for path, node in _required_leaf_nodes(input_schema["properties"]["scope"], ""):
-        groups.setdefault(_rule_text(node), []).append(path.rsplit(".", 1)[-1])
-    return "（" + "；".join(f"{'、'.join(names)} {rule}" for rule, names in groups.items()) + "）"
+        groups.setdefault(_rule_text(node, path), []).append(path.rsplit(".", 1)[-1])
+    return "；".join(f"{'、'.join(names)} {rule}" for rule, names in groups.items())
 
 
 # ---------------------------------------------------------------------------
@@ -229,7 +250,7 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
         raise Abort(f"[中止] scope.json 無法解析：{exc}") from exc
     problems = scope_problems(scope, input_schema)
     if problems:
-        raise Abort("[中止] scope.json 缺少或不合格的必填欄位：" + ", ".join(problems) + scope_rule_note(input_schema))
+        raise Abort("[中止] scope.json 缺少或不合格的必填欄位：" + ", ".join(problems) + f"（{scope_rule_note(input_schema)}）")
 
     inputs = Inputs(scope=scope)
     for name, category, label, _ in INPUT_FILES:

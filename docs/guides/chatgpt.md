@@ -146,7 +146,7 @@ python3 skills/chatgpt/api-workflow.py
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `skills/shared/task-spec.md` 第 7 節 7 項：
+依 `skills/shared/task-spec.md` 第 7 節 8 項：
 
 1. 回報筆數（assets 12、vulnerabilities 14、identities 8、misconfigurations 9、controls 8、actors 3、edges 19、exposures 7）。
 2. `vpn-gw-01 / SYN-2026-0101` 為 P1，依據含對外曝露、公開利用程式、模擬 KEV、情資命中。
@@ -155,6 +155,7 @@ python3 skills/chatgpt/api-workflow.py
 5. 管理摘要 ≤ 300 字，含決策請求與限制。
 6. 移除 `threat-intel.json`（Knowledge／Project 中刪除；API 腳本加 `--exclude threat_intel`）重跑：信心下修並標示「未納入威脅情資」。
 7. 移除 `scope.json`（API 腳本加 `--exclude scope`）重跑：拒絕分析。API 腳本會直接中止並印出必要欄位。
+8. 把 `scope.json` 的一個欄位改成不合格的值重跑（`analysis_date` 為 `2026-02-30`、`organization` 只有空白、`active_testing_authorized` 為字串 `"true"`）：在 Custom GPT／Project 對話中應拒絕分析，點名該欄位與它的規則。API 腳本會在呼叫 API 之前就中止，所以模型層只能在對話介面驗證。
 
 ## 10. 機敏資料處理與人工核准邊界
 

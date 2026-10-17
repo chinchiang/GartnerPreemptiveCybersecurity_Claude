@@ -105,6 +105,7 @@ version: 1.0.0
 5. O5 以正體中文、≤ 300 字，含「決策請求」與「限制」。
 6. 移除 `threat-intel.json` 重跑：O1 信心水準應下修，且輸出明確列出「未納入威脅情資」。
 7. 移除 `scope.json` 重跑：應**拒絕分析**並要求提供授權範圍。
+8. scope 不合格重跑（三個變體，各把 `scope.json` 的一個欄位改成不合格的值：`analysis_date` 為 `2026-02-30`、`organization` 只有空白、`active_testing_authorized` 為字串 `"true"`）：應**拒絕分析**，點名不合格的欄位與它的規則。
 
 ## 附錄 A：示範評分規則（本專案推論，非 Gartner 公式）
 
