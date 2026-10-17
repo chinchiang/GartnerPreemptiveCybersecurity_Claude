@@ -60,14 +60,14 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎驗收與快照、下載檔、機敏字串
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
 npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽器），輸出 link-check.md（見第 4.2 節）
 ```
 
-結果寫入 `verify-report.md`；截圖在 `verify-screenshots/`。任一項失敗時腳本以非零狀態結束。
+完整模式（`npm run verify`）的結果寫入 `verify-report.md`；`verify:static` 只把結果印到終端機，不改寫這個已提交的檔案。截圖在 `verify-screenshots/`。任一項失敗時腳本以非零狀態結束。
 
 ### 4.1 評分規則與示範引擎快照
 
@@ -122,7 +122,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例。模型側守門的規則說明也由建置從 schema 產生（`scope-gate.js` 的 `scopeRuleNote()`），寫進核心提示詞與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）以「- scope 必填欄位的規則：」開頭的那一行；要用到規則說明還不會描述的規則時，`scopeRuleNote()` 與 Python 的 `scope_rule_note` 兩份都要實作，否則建置會丟出錯誤（見 `docs/adr/0005-model-side-gate-rule-note-is-generated-into-the-core-prompt.md`） | build（重寫 `scope-gate.js` 的嵌入區塊與四份檔案的規則說明行，提交）+ `npm test` + Python unittest |
 | 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本、改寫版（Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的流程說明（見第 4.1 節）；改了數值或公式時，`scripts/scoring.test.mjs` 的手算預期值也要跟著改 | `npm test` + build + verify + `npm run snapshot` |
 
-`data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 會執行 `git diff --exit-code -- data/ downloads/ skills/ assets/scope-gate.js`，忘記重建或直接改了複本、嵌入區塊都會擋下 PR。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
+`data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 在建置與靜態驗證之後檢查整份工作樹（`git status --porcelain` 必須是空的，新產生的檔案也算），忘記重建或直接改了複本、嵌入區塊都會擋下 PR；新增嵌入目標時不必改 CI。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
 
 建議每季重新查證：Gartner 新文件（尤其 Impact Radar 與 Hype Cycle 更新）、五個平臺的模型與功能變動（見待驗證清單）。這件事已由 `.github/workflows/quarterly-review.yml` 每季（1／4／7／10 月 1 日）自動開一個 issue，內容是 `data/sources.js` 中 `status: 'pending'` 的項目所組成的勾選清單（`node scripts/todo-checklist.mjs` 可在本機預覽）。查證完成後把該項改成 `status: 'done'` 並填 `resolvedAt`——`verify:static` 會檢查 `pending` 項目都寫出了下一步、`done` 項目都有日期。
 

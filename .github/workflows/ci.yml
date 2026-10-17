@@ -25,12 +25,15 @@ jobs:
         run: npm run build
       - name: Static verification (data, sources, schema, demo acceptance + snapshot, secrets scan)
         run: npm run verify:static
-      - name: Generated files are up to date (data/, downloads/, skills/ copies, and the scope-gate.js embedded block)
+      - name: Generated files are up to date (whole working tree, including new files)
+        # 整份工作樹：建置寫到哪裡都會被檢查到，新增嵌入目標時不必改這裡；verify:static 不寫檔，所以不必排除任何檔案
         run: |
-          git diff --exit-code -- data/ downloads/ skills/ assets/scope-gate.js || {
-            echo "::error::建置產物與來源不一致：skills/*/…/references/ 的複本與嵌入區塊（system-prompt.md、SKILL.md 的核心提示詞、assets/scope-gate.js 的 scope 定義）請勿手動編輯，改 skills/shared/ 的母本；改完來源後執行 npm run build 並提交"
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            git diff
+            echo "::error::建置產物與來源不一致：複本、嵌入區塊與規則說明行請勿手動編輯，改 skills/shared/ 的母本；改完來源後執行 npm run build 並提交（上方列出不一致的檔案）"
             exit 1
-          }
+          fi
       - name: Python skills compile and dry-run (no API keys)
         run: |
           python3 -m py_compile skills/shared/*.py skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
