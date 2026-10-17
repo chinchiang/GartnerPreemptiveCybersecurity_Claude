@@ -8,6 +8,8 @@
  * 路徑相對於目前目錄。測試指令預設 node --test scripts/*.test.mjs，以 shell 執行；結束碼非 0 視為「抓到」。
  * 結束碼：0 全部抓到；1 有存活；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處）
  * 或測試在突變前就失敗，這時一個檔案都不改。
+ * 中斷（SIGINT／SIGTERM）時的還原只保證 Linux／macOS：結束測試靠 process.kill(-pid) 送給整個行程群組，Windows 不支援，
+ * 測試子行程可能殘留。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
