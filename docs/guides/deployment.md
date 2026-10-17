@@ -60,7 +60,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎驗收與快照、下載檔、機敏字串
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
@@ -99,11 +99,11 @@ python3 skills/chatgpt/api-workflow.py --input-dir examples/synthetic-org --outp
 node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 ```
 
-`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）八項驗收中可機器判定的部分：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
+`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）八項驗收中可機器判定的部分（判定由驗收 module `scripts/acceptance.mjs` 提供，這支只是 CLI）：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心。
 
 刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
 
-`examples/acceptance-fixture.json` 是一份「應該全部通過」的合成夾具，`verify:static` 會用它反向測試驗收腳本本身沒壞（同一份夾具在 `no-intel` 變體下必須失敗，否則表示該檢查是空的）。**它不是任何模型的真實輸出。**
+`examples/acceptance-fixture.json` 是一份「應該全部通過」的合成夾具，`npm test`（`scripts/acceptance.test.mjs`）會用它反向測試驗收的判定本身沒壞（同一份夾具在 `no-intel` 變體下必須失敗，否則表示該檢查是空的）。第 1 項的預期筆數由合成資料推出，並對照 `acceptance.md` 寫的 9 個數字。**它不是任何模型的真實輸出。**
 
 Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗收需在 Claude Code 或 claude.ai 手動執行後，把輸出 JSON 存檔再跑上面的腳本。
 
