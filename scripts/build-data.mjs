@@ -190,7 +190,7 @@ writeFileSync(out('downloads/skills-all-platforms.zip'), buildZip(allEntries));
 writeFileSync(out('downloads/synthetic-example-data.zip'), buildZip(exampleFiles.map(toEntry)));
 
 // 內容指紋取代「建置時間」：同一份來源內容永遠產生同一個 manifest，
-// CI 才能用 `git diff --exit-code -- data/ downloads/` 守住整個 data/ 目錄。
+// CI 建置後才能要求整份工作樹沒有變動（`git status --porcelain` 必須是空的），守住整個 data/ 目錄。
 // 實際部署時間請看 GitHub Actions 的執行紀錄。
 const contentHash = createHash('sha256').update(JSON.stringify({ research, guides, skillFiles, caseData })).digest('hex').slice(0, 12);
 
