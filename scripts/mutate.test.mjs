@@ -2,7 +2,7 @@
 // 以子行程跑 CLI，對象是 /tmp 底下的小專案：calc.js 加一支會檢查它的 check.js。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
@@ -38,6 +38,22 @@ test('突變照字面寫入：to 裡的 $&、$$ 不當替換樣式展開（寫�
     writeFileSync(join(dir, 'save.js'), "require('fs').copyFileSync(__dirname + '/calc.js', __dirname + '/seen.txt');\n");
     const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node save.js && node check.js'], { cwd: dir, encoding: 'utf8' });
     assert.equal(readFileSync(join(dir, 'seen.txt'), 'utf8'), 'module.exports = (a, b) => a - b /* $& $$ */;\n', r.stdout + r.stderr);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('不給 --test：用預設測試指令 node --test scripts/*.test.mjs', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  try {
+    mkdirSync(join(dir, 'scripts'));
+    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'),
+      "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { createRequire } from 'node:module';\n" +
+      "test('1 + 2 = 3', () => assert.equal(createRequire(import.meta.url)('../calc.js')(1, 2), 3));\n");
+    // 拿掉外層 node --test 設的 NODE_TEST_CONTEXT：子行程繼承它時，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
+    const { NODE_TEST_CONTEXT, ...env } = process.env;
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8', env });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法/);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
