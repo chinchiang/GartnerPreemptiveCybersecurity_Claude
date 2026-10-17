@@ -12,4 +12,4 @@
 
 ## Consequences
 
-複本不能手改，只能改母本後重建。CI 先重建，再對 `data/`、`downloads/`、`skills/` 執行 `git diff --exit-code`：忘記重建或直接改了複本，都會擋下 PR。
+複本不能手改，只能改母本後重建。CI 先重建，再檢查重建後整份工作樹必須沒有變動（`git status --porcelain` 為空，新產生的檔案也算）：忘記重建或直接改了複本，都會擋下 PR。
