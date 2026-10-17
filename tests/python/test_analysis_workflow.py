@@ -169,8 +169,8 @@ class InputLoadingTest(unittest.TestCase):
         self.assertTrue(any("controls.json" in m and "無法解析" in m for m in inputs.missing))
 
 
-class InputChecksTest(unittest.TestCase):
-    """腳本預檢結果（資料完整性與 schema 必填欄位）：只警告、不中止。"""
+class PreflightFindingMessagesTest(unittest.TestCase):
+    """預檢發現的訊息（資料完整性與 schema 必填欄位）：只警告、不中止。斷言預檢發現的「檔名：訊息」。"""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -190,13 +190,13 @@ class InputChecksTest(unittest.TestCase):
         self.assertIn(old, text, f"測試夾具找不到要改的內容：{old}")
         path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
-    def warnings(self):
-        return "\n".join(aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA).warnings)
+    def findings_text(self):
+        return "\n".join(f"{f.file}：{f.message}" for f in aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA).findings)
 
     def test_synthetic_data_has_only_the_known_unlisted_external_host(self):
-        warnings = aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA).warnings
-        self.assertEqual(len(warnings), 1, warnings)
-        self.assertIn("old-test.northwind-synthetic.example", warnings[0])
+        findings = aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA).findings
+        self.assertEqual([(f.file, f.kind) for f in findings], [("exposures.json", "unlisted_host")])
+        self.assertEqual(findings[0].detail, ["old-test.northwind-synthetic.example"])
 
     def test_each_integrity_problem_is_reported(self):
         cases = [
@@ -210,12 +210,12 @@ class InputChecksTest(unittest.TestCase):
             with self.subTest(name=name, expected=expected):
                 self.fresh()
                 self.edit(name, old, new)
-                self.assertIn(expected, self.warnings())
+                self.assertIn(expected, self.findings_text())
 
     def test_missing_asset_id_column_only_reports_the_column(self):
         header = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
         self.edit("assets.csv", header, header.replace("asset_id,", "id,", 1))
-        out = self.warnings()
+        out = self.findings_text()
         self.assertIn("assets.csv：缺少必填欄位 asset_id", out)
         self.assertNotIn("重複 asset_id", out)       # 沒有 asset_id 不等於全部重複
         self.assertNotIn("指向不存在資產", out)      # 也不能把每個參照都當成懸空
@@ -233,7 +233,7 @@ class InputChecksTest(unittest.TestCase):
         vr[vh.index("cvss_base")] = "11"
         vulns[1] = ",".join(vr)
         (self.dir / "vulnerabilities.csv").write_text("\n".join(vulns) + "\n", encoding="utf-8")
-        out = self.warnings()
+        out = self.findings_text()
         self.assertIn("business_criticality 超出 1–5", out)
         self.assertIn("cvss_base 超出 0–10", out)
 
@@ -241,12 +241,12 @@ class InputChecksTest(unittest.TestCase):
         scope = dict(SYNTHETIC_SCOPE, authorized_scope=dict(SYNTHETIC_SCOPE["authorized_scope"],
                                                             in_scope_assets=SYNTHETIC_SCOPE["authorized_scope"]["in_scope_assets"][1:]))
         (self.dir / "scope.json").write_text(json.dumps(scope, ensure_ascii=False), encoding="utf-8")
-        self.assertIn("範圍外資產", self.warnings())
+        self.assertIn("範圍外資產", self.findings_text())
 
     def test_required_columns_come_from_schema(self):
         header = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
         self.edit("assets.csv", header, header.replace(",owner", ",owner_name"))
-        self.assertIn("owner", self.warnings())
+        self.assertIn("owner", self.findings_text())
 
     def test_short_or_malformed_rows_only_warn(self):
         cases = [
@@ -259,12 +259,12 @@ class InputChecksTest(unittest.TestCase):
                 self.fresh()
                 path = self.dir / name
                 path.write_text(mutate(path.read_text(encoding="utf-8")), encoding="utf-8")
-                self.assertIn(expected, self.warnings())
+                self.assertIn(expected, self.findings_text())
 
     def test_header_only_required_file_reports_zero_rows_and_missing_columns(self):
         header = (self.dir / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
         (self.dir / "assets.csv").write_text(header.replace(",owner", ",owner_name") + "\n", encoding="utf-8")
-        out = self.warnings()
+        out = self.findings_text()
         self.assertIn("assets.csv：必要檔案 0 筆資料", out)
         self.assertIn("assets.csv：缺少必填欄位 owner", out)
 
@@ -274,17 +274,185 @@ class InputChecksTest(unittest.TestCase):
         inputs = aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA)
         assets = next(f for f in inputs.files if f["name"] == "assets.csv")
         self.assertEqual(assets["columns"][0], "asset_id")
-        self.assertNotIn("assets.csv：缺少必填欄位", "\n".join(inputs.warnings))
+        self.assertNotIn("missing_columns", [f.kind for f in inputs.findings])
 
     def test_required_fields_of_object_inputs_come_from_schema(self):
         self.edit("controls.json", '"maturity"', '"maturity_level"')
-        self.assertIn("controls.json：controls 有", self.warnings())
+        self.assertIn("controls.json：controls 有", self.findings_text())
 
     def test_missing_required_file_is_a_warning_not_an_abort(self):
         (self.dir / "assets.csv").unlink()
-        out = self.warnings()
+        out = self.findings_text()
         self.assertIn("assets.csv", out)
         self.assertIn("必要", out)
+
+
+def make_problem_inputs(dest: Path) -> Path:
+    """一組各種腳本預檢問題都有的合成輸入：缺必要檔、重複與懸空參照、建議 CSV 缺欄位、JSON 必填欄位、
+    懸空邊與不是物件的邊、無法解析、結構不是物件。"""
+    shutil.copytree(ROOT / "examples" / "synthetic-org", dest)
+
+    def edit(name, old, new):
+        path = dest / name
+        text = path.read_text(encoding="utf-8")
+        assert old in text, f"測試夾具找不到要改的內容：{old}"
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+    (dest / "vulnerabilities.csv").unlink()
+    edit("assets.csv", "\nA02,", "\nA01,")
+    edit("identities.csv", "A04;A05;A06", "A04;A98")
+    header = (dest / "misconfigurations.csv").read_text(encoding="utf-8").splitlines()[0]
+    edit("misconfigurations.csv", header, header.replace("status", "state"))
+    edit("controls.json", '"maturity"', '"maturity_level"')
+    edit("topology.json", '"to": "A06"', '"to": "A97"')
+    edit("topology.json", '"edges": [', '"edges": ["not-an-edge", ')
+    edit("topology.json", '"crown_jewels"', '"crown"')
+    (dest / "threat-intel.json").write_text("{ not json", encoding="utf-8")
+    (dest / "exposures.json").write_text("[]", encoding="utf-8")
+    return dest
+
+
+# 改動前的實際輸出（#59）：提示詞的「腳本預檢結果」逐字不變；無法解析、結構不是物件不列在這裡
+PROBLEM_PREFLIGHT_LINES = [
+    "vulnerabilities.csv：缺少必要輸入（I3 弱點與發現）；只能產出曝險面清單並下修信心",
+    "misconfigurations.csv：缺少必填欄位 status",
+    "controls.json：controls 有 1 筆缺少必填欄位（control_id, name, coverage_assets, gaps, maturity）",
+    "topology.json：缺少必填欄位 crown_jewels",
+    "topology.json：edges 有 1 筆缺少必填欄位（from, to, via, trust）",
+    "assets.csv：重複 asset_id ×1",
+    "identities.csv：I01 linked_assets 指向不存在資產 A98",
+    "identities.csv：I05 linked_assets 指向不存在資產 A02",
+    "topology.json：edges 裡有不是物件的項目（'not-an-edge'）",
+    "topology.json：邊 internet→A02 指向不存在資產 A02",
+    "topology.json：邊 A02→A05 指向不存在資產 A02",
+    "topology.json：邊 A04→A97 指向不存在資產 A97",
+    "topology.json：邊 A11→A02 指向不存在資產 A02",
+]
+
+
+class PreflightRenderingTest(unittest.TestCase):
+    """腳本預檢在提示詞與 stderr 的渲染逐字不變（模型看到的文字不因 #59 改變）。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.dir = make_problem_inputs(Path(cls.tmp.name) / "inputs")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_report_prompt_preflight_section_is_unchanged(self):
+        prompt = aw.build_report_prompt(aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA))
+        section = prompt[prompt.index("【腳本預檢結果】"):].split("\n\n")[0].splitlines()
+        self.assertEqual(section, ["【腳本預檢結果】以下是腳本對輸入的機械檢查，請寫進資料品質章節並據以下修信心："]
+                         + [f"- {line}" for line in PROBLEM_PREFLIGHT_LINES])
+
+    def test_dry_run_stderr_preflight_lines_are_unchanged(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = aw.main(FakeAdapter([]), ["--dry-run", "--input-dir", str(self.dir), "--output-dir", str(Path(self.tmp.name) / "out")])
+        self.assertEqual(code, 0, stderr.getvalue())
+        self.assertEqual([l for l in stderr.getvalue().splitlines() if l.startswith("[預檢]")],
+                         [f"[預檢] {line}" for line in PROBLEM_PREFLIGHT_LINES])
+
+    def test_unparsable_and_not_an_object_findings_stay_out_of_the_prompt(self):
+        inputs = aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA)
+        self.assertEqual({f.kind for f in inputs.findings} & {"unparsable", "not_an_object"}, {"unparsable", "not_an_object"})
+        section = aw.build_report_prompt(inputs).split("【腳本預檢結果】")[1].split("\n\n")[0]
+        self.assertNotIn("threat-intel.json", section)  # 無法解析：已列在【本次未提供的輸入】
+        self.assertNotIn("結構不是物件", section)
+
+
+class ScriptPreflightTest(unittest.TestCase):
+    """腳本預檢的結構化結果：每筆預檢發現帶 file、kind、severity、message、detail，順序同提示詞（#59）。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def preflight(self, folder, schema=INPUT_SCHEMA):
+        return aw.script_preflight(aw.load_inputs(folder, frozenset(), schema), schema)
+
+    def test_findings_are_ordered_and_carry_kind_and_severity(self):
+        findings = self.preflight(make_problem_inputs(Path(self.tmp.name) / "inputs"))
+        self.assertEqual([(f.file, f.kind, f.severity) for f in findings], [
+            ("vulnerabilities.csv", "missing_required_file", "必要問題"),
+            ("misconfigurations.csv", "missing_columns", "警告"),
+            ("controls.json", "nested_rows_missing_fields", "警告"),
+            ("topology.json", "object_missing_fields", "警告"),
+            ("topology.json", "nested_rows_missing_fields", "警告"),
+            ("assets.csv", "duplicate_asset_id", "異常"),
+            ("identities.csv", "dangling_reference", "異常"),
+            ("identities.csv", "dangling_reference", "異常"),
+            ("topology.json", "non_object_edge", "異常"),
+            ("topology.json", "dangling_edge", "異常"),
+            ("topology.json", "dangling_edge", "異常"),
+            ("topology.json", "dangling_edge", "異常"),
+            ("topology.json", "dangling_edge", "異常"),
+            ("exposures.json", "not_an_object", "警告"),
+            ("threat-intel.json", "unparsable", "警告"),
+        ])
+        self.assertEqual([f"{f.file}：{f.message}" for f in findings[:13]], PROBLEM_PREFLIGHT_LINES)
+
+    def fresh(self, name="inputs"):
+        folder = Path(self.tmp.name) / name
+        shutil.copytree(ROOT / "examples" / "synthetic-org", folder)
+        return folder
+
+    def test_required_file_problems_are_must_fix_and_optional_ones_are_warnings(self):
+        folder = self.fresh()
+        (folder / "assets.csv").write_bytes(b"\xff\xfe not utf-8")
+        header = (folder / "vulnerabilities.csv").read_text(encoding="utf-8").splitlines()[0]
+        (folder / "vulnerabilities.csv").write_text(header + "\n", encoding="utf-8")
+        (folder / "identities.csv").write_bytes(b"\xff\xfe not utf-8")
+        got = {(f.file, f.kind): f.severity for f in self.preflight(folder)}
+        self.assertEqual(got[("assets.csv", "missing_required_file")], "必要問題")
+        self.assertEqual(got[("assets.csv", "unparsable")], "必要問題")
+        self.assertEqual(got[("vulnerabilities.csv", "empty_required_file")], "必要問題")
+        self.assertEqual(got[("identities.csv", "unparsable")], "警告")
+
+    def test_missing_columns_of_a_required_csv_are_must_fix_and_carry_the_columns(self):
+        folder = self.fresh()
+        header = (folder / "assets.csv").read_text(encoding="utf-8").splitlines()[0]
+        text = (folder / "assets.csv").read_text(encoding="utf-8")
+        (folder / "assets.csv").write_text(text.replace(header, header.replace(",owner", ",owner_name"), 1), encoding="utf-8")
+        [finding] = [f for f in self.preflight(folder) if f.kind == "missing_columns"]
+        self.assertEqual((finding.file, finding.severity, finding.detail), ("assets.csv", "必要問題", ["owner"]))
+
+    def test_details_let_renderers_avoid_parsing_messages(self):
+        findings = self.preflight(make_problem_inputs(Path(self.tmp.name) / "inputs"))
+        edges = [f.detail for f in findings if f.kind == "dangling_edge"]
+        self.assertEqual(edges[2], {"from": "A04", "to": "A97", "missing": ["A97"]})
+        self.assertEqual(len(edges), 4)
+        [nested] = [f.detail for f in findings if f.file == "controls.json" and f.kind == "nested_rows_missing_fields"]
+        self.assertEqual(nested, {"key": "controls", "count": 1, "fields": ["control_id", "name", "coverage_assets", "gaps", "maturity"]})
+        self.assertEqual([f.detail for f in findings if f.kind == "object_missing_fields"], [["crown_jewels"]])
+
+    def test_integrity_findings_are_anomalies(self):
+        folder = self.fresh()
+        scope = json.loads((folder / "scope.json").read_text(encoding="utf-8"))
+        scope["authorized_scope"]["in_scope_assets"].remove("A01")
+        (folder / "scope.json").write_text(json.dumps(scope, ensure_ascii=False), encoding="utf-8")
+        assets = (folder / "assets.csv").read_text(encoding="utf-8").splitlines()
+        header = assets[0].split(",")
+        for i, value in ((1, "9"), (2, "high")):
+            row = assets[i].split(",")
+            row[header.index("business_criticality")] = value
+            assets[i] = ",".join(row)
+        (folder / "assets.csv").write_text("\n".join(assets) + "\n", encoding="utf-8")
+        got = {f.kind: f.severity for f in self.preflight(folder)}
+        self.assertEqual(got, {"out_of_scope_asset": "異常", "out_of_range": "異常", "invalid_value": "異常", "unlisted_host": "異常"})
+
+    def test_rows_of_a_json_list_input_missing_fields_are_reported(self):
+        schema = copy.deepcopy(INPUT_SCHEMA)
+        schema["properties"]["exposures"] = {"type": "array", "items": {"type": "object", "required": ["hostname"]}}
+        folder = self.fresh()
+        (folder / "exposures.json").write_text(json.dumps([{"hostname": "a"}, {"port": 1}, "x"]), encoding="utf-8")
+        [finding] = [f for f in self.preflight(folder, schema) if f.file == "exposures.json"]
+        self.assertEqual((finding.kind, finding.severity, finding.detail), ("rows_missing_fields", "警告", {"count": 2, "fields": ["hostname"]}))
 
 
 class PromptTest(unittest.TestCase):

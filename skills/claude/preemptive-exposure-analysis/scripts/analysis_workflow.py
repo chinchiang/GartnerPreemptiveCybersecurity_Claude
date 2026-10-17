@@ -212,7 +212,7 @@ class Inputs:
     files: list = field(default_factory=list)      # [{name, category, label, raw, data, records}]，會送進提示詞
     missing: list = field(default_factory=list)    # 本次未提供的輸入（含 --exclude 與無法解析者）
     unparsable: dict = field(default_factory=dict)  # 無法解析的檔案：{檔名: 錯誤訊息}（也列在 missing）
-    warnings: list = field(default_factory=list)   # 腳本預檢結果：只警告、不中止
+    findings: list = field(default_factory=list)   # 預檢發現 [PreflightFinding]：只警告、不中止
 
 
 def _parse(name: str, raw: str):
@@ -270,29 +270,86 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
             continue
         inputs.files.append({"name": name, "category": category, "label": label, "raw": raw, "data": data,
                              "columns": columns, "records": count_records(data)})
-    inputs.warnings = check_inputs(inputs, input_schema)
+    inputs.findings = script_preflight(inputs, input_schema)
     return inputs
 
 
-def check_inputs(inputs: Inputs, input_schema: dict) -> list:
-    """腳本預檢結果：只產生警告，交給模型寫進資料品質章節並據以下修信心；授權範圍以外的問題都不中止分析。
-    任何一列資料缺值或型別不對，都只會變成警告，不會讓預檢本身失敗。"""
+class PreflightKind:
+    """預檢發現的種類（kind）：一種問題一個常數，渲染端依它分支、計數或取 detail，不比對訊息字串。"""
+    MISSING_REQUIRED_FILE = "missing_required_file"  # 缺少必要輸入（含無法解析而沒有載入的必要檔）
+    EMPTY_REQUIRED_FILE = "empty_required_file"  # 必要檔案 0 筆資料
+    MISSING_COLUMNS = "missing_columns"  # CSV 標頭缺必填欄位；detail＝欄位清單
+    ROWS_MISSING_FIELDS = "rows_missing_fields"  # JSON 清單有 N 筆缺必填欄位；detail＝{count, fields}
+    OBJECT_MISSING_FIELDS = "object_missing_fields"  # JSON 物件缺必填欄位；detail＝欄位清單
+    NESTED_ROWS_MISSING_FIELDS = "nested_rows_missing_fields"  # JSON 物件裡的清單有 N 筆缺必填欄位；detail＝{key, count, fields}
+    DUPLICATE_ASSET_ID = "duplicate_asset_id"  # 重複 asset_id；detail＝重複的筆數
+    OUT_OF_SCOPE_ASSET = "out_of_scope_asset"  # 範圍外資產；detail＝asset_id 清單
+    INVALID_VALUE = "invalid_value"  # 數值欄位不是數字
+    OUT_OF_RANGE = "out_of_range"  # 數值超出範圍
+    DANGLING_REFERENCE = "dangling_reference"  # 指向不存在資產的參照
+    NON_OBJECT_EDGE = "non_object_edge"  # 拓樸 edges 裡不是物件的項目
+    DANGLING_EDGE = "dangling_edge"  # 指向不存在資產的邊，一條邊一筆；detail＝{from, to, missing}
+    UNLISTED_HOST = "unlisted_host"  # 未納入清冊的對外資產；detail＝hostname 清單
+    UNPARSABLE = "unparsable"  # 檔案無法解析；detail＝錯誤訊息（不列在提示詞）
+    NOT_AN_OBJECT = "not_an_object"  # schema 是物件、資料卻不是物件（不列在提示詞）
+
+
+# 預檢發現的嚴重度（見 GLOSSARY.md「預檢發現」）；哪一種問題是哪一級，只在本模組決定（理由見 script_preflight）
+PROBLEM, WARNING, ANOMALY = "必要問題", "警告", "異常"
+REQUIRED_FILES = {name for name, _, _, required in INPUT_FILES if required}
+
+# 提示詞與 main() 的 stderr 不列的 kind（理由見 preflight_lines）
+NOT_IN_PROMPT = {PreflightKind.UNPARSABLE, PreflightKind.NOT_AN_OBJECT}
+
+
+@dataclass(frozen=True)
+class PreflightFinding:
+    """一筆預檢發現：哪個檔案、哪一種問題（kind，見 PreflightKind）、嚴重度、給人看的訊息，
+    以及渲染需要的結構化細節 detail（形狀依 kind 而定，寫在 PreflightKind 各常數旁；沒有就是 None）。"""
+    file: str
+    kind: str
+    severity: str
+    message: str
+    detail: object = None
+
+
+def _file_severity(name: str) -> str:
+    """缺欄位、無法解析這類檔案層級的問題：必要檔案是必要問題，建議檔是警告。"""
+    return PROBLEM if name in REQUIRED_FILES else WARNING
+
+
+def script_preflight(inputs: Inputs, input_schema: dict) -> list:
+    """腳本預檢（見 GLOSSARY.md）：回傳有順序的 [PreflightFinding]。順序＝提示詞「腳本預檢結果」的順序：
+    必要檔案 → schema 必填欄位 → 資料完整性；提示詞不列的「無法解析」「結構不是物件」排在最後。
+    任何一列資料缺值或型別不對，都只會變成預檢發現，不會讓預檢本身失敗。
+
+    嚴重度放在這裡、而不是交給各渲染端：哪一種問題該擋下分析是規則，不是呈現方式，只能有一份。
+    但它只給 Claude 技能的 validate_inputs.py 用（依它決定結束碼）；四支 api-workflow.py 刻意不看嚴重度——
+    腳本預檢只警告、不阻擋分析，授權範圍以外的問題都交給模型寫進資料品質章節並下修信心（#59）。"""
     loaded = {f["name"]: f for f in inputs.files}
-    return (_required_file_warnings(loaded) + _schema_field_warnings(inputs.files, input_schema)
-            + [f"{name}：{message}" for name, message in integrity_findings(inputs)])
+    return (_required_file_findings(loaded) + _schema_field_findings(inputs.files, input_schema)
+            + _integrity_findings(inputs) + _file_status_findings(inputs, input_schema))
 
 
-def _required_file_warnings(loaded: dict) -> list:
+def preflight_lines(findings: list) -> list:
+    """提示詞「腳本預檢結果」與 main() 的 stderr 共用的「檔名：訊息」各行，排除 NOT_IN_PROMPT 的兩種 kind：
+    無法解析的檔案已經列在【本次未提供的輸入】，不重複；結構不是物件從來不在提示詞裡，
+    排除它是為了讓模型看到的文字逐字不變（#59）。"""
+    return [f"{f.file}：{f.message}" for f in findings if f.kind not in NOT_IN_PROMPT]
+
+
+def _required_file_findings(loaded: dict) -> list:
     """必要輸入是否齊全、是否至少有一筆資料（scope.json 另由守門處理）。"""
-    warnings = []
+    findings = []
     for name, _, label, required in INPUT_FILES:
         if not required or name == "scope.json":
             continue
         if name not in loaded:
-            warnings.append(f"{name}：缺少必要輸入（{label}）；只能產出曝險面清單並下修信心")
+            findings.append(PreflightFinding(name, PreflightKind.MISSING_REQUIRED_FILE, PROBLEM,
+                                             f"缺少必要輸入（{label}）；只能產出曝險面清單並下修信心"))
         elif loaded[name]["records"] == 0:
-            warnings.append(f"{name}：必要檔案 0 筆資料")
-    return warnings
+            findings.append(PreflightFinding(name, PreflightKind.EMPTY_REQUIRED_FILE, PROBLEM, "必要檔案 0 筆資料"))
+    return findings
 
 
 def required_columns(category: str, input_schema: dict) -> list:
@@ -301,12 +358,12 @@ def required_columns(category: str, input_schema: dict) -> list:
     return node.get("items", {}).get("required", []) if node.get("type") == "array" else []
 
 
-def _schema_field_warnings(files: list, input_schema: dict) -> list:
+def _schema_field_findings(files: list, input_schema: dict) -> list:
     """input-schema.json 的必填欄位：CSV 看欄位標頭，JSON 清單看每一筆，JSON 物件看物件本身與其中清單的每一筆。"""
-    warnings = []
+    findings = []
     for f in files:
         node = input_schema["properties"].get(f["category"], {})
-        data = f["data"]
+        data, name = f["data"], f["name"]
         if f["category"] == "scope":
             continue
         if node.get("type") == "array":
@@ -314,22 +371,28 @@ def _schema_field_warnings(files: list, input_schema: dict) -> list:
             if f["columns"] is not None:
                 absent = [k for k in required if k not in f["columns"]]
                 if absent:
-                    warnings.append(f"{f['name']}：缺少必填欄位 {', '.join(absent)}")
+                    findings.append(PreflightFinding(name, PreflightKind.MISSING_COLUMNS, _file_severity(name),
+                                                     f"缺少必填欄位 {', '.join(absent)}", absent))
             elif isinstance(data, list):
                 bad = sum(1 for r in data if not isinstance(r, dict) or any(k not in r for k in required))
                 if required and bad:
-                    warnings.append(f"{f['name']}：有 {bad} 筆缺少必填欄位（{', '.join(required)}）")
+                    findings.append(PreflightFinding(name, PreflightKind.ROWS_MISSING_FIELDS, _file_severity(name),
+                                                     f"有 {bad} 筆缺少必填欄位（{', '.join(required)}）",
+                                                     {"count": bad, "fields": required}))
         elif node.get("type") == "object" and isinstance(data, dict):
             absent = [k for k in node.get("required", []) if k not in data]
             if absent:
-                warnings.append(f"{f['name']}：缺少必填欄位 {', '.join(absent)}")
+                findings.append(PreflightFinding(name, PreflightKind.OBJECT_MISSING_FIELDS, _file_severity(name),
+                                                 f"缺少必填欄位 {', '.join(absent)}", absent))
             for key, sub in node.get("properties", {}).items():
                 item_required = sub.get("items", {}).get("required", []) if sub.get("type") == "array" else []
                 rows = data.get(key) if isinstance(data.get(key), list) else []
                 bad = sum(1 for r in rows if not isinstance(r, dict) or any(k not in r for k in item_required))
                 if item_required and bad:
-                    warnings.append(f"{f['name']}：{key} 有 {bad} 筆缺少必填欄位（{', '.join(item_required)}）")
-    return warnings
+                    findings.append(PreflightFinding(name, PreflightKind.NESTED_ROWS_MISSING_FIELDS, _file_severity(name),
+                                                     f"{key} 有 {bad} 筆缺少必填欄位（{', '.join(item_required)}）",
+                                                     {"key": key, "count": bad, "fields": item_required}))
+    return findings
 
 
 def _in_range(value, low: float, high: float):
@@ -340,54 +403,72 @@ def _in_range(value, low: float, high: float):
         return None
 
 
-def integrity_findings(inputs: Inputs) -> list:
-    """資料完整性：重複、範圍外、數值範圍、懸空參照、拓樸的邊、未納入清冊的對外資產。
-    回傳 [(檔名, 訊息)]：提示詞的預檢結果把它寫成「檔名：訊息」，Claude 技能的 validate_inputs.py 依檔名分到各行。"""
+def _integrity_findings(inputs: Inputs) -> list:
+    """資料完整性（嚴重度一律是異常）：重複、範圍外、數值範圍、懸空參照、拓樸的邊、未納入清冊的對外資產。"""
     findings = []
+
+    def anomaly(name, kind, message, detail=None):
+        findings.append(PreflightFinding(name, kind, ANOMALY, message, detail))
+
     loaded = {f["name"]: f for f in inputs.files}
     authorized = inputs.scope.get("authorized_scope") if isinstance(inputs.scope.get("authorized_scope"), dict) else {}
     in_scope = set(authorized.get("in_scope_assets") or [])
     assets = loaded.get("assets.csv", {}).get("data") or []
-    # 只看有 asset_id 的列：缺這個欄位（另有缺欄位警告）時不能算成全部重複，也不能把每個參照都當成懸空
+    # 只看有 asset_id 的列：缺這個欄位（另有缺欄位的預檢發現）時不能算成全部重複，也不能把每個參照都當成懸空
     listed = [r.get("asset_id") for r in assets if r.get("asset_id")]
     asset_ids = set(listed)
     if listed:
         dup = len(listed) - len(asset_ids)
         if dup:
-            findings.append(("assets.csv", f"重複 asset_id ×{dup}"))
+            anomaly("assets.csv", PreflightKind.DUPLICATE_ASSET_ID, f"重複 asset_id ×{dup}", dup)
         outside = sorted(asset_ids - in_scope)
         if outside:
-            findings.append(("assets.csv", f"範圍外資產（分析時應排除）：{', '.join(outside)}"))
+            anomaly("assets.csv", PreflightKind.OUT_OF_SCOPE_ASSET, f"範圍外資產（分析時應排除）：{', '.join(outside)}", outside)
         for r in assets:
             ok = _in_range(r.get("business_criticality"), 1, 5)
             if ok is None:
-                findings.append(("assets.csv", f"{r.get('asset_id')} business_criticality 無效"))
+                anomaly("assets.csv", PreflightKind.INVALID_VALUE, f"{r.get('asset_id')} business_criticality 無效")
             elif not ok:
-                findings.append(("assets.csv", f"{r.get('asset_id')} business_criticality 超出 1–5"))
+                anomaly("assets.csv", PreflightKind.OUT_OF_RANGE, f"{r.get('asset_id')} business_criticality 超出 1–5")
     for r in loaded.get("vulnerabilities.csv", {}).get("data") or []:
         ok = _in_range(r.get("cvss_base"), 0, 10)
         if ok is None:
-            findings.append(("vulnerabilities.csv", f"{r.get('finding_id')} cvss_base 無效"))
+            anomaly("vulnerabilities.csv", PreflightKind.INVALID_VALUE, f"{r.get('finding_id')} cvss_base 無效")
         elif not ok:
-            findings.append(("vulnerabilities.csv", f"{r.get('finding_id')} cvss_base 超出 0–10"))
+            anomaly("vulnerabilities.csv", PreflightKind.OUT_OF_RANGE, f"{r.get('finding_id')} cvss_base 超出 0–10")
         if asset_ids and r.get("asset_id") not in asset_ids:
-            findings.append(("vulnerabilities.csv", f"{r.get('finding_id')} 指向不存在資產 {r.get('asset_id')}"))
+            anomaly("vulnerabilities.csv", PreflightKind.DANGLING_REFERENCE, f"{r.get('finding_id')} 指向不存在資產 {r.get('asset_id')}")
     for r in loaded.get("identities.csv", {}).get("data") or []:
         for a in str(r.get("linked_assets") or "").split(";"):
             if a and asset_ids and a not in asset_ids:
-                findings.append(("identities.csv", f"{r.get('identity_id')} linked_assets 指向不存在資產 {a}"))
+                anomaly("identities.csv", PreflightKind.DANGLING_REFERENCE, f"{r.get('identity_id')} linked_assets 指向不存在資產 {a}")
     topology = loaded.get("topology.json", {}).get("data")
     if isinstance(topology, dict) and asset_ids:
         for e in topology.get("edges", []) if isinstance(topology.get("edges"), list) else []:
             if not isinstance(e, dict):
-                findings.append(("topology.json", f"edges 裡有不是物件的項目（{e!r}）"))
+                anomaly("topology.json", PreflightKind.NON_OBJECT_EDGE, f"edges 裡有不是物件的項目（{e!r}）")
                 continue
             dangling = [str(e.get(end)) for end in ("from", "to") if e.get(end) != "internet" and e.get(end) not in asset_ids]
-            if dangling:  # 一條邊一筆，validate_inputs.py 以筆數作為「指向不存在資產的邊」
-                findings.append(("topology.json", f"邊 {e.get('from')}→{e.get('to')} 指向不存在資產 {', '.join(dangling)}"))
+            if dangling:  # 一條邊一筆
+                anomaly("topology.json", PreflightKind.DANGLING_EDGE, f"邊 {e.get('from')}→{e.get('to')} 指向不存在資產 {', '.join(dangling)}",
+                        {"from": e.get("from"), "to": e.get("to"), "missing": dangling})
     hosts = unlisted_hosts(loaded.get("exposures.json", {}).get("data"))
     if hosts:
-        findings.append(("exposures.json", f"未納入清冊的對外資產 {', '.join(str(h) for h in hosts)}"))
+        anomaly("exposures.json", PreflightKind.UNLISTED_HOST, f"未納入清冊的對外資產 {', '.join(str(h) for h in hosts)}", hosts)
+    return findings
+
+
+def _file_status_findings(inputs: Inputs, input_schema: dict) -> list:
+    """檔案層級的狀態：無法解析、schema 是物件但資料不是物件（兩者都不列在提示詞，見 NOT_IN_PROMPT）。"""
+    loaded = {f["name"]: f for f in inputs.files}
+    findings = []
+    for name, category, _, _ in INPUT_FILES:
+        if name in inputs.unparsable:
+            findings.append(PreflightFinding(name, PreflightKind.UNPARSABLE, _file_severity(name), f"無法解析：{inputs.unparsable[name]}",
+                                             inputs.unparsable[name]))
+        elif (name in loaded and category != "scope" and input_schema["properties"].get(category, {}).get("type") == "object"
+              and not isinstance(loaded[name]["data"], dict)):
+            findings.append(PreflightFinding(name, PreflightKind.NOT_AN_OBJECT, WARNING, "結構不是物件"))
     return findings
 
 
@@ -422,9 +503,10 @@ def build_report_prompt(inputs: Inputs) -> str:
              "先回報每個檔案的筆數、缺欄位與異常值，缺漏不得補造。這一段先不要輸出 JSON。", ""]
     if inputs.missing:
         parts += ["【本次未提供的輸入】" + "；".join(inputs.missing) + "。請依規則以替代方式處理並標示。", ""]
-    if inputs.warnings:
+    lines = preflight_lines(inputs.findings)
+    if lines:
         parts += ["【腳本預檢結果】以下是腳本對輸入的機械檢查，請寫進資料品質章節並據以下修信心："]
-        parts += [f"- {w}" for w in inputs.warnings]
+        parts += [f"- {line}" for line in lines]
         parts.append("")
     for f in inputs.files:
         count = f"（腳本預先計算筆數：{f['records']}）" if f["records"] is not None else ""
@@ -583,8 +665,8 @@ def main(adapter, argv=None) -> int:
             print(f"  - {f['name']}: {shown}", file=sys.stderr)
         if inputs.missing:
             print("[資訊] 未提供：" + "；".join(inputs.missing), file=sys.stderr)
-        for w in inputs.warnings:
-            print(f"[預檢] {w}", file=sys.stderr)
+        for line in preflight_lines(inputs.findings):
+            print(f"[預檢] {line}", file=sys.stderr)
 
         if args.dry_run:
             print(f"[DRY-RUN] 不會呼叫 API；system prompt {len(system_prompt)} 字元、第 1 段 {len(report_prompt)} 字元、"
