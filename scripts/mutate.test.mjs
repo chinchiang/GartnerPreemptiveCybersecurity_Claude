@@ -103,3 +103,19 @@ test('--json：輸出可解析的紀錄（給 PR 說明用），結束碼照舊'
     });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('參數或讀檔錯誤（沒給清單、清單不是 JSON、清單裡的檔案不存在）：結束碼 2，不和「有存活」的 1 混在一起', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  try {
+    const noList = spawnSync(process.execPath, [MUTATE, '--test', 'node check.js'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(noList.status, 2, noList.stderr);
+    assert.match(noList.stderr, /用法/);
+    writeFileSync(join(dir, 'mutations.json'), '[{ not json');
+    assert.equal(run(dir).status, 2);
+    writeFileSync(join(dir, 'mutations.json'), JSON.stringify([{ file: 'missing.js', from: 'x', to: 'y', note: '檔案不存在' }]));
+    const missing = run(dir);
+    assert.equal(missing.status, 2, missing.stderr);
+    assert.match(missing.stderr, /missing\.js/);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

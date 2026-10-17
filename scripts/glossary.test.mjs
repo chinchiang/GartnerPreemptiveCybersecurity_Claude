@@ -1,5 +1,5 @@
 // 詞彙表（GLOSSARY.md）的 _Avoid_ 詞：手寫的檔案不使用專指的 _Avoid_ 詞，改用詞條本身。
-// 純函式在 scripts/glossary.mjs；這裡先以假資料測它們，最後對整個 repo 檢查。
+// 純函式在 scripts/glossary.mjs；這裡先以虛構的輸入測它們，最後對整個 repo 檢查。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -46,12 +46,14 @@ const EXCLUDED = {
   後端: '「選用後端代理」「模型後端」是正當用法',
   供應商: '指資安產品或模型的供應商，不是指平臺',
   驗證: '「安全驗證計畫」（S6）與網站的 verify 是不同概念，不是指驗收',
-  預檢: '「腳本預檢」本身就含這兩個字',
   finding: '資料欄位 finding_id 與 vulnerabilities 的 finding 是正當用法，不是指預檢發現'
 };
 // 正當的片語：只遮掉片語涵蓋的那一處
 const ALLOWED = [
   { term: '拷貝', phrase: '深拷貝', reason: '程式術語 deep copy，不是指複本' },
+  { term: '預檢', phrase: '腳本預檢', reason: '詞條「腳本預檢」本身' },
+  { term: '預檢', phrase: '預檢發現', reason: '詞條「預檢發現」本身' },
+  { term: '預檢', phrase: '[預檢]', reason: 'api-workflow.py 印到 stderr 的固定標籤，改它會改變輸出' },
   { term: 'pipeline', phrase: 'retrieval pipelines', reason: '證據檔逐字引用外部原文' },
   { term: '主檔', phrase: '建議主檔', reason: 'agentskills 規格的用語，指 SKILL.md 主檔，不是指母本' },
   { term: 'demo engine', phrase: 'demo engine checks', reason: 'CI 步驟名稱慣例用英文' },
@@ -62,13 +64,15 @@ const ALLOWED = [
   { term: '範例資料', phrase: '範例資料的 `epss_sim`', reason: 'scoring-rules.md 與 Claude SKILL.md 是模型讀的文字，改動另議' }
 ];
 const TEXT_FILE = /\.(md|mjs|js|py|yml|json|html)$/;
+// 不掃描：詞彙表本身（_Avoid_ 詞的定義處），以及這支測試（單元測試的輸入與上面兩份清單本來就寫著 _Avoid_ 詞）
+const NOT_SCANNED = ['GLOSSARY.md', 'scripts/glossary.test.mjs'];
 
 test('手寫的檔案不使用專指的 _Avoid_ 詞（建置產生的檔案依 .ignore 略過）', () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const read = (path) => readFileSync(root + path, 'utf8');
   const ignored = ignoreMatcher(read('.ignore'));
   const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.split('\n');
-  const files = tracked.filter(p => TEXT_FILE.test(p) && p !== 'GLOSSARY.md' && !ignored(p)).map(path => ({ path, content: read(path) }));
+  const files = tracked.filter(p => TEXT_FILE.test(p) && !NOT_SCANNED.includes(p) && !ignored(p)).map(path => ({ path, content: read(path) }));
   const hits = avoidHits(avoidTerms(read('GLOSSARY.md')), files, { excluded: EXCLUDED, allowed: ALLOWED });
   assert.deepEqual(hits.map(h => `${h.file}:${h.line} ${h.term}（改用「${h.entry}」）`), []);
 });

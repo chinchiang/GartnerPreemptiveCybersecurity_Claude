@@ -6,23 +6,36 @@
  *
  * mutations.json 是臨時寫的清單（不提交）：[{ "file": "scripts/x.mjs", "from": "原文", "to": "改成", "note": "說明" }]，
  * 路徑相對於目前目錄。測試指令預設 node --test scripts/*.test.mjs，以 shell 執行；結束碼非 0 視為「抓到」。
- * 結束碼：0 全部抓到；1 有存活；2 清單有誤（原文不是恰好一處）或測試在突變前就失敗，一個檔案都不改。
+ * 結束碼：0 全部抓到；1 有存活；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處）
+ * 或測試在突變前就失敗，這時一個檔案都不改。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
+// 參數：<清單> [--test "<測試指令>"] [--json]；參數或讀檔有誤一律結束碼 2，不和「有存活」的 1 混在一起
+const fail = (message) => { console.error(message); process.exit(2); };
 const args = process.argv.slice(2);
-const listPath = args.find(a => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--test');
-const testCommand = args.includes('--test') ? args[args.indexOf('--test') + 1] : 'node --test scripts/*.test.mjs';
-const mutations = JSON.parse(readFileSync(listPath, 'utf8'));
-
-// 先檢查整份清單：每一筆的原文都必須在檔案裡恰好出現一次，否則一個檔案都不改就中止
-const occurrences = (text, from) => text.split(from).length - 1;
-const invalid = mutations.map(m => [m, occurrences(readFileSync(m.file, 'utf8'), m.from)]).filter(([, n]) => n !== 1);
-if (invalid.length) {
-  for (const [m, n] of invalid) console.error(`${m.file}：原文${n === 0 ? '找不到' : `不只一處（${n} 處）`}：${m.from}`);
-  process.exit(2);
+let listPath = null;
+let testCommand = 'node --test scripts/*.test.mjs';
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--test') testCommand = args[++i];
+  else if (args[i] !== '--json' && listPath === null) listPath = args[i];
 }
+if (!listPath || !testCommand) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json]');
+let mutations;
+try { mutations = JSON.parse(readFileSync(listPath, 'utf8')); }
+catch (e) { fail(`無法讀取突變清單 ${listPath}：${e.message}`); }
+
+// 先檢查整份清單：每一筆的檔案都讀得到、原文都恰好出現一次，否則一個檔案都不改就中止
+const occurrences = (text, from) => text.split(from).length - 1;
+const problems = [];
+for (const m of mutations) {
+  let text;
+  try { text = readFileSync(m.file, 'utf8'); } catch (e) { problems.push(`${m.file}：無法讀取（${e.code || e.message}）`); continue; }
+  const n = occurrences(text, m.from);
+  if (n !== 1) problems.push(`${m.file}：原文${n === 0 ? '找不到' : `不只一處（${n} 處）`}：${m.from}`);
+}
+if (problems.length) fail(problems.join('\n'));
 
 // 測試以非同步子行程執行，這樣被中斷（SIGINT／SIGTERM）時訊號處理器才跑得到：結束測試、還原正在改的檔案再離開
 let current = null;   // 目前改壞的檔案 { file, original } 與測試子行程
