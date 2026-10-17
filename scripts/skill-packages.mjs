@@ -30,7 +30,7 @@ export function extractCorePrompt(md) {
 }
 
 // 對照表：skills/ 底下每個目錄一列。
-// needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成範例資料（腳本的預設輸入）；
+// needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成資料（腳本的預設輸入）；
 // copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀；
 // scripts＝要複製進 preemptive-exposure-analysis/scripts/ 的 Python 母本，讓技能資料夾單獨安裝時腳本仍可執行（見 ADR 0003）；
 // embeds＝含核心提示詞嵌入區塊的手寫檔（file 相對於 skills/<平臺>/）與區塊所在的標題：標題行以 heading 開頭（前綴比對），全檔只能有一行。
@@ -42,7 +42,7 @@ const SYSTEM_PROMPT_EMBED = { file: 'system-prompt.md', heading: '## 可直接�
 const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
 const PACKAGES = {
   chatgpt:  { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [], scripts: [] },
-  claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；範例資料給 validate_inputs.py 當預設輸入
+  claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；合成資料給 validate_inputs.py 當預設輸入
               copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [], // SKILL.md 不引用 task-spec
               scripts: ['analysis_workflow.py'] },        // validate_inputs.py 用的核心複本：技能資料夾會被單獨複製或上傳
   deepseek: { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED], scripts: [] },

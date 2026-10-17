@@ -52,7 +52,7 @@ const repo = [
 ].map(path => ({ path, content: `內容：${path}` }));
 const paths = (files) => files.map(f => f.path);
 
-test('平臺技能包含自己的檔案、腳本依賴的母本與合成範例資料，依路徑排序', () => {
+test('平臺技能包含自己的檔案、腳本依賴的母本與合成資料，依路徑排序', () => {
   assert.deepEqual(paths(packageFiles('grok', repo)), [
     'examples/synthetic-org/assets.csv',
     'examples/synthetic-org/scope.json',
@@ -75,7 +75,7 @@ test('skills/ 底下有對照表沒有的目錄就中止，提示要在對照表
   assert.throws(() => packageFiles('gemini', repo), { message: /對照表.*gemini/ });
 });
 
-test('Claude 技能包不帶母本但附合成範例資料；shared 只放母本本身', () => {
+test('Claude 技能包不帶母本但附合成資料；shared 只放母本本身', () => {
   assert.deepEqual(paths(packageFiles('claude', repo)), [
     'examples/synthetic-org/assets.csv',
     'examples/synthetic-org/scope.json',
@@ -93,7 +93,7 @@ test('Claude 技能包不帶母本但附合成範例資料；shared 只放母本
 
 // 四支 api-workflow.py 執行時讀取 core-prompt.md 與 output-schema.json，預設輸入是 examples/synthetic-org/
 for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
-  test(`${platform} 技能包帶齊 api-workflow.py 執行時讀取的母本與合成範例資料`, () => {
+  test(`${platform} 技能包帶齊 api-workflow.py 執行時讀取的母本與合成資料`, () => {
     const got = paths(packageFiles(platform, repo));
     for (const p of [`skills/${platform}/api-workflow.py`, 'skills/shared/core-prompt.md', 'skills/shared/output-schema.json',
       'examples/synthetic-org/assets.csv', 'examples/synthetic-org/scope.json']) {

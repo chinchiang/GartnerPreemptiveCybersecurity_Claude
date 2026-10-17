@@ -114,7 +114,7 @@
       const ex = exposureOf(v.asset_id);
       if (ex && ex.issues.length) { likelihood += L.easmIssues * P.weights.exposure; f.factors.push(`EASM 議題：${ex.issues.join('、')}`); }
       if (!P.inputs.exposures) f.missing.push('外部曝險資料');
-      // 2. 利用可能性（範例資料欄位 epss_sim／kev_sim 視同 epss／kev，皆為模擬值）
+      // 2. 利用可能性（合成資料欄位 epss_sim／kev_sim 視同 epss／kev，皆為模擬值）
       const epss = Number(v.epss ?? v.epss_sim ?? 0), kev = (v.kev ?? v.kev_sim) === true;
       if (v.exploit_public === true) { likelihood += L.exploitPublic * P.weights.exploit; f.factors.push('公開利用程式'); }
       if (P.inputs.epss) {

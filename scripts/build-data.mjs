@@ -176,7 +176,7 @@ function buildZip(entries) {
 }
 const toEntry = (f) => ({ name: f.path, data: Buffer.from(f.content, 'utf8') });
 const exampleFiles = walk(exDir).map(f => ({ path: relPosix(f), content: readText(f) }));
-// 每個技能包 ZIP 的內容由技能包組裝器決定：平臺自己的檔案＋腳本依賴的母本＋合成範例資料，解壓後即可執行
+// 每個技能包 ZIP 的內容由技能包組裝器決定：平臺自己的檔案＋腳本依賴的母本＋合成資料，解壓後即可執行
 const platforms = [...new Set(skillFiles.map(s => s.platform))];
 for (const p of platforms) {
   writeFileSync(out(`downloads/skills-${p}.zip`), buildZip(packageFiles(p, [...skillFiles, ...exampleFiles]).map(toEntry)));

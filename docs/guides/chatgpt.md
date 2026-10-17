@@ -31,11 +31,11 @@ platform: chatgpt
 | `skills/chatgpt/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準格式的 Codex skill |
 | `skills/chatgpt/api-workflow.py`、`requirements.txt` | Responses API 腳本（含 `--dry-run`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 ChatGPT 的模型 adapter |
 | `skills/shared/*` | 共用規格、核心提示詞、輸入／輸出 schema |
-| `examples/synthetic-org/*` | 合成範例資料（9 檔） |
+| `examples/synthetic-org/*` | 合成資料（9 檔） |
 
 取得：網站「Skills 專區 → ChatGPT」逐檔複製或下載 `downloads/skills-chatgpt.zip`；或 `git clone` 儲存庫。
 
-## 3. 輸入格式、必填欄位與範例資料
+## 3. 輸入格式、必填欄位與合成資料
 
 同共用規格：`scope.json`（必要）、`assets.csv`（必要）、`vulnerabilities.csv`（必要）；`exposures.json`、`identities.csv`、`misconfigurations.csv`、`controls.json`、`threat-intel.json`、`topology.json`（建議）。欄位定義見 `skills/shared/input-schema.json`。
 
