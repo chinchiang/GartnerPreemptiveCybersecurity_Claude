@@ -23,7 +23,7 @@ jobs:
         run: npm test
       - name: Build data files and downloads
         run: npm run build
-      - name: Static verification (data, sources, schema, demo acceptance + snapshot, secrets scan)
+      - name: Static verification (data, sources, schema, demo engine checks + snapshot, secrets scan)
         run: npm run verify:static
       - name: Generated files are up to date (whole working tree, including new files)
         # 整份工作樹：建置寫到哪裡都會被檢查到，新增嵌入目標時不必改這裡；verify:static 不寫檔，所以不必排除任何檔案

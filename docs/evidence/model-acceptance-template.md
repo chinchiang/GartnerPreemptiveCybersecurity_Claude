@@ -26,7 +26,7 @@
 
 貼上 `scripts/check-acceptance.mjs` 的輸出（baseline 與 no-intel 兩次）：
 
-> 第 1 項要求 9 個檔案的筆數都正確，**包括 `scope.json` 要回報 1**。腳本只替另外 8 個檔案在提示詞裡附上「腳本預先計算筆數」，`scope.json` 沒有，所以模型漏報或報錯 scope 的筆數時，第 1 項會不通過；判讀時請記下這是不是唯一的原因。
+> 第 1 項要求每個適用檔案的筆數都正確（baseline 9 個；no-intel 不看 threat-intel，8 個），**包括 `scope.json` 要回報 1**。腳本只替 scope 以外的檔案在提示詞裡附上「腳本預先計算筆數」，`scope.json` 沒有，所以模型漏報或報錯 scope 的筆數時，第 1 項會不通過；判讀時請記下這是不是唯一的原因。
 
 ```
 （baseline）
