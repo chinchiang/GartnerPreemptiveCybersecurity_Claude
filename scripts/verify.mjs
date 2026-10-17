@@ -5,8 +5,7 @@
  *   node scripts/verify.mjs            靜態檢查 + 以 Playwright（Chromium）啟動本機伺服器，檢查導覽、搜尋、篩選、複製、下載、案例互動
  * 完整模式的結果寫入 verify-report.md（實際檢查結果紀錄）；--static 只印到 stdout，不改寫這個已提交的檔案。
  */
-import { readFileSync, existsSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
@@ -64,16 +63,9 @@ function staticChecks() {
   for (const f of ['skills/shared/input-schema.json', 'skills/shared/output-schema.json', 'skills/grok/tool-definitions.json', 'skills/glm/claude-code-settings.example.json']) {
     try { JSON.parse(readFileSync(join(ROOT, f), 'utf8')); ok(`JSON 有效 ${f}`, true); } catch (e) { ok(`JSON 有效 ${f}`, false, e.message); }
   }
-  // 示範引擎驗收
+  // 示範引擎：驗收以外的行為與 schema 結構（驗收本身見 scripts/acceptance.test.mjs）
   for (const f of ['assets/scope-gate.js', 'assets/demo.js']) vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx); // 守門由 scope-gate.js 判定，須先載入
   const R = w.DEMO.analyze(w.CASE_DATA, {});
-  const vpn = R.findings.find(f => f.vuln_id === 'SYN-2026-0101');
-  ok('驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據', vpn && vpn.priority === 'P1' && ['對外曝露', '公開利用程式', '模擬 KEV', '威脅情資命中'].every(k => vpn.factors.some(x => x.includes(k))), vpn ? `${vpn.priority} ${vpn.score}` : '找不到');
-  ok('驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01', R.hypotheses.some(h => h.nodes.join('>') === 'A01>A04>A06'));
-  ok('驗收 4：驗證計畫每項標「尚未授權主動測試」', R.validation.length > 0 && R.validation.every(v => v.requires.includes('尚未授權主動測試')));
-  ok('驗收 5：管理摘要 ≤ 300 字且含「決策請求」「限制」', R.summary.length <= 300 && R.summary.text.includes('決策請求') && R.summary.text.includes('限制'), `${R.summary.length} 字`);
-  const R7 = w.DEMO.analyze({ ...w.CASE_DATA, scope: undefined }, {});
-  ok('驗收 7：缺 scope 時拒絕分析並列出必要欄位', R7.refused === true && R7.requiredFields.length === 6 && R7.findings.length === 0);
   const Rx = w.DEMO.analyze(w.CASE_DATA, { inputs: { topology: false } });
   ok('缺拓樸：信心下修且無路徑假設', Rx.hypotheses.length === 0 && Rx.findings.every(f => f.confidence === '中'));
   const Ri = w.DEMO.analyze(w.CASE_DATA, { inventoryCompleteness: 70 });
@@ -88,8 +80,6 @@ function staticChecks() {
   const valOK = S.validation_plan.items.every(v => ['id', 'hypothesis', 'method', 'authorization_required', 'success_criteria'].every(f => f in v));
   const remOK = S.remediation.items.every(r => ['finding_id', 'priority', 'action', 'owner', 'effort', 'verify', 'approval_level'].every(f => f in r));
   ok('引擎 JSON 符合 output-schema 結構', missTop.length === 0 && blocksOK && hypOK && valOK && remOK && (S.executive_summary.text.length <= 300), missTop.join(',') || 'required、block 欄位、items 必填鍵、摘要長度');
-  const R2 = w.DEMO.analyze(w.CASE_DATA, { inputs: { threatIntel: false } });
-  ok('驗收 6：移除情資後信心下修並標示', R2.findings.every(f => f.confidence === '中') && R2.missingSummary.includes('威脅情資'));
   // 示範引擎 golden snapshot：規則資料（assets/demo.js 的 RULES）套用在合成資料上的結果；
   // 規則與母本是否一致由 npm test 的評分規則一致性檢查（scripts/scoring-rules.mjs）負責。
   const snapPath = join(ROOT, 'examples/demo-snapshot.txt');
@@ -99,26 +89,7 @@ function staticChecks() {
     ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
       actual === expected ? `${actual.split('\n').length} 行` : '示範引擎輸出已變動：若是刻意變更評分規則，先讓 npm test 的評分規則一致性檢查通過，再執行 npm run snapshot 更新快照');
   } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
-  // check-acceptance.mjs 契約回歸
-  const checker = join(ROOT, 'scripts/check-acceptance.mjs');
-  const fixture = join(ROOT, 'examples/acceptance-fixture.json');
-  const noIntelFixture = join(ROOT, 'examples/acceptance-fixture-no-intel.json');
-  const runChecker = (input, extra = []) => {
-    try { execFileSync(process.execPath, [checker, input, ...extra], { encoding: 'utf8', stdio: 'pipe' }); return 0; }
-    catch (e) { return e.status ?? 2; }
-  };
-  ok('驗收腳本接受符合 schema 的 baseline array／A01 fixture', runChecker(fixture) === 0);
-  ok('驗收腳本接受誠實的 no-intel 8-file fixture', runChecker(noIntelFixture, ['--variant', 'no-intel']) === 0);
-  ok('驗收腳本拒絕未宣告缺漏的假 no-intel 輸出', runChecker(fixture, ['--variant', 'no-intel']) === 1);
-  // 引擎 JSON 也應通過驗收腳本（baseline 與 no-intel）
-  // 暫存檔寫到系統暫存目錄，不留在儲存庫內
-  const tmpDir = mkdtempSync(join(tmpdir(), 'pea-verify-'));
-  const engineJson = join(tmpDir, 'engine-output.json');
-  writeFileSync(engineJson, JSON.stringify(w.DEMO.toSchema(R, w.CASE_DATA), null, 1));
-  ok('引擎 JSON 通過驗收腳本（baseline）', runChecker(engineJson) === 0);
-  writeFileSync(engineJson, JSON.stringify(w.DEMO.toSchema(R2, w.CASE_DATA), null, 1));
-  ok('引擎 JSON 通過驗收腳本（no-intel）', runChecker(engineJson, ['--variant', 'no-intel']) === 0);
-  rmSync(tmpDir, { recursive: true, force: true });
+  // 驗收（判定、契約回歸、引擎 JSON 通過驗收、驗收 7）在 npm test 的 scripts/acceptance.test.mjs（#63）
   // 站點層級檔案與 index.html 的 head
   const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
   ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',

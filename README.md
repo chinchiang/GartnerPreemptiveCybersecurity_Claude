@@ -20,7 +20,7 @@ docs/guides/                      五平臺安裝與使用教學 + 部署與維�
 docs/evidence/                    英文證據檔（Gartner 與平臺查證原始紀錄）
 skills/shared/                    共用任務規格、核心提示詞、輸入／輸出 JSON Schema
 skills/{chatgpt,claude,grok,glm,deepseek}/   各平臺 skill 或等效檔案（SKILL.md、提示詞、API 腳本）
-examples/synthetic-org/           合成範例資料（9 檔）；expected-output.md 預期輸出；demo-snapshot.txt 示範引擎黃金快照
+examples/synthetic-org/           合成資料（9 檔）；expected-output.md 預期輸出；demo-snapshot.txt 示範引擎黃金快照
 scripts/                          build-data.mjs（產生 data/ 與 downloads/）、verify.mjs（驗證）、run-demo.mjs（示範引擎；--json 輸出 output-schema 格式、--no-scope 模擬缺授權）、check-acceptance.mjs（驗收真實模型輸出）、build-worker.mjs（後端代理嵌入提示詞）
 downloads/                        建置產生的 ZIP 下載包
 backend/                          選用的模型 API 代理範例（預設不需要、無金鑰；部署前以 build-worker.mjs 產生 dist/）
@@ -43,7 +43,7 @@ backend/                          選用的模型 API 代理範例（預設不�
 
 ```bash
 npm run build
-npm run verify:static   # 資料、來源 ID、schema、示範引擎驗收與快照、下載檔、機敏字串
+npm run verify:static   # 資料、來源 ID、schema、示範引擎的行為檢查與快照、下載檔、機敏字串（驗收在 npm test）
 npm run verify          # 加上 Playwright 瀏覽器檢查（導覽、搜尋、篩選、複製、下載、案例互動、行動裝置）；需先 npm ci
 python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
 ```

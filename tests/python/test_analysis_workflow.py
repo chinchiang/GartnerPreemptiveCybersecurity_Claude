@@ -187,7 +187,7 @@ class PreflightFindingMessagesTest(unittest.TestCase):
     def edit(self, name, old, new):
         path = self.dir / name
         text = path.read_text(encoding="utf-8")
-        self.assertIn(old, text, f"測試夾具找不到要改的內容：{old}")
+        self.assertIn(old, text, f"測試 fixture 找不到要改的內容：{old}")
         path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
     def findings_text(self):
@@ -295,7 +295,7 @@ def make_problem_inputs(dest: Path) -> Path:
     def edit(name, old, new):
         path = dest / name
         text = path.read_text(encoding="utf-8")
-        assert old in text, f"測試夾具找不到要改的內容：{old}"
+        assert old in text, f"測試 fixture 找不到要改的內容：{old}"
         path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
     (dest / "vulnerabilities.csv").unlink()
