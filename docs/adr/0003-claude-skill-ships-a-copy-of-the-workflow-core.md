@@ -11,4 +11,4 @@ Claude 技能的 `validate_inputs.py` 改用分析工作流程核心，但**不*
 
 ## Consequences
 
-只多一份 `.py` 複本，規則仍只有一份母本。複本不能手改：CI 重建後對 `skills/` 執行 `git diff --exit-code`，忘記重建或直接改了複本都會擋下 PR（同 ADR 0001）。核心只能用標準函式庫、不得假設自己位在 `skills/shared/` 才能載入（模組層級的路徑常數只有 `main()` 一路會用到）；`validate_inputs.py` 只用載入、守門與檢查的函式。
+只多一份 `.py` 複本，規則仍只有一份母本。複本不能手改：CI 重建後整份工作樹必須沒有變動，忘記重建或直接改了複本都會擋下 PR（同 ADR 0001）。核心只能用標準函式庫、不得假設自己位在 `skills/shared/` 才能載入（模組層級的路徑常數只有 `main()` 一路會用到）；`validate_inputs.py` 只用載入、守門與檢查的函式。
