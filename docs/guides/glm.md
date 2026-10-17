@@ -103,7 +103,7 @@ python3 skills/glm/api-workflow.py                          # 或 --anthropic-co
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 7 項。第 6、7 項用旗標模擬缺漏：
+依 `task-spec.md` 第 7 節 8 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏：
 
 ```bash
 python3 skills/glm/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項

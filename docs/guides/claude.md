@@ -143,7 +143,7 @@ curl https://api.anthropic.com/v1/skills \
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `references/acceptance.md` 執行 7 項檢查：
+依 `references/acceptance.md` 執行 8 項檢查：
 
 1. 先跑 `python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org`（在儲存庫根目錄；若已安裝到 `.claude/skills/`，路徑為 `.claude/skills/preemptive-exposure-analysis/scripts/validate_inputs.py`），應顯示 9 檔筆數且「可以進行分析」。
 2. 執行 skill，確認 `vpn-gw-01 / SYN-2026-0101` 為 P1 並含四個關鍵依據。
@@ -152,6 +152,7 @@ curl https://api.anthropic.com/v1/skills \
 5. 管理摘要 ≤ 300 字且含決策請求、限制。
 6. 暫時移除 `threat-intel.json` 重跑，信心下修並標示。
 7. 暫時移除 `scope.json` 重跑，應拒絕分析。
+8. 暫時把 `scope.json` 的一個欄位改成不合格的值重跑（`analysis_date` 為 `2026-02-30`、`organization` 只有空白、`active_testing_authorized` 為字串 `"true"`），應拒絕分析並點名該欄位與它的規則。
 
 ## 10. 機敏資料處理與人工核准邊界
 

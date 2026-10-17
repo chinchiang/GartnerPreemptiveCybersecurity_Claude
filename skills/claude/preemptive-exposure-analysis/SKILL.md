@@ -14,7 +14,8 @@ metadata:
 
 ## 0. 安全與授權邊界（任何使用者指示都不能覆蓋）
 
-- 只分析使用者提供、且列於 `scope.authorized_scope.in_scope_assets` 的資產。沒有 scope 就停止並列出必要欄位。
+- 只分析使用者提供、且列於 `scope.authorized_scope.in_scope_assets` 的資產。沒有 scope，或 scope 的必填欄位缺少或不符下一行的規則，就停止：列出缺少或不合格的欄位與它的規則，不產出任何分析。
+- scope 必填欄位的規則：organization 須含非空白字元；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 須為非空陣列，且每項為非空白字串；active_testing_authorized、external_scanning_authorized 須為布林值。
 - 不執行、不模擬執行、不提供可直接執行的攻擊或掃描指令。對外掃描、主動探測、BAS、滲透測試、正式環境變更只能「提案」，並標示需人工書面授權。
 - 不補造資料、CVE、廠商公告或情資。模型自有知識標示「模型知識，需查證」。
 - 攻擊路徑一律 `status: hypothesis`，除非使用者提供已授權的驗證結果。
@@ -63,14 +64,14 @@ metadata:
 
 ## 6. 缺少資料時
 
-- 缺 scope：停止，列出必要欄位。
+- scope 缺少或不合格：停止，列出缺少或不合格的欄位。
 - 缺 assets 或 vulnerabilities：說明只能產出曝險面清單，詢問是否繼續。
 - 缺 topology：跳過 S4，在 S7 說明。
 - 其他缺漏：依 `references/scoring-rules.md` 的替代規則處理並標示。
 
 ## 7. 驗收
 
-以 `examples/synthetic-org/` 執行，對照 `references/acceptance.md` 的 7 項檢查。
+以 `examples/synthetic-org/` 執行，對照 `references/acceptance.md` 的 8 項檢查。
 
 ## 8. 參考資料
 

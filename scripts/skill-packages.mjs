@@ -1,13 +1,17 @@
 /**
  * skill-packages.mjs
- * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴。
+ * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
  * 寫檔交給呼叫端（build-data.mjs、build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
  * 純 Node 內建模組，無第三方相依。所有輸入只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
  */
+import { createRequire } from 'node:module';
+
+const GATE = createRequire(import.meta.url)('../assets/scope-gate.js');
 
 const SHARED_DIR = 'skills/shared/';
 const CORE_PROMPT = `${SHARED_DIR}core-prompt.md`;
+const INPUT_SCHEMA = `${SHARED_DIR}input-schema.json`;
 const EXAMPLES_DIR = 'examples/synthetic-org/';
 const platformDir = (platform) => `skills/${platform}/`;
 const referencePath = (platform, name) => `${platformDir(platform)}preemptive-exposure-analysis/references/${name}`;
@@ -60,7 +64,31 @@ export function packageFiles(platform, files) {
 // 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 與 scripts/ 的複本，以及含嵌入區塊的手寫檔。
 // files：repo 檔案清單，須含 skills/shared/ 的母本與對照表 embeds 宣告的手寫檔。
 export function generatedFiles(files) {
-  return [...sharedCopies(files), ...embeddedFiles(files)];
+  const ruleNotes = ruleNoteFiles(files);
+  const updated = files.map(f => ruleNotes.find(r => r.path === f.path) || f); // 核心提示詞先換好規則說明行，再嵌入各平臺
+  return [...sharedCopies(updated), ...embeddedFiles(updated), ...ruleNotes];
+}
+
+// 規則說明行（模型側守門的規則來源，見 docs/adr/0005）：核心提示詞母本與三份改寫版裡以固定開頭辨識的一行，
+// 換成「開頭＋scope 定義的規則說明＋。」；說明由 assets/scope-gate.js 從 input-schema.json 的 scope 定義產生。
+// 每個檔案須恰好一行，0 行或 2 行以上都中止。「勿手動編輯」的說明只手寫在核心提示詞與 Custom GPT 指示的 ```text 區塊外面
+// （兩份 SKILL.md 整份都會被模型讀到，所以不加），不由建置寫入；改了沒重建由測試與 CI 的 diff 擋下。
+export const RULE_LINE_LEAD = '- scope 必填欄位的規則：';
+export const RULE_NOTE_TARGETS = [CORE_PROMPT, 'skills/chatgpt/custom-gpt-instructions.md',
+  'skills/chatgpt/preemptive-exposure-analysis/SKILL.md', 'skills/claude/preemptive-exposure-analysis/SKILL.md'];
+function ruleNoteFiles(files) {
+  const schema = files.find(f => f.path === INPUT_SCHEMA);
+  if (!schema) throw new Error(`規則說明的母本不存在：${INPUT_SCHEMA}`);
+  const ruleLine = `${RULE_LINE_LEAD}${GATE.ruleNoteAgainst(JSON.parse(schema.content).properties.scope)}。`;
+  return RULE_NOTE_TARGETS.map(path => {
+    const target = files.find(f => f.path === path);
+    if (!target) throw new Error(path === CORE_PROMPT ? `要嵌入的母本不存在：${CORE_PROMPT}` : `${path} 不存在，但它要帶授權範圍的規則說明行`);
+    const lines = target.content.split('\n');
+    const at = lines.flatMap((line, i) => (line.startsWith(RULE_LINE_LEAD) ? [i] : []));
+    if (at.length !== 1) throw new Error(`${path} 有 ${at.length} 行以「${RULE_LINE_LEAD}」開頭，必須恰好一行，才知道要換哪一行`);
+    lines[at[0]] = ruleLine;
+    return { path, content: lines.join('\n') };
+  });
 }
 
 // 複本：.json 與母本位元組相同；.py 檔首加一行 # 標註；.md 加一行標註，有 frontmatter 時放在它之後

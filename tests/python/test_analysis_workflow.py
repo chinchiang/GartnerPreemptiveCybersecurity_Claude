@@ -58,10 +58,50 @@ class ScopeGateKeywordTest(unittest.TestCase):
 
 class ScopeRuleNoteTest(unittest.TestCase):
     def test_rule_note_is_derived_from_the_schema(self):
+        # 與 assets/scope-gate.js 的 scopeRuleNote() 斷言同一個字面字串（見 docs/adr/0005）；不加括號，括號由中止訊息自己加
         self.assertEqual(aw.scope_rule_note(INPUT_SCHEMA),
-                         "（organization 須含非空白字元；analysis_date 須為 YYYY-MM-DD 的有效日期；"
+                         "organization 須含非空白字元；analysis_date 須為 YYYY-MM-DD 的有效日期；"
                          "in_scope_assets、audience 須為非空陣列，且每項為非空白字串；"
-                         "active_testing_authorized、external_scanning_authorized 須為布林值）")
+                         "active_testing_authorized、external_scanning_authorized 須為布林值")
+
+    def schema_with(self, path, node):
+        """母本 schema 的深拷貝，把 scope 底下 path 那個必填欄位的節點換掉。"""
+        schema = copy.deepcopy(INPUT_SCHEMA)
+        parent = schema["properties"]["scope"]
+        *parents, key = path.split(".")
+        for name in parents:
+            parent = parent["properties"][name]
+        parent["properties"][key] = node
+        return schema
+
+    def test_undescribable_rule_raises_and_names_field_and_keyword(self):
+        cases = [
+            ("organization", {"type": "string", "minLength": 1, "pattern": "^[A-Z]"}, ("organization", "pattern")),
+            ("organization", {"type": "string", "minLength": 3}, ("organization", "minLength")),
+            ("analysis_date", {"type": "string", "format": "date", "pattern": "^20"}, ("analysis_date", "pattern")),
+            ("organization", {"type": "integer"}, ("organization", "type")),
+            ("organization", {"type": "object"}, ("organization", "type")),
+            ("organization", {"type": "string", "minLength": 1, "format": "email"}, ("organization", "format")),
+            ("organization", {"type": "string", "minLength": 1, "enum": ["Northwind"]}, ("organization", "enum")),
+            ("organization", {"type": "string", "maxLength": 3}, ("organization", "maxLength")),
+            ("authorized_scope.in_scope_assets", {"type": "array", "minItems": 2, "items": {"type": "string"}},
+             ("authorized_scope.in_scope_assets", "minItems")),
+            ("authorized_scope.in_scope_assets", {"type": "array", "minItems": 1, "items": {"type": "boolean"}},
+             ("authorized_scope.in_scope_assets", "items")),
+            ("authorized_scope.in_scope_assets", {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+             ("authorized_scope.in_scope_assets", "minLength")),
+        ]
+        for path, node, names in cases:
+            with self.subTest(node=node):
+                with self.assertRaises(ValueError) as ctx:
+                    aw.scope_rule_note(self.schema_with(path, node))
+                for name in names:
+                    self.assertIn(name, str(ctx.exception))
+
+    def test_annotation_keywords_do_not_change_the_rule_note(self):
+        node = dict(INPUT_SCHEMA["properties"]["scope"]["properties"]["organization"],
+                    default="x", description="組織名稱", title="組織", **{"$comment": "註記"})
+        self.assertEqual(aw.scope_rule_note(self.schema_with("organization", node)), aw.scope_rule_note(INPUT_SCHEMA))
 
 
 class InputLoadingTest(unittest.TestCase):
@@ -106,6 +146,16 @@ class InputLoadingTest(unittest.TestCase):
             self.load()
         self.assertIn("scope.json", str(ctx.exception))
         self.assertIn("authorized_scope.in_scope_assets", str(ctx.exception))
+
+    def test_invalid_scope_abort_message_ends_with_the_rule_note_in_parentheses(self):
+        (self.dir / "scope.json").write_text(json.dumps(dict(SYNTHETIC_SCOPE, analysis_date="2026-02-30")), encoding="utf-8")
+        with self.assertRaises(aw.Abort) as ctx:
+            self.load()
+        self.assertEqual(str(ctx.exception),
+                         "[中止] scope.json 缺少或不合格的必填欄位：analysis_date"
+                         "（organization 須含非空白字元；analysis_date 須為 YYYY-MM-DD 的有效日期；"
+                         "in_scope_assets、audience 須為非空陣列，且每項為非空白字串；"
+                         "active_testing_authorized、external_scanning_authorized 須為布林值）")
 
     def test_excluded_category_is_missing(self):
         inputs = self.load(exclude=("threat_intel",))

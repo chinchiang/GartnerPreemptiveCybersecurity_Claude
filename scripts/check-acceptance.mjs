@@ -6,10 +6,11 @@
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --variant no-intel
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --json
  *
- * 對應 skills/shared/acceptance.md（各平臺 references/acceptance.md 為其複本）的 7 項驗收：
+ * 對應 skills/shared/acceptance.md（各平臺 references/acceptance.md 為其複本）的 8 項驗收：
  *   1–5   baseline 變體（本腳本檢查）
  *   6     no-intel 變體（本腳本檢查）
  *   7     移除 scope.json 應拒絕分析 —— 由呼叫端檢查腳本是否以非零狀態結束，本腳本不處理
+ *   8     scope 不合格應拒絕分析 —— 腳本在呼叫 API 前就中止（授權範圍守門的測試涵蓋）；模型層在對話介面人工判讀，本腳本不處理
  *
  * 刻意不檢查的部分（需要人工判讀，見 docs/evidence/model-acceptance-template.md）：
  *   摘要的中文品質與可讀性、改善建議是否合理、補償控制與核准層級是否恰當、遮罩是否足夠。
