@@ -23,6 +23,16 @@ const fixture = (name) => JSON.parse(readFileSync(new URL(`../examples/${name}`,
 const check = (output, variant = 'baseline') => acceptanceResults(output, { variant, ...context });
 const failed = (results) => results.filter(r => !r.pass).map(r => r.id);
 
+test('判定名稱固定（CLI 輸出、模型驗收工作流程與驗收報告範本都引用它們）', () => {
+  assert.deepEqual(check(fixture('acceptance-fixture.json')).map(r => r.name), [
+    '頂層鍵齊全（output-schema.json required）', 'schema block 都有 confidence／basis／missing_inputs／requires_human',
+    'meta 必填欄位齊全', 'human_review_points 符合 schema array 契約', '驗收 1：資料品質回報 9 個適用檔案且筆數正確',
+    '驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據', '驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 且為 hypothesis',
+    '所有攻擊路徑的 status 均為 hypothesis', '驗收 4：驗證計畫每項標「尚未授權主動測試」', '驗收 5：管理摘要 ≤ 300 字',
+    '驗收 5：管理摘要含決策請求與限制'
+  ]);
+});
+
 test('契約回歸：符合 schema 的 baseline fixture 全部通過，判定項目與 id 固定', () => {
   const results = check(fixture('acceptance-fixture.json'));
   assert.deepEqual(results.map(r => r.id), ['0a', '0b', '0c', '0d', '1', '2', '3', '3b', '4', '5a', '5b']);

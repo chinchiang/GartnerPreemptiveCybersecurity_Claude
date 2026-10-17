@@ -103,7 +103,7 @@ node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 
 刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
 
-`examples/acceptance-fixture.json` 是一份「應該全部通過」的合成夾具，`npm test`（`scripts/acceptance.test.mjs`）會用它反向測試驗收的判定本身沒壞（同一份夾具在 `no-intel` 變體下必須失敗，否則表示該檢查是空的）。第 1 項的預期筆數由合成資料推出，並對照 `acceptance.md` 寫的 9 個數字。**它不是任何模型的真實輸出。**
+`examples/acceptance-fixture.json` 是一份「應該全部通過」的合成 fixture，`npm test`（`scripts/acceptance.test.mjs`）會用它反向測試驗收的判定本身沒壞（同一份 fixture 在 `no-intel` 變體下必須失敗，否則表示該檢查是空的）。第 1 項的預期筆數由合成資料推出，並對照 `acceptance.md` 寫的 9 個數字。**它不是任何模型的真實輸出。**
 
 Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗收需在 Claude Code 或 claude.ai 手動執行後，把輸出 JSON 存檔再跑上面的腳本。
 

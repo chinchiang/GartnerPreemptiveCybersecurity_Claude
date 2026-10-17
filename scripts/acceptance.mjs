@@ -50,33 +50,31 @@ const BLOCK_FIELDS = ['confidence', 'basis', 'missing_inputs', 'requires_human']
 // 對一份輸出 JSON 逐項判定，回傳 [{ id, name, pass, detail }]。variant：'baseline'（驗收 1–5）或 'no-intel'（另加驗收 6）。
 export function acceptanceResults(output, { variant = 'baseline', outputSchema, synthetic }) {
   const results = [];
-  const ok = (id, name, pass, detail = '') => results.push({ id, name, pass, detail: String(detail) });
-  const obj = output;
-  const schema = outputSchema;
+  const addResult = (id, name, pass, detail = '') => results.push({ id, name, pass, detail: String(detail) });
 
   // ---------- 0. 結構：頂層必要鍵與每個區塊的證據欄位 ----------
-  const missingTop = (schema.required || []).filter(k => !(k in obj));
-  ok('0a', '頂層鍵齊全（output-schema.json required）', missingTop.length === 0, missingTop.length ? `缺：${missingTop.join(', ')}` : `${(schema.required || []).length} 個鍵`);
-  const blockKeys = (schema.required || []).filter(k =>
-    (schema.properties?.[k]?.allOf || []).some(entry => entry?.$ref === '#/$defs/block'));
+  const missingTop = (outputSchema.required || []).filter(k => !(k in output));
+  addResult('0a', '頂層鍵齊全（output-schema.json required）', missingTop.length === 0, missingTop.length ? `缺：${missingTop.join(', ')}` : `${(outputSchema.required || []).length} 個鍵`);
+  const blockKeys = (outputSchema.required || []).filter(k =>
+    (outputSchema.properties?.[k]?.allOf || []).some(entry => entry?.$ref === '#/$defs/block'));
   const badBlocks = blockKeys.filter(k => {
-    const b = obj[k];
+    const b = output[k];
     return !b || typeof b !== 'object' || BLOCK_FIELDS.some(f => !(f in b));
   });
-  ok('0b', 'schema block 都有 confidence／basis／missing_inputs／requires_human', badBlocks.length === 0, badBlocks.length ? `不完整：${badBlocks.join(', ')}` : '');
-  const metaRequired = schema.properties?.meta?.required || [];
-  const missingMeta = metaRequired.filter(k => !(k in (obj.meta || {})));
-  ok('0c', 'meta 必填欄位齊全', missingMeta.length === 0, missingMeta.length ? `缺：${missingMeta.join(', ')}` : `${metaRequired.length} 個鍵`);
-  const reviewPoints = obj.human_review_points;
+  addResult('0b', 'schema block 都有 confidence／basis／missing_inputs／requires_human', badBlocks.length === 0, badBlocks.length ? `不完整：${badBlocks.join(', ')}` : '');
+  const metaRequired = outputSchema.properties?.meta?.required || [];
+  const missingMeta = metaRequired.filter(k => !(k in (output.meta || {})));
+  addResult('0c', 'meta 必填欄位齊全', missingMeta.length === 0, missingMeta.length ? `缺：${missingMeta.join(', ')}` : `${metaRequired.length} 個鍵`);
+  const reviewPoints = output.human_review_points;
   const badReviewPoints = !Array.isArray(reviewPoints) || reviewPoints.some(point =>
     !point || typeof point !== 'object' || ['stage', 'who', 'what'].some(k => !(k in point)));
-  ok('0d', 'human_review_points 符合 schema array 契約', !badReviewPoints,
+  addResult('0d', 'human_review_points 符合 schema array 契約', !badReviewPoints,
     Array.isArray(reviewPoints) ? `${reviewPoints.length} 項` : '不是 array');
 
   // ---------- 1. 資料品質：9 個檔案的筆數（預期值由合成資料推出；no-intel 不看 threat-intel） ----------
   const expected = expectedRecords(synthetic);
   if (variant === 'no-intel') delete expected['threat-intel.json'];
-  const files = obj.data_quality?.files || [];
+  const files = output.data_quality?.files || [];
   // 依檔名對應；模型可能寫出含路徑的檔名（例如 examples/synthetic-org/assets.csv）
   const recordOf = (name) => {
     const hit = files.find(f => { const n = String(f.name || '').toLowerCase(); return n === name || n.endsWith(`/${name}`); });
@@ -86,53 +84,53 @@ export function acceptanceResults(output, { variant = 'baseline', outputSchema, 
     .map(([name, want]) => [name, want, recordOf(name)])
     .filter(([, want, got]) => got !== want);
   const expectedFileCount = Object.keys(expected).length;
-  ok('1', `驗收 1：資料品質回報 ${expectedFileCount} 個適用檔案且筆數正確`, files.length >= expectedFileCount && recordMismatch.length === 0,
+  addResult('1', `驗收 1：資料品質回報 ${expectedFileCount} 個適用檔案且筆數正確`, files.length >= expectedFileCount && recordMismatch.length === 0,
     recordMismatch.length ? recordMismatch.map(([name, want, got]) => `${name} 期望 ${want} 得到 ${got ?? '未回報'}`).join('；') : `${files.length} 個檔案`);
 
   // ---------- 2. vpn-gw-01 / SYN-2026-0101 為 P1 且含四項依據 ----------
-  const findings = obj.exposure_priorities?.items || [];
+  const findings = output.exposure_priorities?.items || [];
   const vpn = findings.find(f => String(f.vuln_id).includes('SYN-2026-0101'));
   const vpnFactors = (vpn?.factors || []).join('；');
   const requiredFactorKeys = variant === 'no-intel' ? FACTOR_KEYS.filter(k => k.label !== '威脅情資') : FACTOR_KEYS;
   const missingFactors = requiredFactorKeys.filter(k => !k.re.test(vpnFactors)).map(k => k.label);
-  ok('2', '驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據',
+  addResult('2', '驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據',
     !!vpn && vpn.priority === 'P1' && vpn.asset_id === 'A01' && vpn.asset_name === 'vpn-gw-01' && missingFactors.length === 0,
     !vpn ? '找不到該發現' : `${vpn.priority} score ${vpn.score}${missingFactors.length ? `；缺依據：${missingFactors.join('、')}` : ''}`);
 
   // ---------- 3. 攻擊路徑假設 ----------
-  const paths = obj.attack_path_hypotheses?.items || [];
+  const paths = output.attack_path_hypotheses?.items || [];
   const chainPath = paths.find(p => {
     const seq = (p.nodes || []).map(String);
     let i = 0;
     for (const n of seq) if (n.includes(CHAIN[i])) i++;
     return i === CHAIN.length;
   });
-  ok('3', '驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 且為 hypothesis',
+  addResult('3', '驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 且為 hypothesis',
     !!chainPath && chainPath.status === 'hypothesis',
     chainPath ? `${chainPath.id} feasibility ${chainPath.feasibility} status ${chainPath.status}` : `${paths.length} 條路徑中找不到該鏈`);
-  ok('3b', '所有攻擊路徑的 status 均為 hypothesis', paths.length > 0 && paths.every(p => p.status === 'hypothesis'),
+  addResult('3b', '所有攻擊路徑的 status 均為 hypothesis', paths.length > 0 && paths.every(p => p.status === 'hypothesis'),
     paths.filter(p => p.status !== 'hypothesis').map(p => p.id).join(',') || `${paths.length} 條`);
 
   // ---------- 4. 驗證計畫的授權標示 ----------
-  const plan = obj.validation_plan?.items || [];
+  const plan = output.validation_plan?.items || [];
   const unflagged = plan.filter(v => !/尚未授權/.test(String(v.authorization_required || '')));
-  ok('4', '驗收 4：驗證計畫每項標「尚未授權主動測試」', plan.length > 0 && unflagged.length === 0,
+  addResult('4', '驗收 4：驗證計畫每項標「尚未授權主動測試」', plan.length > 0 && unflagged.length === 0,
     plan.length === 0 ? '驗證計畫為空' : (unflagged.length ? `未標示：${unflagged.map(v => v.id).join(',')}` : `${plan.length} 項`));
 
   // ---------- 5. 管理摘要 ----------
-  const summary = String(obj.executive_summary?.text || '');
-  const decisions = obj.executive_summary?.decisions_requested || [];
-  ok('5a', '驗收 5：管理摘要 ≤ 300 字', summary.length > 0 && summary.length <= 300, `${summary.length} 字`);
-  ok('5b', '驗收 5：管理摘要含決策請求與限制', (decisions.length > 0 || /決策/.test(summary)) && /限制|未驗證|假設/.test(summary),
+  const summary = String(output.executive_summary?.text || '');
+  const decisions = output.executive_summary?.decisions_requested || [];
+  addResult('5a', '驗收 5：管理摘要 ≤ 300 字', summary.length > 0 && summary.length <= 300, `${summary.length} 字`);
+  addResult('5b', '驗收 5：管理摘要含決策請求與限制', (decisions.length > 0 || /決策/.test(summary)) && /限制|未驗證|假設/.test(summary),
     `decisions_requested ${decisions.length} 項`);
 
   // ---------- 6. no-intel 變體 ----------
   if (variant === 'no-intel') {
-    const declared = JSON.stringify(obj.exposure_priorities?.missing_inputs || []) + JSON.stringify(obj.data_quality?.missing_inputs || []);
-    ok('6a', '驗收 6：輸出明確標示未納入威脅情資', /情資|threat[- ]?intel/i.test(declared), declared.slice(0, 120));
-    const conf = String(obj.exposure_priorities?.confidence || '');
-    ok('6b', '驗收 6：曝險優先序的信心不再是「高」', conf !== '' && !/^高|^high/i.test(conf), `confidence=${conf || '未提供'}`);
-    ok('6c', '驗收 6：SYN-2026-0101 仍為 P1', vpn?.priority === 'P1', vpn ? `${vpn.priority} score ${vpn.score}` : '找不到');
+    const declared = JSON.stringify(output.exposure_priorities?.missing_inputs || []) + JSON.stringify(output.data_quality?.missing_inputs || []);
+    addResult('6a', '驗收 6：輸出明確標示未納入威脅情資', /情資|threat[- ]?intel/i.test(declared), declared.slice(0, 120));
+    const conf = String(output.exposure_priorities?.confidence || '');
+    addResult('6b', '驗收 6：曝險優先序的信心不再是「高」', conf !== '' && !/^高|^high/i.test(conf), `confidence=${conf || '未提供'}`);
+    addResult('6c', '驗收 6：SYN-2026-0101 仍為 P1', vpn?.priority === 'P1', vpn ? `${vpn.priority} score ${vpn.score}` : '找不到');
   }
   return results;
 }

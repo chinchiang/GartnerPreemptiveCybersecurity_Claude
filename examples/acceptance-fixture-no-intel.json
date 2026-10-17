@@ -1,5 +1,5 @@
 {
-  "_fixture_note": "合成夾具，用來驗證 scripts/check-acceptance.mjs 本身是否運作正確。這不是任何模型的真實輸出，也不是預期輸出的範例（那是 examples/expected-output.md）。數值取自 examples/synthetic-org/ 的合成資料，全部為虛構。真實模型驗收結果請記錄在 docs/evidence/model-acceptance-*.md。 此 no-intel 夾具僅測試缺檔與信心降級的結構檢查；分數與統計為固定測試值，並非移除情資後重新計算的結果。",
+  "_fixture_note": "合成 fixture，用來驗證驗收 module（scripts/acceptance.mjs）的判定本身是否運作正確。這不是任何模型的真實輸出，也不是預期輸出的範例（那是 examples/expected-output.md）。數值取自 examples/synthetic-org/ 的合成資料，全部為虛構。真實模型驗收結果請記錄在 docs/evidence/model-acceptance-*.md。 此 no-intel fixture 僅測試缺檔與信心降級的結構檢查；分數與統計為固定測試值，並非移除情資後重新計算的結果。",
   "meta": {
     "organization": "Northwind Precision（合成）",
     "analysis_date": "2026-09-14",
