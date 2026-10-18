@@ -12,6 +12,9 @@
        frame-ancestors 與 report-uri 在 <meta> 傳遞時會被瀏覽器忽略，故不列入。
        改動本站資源載入方式（例如加入外部字型或分析工具）時，這一行必須一起改。 -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <!-- 最後更新時間：部署時 .github/workflows/pages.yml 以 scripts/stamp-last-updated.mjs 把 HEAD commit 的時間填進 _site/ 的複製品；
+       repo 裡一律留空（建置產物不帶時間），空的時候 topbar 與頁尾都不顯示。verify:static 會檢查這裡恰好一個空的。 -->
+  <meta name="last-updated" content="">
   <link rel="canonical" href="https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/">
   <!-- 社群分享卡片：沒有預覽圖檔，故用 summary（無圖）而不是 summary_large_image。 -->
   <meta property="og:type" content="website">
@@ -39,6 +42,7 @@
   <script src="data/platforms.js" defer></script>
   <script src="data/sources.js" defer></script>
   <script src="data/extra.js" defer></script>
+  <script src="assets/last-updated.js" defer></script>
   <script src="assets/app.js" defer></script>
 </head>
 <body>
@@ -55,6 +59,8 @@
       <div class="search-results" id="search-results" role="listbox" aria-label="搜尋結果"></div>
     </div>
     <div class="spacer"></div>
+    <!-- 最後更新時間：assets/app.js 讀上面的 last-updated <meta> 填入；空的（本機、clone）就維持 hidden。窄螢幕改顯示在頁尾（斷點見 assets/styles.css） -->
+    <span class="last-updated" id="last-updated" hidden></span>
     <span class="live-chip"><span class="pulse" aria-hidden="true"></span><span>公開資料 · 合成示範</span></span>
     <button class="icon-btn" id="theme-btn" aria-label="切換色彩主題"><span aria-hidden="true">◐</span><span class="btn-text"> 主題</span></button>
     <!-- 儲存庫為公開，因此此連結預設顯示。
@@ -74,6 +80,8 @@
       <span>Evidence → Inputs → Outputs → Skills</span>
       <!-- 與 topbar 的 GitHub 按鈕同受 assets/app.js 的 REPO_PUBLIC 控制。 -->
       <span id="repo-footer">儲存庫：<a href="https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude" target="_blank" rel="noopener">chinchiang/GartnerPreemptiveCybersecurity_Claude</a></span>
+      <!-- topbar 最後更新時間的窄螢幕版（斷點見 assets/styles.css），內容同 #last-updated -->
+      <span class="last-updated-footer" id="last-updated-footer" hidden></span>
     </div>
     <p>本站內容以正體中文撰寫，保留必要英文專有名詞。Gartner 為 Gartner, Inc. 之商標；本站與 Gartner 無關，引用僅限公開資料並標示來源。所有示範資料皆為合成。</p>
   </footer>

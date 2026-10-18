@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
+import { stampLastUpdated } from './stamp-last-updated.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const results = [];
@@ -95,6 +96,10 @@ function staticChecks() {
   ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
     /http-equiv="Content-Security-Policy"/.test(html) && /style-src [^"]*'unsafe-inline'/.test(html));
   ok('index.html 有 OG／Twitter 卡片與 canonical', ['og:title', 'og:url', 'twitter:card', 'rel="canonical"'].every(k => html.includes(k)));
+  // 最後更新時間由部署時的 stamp-last-updated.mjs 寫入：提交的版本要恰好一個空的 <meta>，否則要到部署才失敗；填了時間的版本也不該提交
+  let stampable = true;
+  try { stampLastUpdated(html, '2026-01-01T00:00:00+00:00'); } catch { stampable = false; }
+  ok('index.html 恰好一個空的 last-updated <meta>（部署時才填得進最後更新時間）', stampable && html.split('name="last-updated"').length === 2);
   for (const f of ['robots.txt', 'sitemap.xml', '.nojekyll', '404.html']) ok(`站點檔案存在 ${f}`, existsSync(join(ROOT, f)));
   const SITE = 'https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/';
   ok('canonical、og:url、sitemap.xml、robots.txt 的網址一致',
@@ -114,11 +119,14 @@ async function browserChecks() {
   let chromium;
   try { ({ chromium } = await import('playwright')); } catch { try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (e) { ok('Playwright 可用', false, e.message); return; } }
   const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.zip': 'application/zip', '.md': 'text/markdown', '.csv': 'text/csv' };
+  // ?stamped：回傳以固定時間填好 last-updated 的 index.html，等同部署後的網站（repo 裡提交的是空的）
+  const STAMPED_AT = '2026-10-17T16:30:00+00:00';
   const server = createServer((req, res) => {
     let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html';
     const f = join(ROOT, p);
     if (!existsSync(f)) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, { 'content-type': mime[p.slice(p.lastIndexOf('.'))] || 'application/octet-stream' }); res.end(readFileSync(f));
+    const body = p === '/index.html' && req.url.includes('?stamped') ? stampLastUpdated(readFileSync(f, 'utf8'), STAMPED_AT) : readFileSync(f);
+    res.writeHead(200, { 'content-type': mime[p.slice(p.lastIndexOf('.'))] || 'application/octet-stream' }); res.end(body);
   }).listen(0);
   const port = server.address().port;
   const base = `http://127.0.0.1:${port}/`;
@@ -282,6 +290,31 @@ async function browserChecks() {
   const repoPublic = /const REPO_PUBLIC = true/.test(readFileSync(join(ROOT, 'assets/app.js'), 'utf8'));
   const repoVisible = await page.evaluate(() => ['#repo-link', '#repo-footer'].every(s => { const n = document.querySelector(s); return n && !n.hidden; }));
   ok(`儲存庫連結顯示狀態符合 REPO_PUBLIC=${repoPublic}`, repoVisible === repoPublic, `實際 ${repoVisible ? '顯示' : '隱藏'}`);
+  // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、窄螢幕改顯示在頁尾
+  // （斷點與理由見 assets/styles.css）
+  const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
+  const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
+  await page.goto(base + '#/'); await page.waitForSelector('h1');
+  await mp.goto(base + '#/'); await mp.waitForSelector('h1');
+  ok('最後更新時間：沒填時 topbar 與頁尾都不顯示（元素存在）',
+    (await shown(page, '#last-updated')) === false && (await shown(page, '#last-updated-footer')) === false
+    && (await shown(mp, '#last-updated')) === false && (await shown(mp, '#last-updated-footer')) === false);
+  await page.goto(base + '?stamped#/'); await page.waitForSelector('h1');
+  const desk = await page.$eval('#last-updated', n => ({ text: n.textContent.trim(), datetime: n.querySelector('time')?.getAttribute('datetime') })).catch(() => ({}));
+  ok('最後更新時間：填了時 1280px 的 topbar 顯示臺北時間、頁尾不顯示',
+    (await shown(page, '#last-updated')) === true && desk.text === LAST_UPDATED_TEXT && desk.datetime === STAMPED_AT && (await shown(page, '#last-updated-footer')) === false,
+    `${desk.text}｜${desk.datetime}`);
+  await page.screenshot({ path: join(shots, 'home-last-updated.png') });
+  await mp.goto(base + '?stamped#/'); await mp.waitForSelector('h1');
+  const foot = await mp.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
+  ok('最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字',
+    (await shown(mp, '#last-updated')) === false && (await shown(mp, '#last-updated-footer')) === true && foot === LAST_UPDATED_TEXT, foot);
+  const mid = await browser.newContext({ viewport: { width: 1100, height: 900 } }); const midPage = await mid.newPage();
+  await midPage.goto(base + '?stamped#/'); await midPage.waitForSelector('h1');
+  const midFoot = await midPage.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
+  ok('最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄）',
+    (await shown(midPage, '#last-updated')) === false && (await shown(midPage, '#last-updated-footer')) === true && midFoot === LAST_UPDATED_TEXT, midFoot);
+  await mid.close();
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }
