@@ -14,6 +14,8 @@
 | 選用後端代理 | `node scripts/build-worker.mjs && node --check backend/dist/worker.js` |
 | 靜態驗證 | `node scripts/verify.mjs --static`（只印結果，不寫檔） |
 
+測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
+
 本機沒有 Playwright；完整的瀏覽器檢查（`node scripts/verify.mjs`，會寫入 `verify-report.md`）只在 CI 的 browser job 執行。
 
 ## 搜尋：用 `rg`

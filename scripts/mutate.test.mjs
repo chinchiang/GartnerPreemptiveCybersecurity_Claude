@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url';
 
 const MUTATE = fileURLToPath(new URL('./mutate.mjs', import.meta.url));
 const CALC = 'module.exports = (a, b) => a + b;\n';
+// 給預設測試指令（node --test scripts/*.test.mjs）跑的 node:test 檔
+const CALC_TEST = "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { createRequire } from 'node:module';\n" +
+  "test('1 + 2 = 3', () => assert.equal(createRequire(import.meta.url)('../calc.js')(1, 2), 3));\n";
 
 // 回傳小專案的目錄；mutations 寫成 mutations.json
 function project(mutations) {
@@ -46,12 +49,20 @@ test('不給 --test：用預設測試指令 node --test scripts/*.test.mjs', () 
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
   try {
     mkdirSync(join(dir, 'scripts'));
-    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'),
-      "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { createRequire } from 'node:module';\n" +
-      "test('1 + 2 = 3', () => assert.equal(createRequire(import.meta.url)('../calc.js')(1, 2), 3));\n");
-    // 拿掉外層 node --test 設的 NODE_TEST_CONTEXT：子行程繼承它時，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
-    const { NODE_TEST_CONTEXT, ...env } = process.env;
-    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8', env });
+    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'), CALC_TEST);
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法/);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('被 node --test 啟動時（繼承了 NODE_TEST_CONTEXT）：預設測試指令的失敗照樣算抓到', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  try {
+    mkdirSync(join(dir, 'scripts'));
+    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'), CALC_TEST);
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8', env: { ...process.env, NODE_TEST_CONTEXT: 'child-v8' } });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法/);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
