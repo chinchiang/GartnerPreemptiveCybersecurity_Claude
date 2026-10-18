@@ -12,6 +12,9 @@
        frame-ancestors 與 report-uri 在 <meta> 傳遞時會被瀏覽器忽略，故不列入。
        改動本站資源載入方式（例如加入外部字型或分析工具）時，這一行必須一起改。 -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <!-- 最後更新時間：部署時 .github/workflows/pages.yml 以 scripts/stamp-last-updated.mjs 把 HEAD commit 的時間填進 _site/ 的複製品；
+       repo 裡一律留空（建置產物不帶時間），空的時候 topbar 與頁尾都不顯示。verify:static 會檢查這裡恰好一個空的。 -->
+  <meta name="last-updated" content="">
   <link rel="canonical" href="https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/">
   <!-- 社群分享卡片：沒有預覽圖檔，故用 summary（無圖）而不是 summary_large_image。 -->
   <meta property="og:type" content="website">

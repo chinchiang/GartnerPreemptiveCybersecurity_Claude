@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
+import { stampLastUpdated } from './stamp-last-updated.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const results = [];
@@ -95,6 +96,10 @@ function staticChecks() {
   ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
     /http-equiv="Content-Security-Policy"/.test(html) && /style-src [^"]*'unsafe-inline'/.test(html));
   ok('index.html 有 OG／Twitter 卡片與 canonical', ['og:title', 'og:url', 'twitter:card', 'rel="canonical"'].every(k => html.includes(k)));
+  // 最後更新時間由部署時的 stamp-last-updated.mjs 寫入：提交的版本要恰好一個空的 <meta>，否則要到部署才失敗；填了時間的版本也不該提交
+  let stampable = true;
+  try { stampLastUpdated(html, '2026-01-01T00:00:00+00:00'); } catch { stampable = false; }
+  ok('index.html 恰好一個空的 last-updated <meta>（部署時才填得進最後更新時間）', stampable && html.split('name="last-updated"').length === 2);
   for (const f of ['robots.txt', 'sitemap.xml', '.nojekyll', '404.html']) ok(`站點檔案存在 ${f}`, existsSync(join(ROOT, f)));
   const SITE = 'https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/';
   ok('canonical、og:url、sitemap.xml、robots.txt 的網址一致',
