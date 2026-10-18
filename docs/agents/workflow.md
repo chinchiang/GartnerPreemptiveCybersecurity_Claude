@@ -14,6 +14,8 @@
 | 選用後端代理 | `node scripts/build-worker.mjs && node --check backend/dist/worker.js` |
 | 靜態驗證 | `node scripts/verify.mjs --static`（只印結果，不寫檔） |
 
+測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
+
 本機沒有 Playwright；完整的瀏覽器檢查（`node scripts/verify.mjs`，會寫入 `verify-report.md`）只在 CI 的 browser job 執行。
 
 ## 搜尋：用 `rg`
@@ -22,7 +24,7 @@
 
 ## 突變測試：`scripts/mutate.mjs`
 
-確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`，不提交），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；有存活就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處），或測試在突變前就失敗，以結束碼 2 結束，一個檔案都不改。`--json` 的輸出可以直接整理成 PR 說明的突變紀錄。
+確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；有存活就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處），或測試在突變前就失敗，以結束碼 2 結束，一個檔案都不改。`--json` 的輸出可以直接整理成 PR 說明的突變紀錄。
 
 ## 改了來源就重建，產物一起提交
 
@@ -33,7 +35,7 @@
 ## Commit 與 PR
 
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
-- **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式。
+- **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
 - **更新 PR 說明**：用 `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<檔>`。`gh pr edit` 在本 repo 會因 Projects classic 的 GraphQL 錯誤而失敗。
 - **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。
 - **合併**：先確認 `gh pr checks <n>` 全綠、`mergeStateStatus` 是 `CLEAN`，再照 repo 的格式合併：

@@ -43,7 +43,9 @@ if (problems.length) fail(problems.join('\n'));
 let current = null;   // 目前改壞的檔案 { file, original } 與測試子行程
 let child = null;
 const runTests = () => new Promise(resolve => {
-  child = spawn(testCommand, { shell: true, stdio: 'ignore', detached: true });
+  // 拿掉 NODE_TEST_CONTEXT：被 node --test 啟動時會繼承它，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
+  const { NODE_TEST_CONTEXT, ...env } = process.env;
+  child = spawn(testCommand, { shell: true, stdio: 'ignore', detached: true, env });
   child.on('exit', code => { child = null; resolve(code); });
 });
 for (const signal of ['SIGINT', 'SIGTERM']) {
