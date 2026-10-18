@@ -290,7 +290,8 @@ async function browserChecks() {
   const repoPublic = /const REPO_PUBLIC = true/.test(readFileSync(join(ROOT, 'assets/app.js'), 'utf8'));
   const repoVisible = await page.evaluate(() => ['#repo-link', '#repo-footer'].every(s => { const n = document.querySelector(s); return n && !n.hidden; }));
   ok(`儲存庫連結顯示狀態符合 REPO_PUBLIC=${repoPublic}`, repoVisible === repoPublic, `實際 ${repoVisible ? '顯示' : '隱藏'}`);
-  // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、≤ 900px 改顯示在頁尾
+  // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、≤ 1150px 改顯示在頁尾
+  // （topbar 多了它，搜尋框少約 124px；1150px 以下會比現在 901px 時的搜尋框還窄）
   const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
   const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
   await page.goto(base + '#/'); await page.waitForSelector('h1');
@@ -308,6 +309,12 @@ async function browserChecks() {
   const foot = await mp.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
   ok('最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字',
     (await shown(mp, '#last-updated')) === false && (await shown(mp, '#last-updated-footer')) === true && foot === LAST_UPDATED_TEXT, foot);
+  const mid = await browser.newContext({ viewport: { width: 1100, height: 900 } }); const midPage = await mid.newPage();
+  await midPage.goto(base + '?stamped#/'); await midPage.waitForSelector('h1');
+  const midFoot = await midPage.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
+  ok('最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄）',
+    (await shown(midPage, '#last-updated')) === false && (await shown(midPage, '#last-updated-footer')) === true && midFoot === LAST_UPDATED_TEXT, midFoot);
+  await mid.close();
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }
