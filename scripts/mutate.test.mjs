@@ -1,14 +1,14 @@
 // 突變工具（scripts/mutate.mjs）：吃一份臨時的突變清單，逐一改壞、跑測試、一定還原。
 // CLI 以子行程跑，對象是 /tmp 底下的小專案：calc.js 加一支會檢查它的 check.js；
-// 從測試輸出找出失敗測試的 failingTests 直接呼叫。
+// 從測試輸出找出失敗測試的 failingTests、產生突變紀錄表格的 markdownTable 直接呼叫。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { failingTests } from './mutate.mjs';
+import { failingTests, markdownTable } from './mutate.mjs';
 
 const MUTATE = fileURLToPath(new URL('./mutate.mjs', import.meta.url));
 const CALC = 'module.exports = (a, b) => a + b;\n';
@@ -166,6 +166,34 @@ test('--json：輸出可解析的紀錄（給 PR 說明用），結束碼照舊'
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('--markdown：總計一行、空一行，再接「突變｜結果｜紅的測試」表格；旗標寫在清單前後都認得，結束碼照舊', () => {
+  const dir = project([
+    { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' },
+    { file: 'calc.js', from: '(a, b) =>', to: '(a, b, c) =>', note: '多一個參數' }
+  ], { nodeTest: true });
+  try {
+    const before = spawnSync(process.execPath, [MUTATE, '--markdown', 'mutations.json'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(before.status, 1, before.stdout + before.stderr);
+    assert.equal(before.stdout, '突變 2 種：抓到 1、存活 1\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
+      '| 加法改減法 | 抓到 | 1 + 2 = 3［scripts/calc.test.mjs］ |\n| 多一個參數 | 存活 | — |\n');
+    const after = run(dir, '--markdown');   // node check.js：不是 node:test，讀不到名稱
+    assert.equal(after.status, 1, after.stdout + after.stderr);
+    assert.equal(after.stdout, '突變 2 種：抓到 1、存活 1\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
+      '| 加法改減法 | 抓到 | （沒有 node:test 的名稱） |\n| 多一個參數 | 存活 | — |\n');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--json 與 --markdown 一起給：結束碼 2，一個測試都不跑、一個檔案都不改', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  try {
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'touch ran.txt', '--json', '--markdown'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    assert.match(r.stderr, /\[--json \| --markdown\]/);
+    assert.equal(existsSync(join(dir, 'ran.txt')), false, '測試指令被執行了');
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('參數或讀檔錯誤（沒給清單、清單不是 JSON、清單裡的檔案不存在）：結束碼 2，不和「有存活」的 1 混在一起', () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
   try {
@@ -303,4 +331,22 @@ test('failingTests 讀不到 node:test 的失敗：回傳 []', () => {
   for (const output of ['', 'check.js 結束碼 1\n', '✖ 失敗的 A (0.66ms)\n', 'TAP version 13\nok 1 - 通過的\n']) {
     assert.deepEqual(failingTests(output, '/repo'), [], JSON.stringify(output));
   }
+});
+
+test('markdownTable：| 跳脫、換行（\\r\\n、\\n、單獨的 \\r）換成空白；沒有 note 用 from；讀不到名稱與存活各有寫法；多個紅的測試以「、」分隔', () => {
+  const results = [
+    { file: 'x.mjs', from: 'x', to: 'y', note: '把 (not ok|ok) 換成\r\n只認 not ok', caught: true,
+      failed: [{ name: '讀 TAP | 子測試', file: 'scripts/a.test.mjs' }, { name: '端對端', file: 'scripts/b.test.mjs' }] },
+    { file: 'x.mjs', from: 'a + b', to: 'a - b', caught: true, failed: [] },
+    { file: 'x.mjs', from: '(a, b) =>', to: '(a, b, c) =>', note: '多一個參數', caught: false, failed: [] },
+    { file: 'x.mjs', from: 'a', to: 'b', note: '只有\r的換行\n也換', caught: false, failed: [] }
+  ];
+  assert.equal(markdownTable(results), [
+    '| 突變 | 結果 | 紅的測試 |',
+    '|---|---|---|',
+    '| 把 (not ok\\|ok) 換成 只認 not ok | 抓到 | 讀 TAP \\| 子測試［scripts/a.test.mjs］、端對端［scripts/b.test.mjs］ |',
+    '| a + b | 抓到 | （沒有 node:test 的名稱） |',
+    '| 多一個參數 | 存活 | — |',
+    '| 只有 的換行 也換 | 存活 | — |'
+  ].join('\n'));
 });
