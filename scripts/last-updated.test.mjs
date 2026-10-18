@@ -28,5 +28,5 @@ test('秒數直接捨去，不四捨五入：14:32:59 還是 14:32', () => {
 });
 
 test('空字串、沒有值或不是時間：回 null（畫面上整個不顯示）', () => {
-  for (const empty of ['', undefined, null, 'yesterday']) assert.equal(formatLastUpdated(empty), null, `應該回 null：${empty}`);
+  for (const empty of ['', undefined, null, 'yesterday', '2026', '2026-02-30T00:00:00+00:00']) assert.equal(formatLastUpdated(empty), null, `應該回 null：${empty}`);
 });

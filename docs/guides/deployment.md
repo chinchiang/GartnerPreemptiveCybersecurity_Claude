@@ -15,14 +15,14 @@ assets/fonts/         自載字型 Inter 與 JetBrains Mono（woff2 拉丁子集
 assets/md.js          極簡 Markdown 渲染器
 assets/demo.js        案例互動展示的確定性引擎
 assets/scope-gate.js  授權範圍守門的 JS schema 解讀（示範引擎與選用後端代理共用；scope 定義由建置以嵌入區塊寫入）
-assets/last-updated.js  最後更新時間的顯示格式（臺北時間；瀏覽器與單元測試 last-updated.test.mjs 共用）
+assets/last-updated.js  最後更新時間的合法格式與臺北時間的顯示（網站與 scripts/stamp-last-updated.mjs 共用）
 assets/app.js         hash 路由、各頁面、全站搜尋、複製／下載
 data/*.js             由 scripts/build-data.mjs 產生（research、guides、skills、case、manifest）或手動維護（process、io、platforms、sources）
 downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內容（平臺檔案＋腳本依賴的母本＋合成資料，解壓即可執行）由 scripts/skill-packages.mjs 的對照表決定
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               母本（skills/shared/）、平臺檔案與建置產生的複本（各平臺 references/）；skills/shared/analysis_workflow.py 是 Python 的分析工作流程核心，改用它的平臺腳本只剩模型 adapter（理由見 docs/adr/0002）；Claude 技能的 validate_inputs.py 用建置產生的複本 scripts/analysis_workflow.py（見 docs/adr/0003），只渲染核心的授權範圍守門與腳本預檢
 examples/             合成資料、預期輸出、示範引擎快照與驗收 fixture
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原）、stamp-last-updated.mjs（部署時把最後更新時間寫進 _site/index.html，單元測試在 stamp-last-updated.test.mjs）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查，單元測試與整個 repo 的檢查在 glossary.test.mjs）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原）、stamp-last-updated.mjs（部署時把最後更新時間寫進 _site/index.html，單元測試在 stamp-last-updated.test.mjs）、last-updated.test.mjs（assets/last-updated.js 的單元測試）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查，單元測試與整個 repo 的檢查在 glossary.test.mjs）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
 tests/                fixtures/scope-cases.json（授權範圍守門的共用案例，JS 與 Python 共用）、python/（Python 測試；不出貨）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
@@ -122,9 +122,10 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 合成資料 | `examples/synthetic-org/`（保持合成）；筆數變了就同步改 `skills/shared/acceptance.md` 第 1 項與 `scripts/acceptance.test.mjs` 的預期筆數字面值 | build；`npm test`；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
 | 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例。模型側守門的規則說明也由建置從 schema 產生（`scope-gate.js` 的 `scopeRuleNote()`），寫進核心提示詞與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）以「- scope 必填欄位的規則：」開頭的那一行；要用到規則說明還不會描述的規則時，`scopeRuleNote()` 與 Python 的 `scope_rule_note` 兩份都要實作，否則建置會丟出錯誤（見 `docs/adr/0005-model-side-gate-rule-note-is-generated-into-the-core-prompt.md`） | build（重寫 `scope-gate.js` 的嵌入區塊與四份檔案的規則說明行，提交）+ `npm test` + Python unittest |
+| 最後更新時間 | 合法格式與顯示格式改 `assets/last-updated.js`（部署時的寫入工具 `scripts/stamp-last-updated.mjs` 也用它判定）；topbar 與頁尾的位置改 `index.html`，斷點改 `assets/styles.css`；`index.html` 的 `<meta name="last-updated">` 必須留空 | `npm test` + `verify:static`；畫面與斷點只有 CI 的 browser job 檢查得到（`verify.mjs` 以 `?stamped` 模擬部署後的網站） |
 | 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本、改寫版（Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的流程說明（見第 4.1 節）；改了數值或公式時，`scripts/scoring.test.mjs` 的手算預期值也要跟著改 | `npm test` + build + verify + `npm run snapshot` |
 
-`data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 在建置與靜態驗證之後檢查整份工作樹（`git status --porcelain` 必須是空的，新產生的檔案也算），忘記重建或直接改了複本、嵌入區塊都會擋下 PR；新增嵌入目標時不必改 CI。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。
+`data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 在建置與靜態驗證之後檢查整份工作樹（`git status --porcelain` 必須是空的，新產生的檔案也算），忘記重建或直接改了複本、嵌入區塊都會擋下 PR；新增嵌入目標時不必改 CI。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。網站上的最後更新時間因此不由建置產生，而是部署時才寫進 `_site/` 的複製品（見第 3 節）。
 
 建議每季重新查證：Gartner 新文件（尤其 Impact Radar 與 Hype Cycle 更新）、五個平臺的模型與功能變動（見待驗證清單）。這件事已由 `.github/workflows/quarterly-review.yml` 每季（1／4／7／10 月 1 日）自動開一個 issue，內容是 `data/sources.js` 中 `status: 'pending'` 的項目所組成的勾選清單（`node scripts/todo-checklist.mjs` 可在本機預覽）。查證完成後把該項改成 `status: 'done'` 並填 `resolvedAt`——`verify:static` 會檢查 `pending` 項目都寫出了下一步、`done` 項目都有日期。
 

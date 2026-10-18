@@ -290,8 +290,8 @@ async function browserChecks() {
   const repoPublic = /const REPO_PUBLIC = true/.test(readFileSync(join(ROOT, 'assets/app.js'), 'utf8'));
   const repoVisible = await page.evaluate(() => ['#repo-link', '#repo-footer'].every(s => { const n = document.querySelector(s); return n && !n.hidden; }));
   ok(`儲存庫連結顯示狀態符合 REPO_PUBLIC=${repoPublic}`, repoVisible === repoPublic, `實際 ${repoVisible ? '顯示' : '隱藏'}`);
-  // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、≤ 1150px 改顯示在頁尾
-  // （topbar 多了它，搜尋框少約 124px；1150px 以下會比現在 901px 時的搜尋框還窄）
+  // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、窄螢幕改顯示在頁尾
+  // （斷點與理由見 assets/styles.css）
   const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
   const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
   await page.goto(base + '#/'); await page.waitForSelector('h1');
