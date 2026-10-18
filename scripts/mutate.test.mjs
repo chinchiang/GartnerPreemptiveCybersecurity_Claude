@@ -1,5 +1,6 @@
 // 突變工具（scripts/mutate.mjs）：吃一份臨時的突變清單，逐一改壞、跑測試、一定還原。
-// 以子行程跑 CLI，對象是 /tmp 底下的小專案：calc.js 加一支會檢查它的 check.js。
+// CLI 以子行程跑，對象是 /tmp 底下的小專案：calc.js 加一支會檢查它的 check.js；
+// 從測試輸出找出失敗測試的 failingTests 直接呼叫。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
@@ -7,19 +8,25 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { failingTests } from './mutate.mjs';
 
 const MUTATE = fileURLToPath(new URL('./mutate.mjs', import.meta.url));
 const CALC = 'module.exports = (a, b) => a + b;\n';
 // 給預設測試指令（node --test scripts/*.test.mjs）跑的 node:test 檔
 const CALC_TEST = "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { createRequire } from 'node:module';\n" +
-  "test('1 + 2 = 3', () => assert.equal(createRequire(import.meta.url)('../calc.js')(1, 2), 3));\n";
+  "test('1 + 2 = 3', () => assert.equal(createRequire(import.meta.url)('../calc.js')(1, 2), 3));\n" +
+  "test('calc 是函式', () => assert.equal(typeof createRequire(import.meta.url)('../calc.js'), 'function'));\n";
 
-// 回傳小專案的目錄；mutations 寫成 mutations.json
-function project(mutations) {
+// 回傳小專案的目錄；mutations 寫成 mutations.json；nodeTest 時多放給 node --test 跑的 scripts/calc.test.mjs
+function project(mutations, { nodeTest = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'mutate-test-'));
   writeFileSync(join(dir, 'calc.js'), CALC);
   writeFileSync(join(dir, 'check.js'), "process.exit(require('./calc.js')(1, 2) === 3 ? 0 : 1);\n");
   writeFileSync(join(dir, 'mutations.json'), JSON.stringify(mutations));
+  if (nodeTest) {
+    mkdirSync(join(dir, 'scripts'));
+    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'), CALC_TEST);
+  }
   return dir;
 }
 const run = (dir, ...args) => spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', ...args], { cwd: dir, encoding: 'utf8' });
@@ -29,7 +36,7 @@ test('突變被測試抓到：結束碼 0，檔案還原', () => {
   try {
     const r = run(dir);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法/);
+    assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法$/m);   // node check.js 不是 node:test：不列失敗的測試
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -46,10 +53,8 @@ test('突變照字面寫入：to 裡的 $&、$$ 不當替換樣式展開（寫�
 });
 
 test('不給 --test：用預設測試指令 node --test scripts/*.test.mjs', () => {
-  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }], { nodeTest: true });
   try {
-    mkdirSync(join(dir, 'scripts'));
-    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'), CALC_TEST);
     const r = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法/);
@@ -58,14 +63,33 @@ test('不給 --test：用預設測試指令 node --test scripts/*.test.mjs', () 
 });
 
 test('被 node --test 啟動時（繼承了 NODE_TEST_CONTEXT）：預設測試指令的失敗照樣算抓到', () => {
-  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }], { nodeTest: true });
   try {
-    mkdirSync(join(dir, 'scripts'));
-    writeFileSync(join(dir, 'scripts', 'calc.test.mjs'), CALC_TEST);
     const r = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8', env: { ...process.env, NODE_TEST_CONTEXT: 'child-v8' } });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法/);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('抓到時列出失敗的測試（附檔名）：只列紅的那個，--json 也有', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }], { nodeTest: true });
+  try {
+    const text = spawnSync(process.execPath, [MUTATE, 'mutations.json'], { cwd: dir, encoding: 'utf8' });
+    assert.match(text.stdout, /抓到\s+calc\.js\s+加法改減法（紅：1 \+ 2 = 3［scripts\/calc\.test\.mjs］）$/m, text.stdout + text.stderr);
+    assert.doesNotMatch(text.stdout, /calc 是函式/);
+    const json = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--json'], { cwd: dir, encoding: 'utf8' });
+    assert.deepEqual(JSON.parse(json.stdout).results[0].failed, [{ name: '1 + 2 = 3', file: 'scripts/calc.test.mjs' }]);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('測試指令結束後才寫完的輸出也讀得到：等輸出讀完（close）才判定，不是行程一結束（exit）', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }], { nodeTest: true });
+  try {
+    // shell 帶著測試的結束碼先結束，報告由背景行程 0.3 秒後才寫出
+    const late = 'node --test scripts/calc.test.mjs > out.txt; s=$?; (sleep 0.3; cat out.txt) & exit $s';
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', late], { cwd: dir, encoding: 'utf8' });
+    assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法（紅：1 \+ 2 = 3［scripts\/calc\.test\.mjs］）$/m, r.stdout + r.stderr);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -135,8 +159,8 @@ test('--json：輸出可解析的紀錄（給 PR 說明用），結束碼照舊'
     assert.deepEqual(JSON.parse(r.stdout), {
       total: 2, caught: 1, survived: 1,
       results: [
-        { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法', caught: true },
-        { file: 'calc.js', from: '(a, b) =>', to: '(a, b, c) =>', note: '多一個參數', caught: false }
+        { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法', caught: true, failed: [] },
+        { file: 'calc.js', from: '(a, b) =>', to: '(a, b, c) =>', note: '多一個參數', caught: false, failed: [] }
       ]
     });
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -156,4 +180,127 @@ test('參數或讀檔錯誤（沒給清單、清單不是 JSON、清單裡的檔
     assert.match(missing.stderr, /missing\.js/);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// 同一組失敗的兩種輸出（節錄自實際執行，cwd 是 /repo）：Node 24 非 TTY 預設 spec、Node 22 預設 TAP。
+// scripts/a.test.mjs：通過的、失敗的 A、describe 一組 > 組內失敗、名稱有特殊字元的失敗、todo 失敗、
+// before 失敗的 describe 有 before 的組 > 被取消（spec 不印耗時）；scripts/b.test.mjs 載入失敗
+const SPEC = `✔ 通過的 (0.47ms)
+✖ 失敗的 A (0.66ms)
+▶ 一組
+  ✖ 組內失敗 (6.28ms)
+✖ 一組 (6.49ms)
+✖ 有 # 與 \\ 還有 (括號) - 破折號 (0.39ms)
+⚠ todo 失敗 (0.23ms) # TODO
+▶ 有 before 的組
+  ✖ 被取消
+✖ 有 before 的組 (0.17ms)
+✖ scripts/b.test.mjs (26.2ms)
+ℹ tests 7
+ℹ fail 5
+
+✖ failing tests:
+
+test at scripts/a.test.mjs:4:1
+✖ 失敗的 A (0.66ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+test at scripts/a.test.mjs:5:24
+✖ 組內失敗 (6.28ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+test at scripts/a.test.mjs:6:1
+✖ 有 # 與 \\ 還有 (括號) - 破折號 (0.39ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+test at scripts/a.test.mjs:7:1
+⚠ todo 失敗 (0.23ms) # TODO
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+test at scripts/a.test.mjs:8:74
+✖ 被取消
+  'test did not finish before its parent and was cancelled'
+
+test at scripts/a.test.mjs:8:1
+✖ 有 before 的組 (0.17ms)
+  Error: x
+
+test at scripts/b.test.mjs:1:1
+✖ scripts/b.test.mjs (26.2ms)
+  'test failed'
+`;
+const TAP = `TAP version 13
+# Subtest: 通過的
+ok 1 - 通過的
+# Subtest: 失敗的 A
+not ok 2 - 失敗的 A
+  ---
+  location: '/repo/scripts/a.test.mjs:4:1'
+  failureType: 'testCodeFailure'
+  ...
+# Subtest: 一組
+    # Subtest: 組內失敗
+    not ok 1 - 組內失敗
+      ---
+      location: '/repo/scripts/a.test.mjs:5:24'
+      failureType: 'testCodeFailure'
+      ...
+not ok 3 - 一組
+  ---
+  location: '/repo/scripts/a.test.mjs:5:1'
+  failureType: 'subtestsFailed'
+  ...
+# Subtest: 有 \\# 與 \\\\ 還有 (括號) - 破折號
+not ok 4 - 有 \\# 與 \\\\ 還有 (括號) - 破折號
+  ---
+  location: '/repo/scripts/a.test.mjs:6:1'
+  failureType: 'testCodeFailure'
+  ...
+# Subtest: todo 失敗
+not ok 5 - todo 失敗 # TODO
+  ---
+  location: '/repo/scripts/a.test.mjs:7:1'
+  failureType: 'testCodeFailure'
+  ...
+# Subtest: 有 before 的組
+    # Subtest: 被取消
+    not ok 1 - 被取消
+      ---
+      location: '/repo/scripts/a.test.mjs:8:74'
+      failureType: 'cancelledByParent'
+      ...
+not ok 6 - 有 before 的組
+  ---
+  location: '/repo/scripts/a.test.mjs:8:1'
+  failureType: 'hookFailed'
+  ...
+# Subtest: scripts/b.test.mjs
+not ok 2 - scripts/b.test.mjs
+  ---
+  location: '/repo/scripts/b.test.mjs:1:1'
+  failureType: 'testCodeFailure'
+  ...
+# fail 5
+`;
+const FAILED = [
+  { name: '失敗的 A', file: 'scripts/a.test.mjs' },
+  { name: '組內失敗', file: 'scripts/a.test.mjs' },
+  { name: '有 # 與 \\ 還有 (括號) - 破折號', file: 'scripts/a.test.mjs' },
+  { name: '被取消', file: 'scripts/a.test.mjs' },
+  { name: '有 before 的組', file: 'scripts/a.test.mjs' },
+  { name: 'scripts/b.test.mjs', file: 'scripts/b.test.mjs' }
+];
+
+test('failingTests 讀 spec：只認 failing tests 那一段（父測試、describe、todo 不算，被取消的沒有耗時也算），附檔名不附行號', () => {
+  assert.deepEqual(failingTests(SPEC, '/repo'), FAILED);
+});
+
+test('failingTests 讀 TAP：not ok 裡排除父測試（subtestsFailed）與 todo，名稱還原跳脫，位置換成相對 cwd 的檔名', () => {
+  assert.deepEqual(failingTests(TAP, '/repo'), FAILED);
+});
+
+test('failingTests 讀不到 node:test 的失敗：回傳 []', () => {
+  for (const output of ['', 'check.js 結束碼 1\n', '✖ 失敗的 A (0.66ms)\n', 'TAP version 13\nok 1 - 通過的\n']) {
+    assert.deepEqual(failingTests(output, '/repo'), [], JSON.stringify(output));
+  }
 });
