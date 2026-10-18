@@ -31,6 +31,8 @@ jobs:
           rm -rf _site && mkdir _site
           cp -r index.html 404.html .nojekyll robots.txt sitemap.xml assets data downloads _site/
           du -sh _site
+      - name: Stamp last-updated time (HEAD commit time, only in the _site copy)
+        run: node scripts/stamp-last-updated.mjs _site/index.html "$(git log -1 --format=%cI)"
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

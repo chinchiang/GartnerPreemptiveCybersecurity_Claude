@@ -184,7 +184,7 @@
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
         <li>${TAG.rec} 五個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
       </ol></div>
-      <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；實際部署時間見 GitHub Actions 紀錄）。所有內容以儲存庫為單一來源。</p>`;
+      <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；最後更新時間是內容最後一次合併進 <code>main</code> 的時間，部署時寫入，顯示在右上角）。所有內容以儲存庫為單一來源。</p>`;
   }
 
   // ---------- 方法論（研究文件） ----------
@@ -571,6 +571,10 @@
     const dock = $('#mobile-dock');
     if (dock) dock.innerHTML = DOCK.map(navItem).filter(Boolean).map(([h, t, icon]) => `<a href="#${h}"><span aria-hidden="true">${icon}</span><small>${t.replace(/（.*）|／.*$/, '').slice(0, 5)}</small></a>`).join('');
     if (!REPO_PUBLIC) for (const id of ['#repo-link', '#repo-footer']) { const n = $(id); if (n) n.hidden = true; }
+    // 最後更新時間：部署時才寫進 <meta name="last-updated">（repo 裡是空的，空的就維持 hidden），格式見 assets/last-updated.js
+    const updatedAt = $('meta[name="last-updated"]')?.content || '';
+    const updatedText = window.LAST_UPDATED?.formatLastUpdated(updatedAt);
+    if (updatedText) for (const id of ['#last-updated', '#last-updated-footer']) { const n = $(id); if (n) { n.innerHTML = `最後更新：<time datetime="${esc(updatedAt)}" title="${esc(updatedAt)}">${esc(updatedText)}</time>`; n.hidden = false; } }
     $('#menu-btn').addEventListener('click', () => { const s = $('.sidebar'); s.classList.toggle('open'); $('#menu-btn').setAttribute('aria-expanded', s.classList.contains('open')); });
     const themeBtn = $('#theme-btn');
     const applyTheme = (t) => { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); themeBtn.innerHTML = t === 'dark' ? '<span aria-hidden="true">☀︎</span><span class="btn-text"> 淺色</span>' : t === 'light' ? '<span aria-hidden="true">☾</span><span class="btn-text"> 深色</span>' : '<span aria-hidden="true">◐</span><span class="btn-text"> 主題</span>'; themeBtn.setAttribute('aria-label', `切換色彩主題（目前：${t === 'dark' ? '深色' : t === 'light' ? '淺色' : '跟隨系統'}）`); };
