@@ -20,6 +20,9 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests (node:test, Node built-ins only)
+        # 非 UTC 的時區：runner 是 UTC，誤用執行環境時區（getHours() 等）的程式碼在那裡結果剛好相同而測不出來
+        env:
+          TZ: America/New_York
         run: npm test
       - name: Build data files and downloads
         run: npm run build
