@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-10-16T23:35:57.449Z
+執行時間：2026-10-18T00:21:55.764Z
 模式：full
-結果：106/106 通過
+結果：100/100 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -33,24 +33,14 @@
 | JSON 有效 skills/shared/output-schema.json | ✅ |  |
 | JSON 有效 skills/grok/tool-definitions.json | ✅ |  |
 | JSON 有效 skills/glm/claude-code-settings.example.json | ✅ |  |
-| 驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據 | ✅ | P1 86 |
-| 驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 | ✅ |  |
-| 驗收 4：驗證計畫每項標「尚未授權主動測試」 | ✅ |  |
-| 驗收 5：管理摘要 ≤ 300 字且含「決策請求」「限制」 | ✅ | 243 字 |
-| 驗收 7：缺 scope 時拒絕分析並列出必要欄位 | ✅ |  |
 | 缺拓樸：信心下修且無路徑假設 | ✅ |  |
 | 清冊 < 80%：信心「低」 | ✅ |  |
 | 驗證計畫：外部驗證需兩個授權旗標 | ✅ |  |
 | 引擎 JSON 符合 output-schema 結構 | ✅ | required、block 欄位、items 必填鍵、摘要長度 |
-| 驗收 6：移除情資後信心下修並標示 | ✅ |  |
 | 示範引擎輸出與 examples/demo-snapshot.txt 一致 | ✅ | 50 行 |
-| 驗收腳本接受符合 schema 的 baseline array／A01 fixture | ✅ |  |
-| 驗收腳本接受誠實的 no-intel 8-file fixture | ✅ |  |
-| 驗收腳本拒絕未宣告缺漏的假 no-intel 輸出 | ✅ |  |
-| 引擎 JSON 通過驗收腳本（baseline） | ✅ |  |
-| 引擎 JSON 通過驗收腳本（no-intel） | ✅ |  |
 | index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性） | ✅ |  |
 | index.html 有 OG／Twitter 卡片與 canonical | ✅ |  |
+| index.html 恰好一個空的 last-updated <meta>（部署時才填得進最後更新時間） | ✅ |  |
 | 站點檔案存在 robots.txt | ✅ |  |
 | 站點檔案存在 sitemap.xml | ✅ |  |
 | 站點檔案存在 .nojekyll | ✅ |  |
@@ -76,7 +66,7 @@
 | 導覽 #/sources | ✅ | 證據與來源 |
 | 導覽 #/deploy | ✅ | 部署與維護 |
 | 方法論章節切換 | ✅ | /methodology?doc=01-definition |
-| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=8 |
+| 目錄錨點：同章且元素存在 | ✅ | 1-2-gartner-的目標與主張-gartner-明確陳述 scrollY=100 |
 | Tabs 方向鍵切換 | ✅ | /methodology?doc=02-relations |
 | Skip link 不改變頁面 | ✅ |  |
 | 全站搜尋回傳結果 | ✅ | 12 筆 |
@@ -85,7 +75,7 @@
 | 搜尋片段含 mark | ✅ |  |
 | I/O 必要性篩選 | ✅ | 16 → 7 |
 | I/O 階段篩選 | ✅ |  |
-| Skills 一鍵複製（剪貼簿） | ✅ | 3768 字元 |
+| Skills 一鍵複製（剪貼簿） | ✅ | 3996 字元 |
 | Skills 檔案下載 | ✅ | SKILL.md |
 | Skills 原始碼檢視、複製、下載保留 frontmatter | ✅ | 三者皆與原文（含 frontmatter）相同 |
 | Skills ZIP 下載 | ✅ |  |
@@ -111,4 +101,8 @@
 | 對比：主要按鈕 ≥ 4.5 | ✅ | 18.58 |
 | 對比：深色主題強調色元素 ≥ 4.5 | ✅ | 5.14 |
 | 儲存庫連結顯示狀態符合 REPO_PUBLIC=true | ✅ | 實際 顯示 |
+| 最後更新時間：沒填時 topbar 與頁尾都不顯示（元素存在） | ✅ |  |
+| 最後更新時間：填了時 1280px 的 topbar 顯示臺北時間、頁尾不顯示 | ✅ | 最後更新：2026-10-18 00:30（UTC+8）｜2026-10-17T16:30:00+00:00 |
+| 最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字 | ✅ | 最後更新：2026-10-18 00:30（UTC+8） |
+| 最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄） | ✅ | 最後更新：2026-10-18 00:30（UTC+8） |
 | 無 JS 執行錯誤 | ✅ |  |
