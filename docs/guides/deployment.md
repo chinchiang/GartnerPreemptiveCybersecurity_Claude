@@ -15,13 +15,14 @@ assets/fonts/         自載字型 Inter 與 JetBrains Mono（woff2 拉丁子集
 assets/md.js          極簡 Markdown 渲染器
 assets/demo.js        案例互動展示的確定性引擎
 assets/scope-gate.js  授權範圍守門的 JS schema 解讀（示範引擎與選用後端代理共用；scope 定義由建置以嵌入區塊寫入）
+assets/last-updated.js  最後更新時間的顯示格式（臺北時間；瀏覽器與單元測試 last-updated.test.mjs 共用）
 assets/app.js         hash 路由、各頁面、全站搜尋、複製／下載
 data/*.js             由 scripts/build-data.mjs 產生（research、guides、skills、case、manifest）或手動維護（process、io、platforms、sources）
 downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內容（平臺檔案＋腳本依賴的母本＋合成資料，解壓即可執行）由 scripts/skill-packages.mjs 的對照表決定
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               母本（skills/shared/）、平臺檔案與建置產生的複本（各平臺 references/）；skills/shared/analysis_workflow.py 是 Python 的分析工作流程核心，改用它的平臺腳本只剩模型 adapter（理由見 docs/adr/0002）；Claude 技能的 validate_inputs.py 用建置產生的複本 scripts/analysis_workflow.py（見 docs/adr/0003），只渲染核心的授權範圍守門與腳本預檢
 examples/             合成資料、預期輸出、示範引擎快照與驗收 fixture
-scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查，單元測試與整個 repo 的檢查在 glossary.test.mjs）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
+scripts/              build-data.mjs、verify.mjs、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原）、stamp-last-updated.mjs（部署時把最後更新時間寫進 _site/index.html，單元測試在 stamp-last-updated.test.mjs）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查，單元測試與整個 repo 的檢查在 glossary.test.mjs）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用）
 tests/                fixtures/scope-cases.json（授權範圍守門的共用案例，JS 與 Python 共用）、python/（Python 測試；不出貨）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
@@ -51,7 +52,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 
 ## 3. GitHub Pages 部署
 
-工作流程 `.github/workflows/pages.yml` 會在推送到 `main` 時：安裝 Node 22 → `npm run build` → `npm run verify:static` → 只把網站需要的檔案（`index.html`、`404.html`、`.nojekyll`、`robots.txt`、`sitemap.xml`、`assets/`、`data/`、`downloads/`）組成 `_site/` 上傳為 Pages artifact → 部署。研究文件、證據檔、README、驗證報告與連結檢查表都已由建置腳本嵌入 `data/*.js`（`data/extra.js`），因此網站內容完整；`docs/`、`examples/`、`scripts/`、`verify-screenshots/` 不會直接以檔案形式公開在 Pages 上（仍可在 GitHub 儲存庫瀏覽）。
+工作流程 `.github/workflows/pages.yml` 會在推送到 `main` 時：安裝 Node 22 → `npm run build` → `npm run verify:static` → 只把網站需要的檔案（`index.html`、`404.html`、`.nojekyll`、`robots.txt`、`sitemap.xml`、`assets/`、`data/`、`downloads/`）組成 `_site/` → 以 `scripts/stamp-last-updated.mjs` 把 HEAD commit 的時間（`git log -1 --format=%cI`）寫進 `_site/index.html` 的 `<meta name="last-updated">` → 上傳為 Pages artifact → 部署。網站右上角（1150px 以下改在頁尾）顯示的「最後更新」就是這個時間，換算成臺北時間；repo 裡提交的 `index.html` 一律留空，所以本機預覽與 `git clone` 的版本不顯示。找不到這個 `<meta>` 或時間不合法時這一步會失敗，不會部署一個沒有時間的網站。研究文件、證據檔、README、驗證報告與連結檢查表都已由建置腳本嵌入 `data/*.js`（`data/extra.js`），因此網站內容完整；`docs/`、`examples/`、`scripts/`、`verify-screenshots/` 不會直接以檔案形式公開在 Pages 上（仍可在 GitHub 儲存庫瀏覽）。
 
 **已完成的一次性設定**（2026-09-13）：儲存庫 Settings → Pages → Build and deployment → Source 選 **GitHub Actions**；預設分支設為 `main`；`github-pages` 環境的部署分支規則允許 `main`。目前網址為 `https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`，部署工作流程已成功執行並經人工確認。若新建 fork 或搬移儲存庫，需重做這三項設定。
 
@@ -60,10 +61,10 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）、突變工具（`scripts/mutate.test.mjs`）、手寫檔案不使用專指的 _Avoid_ 詞（`scripts/glossary.test.mjs`）
+npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`（`scripts/verify-report.test.mjs`）、突變工具（`scripts/mutate.test.mjs`）、手寫檔案不使用專指的 _Avoid_ 詞（`scripts/glossary.test.mjs`）、部署時寫入最後更新時間（`scripts/stamp-last-updated.test.mjs`）與它的臺北時間格式（`scripts/last-updated.test.mjs`）
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、單獨安裝），以及四支 api-workflow.py 與 validate_inputs.py 的授權範圍守門
-npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎的行為檢查與快照、下載檔、機敏字串（驗收在 npm test）
-npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙
+npm run verify:static   # 資料檔、來源 ID 對應、schema、示範引擎的行為檢查與快照、下載檔、機敏字串、`index.html` 預留的最後更新時間 `<meta>`（驗收在 npm test）
+npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙、最後更新時間在 topbar 與頁尾的顯示
 npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽器），輸出 link-check.md（見第 4.2 節）
 ```
 
