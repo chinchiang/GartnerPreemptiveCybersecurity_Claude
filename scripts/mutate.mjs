@@ -2,12 +2,12 @@
 /**
  * mutate.mjs — 突變測試：逐一把實作改壞，確認測試會失敗（「抓到」），然後一定還原。
  *
- *   node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json]
+ *   node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json | --markdown]
  *
  * mutations.json 是臨時寫的清單（不提交）：[{ "file": "scripts/x.mjs", "from": "原文", "to": "改成", "note": "說明" }]，
  * 路徑相對於目前目錄。測試指令預設 node --test scripts/*.test.mjs，以 shell 執行；結束碼非 0 視為「抓到」。
  * 抓到時從測試輸出列出失敗的 node:test 測試（名稱與檔名，spec 與 TAP 格式都讀；--json 是每筆的 failed），
- * 測試指令不是 node:test 時就不列。
+ * 測試指令不是 node:test 時就不列。--markdown 輸出總計一行加「突變｜結果｜紅的測試」表格，給 PR 說明的突變紀錄用。
  * 結束碼：0 全部抓到；1 有存活；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處）
  * 或測試在突變前就失敗，這時一個檔案都不改。
  * 中斷（SIGINT／SIGTERM）時的還原只保證 Linux／macOS：結束測試靠 process.kill(-pid) 送給整個行程群組，Windows 不支援，
@@ -50,17 +50,31 @@ export function failingTests(output, cwd = process.cwd()) {
   return failed;
 }
 
+// 紅的測試：「名稱［檔名］」，多個以「、」分隔；文字輸出與 markdownTable 共用
+const redTests = failed => failed.map(t => `${t.name}［${t.file}］`).join('、');
+
+// 突變紀錄的 Markdown 表格（突變｜結果｜紅的測試）；儲存格裡的 | 跳脫、換行換成空白，表格才不會斷欄
+export function markdownTable(results) {
+  const cell = text => text.replace(/\r\n?|\n/g, ' ').replace(/\|/g, '\\|');
+  const redCell = r => !r.caught ? '—' : r.failed.length ? redTests(r.failed) : '（沒有 node:test 的名稱）';
+  return ['| 突變 | 結果 | 紅的測試 |', '|---|---|---|',
+    ...results.map(r => `| ${cell(r.note || r.from)} | ${r.caught ? '抓到' : '存活'} | ${cell(redCell(r))} |`)].join('\n');
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  // 參數：<清單> [--test "<測試指令>"] [--json]；參數或讀檔有誤一律結束碼 2，不和「有存活」的 1 混在一起
+  // 參數：<清單> [--test "<測試指令>"] [--json | --markdown]；參數或讀檔有誤一律結束碼 2，不和「有存活」的 1 混在一起
   const fail = (message) => { console.error(message); process.exit(2); };
   const args = process.argv.slice(2);
   let listPath = null;
   let testCommand = 'node --test scripts/*.test.mjs';
+  const formats = new Set();   // 輸出格式：--json、--markdown 擇一，都沒給是文字輸出
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--test') testCommand = args[++i];
-    else if (args[i] !== '--json' && listPath === null) listPath = args[i];
+    else if (args[i] === '--json' || args[i] === '--markdown') formats.add(args[i]);
+    else if (listPath === null) listPath = args[i];
   }
-  if (!listPath || !testCommand) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json]');
+  const [format = 'text'] = formats;
+  if (!listPath || !testCommand || formats.size > 1) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json | --markdown]');
   let mutations;
   try { mutations = JSON.parse(readFileSync(listPath, 'utf8')); }
   catch (e) { fail(`無法讀取突變清單 ${listPath}：${e.message}`); }
@@ -118,12 +132,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   const survived = results.filter(r => !r.caught).length;
-  if (args.includes('--json')) {
+  const summary = `突變 ${results.length} 種：抓到 ${results.length - survived}、存活 ${survived}`;
+  if (format === '--json') {
     console.log(JSON.stringify({ total: results.length, caught: results.length - survived, survived, results }, null, 2));
+  } else if (format === '--markdown') {
+    console.log(`${summary}\n\n${markdownTable(results)}`);
   } else {
-    const red = r => r.failed.length ? `（紅：${r.failed.map(t => `${t.name}［${t.file}］`).join('、')}）` : '';
+    const red = r => r.failed.length ? `（紅：${redTests(r.failed)}）` : '';
     for (const r of results) console.log(`${r.caught ? '抓到' : '存活'}  ${r.file}  ${r.note || r.from}${red(r)}`);
-    console.log(`\n突變 ${results.length} 種：抓到 ${results.length - survived}、存活 ${survived}`);
+    console.log(`\n${summary}`);
   }
   process.exit(survived ? 1 : 0);
 }
