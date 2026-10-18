@@ -68,7 +68,7 @@ npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、
 npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽器），輸出 link-check.md（見第 4.2 節）
 ```
 
-完整模式（`npm run verify`）的結果寫入 `verify-report.md`；`verify:static` 只把結果印到終端機，不改寫這個已提交的檔案。截圖在 `verify-screenshots/`。任一項失敗時腳本以非零狀態結束。
+完整模式（`npm run verify`）的結果寫入 `verify-report.md`；`verify:static` 只把結果印到終端機，不改寫這個已提交的檔案。截圖在 `verify-screenshots/`。任一項失敗時腳本以非零狀態結束。CI 的 browser job 跑完會比對新產生的報告和已提交的報告（忽略執行時間那一行），不一致就失敗：檢查項目或結果變了，要更新已提交的報告並重建 `data/extra.js`。截圖不比對。
 
 ### 4.1 評分規則與示範引擎快照
 
@@ -122,7 +122,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 合成資料 | `examples/synthetic-org/`（保持合成）；筆數變了就同步改 `skills/shared/acceptance.md` 第 1 項與 `scripts/acceptance.test.mjs` 的預期筆數字面值 | build；`npm test`；`npm run demo` 對照 `examples/expected-output.md`，再 `npm run snapshot` |
 | 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例。模型側守門的規則說明也由建置從 schema 產生（`scope-gate.js` 的 `scopeRuleNote()`），寫進核心提示詞與三份改寫版（Custom GPT 指示、Codex 與 Claude 的 `SKILL.md`）以「- scope 必填欄位的規則：」開頭的那一行；要用到規則說明還不會描述的規則時，`scopeRuleNote()` 與 Python 的 `scope_rule_note` 兩份都要實作，否則建置會丟出錯誤（見 `docs/adr/0005-model-side-gate-rule-note-is-generated-into-the-core-prompt.md`） | build（重寫 `scope-gate.js` 的嵌入區塊與四份檔案的規則說明行，提交）+ `npm test` + Python unittest |
-| 最後更新時間 | 合法格式與顯示格式改 `assets/last-updated.js`（部署時的寫入工具 `scripts/stamp-last-updated.mjs` 也用它判定）；topbar 與頁尾的位置改 `index.html`，斷點改 `assets/styles.css`；`index.html` 的 `<meta name="last-updated">` 必須留空 | `npm test` + `verify:static`；畫面與斷點只有 CI 的 browser job 檢查得到（`verify.mjs` 以 `?stamped` 模擬部署後的網站） |
+| 最後更新時間 | 合法格式與顯示格式改 `assets/last-updated.js`（部署時的寫入工具 `scripts/stamp-last-updated.mjs` 也用它判定）；topbar 與頁尾的位置改 `index.html`，斷點改 `assets/styles.css`；`index.html` 的 `<meta name="last-updated">` 必須留空 | `npm test` + `verify:static`；畫面與斷點要跑完整模式 `npm run verify` 才檢查得到（CI 的 browser job，或 Windows 本機；`verify.mjs` 以 `?stamped` 模擬部署後的網站） |
 | 評分規則 | `assets/demo.js` 的 `RULES`，再依一致性檢查改母本、改寫版（Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的流程說明（見第 4.1 節）；改了數值或公式時，`scripts/scoring.test.mjs` 的手算預期值也要跟著改 | `npm test` + build + verify + `npm run snapshot` |
 
 `data/`、`downloads/`、各平臺 `references/` 的複本與嵌入區塊（`system-prompt.md`、`SKILL.md`，以及 `assets/scope-gate.js` 的 scope 定義）是建置產物但**有進版控**（為了讓 `file://`、「Deploy from a branch」與 `git clone` 後的技能資料夾都能直接用；理由見 `docs/adr/0001-generated-copies-are-committed.md`）。CI 在建置與靜態驗證之後檢查整份工作樹（`git status --porcelain` 必須是空的，新產生的檔案也算），忘記重建或直接改了複本、嵌入區塊都會擋下 PR；新增嵌入目標時不必改 CI。`data/manifest.js` 內的 `contentHash` 是來源內容的 SHA-256 前 12 碼——刻意不放建置時間，這樣同一份內容永遠產生同一個 manifest，上述檢查才守得住。網站上的最後更新時間因此不由建置產生，而是部署時才寫進 `_site/` 的複製品（見第 3 節）。
