@@ -160,7 +160,9 @@ async function browserChecks() {
   await tocLink.click(); await page.waitForTimeout(150);
   const anchorId = decodeURIComponent(tocHref.split('#')[2] || '');
   const anchorEl = anchorId ? await page.$(`[id="${anchorId.replace(/"/g, '')}"]`) : null;
-  ok('目錄錨點：同章且元素存在', page.url().includes('doc=01-definition') && !!anchorEl && (await page.evaluate(() => window.scrollY)) > 0, `${anchorId} scrollY=${await page.evaluate(() => window.scrollY)}`);
+  // scrollY 每次執行都不同（捲動還在進行），只在失敗時寫進說明，否則已提交的報告每次都會過時
+  const scrollY = await page.evaluate(() => window.scrollY);
+  ok('目錄錨點：同章且元素存在', page.url().includes('doc=01-definition') && !!anchorEl && scrollY > 0, scrollY > 0 ? anchorId : `${anchorId} scrollY=${scrollY}`);
   await page.focus('.tabs [role="tab"][aria-selected="true"]'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150);
   ok('Tabs 方向鍵切換', page.url().includes('doc=02-relations'), page.url().split('#')[1]);
   // skip link 不應觸發「找不到頁面」
@@ -187,7 +189,8 @@ async function browserChecks() {
   // Skills 複製與下載
   await page.goto(base + '#/skills?platform=claude'); await page.waitForTimeout(150);
   await page.click('#copy-file');
-  const clip = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+  // Windows 的系統剪貼簿把 LF 換成 CRLF；換回來，字元數與原文比對才和 Linux 一致
+  const clip = (await page.evaluate(() => navigator.clipboard.readText()).catch(() => '')).replace(/\r\n/g, '\n');
   ok('Skills 一鍵複製（剪貼簿）', clip.includes('preemptive-exposure-analysis'), `${clip.length} 字元`);
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#dl-file')]);
   ok('Skills 檔案下載', (await dl.suggestedFilename()) === 'SKILL.md', await dl.suggestedFilename());

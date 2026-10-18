@@ -18,7 +18,16 @@
 
 本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，放在 `scratch/` 底下執行。
 
-本機沒有 Playwright；完整的瀏覽器檢查（`node scripts/verify.mjs`，會寫入 `verify-report.md`）只在 CI 的 browser job 執行。
+完整的瀏覽器檢查（`node scripts/verify.mjs`）在 Windows 這一側可以本機執行，不必 push 之後等 CI：
+
+| 環境 | 狀態 |
+|---|---|
+| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 有 Windows 版 `npm ci` 裝的 `playwright@1.56.1`，`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（100/100，報告除了執行時間逐行相同） |
+| WSL（Ubuntu 26.04） | 還不能用。Playwright 1.56.1 不支援這個版本，`install-deps` 會拒絕，要手動 `sudo apt install libnss3 libnspr4 libasound2t64`；再用 Linux 版 node 同目錄的 npm（`~/.local/opt/node-v24.19.0-linux-x64/bin/npm`，PATH 上的 `npm` 是 Windows 版）執行 `npx playwright install chromium-headless-shell`。尚未實測（#73） |
+
+`playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
+
+完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進每次執行都會變的值（例如捲動位置），否則比對每次都會失敗。
 
 ## 搜尋：用 `rg`
 

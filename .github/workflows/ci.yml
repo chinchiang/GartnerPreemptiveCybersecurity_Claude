@@ -94,6 +94,13 @@ jobs:
         run: npm run build
       - name: Browser verification (navigation, search, filters, copy, download, case interaction, mobile, a11y)
         run: npm run verify
+      - name: Committed verify-report.md is up to date (ignoring the run time line)
+        # 報告嵌入網站附錄，過時了沒有別的檢查會發現；執行時間每次都不同，其餘內容要逐行相同。截圖逐位元組比對不穩定，不比對
+        run: |
+          if ! diff <(git show HEAD:verify-report.md | sed '/^執行時間：/d') <(sed '/^執行時間：/d' verify-report.md); then
+            echo "::error::已提交的 verify-report.md 過時了（上方是差異）。更新方式：本機執行 node scripts/verify.mjs，或下載這次 run 的 artifact：gh run download ${{ github.run_id }} -n verify-report-and-screenshots，用其中的 verify-report.md 覆蓋；再執行 npm run build（報告嵌入 data/extra.js），兩者一起提交"
+            exit 1
+          fi
       - name: Upload verification report and screenshots
         if: always()
         uses: actions/upload-artifact@v7
