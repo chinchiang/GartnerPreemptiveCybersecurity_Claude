@@ -9,6 +9,23 @@ permissions:
   contents: read
 
 jobs:
+  unit:
+    # 兩版 Node：engines 是 >=22，本機常是更新的版本；node:test 在非 TTY 的預設輸出 22 是 TAP、24 是 spec，依 Node 版本而異的行為兩版都要跑到
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Unit tests (node:test, Node built-ins only)
+        # 非 UTC 的時區：runner 是 UTC，誤用執行環境時區（getHours() 等）的程式碼在那裡結果剛好相同而測不出來
+        env:
+          TZ: America/New_York
+        run: npm test
+
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -19,11 +36,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - name: Unit tests (node:test, Node built-ins only)
-        # 非 UTC 的時區：runner 是 UTC，誤用執行環境時區（getHours() 等）的程式碼在那裡結果剛好相同而測不出來
-        env:
-          TZ: America/New_York
-        run: npm test
       - name: Build data files and downloads
         run: npm run build
       - name: Static verification (data, sources, schema, demo engine checks + snapshot, secrets scan)
@@ -67,7 +79,7 @@ jobs:
 
   browser:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [unit, verify]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

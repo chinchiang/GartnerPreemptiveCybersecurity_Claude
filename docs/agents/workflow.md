@@ -16,6 +16,8 @@
 
 測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
 
+本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，放在 `scratch/` 底下執行。
+
 本機沒有 Playwright；完整的瀏覽器檢查（`node scripts/verify.mjs`，會寫入 `verify-report.md`）只在 CI 的 browser job 執行。
 
 ## 搜尋：用 `rg`
