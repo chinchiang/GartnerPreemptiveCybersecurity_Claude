@@ -22,7 +22,8 @@ import { isAbsolute, relative } from 'node:path';
 // 兩種格式都讀：spec（Node 24 非 TTY 的預設）讀結尾的 failing tests 那一段，TAP（Node 22 的預設）讀 not ok。
 // 已知限制：名稱裡有換行的測試，spec 會漏掉，TAP 列出的名稱是字面的 \n。
 export function failingTests(output, cwd = process.cwd()) {
-  const file = location => { const path = location.replace(/:\d+:\d+$/, ''); return isAbsolute(path) ? relative(cwd, path) : path; };
+  // 檔名一律用 /：Windows 的 node --test 與 relative() 給的是 \，突變紀錄才不會因平臺而不同
+  const file = location => { const path = location.replace(/:\d+:\d+$/, ''); return (isAbsolute(path) ? relative(cwd, path) : path).replace(/\\/g, '/'); };
   const lines = output.split(/\r?\n/);
   const failed = [];
   const summary = lines.indexOf('✖ failing tests:');

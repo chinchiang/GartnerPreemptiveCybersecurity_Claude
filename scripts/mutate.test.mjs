@@ -327,6 +327,11 @@ test('failingTests 讀 TAP：not ok 裡排除父測試（subtestsFailed）與 to
   assert.deepEqual(failingTests(TAP, '/repo'), FAILED);
 });
 
+test('failingTests 的檔名一律用 /：Windows 的 node --test 印出的是 scripts\\a.test.mjs', () => {
+  const windowsSpec = '✖ failing tests:\n\ntest at scripts\\a.test.mjs:1:65\n✖ 失敗的 A (0.66ms)\n';
+  assert.deepEqual(failingTests(windowsSpec, 'D:\\repo'), [{ name: '失敗的 A', file: 'scripts/a.test.mjs' }]);
+});
+
 test('failingTests 讀不到 node:test 的失敗：回傳 []', () => {
   for (const output of ['', 'check.js 結束碼 1\n', '✖ 失敗的 A (0.66ms)\n', 'TAP version 13\nok 1 - 通過的\n']) {
     assert.deepEqual(failingTests(output, '/repo'), [], JSON.stringify(output));
