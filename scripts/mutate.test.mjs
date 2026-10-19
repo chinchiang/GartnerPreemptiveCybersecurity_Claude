@@ -1,5 +1,5 @@
 // 突變工具（scripts/mutate.mjs）：吃一份臨時的突變清單，逐一改壞、跑測試、一定還原。
-// CLI 以子行程跑，對象是 /tmp 底下的小專案：calc.js 加一支會檢查它的 check.js；
+// CLI 以子行程跑，對象是暫存目錄底下的小專案：calc.js 加一支會檢查它的 check.js；
 // 從測試輸出找出失敗測試的 failingTests、產生突變紀錄表格的 markdownTable 直接呼叫。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,8 +89,8 @@ test('測試指令結束後才寫完的輸出也讀得到：等輸出讀完（cl
     // late.js 帶著測試的結束碼先結束，報告由背景行程 0.3 秒後才寫出。用 node 寫而不是 shell，Windows 的 cmd.exe 也能跑；
     // 背景行程要 detached，否則在 Windows 會隨 late.js 一起被結束（libuv 把子行程放在父行程結束時一併結束的 job object）
     writeFileSync(join(dir, 'late.js'),
-      "const { spawnSync, spawn } = require('child_process');\n" +
-      "const { status } = spawnSync(process.execPath, ['--test', 'scripts/calc.test.mjs'], { stdio: ['ignore', require('fs').openSync('out.txt', 'w'), 'ignore'] });\n" +
+      "const fs = require('fs');\nconst { spawnSync, spawn } = require('child_process');\n" +
+      "const { status } = spawnSync(process.execPath, ['--test', 'scripts/calc.test.mjs'], { stdio: ['ignore', fs.openSync('out.txt', 'w'), 'ignore'] });\n" +
       "spawn(process.execPath, ['-e', \"setTimeout(() => process.stdout.write(require('fs').readFileSync('out.txt')), 300)\"], { stdio: ['ignore', 'inherit', 'ignore'], detached: true }).unref();\n" +
       "process.exit(status);\n");
     const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node late.js'], { cwd: dir, encoding: 'utf8' });
@@ -135,7 +135,6 @@ test('測試在突變之前就失敗：結束碼 2，不做任何突變（否則
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-// Windows 上 kill 直接結束行程，不會觸發訊號處理器（mutate.mjs 開頭的已知限制）
 test('跑測試時被中斷（SIGTERM）：檔案仍然還原，測試子行程也結束', { skip: process.platform === 'win32' && 'Windows 上 SIGTERM 不會觸發訊號處理器，中斷時的還原只保證 Linux／macOS' }, async () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
   try {
