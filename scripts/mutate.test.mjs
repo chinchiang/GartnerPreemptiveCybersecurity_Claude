@@ -86,9 +86,14 @@ test('抓到時列出失敗的測試（附檔名）：只列紅的那個，--jso
 test('測試指令結束後才寫完的輸出也讀得到：等輸出讀完（close）才判定，不是行程一結束（exit）', () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }], { nodeTest: true });
   try {
-    // shell 帶著測試的結束碼先結束，報告由背景行程 0.3 秒後才寫出
-    const late = 'node --test scripts/calc.test.mjs > out.txt; s=$?; (sleep 0.3; cat out.txt) & exit $s';
-    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', late], { cwd: dir, encoding: 'utf8' });
+    // late.js 帶著測試的結束碼先結束，報告由背景行程 0.3 秒後才寫出。用 node 寫而不是 shell，Windows 的 cmd.exe 也能跑；
+    // 背景行程要 detached，否則在 Windows 會隨 late.js 一起被結束（libuv 把子行程放在父行程結束時一併結束的 job object）
+    writeFileSync(join(dir, 'late.js'),
+      "const { spawnSync, spawn } = require('child_process');\n" +
+      "const { status } = spawnSync(process.execPath, ['--test', 'scripts/calc.test.mjs'], { stdio: ['ignore', require('fs').openSync('out.txt', 'w'), 'ignore'] });\n" +
+      "spawn(process.execPath, ['-e', \"setTimeout(() => process.stdout.write(require('fs').readFileSync('out.txt')), 300)\"], { stdio: ['ignore', 'inherit', 'ignore'], detached: true }).unref();\n" +
+      "process.exit(status);\n");
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node late.js'], { cwd: dir, encoding: 'utf8' });
     assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法（紅：1 \+ 2 = 3［scripts\/calc\.test\.mjs］）$/m, r.stdout + r.stderr);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -130,21 +135,28 @@ test('測試在突變之前就失敗：結束碼 2，不做任何突變（否則
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('跑測試時被中斷（SIGTERM）：檔案仍然還原', async () => {
+// Windows 上 kill 直接結束行程，不會觸發訊號處理器（mutate.mjs 開頭的已知限制）
+test('跑測試時被中斷（SIGTERM）：檔案仍然還原，測試子行程也結束', { skip: process.platform === 'win32' && 'Windows 上 SIGTERM 不會觸發訊號處理器，中斷時的還原只保證 Linux／macOS' }, async () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
   try {
-    // 讀到突變後的 calc.js 就睡 10 秒，留時間送出中斷
+    // 讀到突變後的 calc.js 就記下自己的 pid、睡 10 秒，留時間送出中斷
     writeFileSync(join(dir, 'check.js'),
-      "const src = require('fs').readFileSync(__dirname + '/calc.js', 'utf8');\nif (src.includes('a - b')) setTimeout(() => process.exit(1), 10000);\n");
+      "const fs = require('fs');\nconst src = fs.readFileSync(__dirname + '/calc.js', 'utf8');\n" +
+      "if (src.includes('a - b')) { fs.writeFileSync(__dirname + '/check.pid', String(process.pid)); setTimeout(() => process.exit(1), 10000); }\n");
     const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: 'ignore' });
-    const mutated = () => readFileSync(join(dir, 'calc.js'), 'utf8').includes('a - b');
-    for (let i = 0; i < 100 && !mutated(); i++) await new Promise(r => setTimeout(r, 50));
-    assert.ok(mutated(), '突變沒有開始');
+    const pidFile = join(dir, 'check.pid');
+    for (let i = 0; i < 100 && !existsSync(pidFile); i++) await new Promise(r => setTimeout(r, 50));
+    assert.ok(existsSync(pidFile), '突變後的測試沒有開始');
+    const pid = Number(readFileSync(pidFile, 'utf8'));
     const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
     child.kill('SIGTERM');
     const { code } = await exited;
     assert.notEqual(code, 0);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+    // 測試子行程（shell 底下的 node check.js）也要結束，不能留著跑完 10 秒；SIGKILL 送達與回收需要一點時間
+    const alive = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
+    for (let i = 0; i < 40 && alive(); i++) await new Promise(r => setTimeout(r, 50));
+    assert.ok(!alive(), `測試子行程 ${pid} 在中斷後還在執行`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -10,8 +10,9 @@
  * 測試指令不是 node:test 時就不列。--markdown 輸出總計一行加「突變｜結果｜紅的測試」表格，給 PR 說明的突變紀錄用。
  * 結束碼：0 全部抓到；1 有存活；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處）
  * 或測試在突變前就失敗，這時一個檔案都不改。
+ * Windows 上主流程（抓到／存活、紅的測試、--json／--markdown）與 Linux 相同，測試指令由 cmd.exe 執行。
  * 中斷（SIGINT／SIGTERM）時的還原只保證 Linux／macOS：結束測試靠 process.kill(-pid) 送給整個行程群組，Windows 不支援，
- * 測試子行程可能殘留。
+ * 測試子行程可能殘留；而且 Windows 上被 kill（SIGTERM、taskkill）會直接結束，訊號處理器不會執行，改壞的檔案不會還原。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -98,7 +99,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const runTests = () => new Promise(resolve => {
     // 拿掉 NODE_TEST_CONTEXT：被 node --test 啟動時會繼承它，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
     const { NODE_TEST_CONTEXT, ...env } = process.env;
-    child = spawn(testCommand, { shell: true, stdio: ['ignore', 'pipe', 'ignore'], detached: true, env });
+    // detached 讓測試自成行程群組，中斷時才能用 process.kill(-pid) 整組結束；Windows 沒有行程群組，detached 反而讓 stdout 讀不到
+    child = spawn(testCommand, { shell: true, stdio: ['ignore', 'pipe', 'ignore'], detached: process.platform !== 'win32', env });
     let output = '';
     child.stdout.on('data', chunk => { output += chunk; });
     child.on('close', code => { child = null; resolve({ code, output }); });
