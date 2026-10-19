@@ -11,10 +11,15 @@ permissions:
 jobs:
   unit:
     # 兩版 Node：engines 是 >=22，本機常是更新的版本；node:test 在非 TTY 的預設輸出 22 是 TAP、24 是 spec，依 Node 版本而異的行為兩版都要跑到
-    runs-on: ubuntu-latest
+    # 另跑 Windows 的 Node 24（本機 Windows 的版本）：行程、路徑分隔符、cmd.exe 的差異只在 Windows 出現（#79）
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest]
         node: ['22', '24']
+        include:
+          - os: windows-latest
+            node: '24'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

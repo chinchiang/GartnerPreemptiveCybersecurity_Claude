@@ -18,6 +18,8 @@
 
 本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，放在 `scratch/` 底下執行。
 
+改到行程、路徑、shell 相關的行為時，Windows 也要跑：CI 的 unit job 另以 `windows-latest` 跑 Node 24。在 WSL 本機可以直接用 Windows 版的 `node.exe`（WSL 的 PATH 上就有）執行 `node.exe --test scripts/*.test.mjs`；repo 是以 `\\wsl.localhost\…` 的 UNC 路徑開啟的，測試的暫存目錄在 Windows 的 `%TEMP%`。
+
 完整的瀏覽器檢查（`node scripts/verify.mjs`）在 Windows 這一側可以本機執行，不必 push 之後等 CI：
 
 | 環境 | 狀態 |
@@ -36,6 +38,8 @@
 ## 突變測試：`scripts/mutate.mjs`
 
 確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。有存活就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處），或測試在突變前就失敗，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。
+
+Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活、紅的測試、`--json`／`--markdown`）與 Linux 相同；中斷（Ctrl+C、kill）時的還原只保證 Linux／macOS。從 WSL 用 `node.exe` 跑時，`cmd.exe` 不接受 UNC 路徑當目前目錄（會改到 `C:\Windows`），而 `node --test` 的參數是 glob，寫成 UNC 路徑也找不到，所以測試指令要先 `pushd`：`--test "pushd <repo 的 Windows 路徑> && node.exe --test scripts/x.test.mjs"`（Windows 路徑用 `wslpath -w .` 取得）。
 
 ## 改了來源就重建，產物一起提交
 
