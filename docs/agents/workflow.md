@@ -52,7 +52,7 @@ Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活、紅�
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
 - **更新 PR 說明**：用 `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<檔>`。`gh pr edit` 在本 repo 會因 Projects classic 的 GraphQL 錯誤而失敗。
-- **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。
+- **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。它只認 PR 說明裡的 `Closes #<n>`，不認 commit 訊息裡的（commit 訊息的 `Closes` 合併後仍會關閉 issue，只是合併前查不到），所以 PR 說明也要寫 `Closes #<n>`。開 PR 或更新說明後要等幾秒再查，馬上查可能還是空的。
 - **合併**：先確認 `gh pr checks <n>` 全綠、`mergeStateStatus` 是 `CLEAN`，再照 repo 的格式合併：
   ```
   gh pr merge <n> --merge --subject "Merge pull request #<n>: <標題>" --body "<標題>" --match-head-commit <完整 40 碼 SHA>
