@@ -185,7 +185,9 @@ code, kbd, samp { font-family: var(--mono); font-feature-settings: normal; }
   color: #fff; background-color: #7447ff; background-image: var(--grad-brand);
   border-radius: 13px 5px 13px 5px; box-shadow: var(--glow-accent); font-size: 12px; font-weight: 900; letter-spacing: -.04em;
 }
-.topbar .spacer { flex: 1; }
+/* 剩下的空間先給搜尋框（到 max-width 為止），多的才由 spacer 的 auto margin 吃掉、把右側按鈕推到右緣；
+   spacer 若也 flex: 1，會和搜尋框平分，901px 與 1151px 時搜尋框只剩約 127px（#75，verify.mjs 檢查至少 160px） */
+.topbar .spacer { flex: none; margin-left: auto; }
 .search-box { position: relative; flex: 1; max-width: 520px; min-width: 0; }
 .search-box input { width: 100%; min-height: 44px; padding: 8px 12px 8px 38px; border: 1px solid transparent; border-radius: 12px; background: var(--surface-2); color: var(--text); font-size: 14.5px; }
 .search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); outline: none; }

@@ -318,6 +318,25 @@ async function browserChecks() {
   ok('最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄）',
     (await shown(midPage, '#last-updated')) === false && (await shown(midPage, '#last-updated-footer')) === true && midFoot === LAST_UPDATED_TEXT, midFoot);
   await mid.close();
+  // 搜尋框不能被 topbar 擠窄（#75）：每段斷點區間裡最窄的是左端，901px（900px 的斷點）與 1151px（時間仍在 topbar 的最窄寬度）；
+  // 改了 assets/styles.css 的斷點，這兩個寬度要一起改。160px 扣掉放大鏡與內距（約 52px）約剩 7 個中文字的打字空間。
+  // 寬度隨字型而變（本機與 CI 不同），只在失敗時寫進說明，報告才和 CI 一致
+  for (const [width, why] of [[901, ''], [1151, '（時間在 topbar 的最窄寬度）']]) {
+    const ctx = await browser.newContext({ viewport: { width, height: 900 } }); const pg = await ctx.newPage();
+    await pg.goto(base + '?stamped#/'); await pg.waitForSelector('h1');
+    const searchW = await pg.$eval('#search', n => n.getBoundingClientRect().width);
+    ok(`搜尋框：填了時 ${width}px 至少 160px${why}`, searchW >= 160, searchW >= 160 ? '' : `${Math.round(searchW * 10) / 10}px`);
+    await ctx.close();
+  }
+  // 搜尋框到 max-width 之後，多的空間由 spacer 的 auto margin 吃掉，右側按鈕仍貼齊 topbar 的內緣
+  const wide = await browser.newContext({ viewport: { width: 1920, height: 900 } }); const widePage = await wide.newPage();
+  await widePage.goto(base + '?stamped#/'); await widePage.waitForSelector('h1');
+  const rightGap = await widePage.$eval('.topbar', bar => {
+    const s = getComputedStyle(bar), last = [...bar.children].filter(c => c.checkVisibility()).at(-1);
+    return bar.getBoundingClientRect().right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth) - last.getBoundingClientRect().right;
+  });
+  ok('topbar：1920px 時搜尋框到了 max-width，右側按鈕仍靠右', Math.abs(rightGap) < 1, Math.abs(rightGap) < 1 ? '' : `差 ${Math.round(rightGap)}px`);
+  await wide.close();
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }
