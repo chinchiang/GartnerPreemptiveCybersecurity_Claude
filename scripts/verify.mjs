@@ -309,6 +309,10 @@ async function browserChecks() {
     finally { await ctx.close(); }
   };
   const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
+  // 「時間在頁尾」：量 topbar 與頁尾的時間是否顯示、頁尾的文字（footerStamp），判定只寫在 inFooter 這一份（#88）
+  const footerStamp = async pg => ({ top: await shown(pg, '#last-updated'), footer: await shown(pg, '#last-updated-footer'),
+    text: await pg.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '') });
+  const inFooter = s => s.top === false && s.footer === true && s.text === LAST_UPDATED_TEXT;
   await page.goto(base + '#/'); await page.waitForSelector('h1');
   await mp.goto(base + '#/'); await mp.waitForSelector('h1');
   ok('最後更新時間：沒填時 topbar 與頁尾都不顯示（元素存在）',
@@ -321,13 +325,10 @@ async function browserChecks() {
     `${desk.text}｜${desk.datetime}`);
   await page.screenshot({ path: join(shots, 'home-last-updated.png') });
   await mp.goto(base + '?stamped#/'); await mp.waitForSelector('h1');
-  const foot = await mp.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
-  ok('最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字',
-    (await shown(mp, '#last-updated')) === false && (await shown(mp, '#last-updated-footer')) === true && foot === LAST_UPDATED_TEXT, foot);
-  const mid = await withStamped(1100, async pg => ({ top: await shown(pg, '#last-updated'), footer: await shown(pg, '#last-updated-footer'),
-    text: await pg.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '') }));
-  ok('最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄）',
-    mid.top === false && mid.footer === true && mid.text === LAST_UPDATED_TEXT, mid.text);
+  const foot = await footerStamp(mp);
+  ok('最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字', inFooter(foot), foot.text);
+  const mid = await withStamped(1100, footerStamp);
+  ok('最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄）', inFooter(mid), mid.text);
   // 搜尋框不能被 topbar 擠窄（#75）：每段斷點區間裡最窄的是左端，901px（900px 的斷點）與 1151px（時間仍在 topbar 的最窄寬度）；
   // 改了 assets/styles.css 的斷點，這兩個寬度要一起改。160px 扣掉放大鏡與內距（約 52px）約剩 7 個中文字的打字空間。
   // 寬度隨字型而變（本機與 CI 不同），只在失敗時寫進說明，報告才和 CI 一致
