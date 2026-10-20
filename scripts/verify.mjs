@@ -133,10 +133,16 @@ async function browserChecks() {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const shots = join(ROOT, 'verify-screenshots'); mkdirSync(shots, { recursive: true });
   const errors = [];
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true });
+  // 開 context 一律經過這裡：在 context 層收未捕捉的例外與 console error，涵蓋其中每一個頁面（#86）；
+  // 每則記成「<寬度>px <去掉 base 的網址>：<訊息>」，抓不到頁面時網址寫 ?
+  const newContext = async options => {
+    const ctx = await browser.newContext(options), where = pg => `${options.viewport.width}px ${pg ? pg.url().replace(base, '') : '?'}`;
+    ctx.on('weberror', e => errors.push(`${where(e.page())}：${e.error().message}`));
+    ctx.on('console', m => { if (m.type() === 'error') errors.push(`${where(m.page())}：${m.text()}`); });
+    return ctx;
+  };
+  const context = await newContext({ viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true });
   const page = await context.newPage();
-  page.on('pageerror', e => errors.push(e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(base + '#/');
   await page.waitForSelector('h1');
   ok('首頁渲染', (await page.textContent('h1')).includes('Preemptive'));
@@ -252,7 +258,7 @@ async function browserChecks() {
   await page.goto(base + '#/deploy'); await page.waitForTimeout(100);
   ok('部署頁：標題層級無跳級', await page.evaluate(() => { const hs = [...document.querySelectorAll('main h1,main h2,main h3,main h4')].map(h => +h.tagName[1]); return hs.every((l, i) => i === 0 || l <= hs[i - 1] + 1); }));
   // 行動裝置
-  const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobile = await newContext({ viewport: { width: 390, height: 844 } });
   const mp = await mobile.newPage();
   const overflow = [];
   for (const r of ['#/', ...routes, '#/skills?platform=claude', '#/guides?platform=claude', '#/methodology?doc=03-process']) {
@@ -298,7 +304,7 @@ async function browserChecks() {
   const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
   // 在 width 寬的視窗開 ?stamped 的首頁交給 fn 量測，量完一定關掉 context；回傳 fn 的結果，ok 留在外面呼叫
   const withStamped = async (width, fn) => {
-    const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+    const ctx = await newContext({ viewport: { width, height: 900 } });
     try { const pg = await ctx.newPage(); await pg.goto(base + '?stamped#/'); await pg.waitForSelector('h1'); return await fn(pg); }
     finally { await ctx.close(); }
   };
@@ -341,7 +347,7 @@ async function browserChecks() {
   const widePass = Math.abs(wideBar.rightGap) < 1 && Math.abs(wideBar.searchW - parseFloat(wideBar.maxWidth)) < 1;
   ok('topbar：1920px 時搜尋框到了 max-width，右側按鈕仍靠右', widePass,
     widePass ? '' : `右側差 ${Math.round(wideBar.rightGap)}px；搜尋框 ${Math.round(wideBar.searchW)}px，max-width ${wideBar.maxWidth}`);
-  ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
+  ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | ') + (errors.length > 3 ? `（共 ${errors.length} 則）` : ''));
   await browser.close(); server.close();
 }
 
