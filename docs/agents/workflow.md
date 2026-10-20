@@ -24,7 +24,7 @@
 
 | 環境 | 狀態 |
 |---|---|
-| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 有 Windows 版 `npm ci` 裝的 `playwright@1.56.1`，`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（100/100，報告除了執行時間逐行相同） |
+| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 要有 `npm ci` 裝的 `playwright@1.56.1`（clone 之後沒有，要先裝；它是純 JS，見下段），`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（報告除了執行時間逐行相同） |
 | WSL（Ubuntu 26.04） | 還不能用。Playwright 1.56.1 不支援這個版本，`install-deps` 會拒絕，要手動 `sudo apt install libnss3 libnspr4 libasound2t64`；再用 Linux 版 node 同目錄的 npm（`~/.local/opt/node-v24.19.0-linux-x64/bin/npm`，PATH 上的 `npm` 是 Windows 版）執行 `npx playwright install chromium-headless-shell`。尚未實測（#73） |
 
 `playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
