@@ -296,6 +296,12 @@ async function browserChecks() {
   // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、窄螢幕改顯示在頁尾
   // （斷點與理由見 assets/styles.css）
   const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
+  // 在 width 寬的視窗開 ?stamped 的首頁交給 fn 量測，量完一定關掉 context；回傳 fn 的結果，ok 留在外面呼叫
+  const withStamped = async (width, fn) => {
+    const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+    try { const pg = await ctx.newPage(); await pg.goto(base + '?stamped#/'); await pg.waitForSelector('h1'); return await fn(pg); }
+    finally { await ctx.close(); }
+  };
   const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
   await page.goto(base + '#/'); await page.waitForSelector('h1');
   await mp.goto(base + '#/'); await mp.waitForSelector('h1');
@@ -312,35 +318,29 @@ async function browserChecks() {
   const foot = await mp.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
   ok('最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字',
     (await shown(mp, '#last-updated')) === false && (await shown(mp, '#last-updated-footer')) === true && foot === LAST_UPDATED_TEXT, foot);
-  const mid = await browser.newContext({ viewport: { width: 1100, height: 900 } }); const midPage = await mid.newPage();
-  await midPage.goto(base + '?stamped#/'); await midPage.waitForSelector('h1');
-  const midFoot = await midPage.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '');
+  const mid = await withStamped(1100, async pg => ({ top: await shown(pg, '#last-updated'), footer: await shown(pg, '#last-updated-footer'),
+    text: await pg.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '') }));
   ok('最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄）',
-    (await shown(midPage, '#last-updated')) === false && (await shown(midPage, '#last-updated-footer')) === true && midFoot === LAST_UPDATED_TEXT, midFoot);
-  await mid.close();
+    mid.top === false && mid.footer === true && mid.text === LAST_UPDATED_TEXT, mid.text);
   // 搜尋框不能被 topbar 擠窄（#75）：每段斷點區間裡最窄的是左端，901px（900px 的斷點）與 1151px（時間仍在 topbar 的最窄寬度）；
   // 改了 assets/styles.css 的斷點，這兩個寬度要一起改。160px 扣掉放大鏡與內距（約 52px）約剩 7 個中文字的打字空間。
   // 寬度隨字型而變（本機與 CI 不同），只在失敗時寫進說明，報告才和 CI 一致
+  const MIN_SEARCH_WIDTH = 160;
   for (const [width, why] of [[901, ''], [1151, '（時間在 topbar 的最窄寬度）']]) {
-    const ctx = await browser.newContext({ viewport: { width, height: 900 } }); const pg = await ctx.newPage();
-    await pg.goto(base + '?stamped#/'); await pg.waitForSelector('h1');
-    const searchW = await pg.$eval('#search', n => n.getBoundingClientRect().width);
-    ok(`搜尋框：填了時 ${width}px 至少 160px${why}`, searchW >= 160, searchW >= 160 ? '' : `${Math.round(searchW * 10) / 10}px`);
-    await ctx.close();
+    const searchW = await withStamped(width, pg => pg.$eval('#search', n => n.getBoundingClientRect().width));
+    const pass = searchW >= MIN_SEARCH_WIDTH;
+    ok(`搜尋框：填了時 ${width}px 至少 ${MIN_SEARCH_WIDTH}px${why}`, pass, pass ? '' : `${Math.round(searchW * 10) / 10}px`);
   }
   // 搜尋框到 max-width 之後，多的空間由 spacer 的 auto margin 吃掉，右側按鈕仍貼齊 topbar 的內緣
-  const wide = await browser.newContext({ viewport: { width: 1920, height: 900 } }); const widePage = await wide.newPage();
-  await widePage.goto(base + '?stamped#/'); await widePage.waitForSelector('h1');
-  const wideBar = await widePage.$eval('.topbar', bar => {
+  const wideBar = await withStamped(1920, pg => pg.$eval('.topbar', bar => {
     const s = getComputedStyle(bar), last = [...bar.children].filter(c => c.checkVisibility()).at(-1), box = bar.querySelector('.search-box');
     return { rightGap: bar.getBoundingClientRect().right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth) - last.getBoundingClientRect().right,
       searchW: box.getBoundingClientRect().width, maxWidth: getComputedStyle(box).maxWidth };
-  });
+  }));
   // maxWidth 是 none（沒設 max-width）時 parseFloat 得 NaN，判定為失敗
   const widePass = Math.abs(wideBar.rightGap) < 1 && Math.abs(wideBar.searchW - parseFloat(wideBar.maxWidth)) < 1;
   ok('topbar：1920px 時搜尋框到了 max-width，右側按鈕仍靠右', widePass,
     widePass ? '' : `右側差 ${Math.round(wideBar.rightGap)}px；搜尋框 ${Math.round(wideBar.searchW)}px，max-width ${wideBar.maxWidth}`);
-  await wide.close();
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
 }
