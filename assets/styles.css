@@ -206,7 +206,7 @@ code, kbd, samp { font-family: var(--mono); font-feature-settings: normal; }
 .live-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 999px; font-size: 11px; font-weight: 850; letter-spacing: .08em; color: #174f35; background: #e8fff1; border: 1px solid #c6f5d8; white-space: nowrap; }
 :root[data-theme="dark"] .live-chip { color: #baf7d9; background: rgba(0, 217, 119, .12); border-color: rgba(0, 217, 119, .45); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .live-chip { color: #baf7d9; background: rgba(0, 217, 119, .12); border-color: rgba(0, 217, 119, .45); } }
-/* 最後更新時間：寬螢幕在 topbar，≤ 1150px 改在頁尾（topbar 多了它，搜尋框少約 124px，再窄就比 901px 時的搜尋框還窄）；
+/* 最後更新時間：寬螢幕在 topbar，≤ 1150px 改在頁尾（topbar 多了它，搜尋框少約 247px，再窄就比 901px 時的搜尋框還窄）；
    沒有時間時元素帶 hidden，class 的 display 不能蓋過它 */
 .last-updated { color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .last-updated-footer { display: none; }

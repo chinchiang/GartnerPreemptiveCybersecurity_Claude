@@ -331,11 +331,15 @@ async function browserChecks() {
   // 搜尋框到 max-width 之後，多的空間由 spacer 的 auto margin 吃掉，右側按鈕仍貼齊 topbar 的內緣
   const wide = await browser.newContext({ viewport: { width: 1920, height: 900 } }); const widePage = await wide.newPage();
   await widePage.goto(base + '?stamped#/'); await widePage.waitForSelector('h1');
-  const rightGap = await widePage.$eval('.topbar', bar => {
-    const s = getComputedStyle(bar), last = [...bar.children].filter(c => c.checkVisibility()).at(-1);
-    return bar.getBoundingClientRect().right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth) - last.getBoundingClientRect().right;
+  const wideBar = await widePage.$eval('.topbar', bar => {
+    const s = getComputedStyle(bar), last = [...bar.children].filter(c => c.checkVisibility()).at(-1), box = bar.querySelector('.search-box');
+    return { rightGap: bar.getBoundingClientRect().right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth) - last.getBoundingClientRect().right,
+      searchW: box.getBoundingClientRect().width, maxWidth: getComputedStyle(box).maxWidth };
   });
-  ok('topbar：1920px 時搜尋框到了 max-width，右側按鈕仍靠右', Math.abs(rightGap) < 1, Math.abs(rightGap) < 1 ? '' : `差 ${Math.round(rightGap)}px`);
+  // maxWidth 是 none（沒設 max-width）時 parseFloat 得 NaN，判定為失敗
+  const widePass = Math.abs(wideBar.rightGap) < 1 && Math.abs(wideBar.searchW - parseFloat(wideBar.maxWidth)) < 1;
+  ok('topbar：1920px 時搜尋框到了 max-width，右側按鈕仍靠右', widePass,
+    widePass ? '' : `右側差 ${Math.round(wideBar.rightGap)}px；搜尋框 ${Math.round(wideBar.searchW)}px，max-width ${wideBar.maxWidth}`);
   await wide.close();
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close(); server.close();
