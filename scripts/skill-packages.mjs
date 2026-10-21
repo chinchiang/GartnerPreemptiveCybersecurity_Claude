@@ -1,6 +1,7 @@
 /**
  * skill-packages.mjs
- * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行。
+ * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行與其他嵌入區塊
+ * （例如 assets/scope-gate.js 帶的 scope 定義）。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
  * 寫檔交給呼叫端（build-data.mjs、build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
  * 純 Node 內建模組，無第三方相依。所有輸入只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
@@ -145,16 +146,19 @@ function embeddedFiles(files) {
 }
 
 // scope 定義（授權範圍守門的規則來源，見 docs/adr/0004）：把 input-schema.json 的 properties.scope 寫進 assets/scope-gate.js
-// 標註下緊接的 const SCOPE_SCHEMA = …; 區塊，縮排沿用 const 那一行。JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判
+// 標註下緊接的 const SCOPE_SCHEMA = …; 區塊，縮排沿用 const 那一行。標註行全檔須恰好一行（數的是標註，不是區塊，
+// 多出一行沒接區塊的標註也要中止）；JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判。
+// input-schema.json 是否存在，generatedFiles 先跑的 ruleNoteFiles 已經檢查過。
 const SCOPE_GATE = 'assets/scope-gate.js';
-const scopeBlock = new RegExp(`(\\/\\/ 以下區塊由 ${escapeRe(MARKER_SOURCE)} 從 ${escapeRe(INPUT_SCHEMA)}[^\\n]*\\n(\\s*)const SCOPE_SCHEMA = )[\\s\\S]*?;\\n`, 'g');
+const scopeMarker = `// 以下區塊由 ${MARKER_SOURCE} 從 ${INPUT_SCHEMA}`;
+const scopeBlock = () => new RegExp(`(${escapeRe(scopeMarker)}[^\\n]*\\n(\\s*)const SCOPE_SCHEMA = )[\\s\\S]*?;\\n`, 'g');
 function scopeGateFile(files) {
-  const schema = files.find(f => f.path === INPUT_SCHEMA);
-  if (!schema) throw new Error(`scope 定義的母本不存在：${INPUT_SCHEMA}`);
   const gate = files.find(f => f.path === SCOPE_GATE);
   if (!gate) throw new Error(`${SCOPE_GATE} 不存在，但它要帶授權範圍守門的 scope 定義`);
-  const scope = JSON.parse(schema.content).properties.scope;
-  return { path: SCOPE_GATE, content: replaceExactlyOnce(gate.content, scopeBlock,
+  exactlyOne(gate.content.split('\n').filter(line => line.trimStart().startsWith(scopeMarker)).length,
+    n => `${SCOPE_GATE} 有 ${n} 個 SCOPE_SCHEMA 的嵌入區塊標註，必須恰好一個，才知道要換哪個區塊`);
+  const scope = JSON.parse(files.find(f => f.path === INPUT_SCHEMA).content).properties.scope;
+  return { path: SCOPE_GATE, content: replaceExactlyOnce(gate.content, scopeBlock(),
     (_, head, indent) => `${head}${JSON.stringify(scope, null, 2).replace(/\n/g, `\n${indent}`)};\n`,
-    n => `${SCOPE_GATE} 有 ${n} 個 SCOPE_SCHEMA 的嵌入區塊標註，必須恰好一個，才知道要換哪個區塊`) };
+    () => `${SCOPE_GATE} 找不到 SCOPE_SCHEMA 的嵌入區塊標註下緊接的 const SCOPE_SCHEMA = …; 區塊`) };
 }

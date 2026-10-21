@@ -116,7 +116,7 @@ const caseData = {
 };
 writeFileSync(out('data/case.js'), jsExport('CASE_DATA', caseData));
 
-// ---------- 4a. 其他站上需要的文件（證據檔、README、驗證報告、連結檢查） ----------
+// ---------- 5. 其他站上需要的文件（證據檔、README、驗證報告、連結檢查） ----------
 const readIf = (p) => existsSync(out(p)) ? readText(out(p)) : '';
 const evidenceDir = out('docs/evidence');
 const evidence = existsSync(evidenceDir) ? walk(evidenceDir).filter(f => f.endsWith('.md')).map(f => {
@@ -134,7 +134,7 @@ const extra = {
 };
 writeFileSync(out('data/extra.js'), jsExport('EXTRA_DOCS', extra));
 
-// ---------- 5. ZIP 下載包（store 模式，無壓縮） ----------
+// ---------- 6. ZIP 下載包（store 模式，無壓縮） ----------
 function buildZip(entries) {
   // entries: [{name, data:Buffer}]
   const local = [], central = [];

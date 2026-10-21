@@ -353,3 +353,12 @@ test('scope-gate.js 有兩個 SCOPE_SCHEMA 的嵌入區塊標註時中止，不�
 test('沒有傳入 assets/scope-gate.js 時中止，錯誤訊息指出缺少的檔案', () => {
   assert.throws(() => generatedFiles(sources.filter(f => f.path !== 'assets/scope-gate.js')), { message: /assets\/scope-gate\.js.*不存在/ });
 });
+
+test('scope-gate.js 多了一個下面沒接 const SCOPE_SCHEMA 的標註時也中止，數的是標註行', () => {
+  assert.throws(() => generatedFiles(withGate(gateJs('{}') + `${SCOPE_MARKER}\n`)), { message: /assets\/scope-gate\.js.*2 個.*SCOPE_SCHEMA/ });
+});
+
+test('scope-gate.js 的標註下不是緊接 const SCOPE_SCHEMA = 時中止，錯誤訊息指出標註下找不到區塊', () => {
+  const notConst = gateJs('{}').replace('  const SCOPE_SCHEMA = {};', '  let SCOPE_SCHEMA = {};');
+  assert.throws(() => generatedFiles(withGate(notConst)), { message: /assets\/scope-gate\.js.*找不到.*const SCOPE_SCHEMA/ });
+});
