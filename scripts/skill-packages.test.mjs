@@ -122,9 +122,13 @@ const CORE_TEXT = `你是先制型曝險分析助理。\n${RULE_LINE}`;
 // 改寫版：手寫的內容裡有一行規則說明（Custom GPT 指示、Codex 與 Claude 的 SKILL.md）
 const RULE_NOTE_REWRITES = RULE_NOTE_TARGETS.filter(path => path !== 'skills/shared/core-prompt.md');
 const rewriteMd = (path) => `# ${path}\n\n## 安全與授權邊界\n\n- 未提供 scope 就拒絕分析。\n${OLD_RULE_LINE}\n- 不執行攻擊指令。\n`;
-// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md、改寫版）
+// 授權範圍守門的 JS 解讀（assets/scope-gate.js）：手寫的程式＋scope 定義的嵌入區塊（見 docs/adr/0004）
+const SCOPE_MARKER = '  // 以下區塊由 scripts/build-data.mjs 從 skills/shared/input-schema.json 的 properties.scope 產生，請改母本後執行 npm run build，勿手動編輯';
+const gateJs = (block) => `(function () {\n${SCOPE_MARKER}\n  const SCOPE_SCHEMA = ${block};\n  const api = { scopeSchema: () => SCOPE_SCHEMA };\n})();\n`;
+// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md、改寫版、scope-gate.js）
 const sources = [
   ...masters,
+  { path: 'assets/scope-gate.js', content: gateJs('{ "舊的": "scope 定義" }') },
   { path: 'skills/shared/core-prompt.md', content: `---\ntitle: 核心提示詞\n---\n\n\`\`\`text\n你是先制型曝險分析助理。\n${OLD_RULE_LINE}\n\`\`\`\n` },
   ...RULE_NOTE_REWRITES.map(path => ({ path, content: rewriteMd(path) })),
   ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPromptMd(p) })),
@@ -171,6 +175,7 @@ test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本',
 
 test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec、另有 scripts/ 的核心複本，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
   assert.deepEqual(paths(generatedFiles(sources)).sort(), [
+    'assets/scope-gate.js',
     'skills/chatgpt/custom-gpt-instructions.md',
     'skills/chatgpt/preemptive-exposure-analysis/SKILL.md',
     'skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md',
@@ -311,4 +316,40 @@ test('規則說明行不是恰好一行時中止，錯誤訊息指出檔案', ()
     const twice = sources.map(f => f.path === path ? { ...f, content: f.content.replace(OLD_RULE_LINE, `${OLD_RULE_LINE}\n${OLD_RULE_LINE}`) } : f);
     assert.throws(() => generatedFiles(twice), { message: new RegExp(`${path.replace(/[./]/g, '\\$&')}.*2 行`) }, path);
   }
+});
+
+// scope 定義：上面 masters 裡 input-schema.json 的 properties.scope，以兩格縮排的 JSON 寫在 const SCOPE_SCHEMA = 後面（手寫的預期值）
+const SCOPE_BLOCK = `{
+    "type": "object",
+    "required": [
+      "organization"
+    ],
+    "properties": {
+      "organization": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }`;
+const withGate = (content) => sources.map(f => f.path === 'assets/scope-gate.js' ? { ...f, content } : f);
+
+test('scope-gate.js 的 SCOPE_SCHEMA 嵌入區塊換成 input-schema.json 的 scope 定義，標註與其餘手寫內容不變', () => {
+  assert.equal(copyAt(generatedFiles(sources), 'assets/scope-gate.js').content, gateJs(SCOPE_BLOCK));
+});
+
+test('scope-gate.js 已是最新時再產生一次結果不變', () => {
+  assert.equal(copyAt(generatedFiles(withGate(gateJs(SCOPE_BLOCK))), 'assets/scope-gate.js').content, gateJs(SCOPE_BLOCK));
+});
+
+test('scope-gate.js 沒有 SCOPE_SCHEMA 的嵌入區塊標註時中止，錯誤訊息指出檔案與數量', () => {
+  assert.throws(() => generatedFiles(withGate(gateJs('{}').replace(`${SCOPE_MARKER}\n`, ''))), { message: /assets\/scope-gate\.js.*0 個.*SCOPE_SCHEMA/ });
+});
+
+test('scope-gate.js 有兩個 SCOPE_SCHEMA 的嵌入區塊標註時中止，不會只換掉第一個', () => {
+  const twice = gateJs('{}') + `${SCOPE_MARKER}\n  const SCOPE_SCHEMA = {};\n`;
+  assert.throws(() => generatedFiles(withGate(twice)), { message: /assets\/scope-gate\.js.*2 個.*SCOPE_SCHEMA/ });
+});
+
+test('沒有傳入 assets/scope-gate.js 時中止，錯誤訊息指出缺少的檔案', () => {
+  assert.throws(() => generatedFiles(sources.filter(f => f.path !== 'assets/scope-gate.js')), { message: /assets\/scope-gate\.js.*不存在/ });
 });

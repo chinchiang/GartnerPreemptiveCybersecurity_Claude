@@ -61,12 +61,24 @@ export function packageFiles(platform, files) {
   return files.filter(wanted).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
-// 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 與 scripts/ 的複本，以及含嵌入區塊的手寫檔。
-// files：repo 檔案清單，須含 skills/shared/ 的母本與對照表 embeds 宣告的手寫檔。
+// 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 與 scripts/ 的複本，以及含嵌入區塊的手寫檔
+// （含 assets/scope-gate.js 的 scope 定義）。建置在原地改寫、且會提交的檔案都從這裡產生。
+// files：repo 檔案清單，須含 skills/shared/ 的母本、對照表 embeds 宣告的手寫檔，以及 assets/scope-gate.js。
 export function generatedFiles(files) {
   const ruleNotes = ruleNoteFiles(files);
   const updated = files.map(f => ruleNotes.find(r => r.path === f.path) || f); // 核心提示詞先換好規則說明行，再嵌入各平臺
-  return [...sharedCopies(updated), ...embeddedFiles(updated), ...ruleNotes];
+  return [...sharedCopies(updated), ...embeddedFiles(updated), ...ruleNotes, scopeGateFile(files)];
+}
+
+// 每種改寫都要「恰好一處」：0 處表示找不到要換的地方，2 處以上不知道要換哪一處，都中止（不默默只換第一處）。
+// 錯誤訊息由各種改寫自己提供（帶入實際的數量），說明要去哪裡找、怎麼修。
+function exactlyOne(count, message) {
+  if (count !== 1) throw new Error(message(count));
+}
+// pattern 須帶 g：先數符合幾處，恰好一處才替換
+function replaceExactlyOnce(content, pattern, replacement, message) {
+  exactlyOne([...content.matchAll(pattern)].length, message);
+  return content.replace(pattern, replacement);
 }
 
 // 規則說明行（模型側守門的規則來源，見 docs/adr/0005）：核心提示詞母本與三份改寫版裡以固定開頭辨識的一行，
@@ -83,11 +95,8 @@ function ruleNoteFiles(files) {
   return RULE_NOTE_TARGETS.map(path => {
     const target = files.find(f => f.path === path);
     if (!target) throw new Error(path === CORE_PROMPT ? `要嵌入的母本不存在：${CORE_PROMPT}` : `${path} 不存在，但它要帶授權範圍的規則說明行`);
-    const lines = target.content.split('\n');
-    const at = lines.flatMap((line, i) => (line.startsWith(RULE_LINE_LEAD) ? [i] : []));
-    if (at.length !== 1) throw new Error(`${path} 有 ${at.length} 行以「${RULE_LINE_LEAD}」開頭，必須恰好一行，才知道要換哪一行`);
-    lines[at[0]] = ruleLine;
-    return { path, content: lines.join('\n') };
+    return { path, content: replaceExactlyOnce(target.content, new RegExp(`^${escapeRe(RULE_LINE_LEAD)}[^\\n]*$`, 'gm'), () => ruleLine,
+      n => `${path} 有 ${n} 行以「${RULE_LINE_LEAD}」開頭，必須恰好一行，才知道要換哪一行`) };
   });
 }
 
@@ -119,7 +128,7 @@ function copyContent(name, content) {
 // 並在它正上方加標註；上一次建置寫入的標註連同區塊一起換掉，重複建置結果不變。
 const CORE_MARKER = marker('以下區塊', CORE_PROMPT);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-const coreBlock = (heading) => new RegExp(`^(${escapeRe(heading)}[^\\n]*\\n\\n+)(?:${escapeRe(markerPrefix('以下區塊'))}[^\\n]*-->\\n)?\`\`\`text\\n[\\s\\S]*?\\n\`\`\``, 'm');
+const coreBlock = (heading) => new RegExp(`^(${escapeRe(heading)}[^\\n]*\\n\\n+)(?:${escapeRe(markerPrefix('以下區塊'))}[^\\n]*-->\\n)?\`\`\`text\\n[\\s\\S]*?\\n\`\`\``, 'gm');
 function embeddedFiles(files) {
   const master = files.find(f => f.path === CORE_PROMPT);
   if (!master) throw new Error(`要嵌入的母本不存在：${CORE_PROMPT}`);
@@ -128,10 +137,24 @@ function embeddedFiles(files) {
     const path = `${platformDir(platform)}${file}`;
     const target = files.find(f => f.path === path);
     if (!target) throw new Error(`${path} 不存在，但對照表宣告 ${platform} 要在它嵌入核心提示詞`);
-    const headings = target.content.split('\n').filter(line => line.startsWith(heading)).length;
-    if (headings !== 1) throw new Error(`${path} 有 ${headings} 行以「${heading}」開頭的標題，必須恰好一行，才知道要換哪個 \`\`\`text 區塊`);
-    const block = coreBlock(heading);
-    if (!block.test(target.content)) throw new Error(`${path} 找不到「${heading}」標題下緊接的 \`\`\`text 區塊`);
-    return { path, content: target.content.replace(block, (_, headingLine) => `${headingLine}${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``) };
+    exactlyOne(target.content.split('\n').filter(line => line.startsWith(heading)).length,
+      n => `${path} 有 ${n} 行以「${heading}」開頭的標題，必須恰好一行，才知道要換哪個 \`\`\`text 區塊`);
+    return { path, content: replaceExactlyOnce(target.content, coreBlock(heading), (_, headingLine) => `${headingLine}${CORE_MARKER}\n\`\`\`text\n${core}\n\`\`\``,
+      () => `${path} 找不到「${heading}」標題下緊接的 \`\`\`text 區塊`) };
   }));
+}
+
+// scope 定義（授權範圍守門的規則來源，見 docs/adr/0004）：把 input-schema.json 的 properties.scope 寫進 assets/scope-gate.js
+// 標註下緊接的 const SCOPE_SCHEMA = …; 區塊，縮排沿用 const 那一行。JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判
+const SCOPE_GATE = 'assets/scope-gate.js';
+const scopeBlock = new RegExp(`(\\/\\/ 以下區塊由 ${escapeRe(MARKER_SOURCE)} 從 ${escapeRe(INPUT_SCHEMA)}[^\\n]*\\n(\\s*)const SCOPE_SCHEMA = )[\\s\\S]*?;\\n`, 'g');
+function scopeGateFile(files) {
+  const schema = files.find(f => f.path === INPUT_SCHEMA);
+  if (!schema) throw new Error(`scope 定義的母本不存在：${INPUT_SCHEMA}`);
+  const gate = files.find(f => f.path === SCOPE_GATE);
+  if (!gate) throw new Error(`${SCOPE_GATE} 不存在，但它要帶授權範圍守門的 scope 定義`);
+  const scope = JSON.parse(schema.content).properties.scope;
+  return { path: SCOPE_GATE, content: replaceExactlyOnce(gate.content, scopeBlock,
+    (_, head, indent) => `${head}${JSON.stringify(scope, null, 2).replace(/\n/g, `\n${indent}`)};\n`,
+    n => `${SCOPE_GATE} 有 ${n} 個 SCOPE_SCHEMA 的嵌入區塊標註，必須恰好一個，才知道要換哪個區塊`) };
 }
