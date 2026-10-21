@@ -159,6 +159,75 @@ test('跑測試時被中斷（SIGTERM）：檔案仍然還原，測試子行程�
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+// 逾時用：calc.js 裡有 hang 時，測試留下一個 setInterval 永遠不結束；否則照常檢查 calc.js
+const HANGING_CHECK = "const fs = require('fs');\n" +
+  "if (fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')) setInterval(() => {}, 1000);\n" +
+  "else process.exit(require('./calc.js')(1, 2) === 3 ? 0 : 1);\n";
+const HANG = { file: 'calc.js', from: '(a, b) =>', to: '(a, b, hang) =>', note: '留下計時器' };
+const CAUGHT = { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' };
+// 實作壞掉時測試會卡住：每次執行都設 30 秒的保險，讓它以失敗結束
+const SAFETY = 30000;
+
+test('--timeout：測試超過時間就記成逾時、檔案還原，接著跑下一筆；有逾時就以結束碼 1 結束', () => {
+  const dir = project([HANG, CAUGHT]);
+  try {
+    writeFileSync(join(dir, 'check.js'), HANGING_CHECK);
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1'], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /逾時\s+calc\.js\s+留下計時器$/m);
+    assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法$/m);
+    assert.match(r.stdout, /突變 2 種：抓到 1、存活 0、逾時 1/);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--timeout 的逾時在 --json 是 timedOut: true、caught: false，頂層有逾時的總數；--markdown 的結果欄寫「逾時」、紅的測試空白', () => {
+  const dir = project([HANG, CAUGHT]);
+  try {
+    writeFileSync(join(dir, 'check.js'), HANGING_CHECK);
+    const runWith = format => spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1', format], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+    const json = runWith('--json');
+    assert.equal(json.status, 1, json.stdout + json.stderr);
+    const parsed = JSON.parse(json.stdout);
+    assert.deepEqual({ ...parsed, results: undefined }, { total: 2, caught: 1, survived: 0, timedOut: 1, results: undefined });
+    assert.deepEqual(parsed.results[0], { ...HANG, caught: false, timedOut: true, failed: [] });
+    assert.equal(parsed.results[1].timedOut, false);
+    const markdown = runWith('--markdown');
+    assert.equal(markdown.status, 1, markdown.stdout + markdown.stderr);
+    assert.equal(markdown.stdout, '突變 2 種：抓到 1、存活 0、逾時 1\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
+      '| 留下計時器 | 逾時 |  |\n| 加法改減法 | 抓到 | （沒有 node:test 的名稱） |\n');
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--timeout：測試在突變之前就逾時，以結束碼 2 結束、說明逾時的秒數與測試指令，一個檔案都不改', () => {
+  const dir = project([CAUGHT]);
+  try {
+    writeFileSync(join(dir, 'check.js'), 'setInterval(() => {}, 1000);\n');
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1.5'], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    assert.match(r.stderr, /突變之前.*逾時.*1\.5 秒.*node check\.js/);
+    assert.doesNotMatch(r.stdout, /抓到/);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--timeout 逾時之後，測試子行程已經結束，不會殘留（Linux／macOS 結束行程群組，Windows 用 taskkill 結束行程樹）', async () => {
+  const dir = project([HANG]);
+  try {
+    // 讀到突變後的 calc.js 就記下自己的 pid，再留下計時器不結束
+    writeFileSync(join(dir, 'check.js'),
+      "const fs = require('fs');\n" +
+      "if (fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')) { fs.writeFileSync(__dirname + '/check.pid', String(process.pid)); setInterval(() => {}, 1000); }\n");
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1'], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+    assert.match(r.stdout, /逾時\s+calc\.js\s+留下計時器$/m, r.stdout + r.stderr);
+    const pid = Number(readFileSync(join(dir, 'check.pid'), 'utf8'));
+    const alive = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
+    for (let i = 0; i < 40 && alive(); i++) await new Promise(res => setTimeout(res, 50));
+    assert.ok(!alive(), `測試子行程 ${pid} 在逾時之後還在執行`);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('--json：輸出可解析的紀錄（給 PR 說明用），結束碼照舊', () => {
   const dir = project([
     { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' },
@@ -168,10 +237,10 @@ test('--json：輸出可解析的紀錄（給 PR 說明用），結束碼照舊'
     const r = run(dir, '--json');
     assert.equal(r.status, 1);
     assert.deepEqual(JSON.parse(r.stdout), {
-      total: 2, caught: 1, survived: 1,
+      total: 2, caught: 1, survived: 1, timedOut: 0,
       results: [
-        { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法', caught: true, failed: [] },
-        { file: 'calc.js', from: '(a, b) =>', to: '(a, b, c) =>', note: '多一個參數', caught: false, failed: [] }
+        { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法', caught: true, timedOut: false, failed: [] },
+        { file: 'calc.js', from: '(a, b) =>', to: '(a, b, c) =>', note: '多一個參數', caught: false, timedOut: false, failed: [] }
       ]
     });
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -185,11 +254,11 @@ test('--markdown：總計一行、空一行，再接「突變｜結果｜紅的�
   try {
     const before = spawnSync(process.execPath, [MUTATE, '--markdown', 'mutations.json'], { cwd: dir, encoding: 'utf8' });
     assert.equal(before.status, 1, before.stdout + before.stderr);
-    assert.equal(before.stdout, '突變 2 種：抓到 1、存活 1\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
+    assert.equal(before.stdout, '突變 2 種：抓到 1、存活 1、逾時 0\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
       '| 加法改減法 | 抓到 | 1 + 2 = 3［scripts/calc.test.mjs］ |\n| 多一個參數 | 存活 | — |\n');
     const after = run(dir, '--markdown');   // node check.js：不是 node:test，讀不到名稱
     assert.equal(after.status, 1, after.stdout + after.stderr);
-    assert.equal(after.stdout, '突變 2 種：抓到 1、存活 1\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
+    assert.equal(after.stdout, '突變 2 種：抓到 1、存活 1、逾時 0\n\n| 突變 | 結果 | 紅的測試 |\n|---|---|---|\n' +
       '| 加法改減法 | 抓到 | （沒有 node:test 的名稱） |\n| 多一個參數 | 存活 | — |\n');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -202,6 +271,20 @@ test('--json 與 --markdown 一起給：結束碼 2，一個測試都不跑、�
     assert.match(r.stderr, /\[--json \| --markdown\]/);
     assert.equal(existsSync(join(dir, 'ran.txt')), false, '測試指令被執行了');
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--timeout 的值不是 0 或正數（負數、不是數字、空字串、沒給值）：結束碼 2 並印出用法，一個測試都不跑、一個檔案都不改', () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
+  try {
+    for (const value of [['-1'], ['abc'], [''], []]) {
+      const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'touch ran.txt', '--timeout', ...value], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+      const label = value.length ? JSON.stringify(value[0]) : '沒給值';
+      assert.equal(r.status, 2, `${label}：${r.stdout}${r.stderr}`);
+      assert.match(r.stderr, /\[--timeout <秒>\]/, label);
+      assert.equal(existsSync(join(dir, 'ran.txt')), false, `${label}：測試指令被執行了`);
+      assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+    }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
