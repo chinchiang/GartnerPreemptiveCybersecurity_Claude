@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import vm from 'node:vm';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
+import { renderReport } from './verify-report.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const results = [];
@@ -348,7 +349,7 @@ staticChecks();
 if (!args.includes('--static')) await browserChecks();
 if (args.includes('--links')) await linkChecks();
 const passed = results.filter(r => r.pass).length;
-const report = `# 驗證報告\n\n執行時間：${new Date().toISOString()}\n模式：${args.join(' ') || 'full'}\n結果：${passed}/${results.length} 通過\n\n| 檢查 | 結果 | 說明 |\n|---|---|---|\n${results.map(r => `| ${r.name} | ${r.pass ? '✅' : '❌'} | ${r.detail.replace(/\|/g, '/')} |`).join('\n')}\n`;
+const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString() });
 // 只有完整模式（含瀏覽器檢查）寫入 verify-report.md；--static 只印結果，不改寫已提交的報告
 if (args.includes('--static')) console.log(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
 else { writeFileSync(join(ROOT, 'verify-report.md'), report); console.log(`\n${passed}/${results.length} 通過 → verify-report.md`); }
