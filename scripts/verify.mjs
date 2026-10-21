@@ -202,7 +202,6 @@ const SCENARIOS = [
     ok('案例：規則卡由示範引擎的規則資料渲染', rulesCard === rulesExpected && missingAnchors.length === 0,
       rulesCard !== rulesExpected ? `卡片與 DEMO.rulesSummary() 不同：${rulesCard.slice(0, 60)}…`
         : missingAnchors.length ? `卡片缺少預設規則：${missingAnchors.join('、')}` : '與 DEMO.rulesSummary() 相同，且含預設門檻與無發現節點取值');
-    const p1Before = await page.$$eval('#case-output .score.P1', s => s.length);
     await page.uncheck('input[data-input="threatIntel"]'); await page.waitForTimeout(100);
     const warn = await page.textContent('#case-output .callout');
     ok('案例：移除情資後顯示缺漏警示', warn.includes('威脅情資'));
@@ -211,6 +210,10 @@ const SCENARIOS = [
     await page.check('input[data-input="topology"]'); await page.check('input[data-input="threatIntel"]');
     await page.fill('#inv', '70'); await page.dispatchEvent('#inv', 'input'); await page.waitForTimeout(100);
     ok('案例：清冊完整度調整', (await page.textContent('#case-output')).includes('資產清冊不完整'));
+    // 切換風險胃納的前一刻才量，這一項只受風險胃納影響（前面改清冊完整度也會改變 P1 數，#104）；
+    // 只管接線（選單的值有沒有傳進引擎），規則的方向由 scoring.test.mjs 的 strict／tolerant 邊界負責
+    // P1 數是兩張表（曝險優先序、修補建議）上的 .score.P1 標章數量，不是 P1 發現的筆數（合成資料下剛好是兩倍）
+    const p1Before = await page.$$eval('#case-output .score.P1', s => s.length);
     await page.selectOption('#appetite', 'strict'); await page.waitForTimeout(100);
     const p1After = await page.$$eval('#case-output .score.P1', s => s.length);
     ok('案例：風險胃納切換改變 P1 數', p1After !== p1Before, `${p1Before} → ${p1After}`);
