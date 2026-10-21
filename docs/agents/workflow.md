@@ -27,6 +27,8 @@
 | Windows（Git Bash、PowerShell） | 可用。`node_modules/` 要有 `npm ci` 裝的 `playwright@1.56.1`（clone 之後沒有，要先裝；它是純 JS，見下段），`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（報告除了執行時間逐行相同） |
 | WSL（Ubuntu 26.04） | 還不能用。Playwright 1.56.1 不支援這個版本，`install-deps` 會拒絕，要手動 `sudo apt install libnss3 libnspr4 libasound2t64`；再用 Linux 版 node 同目錄的 npm（`~/.local/opt/node-v24.19.0-linux-x64/bin/npm`，PATH 上的 `npm` 是 Windows 版）執行 `npx playwright install chromium-headless-shell`。尚未實測（#73） |
 
+只改到部分情境時，可以先用 `node.exe scripts/verify.mjs --only <情境>[,<情境>]` 在本機迭代：只跑指定的瀏覽器情境（名稱見 `scripts/verify.mjs` 的 `SCENARIOS`，有空白的名稱要加引號），不跑靜態檢查、不寫報告。PR 之前仍要跑完整驗證。
+
 `playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
 
 完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進每次執行都會變的值（例如捲動位置），否則比對每次都會失敗。
