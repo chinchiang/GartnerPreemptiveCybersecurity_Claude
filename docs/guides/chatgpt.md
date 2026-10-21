@@ -8,7 +8,7 @@ platform: chatgpt
 
 **用途**：在 OpenAI 的三種承載層上執行「先制型曝險分析」：ChatGPT 應用（Custom GPT／Projects）、Codex（Agent Skills 開放標準）、OpenAI API（Responses API）。
 
-**模型與承載應用**（查證日期 2026-09-09；來源見 `docs/evidence/ai-platform-skills-evidence.md`）：
+**模型與承載應用**（查證日期 2026-09-09，來源見 `docs/evidence/ai-platform-skills-evidence.md`；模型 2026-10-21 更新，來源見 `docs/evidence/openai-gpt-6-models-evidence.md`）：
 
 | 項目 | 狀態 |
 |---|---|

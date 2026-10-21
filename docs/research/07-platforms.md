@@ -4,7 +4,7 @@ order: 7
 summary: 區分「模型」與「承載模型的應用程式或執行框架」，說明各平臺現況、自訂機制、查證狀態與本專案採用的等效方案。
 ---
 
-> 查證日期 2026-09-09。完整證據檔：`docs/evidence/ai-platform-skills-evidence.md`。研究環境可直接開啟的官方站台僅 platform.claude.com、code.claude.com 與 GitHub；其餘以官方 URL 的搜尋摘錄為「部分查證」，只有第三方資訊者為「待驗證」。
+> 查證日期 2026-09-09。完整證據檔：`docs/evidence/ai-platform-skills-evidence.md`。ChatGPT 的模型在 2026-10-21 更新，證據檔為 `docs/evidence/openai-gpt-6-models-evidence.md`（當時 developers.openai.com 已可開啟）。2026-09-09 時研究環境可直接開啟的官方站台僅 platform.claude.com、code.claude.com 與 GitHub；其餘以官方 URL 的搜尋摘錄為「部分查證」，只有第三方資訊者為「待驗證」。
 
 ## 7.1 Agent Skills 開放標準
 
