@@ -43,7 +43,7 @@ backend/                          選用的模型 API 代理範例（預設不�
 
 ```bash
 npm run build
-npm run verify:static   # 資料、來源 ID、schema、示範引擎的行為檢查與快照、下載檔、機敏字串（驗收在 npm test）
+npm run verify:static   # 資料、來源 ID、schema、下載檔、機敏字串（驗收在 npm test）
 npm run verify          # 加上 Playwright 瀏覽器檢查（導覽、搜尋、篩選、複製、下載、案例互動、行動裝置）；需先 npm ci
 python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
 ```

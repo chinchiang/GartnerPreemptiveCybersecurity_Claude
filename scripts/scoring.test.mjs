@@ -137,10 +137,14 @@ test('信心：缺 0 類為高、1–2 類為中、3 類以上為低；清冊完
   const off = (...names) => ({ inputs: Object.fromEntries(names.map(n => [n, false])) });
   assert.equal(confidenceOf(), '高');
   assert.equal(confidenceOf(off('threatIntel')), '中');
+  assert.equal(confidenceOf(off('topology')), '中');                                    // 只缺拓樸也是一類
   assert.equal(confidenceOf(off('threatIntel', 'identities')), '中');
   assert.equal(confidenceOf(off('threatIntel', 'identities', 'topology')), '低');      // topology 缺漏亦計為一類
   assert.equal(confidenceOf({ inventoryCompleteness: 80 }), '高');
   assert.equal(confidenceOf({ inventoryCompleteness: 79 }), '低');
+  // 清冊不足時每一筆發現都是低，不只 F1（資產 A、B 各一筆，清冊 79% 時兩筆都看得到）
+  const twoFindings = caseWith({ assets: [asset('A'), asset('B')], vulnerabilities: [vuln(), vuln({ finding_id: 'F2', asset_id: 'B' })] });
+  assert.deepEqual(DEMO.analyze(twoFindings, { inventoryCompleteness: 79 }).findings.map(f => [f.finding_id, f.confidence]), [['F1', '低'], ['F2', '低']]);
 });
 
 test('路徑可行性＝入口可能性×0.5 + 最弱節點×0.3 + 身分／設定邊數×1 − (跳數−1)×0.6；無任何發現的節點取 3', () => {

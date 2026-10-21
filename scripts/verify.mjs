@@ -9,7 +9,6 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
-import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
 
@@ -64,33 +63,7 @@ function staticChecks() {
   for (const f of ['skills/shared/input-schema.json', 'skills/shared/output-schema.json', 'skills/grok/tool-definitions.json', 'skills/glm/claude-code-settings.example.json']) {
     try { JSON.parse(readFileSync(join(ROOT, f), 'utf8')); ok(`JSON 有效 ${f}`, true); } catch (e) { ok(`JSON 有效 ${f}`, false, e.message); }
   }
-  // 示範引擎：驗收以外的行為與 schema 結構（驗收本身見 scripts/acceptance.test.mjs）
-  for (const f of ['assets/scope-gate.js', 'assets/demo.js']) vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx); // 守門由 scope-gate.js 判定，須先載入
-  const R = w.DEMO.analyze(w.CASE_DATA, {});
-  const Rx = w.DEMO.analyze(w.CASE_DATA, { inputs: { topology: false } });
-  ok('缺拓樸：信心下修且無路徑假設', Rx.hypotheses.length === 0 && Rx.findings.every(f => f.confidence === '中'));
-  const Ri = w.DEMO.analyze(w.CASE_DATA, { inventoryCompleteness: 70 });
-  ok('清冊 < 80%：信心「低」', Ri.findings.length > 0 && Ri.findings.every(f => f.confidence === '低'));
-  const Ra = w.DEMO.analyze({ ...w.CASE_DATA, scope: { ...w.CASE_DATA.scope, authorized_scope: { ...w.CASE_DATA.scope.authorized_scope, active_testing_authorized: true, external_scanning_authorized: false } } }, {});
-  ok('驗證計畫：外部驗證需兩個授權旗標', Ra.validation.filter(v => v.method.includes('外部')).every(v => v.requires.includes('尚未授權')));
-  const S = w.DEMO.toSchema(R, w.CASE_DATA);
-  const schema = JSON.parse(readFileSync(join(ROOT, 'skills/shared/output-schema.json'), 'utf8'));
-  const missTop = schema.required.filter(k => !(k in S));
-  const blocksOK = schema.required.filter(k => k !== 'human_review_points' && k !== 'meta').every(k => ['confidence', 'basis', 'missing_inputs', 'requires_human'].every(f => f in S[k]));
-  const hypOK = S.attack_path_hypotheses.items.every(h => h.status === 'hypothesis' && ['id', 'entry', 'target', 'nodes', 'edges', 'feasibility'].every(f => f in h));
-  const valOK = S.validation_plan.items.every(v => ['id', 'hypothesis', 'method', 'authorization_required', 'success_criteria'].every(f => f in v));
-  const remOK = S.remediation.items.every(r => ['finding_id', 'priority', 'action', 'owner', 'effort', 'verify', 'approval_level'].every(f => f in r));
-  ok('引擎 JSON 符合 output-schema 結構', missTop.length === 0 && blocksOK && hypOK && valOK && remOK && (S.executive_summary.text.length <= 300), missTop.join(',') || 'required、block 欄位、items 必填鍵、摘要長度');
-  // 示範引擎 golden snapshot：規則資料（assets/demo.js 的 RULES）套用在合成資料上的結果；
-  // 規則與母本是否一致由 npm test 的評分規則一致性檢查（scripts/scoring-rules.mjs）負責。
-  const snapPath = join(ROOT, 'examples/demo-snapshot.txt');
-  try {
-    const actual = execFileSync(process.execPath, [join(ROOT, 'scripts/run-demo.mjs')], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
-    const expected = readFileSync(snapPath, 'utf8').replace(/\r\n/g, '\n');
-    ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', actual === expected,
-      actual === expected ? `${actual.split('\n').length} 行` : '示範引擎輸出已變動：若是刻意變更評分規則，先讓 npm test 的評分規則一致性檢查通過，再執行 npm run snapshot 更新快照');
-  } catch (e) { ok('示範引擎輸出與 examples/demo-snapshot.txt 一致', false, e.message.slice(0, 120)); }
-  // 驗收（判定、契約回歸、引擎 JSON 通過驗收、驗收 7）在 npm test 的 scripts/acceptance.test.mjs（#63）
+  // 示範引擎的行為、輸出結構與快照在 npm test：scoring.test.mjs、attack-paths.test.mjs、demo-output.test.mjs，驗收在 acceptance.test.mjs（#63、#98）
   // 站點層級檔案與 index.html 的 head
   const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
   ok('index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性）',
