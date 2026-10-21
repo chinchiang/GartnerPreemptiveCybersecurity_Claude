@@ -14,8 +14,8 @@
 
 環境變數（勿寫入程式碼、勿提交到 git）
   OPENAI_API_KEY   必要（--dry-run 時不需要）
-  OPENAI_MODEL     預設 gpt-5.5（依 github.com/openai/openai-python README 範例，2026-09-09 查證；
-                   實際可用的模型 ID 請在 platform.openai.com 的 Models 頁面確認）
+  OPENAI_MODEL     預設 gpt-6-astra（依 developers.openai.com/api/docs/models「不確定從哪個開始就用 GPT-6 Astra」，
+                   2026-10-21 查證；在意成本可改 gpt-6.1-sol；實際可用的模型 ID 請在該頁面確認）
   OPENAI_BASE_URL  選用；由 openai SDK 自行讀取
 
 用法
@@ -52,7 +52,7 @@ class ChatGptAdapter:
     platform = "chatgpt"
     display_name = "ChatGPT"
     model_env = "OPENAI_MODEL"
-    default_model = "gpt-5.5"   # 請在 platform.openai.com 確認模型 ID
+    default_model = "gpt-6-astra"   # 請在 developers.openai.com/api/docs/models 確認模型 ID
     platform_note = (
         "7. 平臺備註（ChatGPT）\n"
         "- 你正透過 OpenAI Responses API 被呼叫，沒有網路、檔案系統或任何工具；所有輸入都已貼在使用者訊息中，"

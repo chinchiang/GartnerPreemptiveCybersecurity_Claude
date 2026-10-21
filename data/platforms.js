@@ -1,7 +1,7 @@
-// 平臺比較（查證日期 2026-09-09）。status: verified | partial | unverified（整體）
+// 平臺比較（查證日期 2026-09-09；ChatGPT 的模型 2026-10-21 更新）。status: verified | partial | unverified（整體）
 window.PLATFORMS = [
-  { id: 'chatgpt', name: 'ChatGPT', vendor: 'OpenAI', status: 'partial', sources: ['P-O1', 'P-O2', 'P-O3', 'P-O4', 'P-O5', 'P-AS1'],
-    models: 'GPT-5.x；官方 SDK README 範例 `gpt-5.5`（已查證）。ChatGPT 選單顯示名稱：待驗證。',
+  { id: 'chatgpt', name: 'ChatGPT', vendor: 'OpenAI', status: 'partial', sources: ['P-O1', 'P-O2', 'P-O3', 'P-O4', 'P-O5', 'P-O6', 'P-AS1'],
+    models: 'GPT-6 家族；官方模型頁建議不確定時從 `gpt-6-astra` 開始（已查證，2026-10-21），在意成本可改 `gpt-6.1-sol`。ChatGPT 選單顯示名稱：待驗證。',
     hosting: '**ChatGPT 應用**（Custom Instructions、Projects、Custom GPTs）；**Codex**（CLI／IDE／桌面／雲端）；**OpenAI API**（Responses API）。',
     mechanism: 'Codex 支援 **Agent Skills 開放標準**（`.agents/skills`、`$HOME/.agents/skills`；`$skill-name` 叫用；`openai/skills` 已改指向 `openai/plugins`）。ChatGPT 應用無 SKILL.md 證據：以 Custom GPT 指令 + Knowledge、Project 指令承載。',
     skillFormat: '`preemptive-exposure-analysis/SKILL.md`（標準格式）；`custom-gpt-instructions.md`；`project-instructions.md`；`api-workflow.py`（Responses API，含 `--dry-run`）。',

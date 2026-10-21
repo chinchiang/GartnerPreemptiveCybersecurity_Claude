@@ -15,7 +15,7 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 
 | 平臺 | 模型（查證時） | 承載應用 | 原生技能機制 | 本專案等效方案 | 狀態 |
 |---|---|---|---|---|---|
-| ChatGPT（OpenAI） | GPT-5.x（SDK 範例 `gpt-5.5`；已查證） | ChatGPT 應用（Custom Instructions／Projects／Custom GPTs）、Codex、Responses API | Codex 支援 Agent Skills（`.agents/skills`）；ChatGPT 應用無 SKILL.md 證據 | Custom GPT 指令 + Knowledge；Project 指令；Codex SKILL.md；API 腳本 | Codex 已查證／部分；應用部分／待驗證 |
+| ChatGPT（OpenAI） | GPT-6 家族（官方建議從 `gpt-6-astra` 開始，在意成本可改 `gpt-6.1-sol`；已查證，2026-10-21） | ChatGPT 應用（Custom Instructions／Projects／Custom GPTs）、Codex、Responses API | Codex 支援 Agent Skills（`.agents/skills`）；ChatGPT 應用無 SKILL.md 證據 | Custom GPT 指令 + Knowledge；Project 指令；Codex SKILL.md；API 腳本 | Codex 已查證／部分；應用部分／待驗證 |
 | Claude（Anthropic） | Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5（已查證） | claude.ai、Claude Code、Developer Platform（Skills API）、Agent SDK | **原生 Agent Skills**；六個跨介面欄位 | SKILL.md（單一來源） | 已查證 |
 | Grok（xAI） | Grok 4.x（SDK 範例 `grok-4.6`、`grok-4.20`；已查證） | xAI API（function calling、structured outputs、伺服器端工具）；grok.com | 無 | system prompt + function calling 工具定義 + API 腳本 | API 已查證；應用待驗證 |
 | GLM（Zhipu／Z.ai） | GLM-5／5.1／5.2／5.3、5.3-Flash（已查證） | Z.ai API Platform／BigModel；chat.z.ai／智譜清言（原文「智谱清言」）；GLM Coding Plan + Claude Code | Z.ai 以 SKILL.md 發布 skill（發布者）；官方 Claude Code 外掛市集 | Claude Code + GLM 後端的 SKILL.md；system prompt；API 腳本 | 模型與 Claude Code 整合已查證；應用待驗證 |
