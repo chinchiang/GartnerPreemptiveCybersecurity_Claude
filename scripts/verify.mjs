@@ -104,6 +104,10 @@ const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
 const footerStamp = async pg => ({ top: await shown(pg, '#last-updated'), footer: await shown(pg, '#last-updated-footer'),
   text: await pg.$eval('#last-updated-footer', n => n.textContent.trim()).catch(() => '') });
 const inFooter = s => s.top === false && s.footer === true && s.text === LAST_UPDATED_TEXT;
+// 對比（WCAG）：頁面只回傳 getComputedStyle 的顏色字串（colorsOf），相對亮度與對比值只在這裡算一份（#103）
+const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const colorsOf = (pg, selectors) => pg.evaluate(sels => sels.map(sel => { const cs = getComputedStyle(document.querySelector(sel)); return { color: cs.color, bg: cs.backgroundColor }; }), selectors);
 
 const SCENARIOS = [
   { name: '導覽', run: async ({ open, ok, shot }) => {
@@ -254,20 +258,12 @@ const SCENARIOS = [
     const page = await open('#/', DESK); await page.waitForTimeout(100);
     ok('無障礙：skip link、lang、aria-current', (await page.$('.skip-link')) && (await page.getAttribute('html', 'lang')) === 'zh-Hant' && (await page.$('.sidebar nav a[aria-current="page"]')) !== null);
     // 對比：主要按鈕文字與深色主題徽章（深色主題只設在這個情境自己的頁面上）
-    const contrast = await page.evaluate(() => {
-      const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-      const btn = document.querySelector('.btn:not(.secondary)'); const cs = getComputedStyle(btn);
-      return ratio(cs.color, cs.backgroundColor);
-    });
+    const [btn] = await colorsOf(page, ['.btn:not(.secondary)']);
+    const contrast = ratio(btn.color, btn.bg);
     ok('對比：主要按鈕 ≥ 4.5', contrast >= 4.5, contrast.toFixed(2));
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
-    const darkContrast = await page.evaluate(() => {
-      const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-      const els = [document.querySelector('.btn:not(.secondary)'), document.querySelector('.brand .badge'), document.querySelector('.sidebar nav a[aria-current="page"]')];
-      return Math.min(...els.map(e => { const cs = getComputedStyle(e); return ratio(cs.color, cs.backgroundColor); }));
-    });
+    const dark = await colorsOf(page, ['.btn:not(.secondary)', '.brand .badge', '.sidebar nav a[aria-current="page"]']);
+    const darkContrast = Math.min(...dark.map(e => ratio(e.color, e.bg)));
     ok('對比：深色主題強調色元素 ≥ 4.5', darkContrast >= 4.5, darkContrast.toFixed(2));
   } },
   { name: '儲存庫連結', run: async ({ open, ok }) => {
