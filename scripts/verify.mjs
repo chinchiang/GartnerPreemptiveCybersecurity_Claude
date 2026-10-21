@@ -253,7 +253,7 @@ async function browserChecks() {
   await page.selectOption('#s-type', 'gartner'); await page.waitForTimeout(100);
   ok('來源頁類型篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) < links.length);
   await page.selectOption('#s-type', 'all'); await page.selectOption('#s-ver', 'full'); await page.waitForTimeout(100);
-  ok('來源頁查證等級篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) === 6);
+  ok('來源頁查證等級篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) === 7);
   ok('來源頁：證據檔附錄可展開', (await page.$$('details.doc-details')).length >= 3);
   await page.goto(base + '#/deploy'); await page.waitForTimeout(100);
   ok('部署頁：標題層級無跳級', await page.evaluate(() => { const hs = [...document.querySelectorAll('main h1,main h2,main h3,main h4')].map(h => +h.tagName[1]); return hs.every((l, i) => i === 0 || l <= hs[i - 1] + 1); }));

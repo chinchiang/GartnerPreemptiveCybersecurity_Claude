@@ -50,14 +50,14 @@ class ChatGptAdapterTest(unittest.TestCase):
         report_call, json_call = record["calls"]
         for call in (report_call, json_call):
             self.assertEqual(set(call), {"model", "instructions", "input"})  # 不傳 tools、temperature
-            self.assertEqual(call["model"], "gpt-5.5")
+            self.assertEqual(call["model"], "gpt-6-astra")
             self.assertIn("7. 平臺備註（ChatGPT）", call["instructions"])  # system 放在 instructions
         self.assertEqual([m["role"] for m in report_call["input"]], ["user"])
         self.assertNotIn("output-schema.json", report_call["input"][0]["content"])  # schema 放在第二段
         self.assertEqual([m["role"] for m in json_call["input"]], ["user", "assistant", "user"])
         self.assertEqual(json_call["input"][1]["content"], "# 報告")
         self.assertIn("output-schema.json", json_call["input"][-1]["content"])
-        self.assertIn("ChatGPT API（Responses API）/ gpt-5.5 /", json_call["input"][-1]["content"])  # generated_by
+        self.assertIn("ChatGPT API（Responses API）/ gpt-6-astra /", json_call["input"][-1]["content"])  # generated_by
         self.assertEqual((self.out / "chatgpt-report.md").read_text(encoding="utf-8"), "# 報告")
         self.assertTrue((self.out / "chatgpt-output.json").exists())
 
@@ -100,8 +100,8 @@ class ChatGptAdapterTest(unittest.TestCase):
         self.assertIn("pip install -r skills/chatgpt/requirements.txt", err)
 
     def test_model_from_env_and_flag(self):
-        os.environ["OPENAI_MODEL"] = "gpt-5.5-mini"
-        for extra, expected in (((), "gpt-5.5-mini"), (("--model", "gpt-6"), "gpt-6")):
+        os.environ["OPENAI_MODEL"] = "example-env-model"
+        for extra, expected in (((), "example-env-model"), (("--model", "example-flag-model"), "example-flag-model")):
             with self.subTest(args=extra):
                 openai, record = fake_openai_responses(["# 報告", VALID_OUTPUT])
                 code, out, err = self.run_main(*extra, modules={"openai": openai})

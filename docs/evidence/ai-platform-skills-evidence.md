@@ -42,6 +42,7 @@ Third-party counts ("32 adopters as of March 2026", "40+ by mid-2026") are UNVER
 ### Model vs. application
 
 - **Model layer:** GPT-5.x family served through the OpenAI API.
+  - **Update 2026-10-21:** the API's model catalog now leads with the GPT-6 family, and the ChatGPT skill's default became `gpt-6-astra`. This file keeps its 2026-09-09 record unchanged; see `docs/evidence/openai-gpt-6-models-evidence.md` for the new evidence.
 - **Application/runtime layer:** ChatGPT (consumer/business app: Custom Instructions, Projects, Custom GPTs, agent features), Codex (CLI, IDE extension, desktop app, cloud), and the API (Responses API).
 
 ### Models (verification status mixed)

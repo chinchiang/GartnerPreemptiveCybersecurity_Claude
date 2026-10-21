@@ -8,11 +8,11 @@ platform: chatgpt
 
 **用途**：在 OpenAI 的三種承載層上執行「先制型曝險分析」：ChatGPT 應用（Custom GPT／Projects）、Codex（Agent Skills 開放標準）、OpenAI API（Responses API）。
 
-**模型與承載應用**（查證日期 2026-09-09；來源見 `docs/evidence/ai-platform-skills-evidence.md`）：
+**模型與承載應用**（查證日期 2026-09-09，來源見 `docs/evidence/ai-platform-skills-evidence.md`；模型 2026-10-21 更新，來源見 `docs/evidence/openai-gpt-6-models-evidence.md`）：
 
 | 項目 | 狀態 |
 |---|---|
-| 模型：GPT-5.x（官方 SDK README 範例為 `gpt-5.5`） | 已查證（GitHub）；ChatGPT 選單顯示名稱待驗證 |
+| 模型：GPT-6 家族（官方模型頁建議不確定時從 `gpt-6-astra` 開始；在意成本可改 `gpt-6.1-sol`） | 已查證（developers.openai.com，2026-10-21）；ChatGPT 選單顯示名稱待驗證 |
 | ChatGPT Custom Instructions／Projects／Custom GPTs 存在 | 部分查證（官方說明頁存在，沙箱內無法開啟） |
 | Custom GPT Knowledge：每個 GPT 20 個檔案、單檔 512 MB／2M tokens | 部分查證（搜尋摘要） |
 | Projects 檔案數與指令字數上限 | 待驗證 |
@@ -121,7 +121,7 @@ codex
 pip install -r skills/chatgpt/requirements.txt
 python3 skills/chatgpt/api-workflow.py --dry-run          # 無金鑰離線檢查
 export OPENAI_API_KEY=...                                 # 勿寫入檔案
-export OPENAI_MODEL=gpt-5.5                               # 以 platform.openai.com 確認
+export OPENAI_MODEL=gpt-6-astra                           # 預設值；在意成本可改 gpt-6.1-sol，以 developers.openai.com/api/docs/models 確認
 python3 skills/chatgpt/api-workflow.py
 ```
 
