@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-10-21T01:45:24.777Z
+執行時間：2026-10-21T15:45:36.229Z
 模式：full
-結果：103/103 通過
+結果：98/98 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -33,11 +33,6 @@
 | JSON 有效 skills/shared/output-schema.json | ✅ |  |
 | JSON 有效 skills/grok/tool-definitions.json | ✅ |  |
 | JSON 有效 skills/glm/claude-code-settings.example.json | ✅ |  |
-| 缺拓樸：信心下修且無路徑假設 | ✅ |  |
-| 清冊 < 80%：信心「低」 | ✅ |  |
-| 驗證計畫：外部驗證需兩個授權旗標 | ✅ |  |
-| 引擎 JSON 符合 output-schema 結構 | ✅ | required、block 欄位、items 必填鍵、摘要長度 |
-| 示範引擎輸出與 examples/demo-snapshot.txt 一致 | ✅ | 50 行 |
 | index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性） | ✅ |  |
 | index.html 有 OG／Twitter 卡片與 canonical | ✅ |  |
 | index.html 恰好一個空的 last-updated <meta>（部署時才填得進最後更新時間） | ✅ |  |
