@@ -82,9 +82,11 @@ writeFileSync(out('data/guides.js'), jsExport('GUIDE_DOCS', guides));
 
 // ---------- 3. Skills ----------
 const skillsDir = out('skills');
-// 先由技能包組裝器從 skills/shared/ 母本產生建置產物（各平臺 references/ 的複本、system-prompt.md 的嵌入區塊），
-// 下面走訪 skills/ 時拿到的才是最新內容。system-prompt.md 的平臺說明是手寫的，所以輸入要含整個 skills/。
-const sourceFiles = walk(skillsDir).map(f => ({ path: relPosix(f), content: readText(f) }));
+// 先由技能包組裝器從 skills/shared/ 母本產生建置產物（各平臺 references/ 的複本、system-prompt.md 等的嵌入區塊，
+// 以及 assets/scope-gate.js 的 scope 定義），下面走訪 skills/ 時拿到的才是最新內容。
+// system-prompt.md 的平臺說明是手寫的，所以輸入要含整個 skills/；scope-gate.js 不在 skills/ 底下，另外放進輸入。
+const sourceFiles = [...walk(skillsDir).map(f => ({ path: relPosix(f), content: readText(f) })),
+  { path: 'assets/scope-gate.js', content: readText(out('assets/scope-gate.js')) }];
 for (const c of generatedFiles(sourceFiles)) writeFileSync(out(c.path), c.content);
 const skillFiles = walk(skillsDir).map(f => {
   const rel = relPosix(f);
@@ -114,19 +116,7 @@ const caseData = {
 };
 writeFileSync(out('data/case.js'), jsExport('CASE_DATA', caseData));
 
-// ---------- 4a. 授權範圍守門的 scope 定義（嵌入區塊，見 docs/adr/0004） ----------
-// 把 input-schema.json 的 properties.scope 寫進 assets/scope-gate.js 標註下緊接的 const SCOPE_SCHEMA = …; 一行起的區塊；
-// 標註或區塊找不到就中止。JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判
-{
-  const gatePath = out('assets/scope-gate.js');
-  const scopeSchema = JSON.parse(readText(out('skills/shared/input-schema.json'))).properties.scope;
-  const block = /(\/\/ 以下區塊由 scripts\/build-data\.mjs 從 skills\/shared\/input-schema\.json[^\n]*\n(\s*)const SCOPE_SCHEMA = )[\s\S]*?;\n/;
-  const gate = readText(gatePath);
-  if (!block.test(gate)) { console.error('assets/scope-gate.js 找不到 SCOPE_SCHEMA 的嵌入區塊'); process.exit(1); }
-  writeFileSync(gatePath, gate.replace(block, (_, head, indent) => `${head}${JSON.stringify(scopeSchema, null, 2).replace(/\n/g, `\n${indent}`)};\n`));
-}
-
-// ---------- 4b. 其他站上需要的文件（證據檔、README、驗證報告、連結檢查） ----------
+// ---------- 5. 其他站上需要的文件（證據檔、README、驗證報告、連結檢查） ----------
 const readIf = (p) => existsSync(out(p)) ? readText(out(p)) : '';
 const evidenceDir = out('docs/evidence');
 const evidence = existsSync(evidenceDir) ? walk(evidenceDir).filter(f => f.endsWith('.md')).map(f => {
@@ -144,7 +134,7 @@ const extra = {
 };
 writeFileSync(out('data/extra.js'), jsExport('EXTRA_DOCS', extra));
 
-// ---------- 5. ZIP 下載包（store 模式，無壓縮） ----------
+// ---------- 6. ZIP 下載包（store 模式，無壓縮） ----------
 function buildZip(entries) {
   // entries: [{name, data:Buffer}]
   const local = [], central = [];
