@@ -3,7 +3,7 @@
  * build-worker.mjs
  * 把 skills/shared/core-prompt.md 內的 ```text 提示詞區塊嵌入 backend/worker.js 的 CORE_PROMPT，並把模板 import 的
  * assets/scope-gate.js（授權範圍守門，見 docs/adr/0004）內嵌進去，輸出到 backend/dist/worker.js（已列入 .gitignore，不提交）。
- * 這樣代理伺服器使用的系統提示與五平臺共用的核心提示詞永遠一致，部署的仍是單一檔案。
+ * 這樣代理伺服器使用的系統提示與六平臺共用的核心提示詞永遠一致，部署的仍是單一檔案。
  *
  * 用法：node scripts/build-worker.mjs [輸出路徑] [模板路徑]（輸出預設 backend/dist/worker.js、模板預設 backend/worker.js；
  *       測試用輸出路徑建置到暫存目錄，用模板路徑傳入改過的模板，部署時兩個都不傳）

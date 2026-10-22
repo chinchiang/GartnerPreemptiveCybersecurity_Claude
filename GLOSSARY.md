@@ -1,13 +1,13 @@
-# 先制型曝險分析：五平臺技能與互動網站
+# 先制型曝險分析：六平臺技能與互動網站
 
-把 Gartner Preemptive Cybersecurity 研究轉成可在五個 AI 平臺上執行的「先制型曝險分析」技能，並以靜態網站發布研究、技能與示範案例。
+把 Gartner Preemptive Cybersecurity 研究轉成可在六個 AI 平臺上執行的「先制型曝險分析」技能，並以靜態網站發布研究、技能與示範案例。
 
 ## Language
 
 ### 技能與發布
 
 **平臺**：
-技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek。文件裡「曝險管理平臺」「PTI 平臺」這類指資安產品的「…平臺」只是一般用語，不屬於此詞條。
+技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek、Gemini。文件裡「曝險管理平臺」「PTI 平臺」這類指資安產品的「…平臺」只是一般用語，不屬於此詞條。
 _Avoid_: 供應商、模型、後端
 
 **技能包**：

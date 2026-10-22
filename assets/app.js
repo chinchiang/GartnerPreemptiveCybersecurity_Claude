@@ -142,7 +142,7 @@
     const TILES = [['#/methodology', '方法論導覽', '定義、目標、與傳統偵測回應的關係、與 CTEM／威脅情資／攻擊面管理等概念的關聯，每項標明來源或推論。'],
       ['#/process', '可執行流程', '八個步驟：目的、輸入、處理、輸出、限制與人工決策點。可點選步驟查看對應的 inputs/outputs。'],
       ['#/io', 'Inputs／Outputs 對照', '依流程階段、必要性、使用對象篩選；每項含來源、格式、頻率、品質、敏感度、範例與缺漏替代方案。'],
-      ['#/platforms', '平臺比較', '五個平臺的模型、承載應用、自訂機制、工具呼叫、檔案與限制，含查證狀態。'],
+      ['#/platforms', '平臺比較', '六個平臺的模型、承載應用、自訂機制、工具呼叫、檔案與限制，含查證狀態。'],
       ['#/skills', 'Skills 專區', '共用任務規格 + 各平臺完整檔案，一鍵複製與下載（含 ZIP）。'],
       ['#/guides', '安裝與使用教學', '切換平臺查看逐步設定、使用範例、驗收方式與常見問題。'],
       ['#/case', '案例互動展示', '以合成資料示範輸入如何影響優先序、攻擊路徑假設與輸出；可切換輸入與權重。'],
@@ -152,10 +152,10 @@
         <div class="hero-copy">
           <p class="eyebrow">Gartner Preemptive Cybersecurity · Research &amp; Skills</p>
           <h1><span>Gartner Preemptive Cybersecurity</span><span class="gradient-text">先制型資安 Playbook</span></h1>
-          <p class="hero-lede">從 Gartner 公開資料出發，拆解先制型資安的必要輸入、處理流程與可能輸出；再將可驗證的概念轉為可在 ChatGPT、Claude、Grok、GLM、DeepSeek 上執行的 skills 或等效工作流程，並以合成資料示範。</p>
+          <p class="hero-lede">從 Gartner 公開資料出發，拆解先制型資安的必要輸入、處理流程與可能輸出；再將可驗證的概念轉為可在 ChatGPT、Claude、Grok、GLM、DeepSeek、Gemini 上執行的 skills 或等效工作流程，並以合成資料示範。</p>
           <div class="btn-row hero-actions">
             <a class="btn" href="#/methodology">閱讀方法論研究 <span aria-hidden="true">↘</span></a>
-            <a class="btn secondary" href="#/skills">取得五平臺 Skills</a>
+            <a class="btn secondary" href="#/skills">取得六平臺 Skills</a>
             <a class="btn secondary" href="#/case">互動案例</a>
           </div>
         </div>
@@ -182,7 +182,7 @@
       <div class="card"><ol>
         <li>${TAG.fact} Gartner 將 preemptive cybersecurity 描述為在攻擊發生<strong>之前</strong>就預測、阻斷或轉移攻擊者的能力組合，並以 2030 年的市場預測凸顯其重要性。細節與原文引用見 <a href="#/methodology">方法論導覽</a>。</li>
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
-        <li>${TAG.rec} 五個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md）；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
+        <li>${TAG.rec} 六個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md），Gemini 在 Antigravity 與 Gemini CLI 也支援；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
       </ol></div>
       <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；最後更新時間是內容最後一次合併進 <code>main</code> 的時間，部署時寫入，顯示在右上角（窄螢幕在頁尾））。所有內容以儲存庫為單一來源。</p>`;
   }
@@ -300,7 +300,7 @@
     const rows = [['模型（查證時）', 'models'], ['承載應用／執行框架', 'hosting'], ['原生自訂／技能機制', 'mechanism'], ['本專案採用的等效格式', 'skillFormat'], ['工具呼叫與連線', 'tools'], ['檔案與知識', 'files'], ['主要限制', 'limits'], ['查證狀態與備註', 'notes']];
     el.innerHTML = `
       ${heading('/platforms', '平臺比較')}
-      <p class="lead">五個平臺的支援方式、需求與限制。「模型」與「承載模型的應用程式／執行框架」分開描述。查證日期與來源見 <a href="#/sources">證據與來源</a>。</p>
+      <p class="lead">六個平臺的支援方式、需求與限制。「模型」與「承載模型的應用程式／執行框架」分開描述。查證日期與來源見 <a href="#/sources">證據與來源</a>。</p>
       <div class="table-wrap"><table class="matrix-table">
         <thead><tr><th>面向</th>${D.platforms.map(p => `<th>${esc(p.name)}<br><span class="small">${esc(p.vendor)}</span><br>${ST[p.status] || ''}</th>`).join('')}</tr></thead>
         <tbody>${rows.map(([label, key]) => `<tr><th scope="row">${label}</th>${D.platforms.map(p => `<td>${md(p[key])}</td>`).join('')}</tr>`).join('')}

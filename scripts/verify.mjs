@@ -233,7 +233,8 @@ const SCENARIOS = [
     await page.selectOption('#s-type', 'gartner'); await page.waitForTimeout(100);
     ok('來源頁類型篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) < links.length);
     await page.selectOption('#s-type', 'all'); await page.selectOption('#s-ver', 'full'); await page.waitForTimeout(100);
-    ok('來源頁查證等級篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) === 7);
+    // 已知正確值：data/sources.js 裡 verification 是 full 的來源有 14 個（新增或改了查證等級就要跟著改）
+    ok('來源頁查證等級篩選', (await page.$$eval('#src-list tbody tr', r => r.length)) === 14);
     ok('來源頁：證據檔附錄可展開', (await page.$$('details.doc-details')).length >= 3);
   } },
   { name: '部署頁', run: async ({ open, ok }) => {

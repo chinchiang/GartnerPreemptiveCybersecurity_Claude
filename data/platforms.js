@@ -1,4 +1,4 @@
-// 平臺比較（查證日期 2026-09-09；ChatGPT 的模型 2026-10-21 更新）。status: verified | partial | unverified（整體）
+// 平臺比較（查證日期 2026-09-09；ChatGPT 的模型 2026-10-21 更新；Gemini 2026-10-22 新增）。status: verified | partial | unverified（整體）
 window.PLATFORMS = [
   { id: 'chatgpt', name: 'ChatGPT', vendor: 'OpenAI', status: 'partial', sources: ['P-O1', 'P-O2', 'P-O3', 'P-O4', 'P-O5', 'P-O6', 'P-AS1'],
     models: 'GPT-6 家族；官方模型頁建議不確定時從 `gpt-6-astra` 開始（已查證，2026-10-21），在意成本可改 `gpt-6.1-sol`。ChatGPT 選單顯示名稱：待驗證。',
@@ -49,11 +49,21 @@ window.PLATFORMS = [
     files: '聊天應用附檔格式與大小待驗證；API 以文字傳入。',
     limits: '模型授權條款待驗證；資料出境評估（中國大陸公司營運）。',
     notes: 'V4 存在性為部分查證 + GitHub 佐證；不依賴特定版本的設計可降低風險。',
-    summary: '版本無關的 API 腳本；標準 SKILL.md 放入 skills-capable host；聊天端貼提示詞。' }
+    summary: '版本無關的 API 腳本；標準 SKILL.md 放入 skills-capable host；聊天端貼提示詞。' },
+  { id: 'gemini', name: 'Gemini', vendor: 'Google', status: 'partial', sources: ['P-G1', 'P-G2', 'P-G3', 'P-G4', 'P-G5', 'P-G6', 'P-G7', 'P-G8', 'P-AS1'],
+    models: '新專案建議 `gemini-3.8-flash`（或 3.5 Flash-Lite）；旗艦推理模型 `gemini-4-argon`（已查證，2026-10-22）。Gemini 4 與 3.6 以上的模型忽略自訂的 temperature。',
+    hosting: '**Antigravity**（App、CLI、IDE）；**Gemini CLI**（免費方案與 Google One 使用者 2026-06-18 起改用 Antigravity CLI）；**Gemini API**（google-genai SDK 的 Interactions API；另有 OpenAI 相容端點，官方標示 beta）。Gemini 應用（gemini.google.com）：待驗證。',
+    mechanism: 'Antigravity 與 Gemini CLI 都支援 **Agent Skills 開放標準**：工作區 `.agents/skills/`（Gemini CLI 也認 `.gemini/skills/`）；Gemini CLI 以 `gemini skills install` 安裝、模型呼叫 `activate_skill` 經使用者確認後載入；Antigravity 的 App 可打 `/<skill-name>` 手動呼叫，CLI 會把每個技能變成斜線指令（已查證）。Gemini 應用與 Gemini API 的 Skills：沒找到官方文件（待驗證）。',
+    skillFormat: '`preemptive-exposure-analysis/`（SKILL.md、`references/`、`scripts/validate_inputs.py`，資料夾可單獨運作）；`api-workflow.py`（Interactions API，`previous_interaction_id` 延續第 1 段；`--compat` 走 OpenAI 相容端點；含 `--dry-run`）。',
+    tools: 'Antigravity、Gemini CLI 能讀檔與執行指令（技能用它執行 `validate_inputs.py`）；API 腳本不啟用任何工具。',
+    files: 'Antigravity、Gemini CLI 直接讀工作區的檔案；API 以文字傳入。',
+    limits: '不帶 schema 的 JSON 模式、延續對話時是否保留 `system_instruction`、相容端點的 `json_object`：待驗證。原生路徑的對話狀態存在 Google 的伺服器上。',
+    notes: 'Antigravity、Gemini CLI、模型與 API 的官方頁面都能開啟（2026-10-22 已查證）；Gemini 應用的 Skills 沒找到官方文件（待驗證）。技能資料夾附 `validate_inputs.py` 與分析工作流程核心的複本（見 docs/adr/0006）。',
+    summary: 'Agent Skill 放進 Antigravity 或 Gemini CLI 的 `.agents/skills/`；API 腳本走 Interactions API。' }
 ];
 
 window.PLATFORM_COMMON = `1. **單一來源**：\`skills/shared/task-spec.md\` 與 \`core-prompt.md\` 定義任務、證據要求與人工核准邊界；各平臺檔案只處理載入方式、工具與檔案。
-2. **同一份 SKILL.md 跨宿主**：Claude Code、Codex，以及以 GLM／DeepSeek 為後端的 Claude Code／OpenClaw／Deep Code，都使用 Agent Skills 開放標準。
+2. **同一種 SKILL.md 格式跨宿主**：Claude Code、Codex、Antigravity、Gemini CLI，以及以 GLM／DeepSeek 為後端的 Claude Code／OpenClaw／Deep Code，都使用 Agent Skills 開放標準。
 3. **無原生技能的平臺**（Grok、GLM 與 DeepSeek 的聊天應用）：system prompt + API 腳本；所有腳本支援 \`--dry-run\`，無 API key 也能驗證提示詞組裝。
 4. **安全邊界一致**：對外掃描、主動驗證、正式環境變更只能提案；缺 scope 拒絕分析；攻擊路徑一律假設；管理摘要預設遮罩。
 5. **資料治理**：任何平臺都會把輸入資料送到供應商 API；示範只用合成資料；GLM 與 DeepSeek 需評估資料出境政策。

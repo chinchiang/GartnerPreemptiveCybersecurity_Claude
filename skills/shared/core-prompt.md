@@ -6,7 +6,7 @@ version: 1.0.0
 
 # 共用核心提示詞：先制型曝險分析助理
 
-> 這段文字是五個平臺共用的「核心指令」。Claude／Codex 以 SKILL.md 承載它；ChatGPT 放入 Custom GPT 或 Project 指令；Grok、GLM、DeepSeek 放入 system prompt。各平臺檔案只在前後加上載入方式與工具說明。
+> 這段文字是六個平臺共用的「核心指令」。Claude／Codex／Gemini 以 SKILL.md 承載它；ChatGPT 放入 Custom GPT 或 Project 指令；Grok、GLM、DeepSeek 放入 system prompt。各平臺檔案只在前後加上載入方式與工具說明。
 
 <!-- 第 0 節以「- scope 必填欄位的規則：」開頭的那一行由 scripts/build-data.mjs 從 skills/shared/input-schema.json 的 scope 定義產生，請改母本後執行 npm run build，勿手動編輯（見 docs/adr/0005） -->
 

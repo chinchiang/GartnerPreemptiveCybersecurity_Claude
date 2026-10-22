@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker：模型 API 代理（範例）。
- * 環境變數：PROVIDER（openai|anthropic|xai|glm|deepseek）、MODEL、PROVIDER_API_KEY（secret）、ALLOWED_ORIGIN、BASE_URL（選用覆寫）。
+ * 環境變數：PROVIDER（openai|anthropic|xai|glm|deepseek|gemini）、MODEL、PROVIDER_API_KEY（secret）、ALLOWED_ORIGIN、BASE_URL（選用覆寫）。
  * 安全：固定 system prompt；來源限制；請求大小上限 512 KB；簡易速率限制（每 IP 每分鐘 5 次，使用記憶體 Map，僅示範）。
  */
 // 授權範圍守門：規則只來自 schema，由 assets/scope-gate.js 判定（與網站示範引擎共用，見 docs/adr/0004）；
@@ -8,7 +8,8 @@
 import GATE from '../assets/scope-gate.js';
 
 const CORE_PROMPT = `（部署時以 build 步驟把 skills/shared/core-prompt.md 的提示詞區塊貼入此處）`;
-const DEFAULT_BASE = { openai: 'https://api.openai.com/v1', xai: 'https://api.x.ai/v1', glm: 'https://api.z.ai/api/paas/v4', deepseek: 'https://api.deepseek.com', anthropic: 'https://api.anthropic.com' };
+const DEFAULT_BASE = { openai: 'https://api.openai.com/v1', xai: 'https://api.x.ai/v1', glm: 'https://api.z.ai/api/paas/v4', deepseek: 'https://api.deepseek.com',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai', anthropic: 'https://api.anthropic.com' }; // gemini 是 OpenAI 相容端點（官方標示 beta）；不帶尾端斜線，下面接 /chat/completions
 const hits = new Map();
 
 export default {

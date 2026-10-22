@@ -13,7 +13,7 @@
 
 ## 檔案
 
-- `worker.js`：Cloudflare Worker **模板**，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek`（皆為 OpenAI 相容或 Anthropic 相容端點）。其中 `CORE_PROMPT` 是佔位字串、授權範圍守門以相對路徑 import `../assets/scope-gate.js`，部署前必須先建置。
+- `worker.js`：Cloudflare Worker **模板**，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek|gemini`（皆為 OpenAI 相容或 Anthropic 相容端點；`gemini` 走 Gemini API 的 OpenAI 相容端點，官方標示 beta）。其中 `CORE_PROMPT` 是佔位字串、授權範圍守門以相對路徑 import `../assets/scope-gate.js`，部署前必須先建置。
 - `package.json`：只宣告 `"type": "module"`，讓 Node 以 ES module 載入 `worker.js`（`scripts/scope-cases.test.mjs` 的守門測試）；根目錄的 `package.json` 不能這樣宣告，因為測試以 `require` 載入 `assets/demo.js`。
 - `../scripts/build-worker.mjs`：把 `skills/shared/core-prompt.md` 的提示詞區塊嵌入模板，並內嵌模板 import 的 `assets/scope-gate.js`，輸出單一檔案 `backend/dist/worker.js`（已列入 `.gitignore`）。
 - `.env.example`：需要設定的變數清單（**不要**建立含真實值的 `.env` 並提交）。

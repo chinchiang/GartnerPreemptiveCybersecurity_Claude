@@ -1,10 +1,10 @@
 ---
-title: 7. 五個平臺的查證摘要與等效方案
+title: 7. 六個平臺的查證摘要與等效方案
 order: 7
 summary: 區分「模型」與「承載模型的應用程式或執行框架」，說明各平臺現況、自訂機制、查證狀態與本專案採用的等效方案。
 ---
 
-> 查證日期 2026-09-09。完整證據檔：`docs/evidence/ai-platform-skills-evidence.md`。ChatGPT 的模型在 2026-10-21 更新，證據檔為 `docs/evidence/openai-gpt-6-models-evidence.md`（當時 developers.openai.com 已可開啟）。2026-09-09 時研究環境可直接開啟的官方站台僅 platform.claude.com、code.claude.com 與 GitHub；其餘以官方 URL 的搜尋摘錄為「部分查證」，只有第三方資訊者為「待驗證」。
+> 查證日期 2026-09-09。完整證據檔：`docs/evidence/ai-platform-skills-evidence.md`。ChatGPT 的模型在 2026-10-21 更新，證據檔為 `docs/evidence/openai-gpt-6-models-evidence.md`（當時 developers.openai.com 已可開啟）。Gemini 在 2026-10-22 新增，官方頁面都能開啟，來源見證據檔第 6 節與 `skills/gemini/README.md`。2026-09-09 時研究環境可直接開啟的官方站台僅 platform.claude.com、code.claude.com 與 GitHub；其餘以官方 URL 的搜尋摘錄為「部分查證」，只有第三方資訊者為「待驗證」。
 
 ## 7.1 Agent Skills 開放標準
 
@@ -20,6 +20,7 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 | Grok（xAI） | Grok 4.x（SDK 範例 `grok-4.6`、`grok-4.20`；已查證） | xAI API（function calling、structured outputs、伺服器端工具）；grok.com | 無 | system prompt + function calling 工具定義 + API 腳本 | API 已查證；應用待驗證 |
 | GLM（Zhipu／Z.ai） | GLM-5／5.1／5.2／5.3、5.3-Flash（已查證） | Z.ai API Platform／BigModel；chat.z.ai／智譜清言（原文「智谱清言」）；GLM Coding Plan + Claude Code | Z.ai 以 SKILL.md 發布 skill（發布者）；官方 Claude Code 外掛市集 | Claude Code + GLM 後端的 SKILL.md；system prompt；API 腳本 | 模型與 Claude Code 整合已查證；應用待驗證 |
 | DeepSeek | V4-Pro／V4-Flash（官方公告摘錄 + GitHub 佐證；部分查證） | DeepSeek API（OpenAI／Anthropic 相容）；chat.deepseek.com；`deepseek-harness` | 無第一方；plugin 架構 | 版本無關的 API 腳本；skills-capable host 的 SKILL.md；system prompt | V4 部分查證；應用待驗證 |
+| Gemini（Google） | `gemini-3.8-flash`（官方建議新專案使用）、旗艦推理模型 `gemini-4-argon`（已查證，2026-10-22） | Antigravity（App、CLI、IDE）、Gemini CLI、Gemini API（google-genai 的 Interactions API；OpenAI 相容端點 beta）；Gemini 應用待驗證 | **Agent Skills**：Antigravity 與 Gemini CLI 讀工作區的 `.agents/skills/`；Gemini 應用與 API 的 Skills 未見官方文件 | SKILL.md（附 `validate_inputs.py`）＋ API 腳本 | Antigravity、Gemini CLI、模型與 API 已查證；應用待驗證 |
 
 ## 7.3 DeepSeek V4 的查證結論
 
@@ -31,7 +32,7 @@ summary: 區分「模型」與「承載模型的應用程式或執行框架」�
 ## 7.4 設計決策
 
 1. **單一來源**：`skills/shared/task-spec.md` 與 `core-prompt.md` 是所有平臺的規格；平臺檔只處理載入方式。
-2. **同一份 SKILL.md 跨三個宿主**：Claude Code、Codex、以 GLM／DeepSeek 為後端的 Claude Code 或 OpenClaw，都吃相同格式。
+2. **同一種 SKILL.md 格式跨宿主**：Claude Code、Codex、Antigravity、Gemini CLI、以 GLM／DeepSeek 為後端的 Claude Code 或 OpenClaw，都吃相同格式。
 3. **無原生技能的平臺**：Grok、GLM 聊天應用、DeepSeek 聊天應用 → system prompt + API 腳本；所有腳本支援 `--dry-run` 以便在無 API key 時驗證。
 4. **資料治理**：GLM 與 DeepSeek 的 API 由中國大陸公司營運，教學中明確提醒資料出境評估；所有示範只用合成資料。
 5. **待驗證項目**列入「證據與來源」頁的待驗證清單，附驗證方式。
