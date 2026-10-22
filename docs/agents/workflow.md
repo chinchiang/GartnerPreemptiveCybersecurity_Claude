@@ -33,7 +33,35 @@
 
 完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進會隨環境或內容而變的值（例如捲動位置：它取決於字型與版面，本機與 CI 可能不同，上方內容一改也跟著變），否則比對會失敗。
 
-瀏覽器檢查的每個 context 都開 reduced motion（`scripts/browser-checks.mjs` 的 `opener`），網站的 `prefers-reduced-motion` 樣式會關掉 smooth scroll、transition 和 animation，所以同一個 commit 在 CI 上的截圖每次都位元組相同。要檢查動畫或 smooth scroll 本身的情境，得自己另開 context，不能用 `open`。網站畫面有變時，從 PR 的 CI 執行下載截圖，用 `cmp` 逐張跟已提交的比，不同的換成 artifact 的版本並提交（本機的截圖字型不同，照舊一律還原）：
+瀏覽器檢查的每個 context 都開 reduced motion（`scripts/browser-checks.mjs` 的 `opener`），網站的 `prefers-reduced-motion` 樣式會關掉 smooth scroll、transition 和 animation，所以同一個 commit 在 CI 上的截圖幾乎每次都位元組相同。偶爾還是會有零星的反鋸齒像素差異：#115 統計了 12 次執行、156 張截圖，有 1 張差 2 個像素，每個色彩通道差 1～2 個色階。要檢查動畫或 smooth scroll 本身的情境，得自己另開 context，不能用 `open`。
+
+網站畫面有變時，用 PR 最後一個 commit 的兩次 CI 執行（push 與 pull_request）交叉比對，把雜訊排除掉，再決定要換哪些截圖（本機的截圖字型不同，照舊一律還原）。pull_request 那次跑的是 PR 跟 `main` 合併後的結果（`refs/pull/<n>/merge`），不是 commit 本身；比對之前，分支要先跟上 `main`（例如 `git merge main` 後再 push），否則兩次執行的差異可能是真的內容不同，不是雜訊：
+
+| 兩次執行彼此 | 跟已提交的比 | 結論 |
+| --- | --- | --- |
+| 相同 | 相同 | 不用動 |
+| 相同 | 不同，或還沒提交過 | 畫面有變，換成 artifact 的版本並提交 |
+| 不同 | 其中一次跟已提交的相同 | 雜訊，保留已提交的版本 |
+| 不同 | 兩次都跟已提交的不同 | 無法自動判斷：可能畫面有變又剛好碰上雜訊，要看圖，或重跑 CI（對外動作，先取得同意） |
+
+下面的指令只列出不是「不用動」的截圖，並標出屬於哪一種：
+
+```bash
+gh run list --workflow=ci.yml --commit <完整 SHA> --json databaseId,event --jq '.[] | "\(.event) \(.databaseId)"'
+D=scratch/<目錄>
+gh run download <push 的 run-id> -n verify-report-and-screenshots -D "$D/push"
+gh run download <pull_request 的 run-id> -n verify-report-and-screenshots -D "$D/pr"
+for push in "$D"/push/verify-screenshots/*.png; do
+  n=${push##*/}; pr="$D/pr/verify-screenshots/$n"; committed="verify-screenshots/$n"
+  if cmp -s "$push" "$pr"; then cmp -s "$push" "$committed" || echo "畫面有變，換成新版：$n"
+  elif cmp -s "$push" "$committed" || cmp -s "$pr" "$committed"; then echo "雜訊，保留已提交的：$n"
+  else echo "無法自動判斷，要看圖：$n"; fi
+done
+```
+
+迴圈以 push 那次的截圖為準。只出現在 pr 那次的截圖，以及網站拿掉、已提交的版本該刪除的截圖，它都不會列出，要用 `ls` 另外比對三邊的檔名。
+
+只有一次執行可用時（例如只 push、沒開 PR），沒辦法交叉比對，就退回單次比對，換之前先看圖，確認不是零星的像素差異：
 
 ```bash
 gh run download <run-id> -n verify-report-and-screenshots -D scratch/<目錄>
