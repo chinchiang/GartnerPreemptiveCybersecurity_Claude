@@ -67,10 +67,12 @@ export async function runBrowserChecks(scenarios, { root, only, launch = launchC
 }
 
 // 一個情境用的 open：每次都開新的 context（記進 contexts，情境結束時由骨架關掉），goto 到 base + 路徑後等 h1 出現。
-// context 設了 baseURL，情境在同一頁換路由時可以寫相對路徑（page.goto('#/process')、page.goto('?stamped#/')）
+// context 設了 baseURL，情境在同一頁換路由時可以寫相對路徑（page.goto('#/process')、page.goto('?stamped#/')）。
+// 一律 reducedMotion: 'reduce'，讓 assets/styles.css 的 prefers-reduced-motion 樣式生效（關掉 smooth scroll、transition、animation），
+// 截圖才不會拍到動畫的不同進度（漢堡選單、topbar 的 .pulse）；要檢查動畫本身的情境得自己另開 context
 function opener(browser, base, contexts, errors) {
   return async (path, { width, height = 900, clipboard, downloads } = {}) => {
-    const options = { baseURL: base, viewport: { width, height } };
+    const options = { baseURL: base, viewport: { width, height }, reducedMotion: 'reduce' };
     if (clipboard) options.permissions = ['clipboard-read', 'clipboard-write'];
     if (downloads) options.acceptDownloads = true;
     const ctx = await browser.newContext(options);

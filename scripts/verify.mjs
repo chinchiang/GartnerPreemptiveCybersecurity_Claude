@@ -134,7 +134,8 @@ const SCENARIOS = [
     await tocLink.click(); await page.waitForTimeout(150);
     const anchorId = decodeURIComponent(tocHref.split('#')[2] || '');
     const anchorEl = anchorId ? await page.$(`[id="${anchorId.replace(/"/g, '')}"]`) : null;
-    // scrollY 每次執行都不同（捲動還在進行），只在失敗時寫進說明，否則已提交的報告每次都會過時
+    // 開了 reduced motion，點下去就直接跳到錨點，同一個環境裡 scrollY 每次都一樣；但它的值取決於版面（字型、錨點上方內容的高度），
+    // 本機與 CI 的字型不同，值可能不一樣，內容一改也跟著變，所以只在失敗時寫進說明，否則已提交的報告會一直過時
     const scrollY = await page.evaluate(() => window.scrollY);
     ok('目錄錨點：同章且元素存在', page.url().includes('doc=01-definition') && !!anchorEl && scrollY > 0, scrollY > 0 ? anchorId : `${anchorId} scrollY=${scrollY}`);
     await page.focus('.tabs [role="tab"][aria-selected="true"]'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150);

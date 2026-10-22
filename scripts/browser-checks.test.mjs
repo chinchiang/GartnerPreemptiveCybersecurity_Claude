@@ -65,7 +65,7 @@ test('only 只跑指定名稱的情境，其他情境的 run 一次都不呼叫'
   assert.deepEqual(rows, [['B1', true, ''], ['無 JS 執行錯誤', true, '']]);
 });
 
-test('每次 open 都開一個新的 context：baseURL 是本機伺服器，寬高對應 viewport（高預設 900），clipboard 對應剪貼簿權限，downloads 對應 acceptDownloads', async () => {
+test('每次 open 都開一個新的 context：baseURL 是本機伺服器，寬高對應 viewport（高預設 900），一律 reducedMotion: reduce（截圖才固定），clipboard 對應剪貼簿權限，downloads 對應 acceptDownloads', async () => {
   const fake = fakeBrowser();
   await run([{ name: 'A', run: async ({ open }) => {
     await open('#/', { width: 390, height: 844 });
@@ -74,8 +74,8 @@ test('每次 open 都開一個新的 context：baseURL 是本機伺服器，寬�
   const base = fake.log.find(([op]) => op === 'goto')[2].replace('#/', '');
   assert.match(base, /^http:\/\/127\.0\.0\.1:\d+\/$/);
   assert.deepEqual(fake.contexts.map(c => c.options), [
-    { baseURL: base, viewport: { width: 390, height: 844 } },
-    { baseURL: base, viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true },
+    { baseURL: base, viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
+    { baseURL: base, viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true },
   ]);
 });
 
