@@ -10,7 +10,7 @@ Gemini 的技能資料夾照 Claude 的寫法：手寫 SKILL.md，`scripts/` 放
 
 - **Gemini 的技能資料夾照 GLM／DeepSeek 的寫法，只放嵌入的核心指令與 `references/`，不附腳本**：否決（#109 的 Q7）。Antigravity 與 Gemini CLI 都能讀檔、執行指令，附上 `validate_inputs.py`，模型照 SKILL.md 先執行它時，scope 的判定就由腳本做（與 API 腳本同一套規則），不靠模型自己讀規則判斷。
 - **Gemini 放一份手寫的 `validate_inputs.py`**：否決（#109 的 Q8）。兩份會漂移，違背單一來源。
-- **母本留在 Claude 的資料夾，Gemini 從那裡複製**：否決（#109 的 Q8）。母本會變成「放在平臺目錄裡的檔案」，對照表得另外處理這個例外。
+- **母本留在 Claude 的資料夾，Gemini 從那裡複製**：否決（#109 的 Q8）。母本會變成放在 `skills/<平臺>/` 底下的檔案，對照表得另外處理這個例外。
 
 ## Consequences
 

@@ -30,7 +30,7 @@ platform: gemini
 | `skills/gemini/README.md` | 平臺說明、查證狀態與來源 |
 | `skills/gemini/preemptive-exposure-analysis/SKILL.md` | Agent Skill 主指令（Antigravity、Gemini CLI） |
 | `skills/gemini/preemptive-exposure-analysis/references/` | 評分規則、驗收清單、輸入與輸出的 schema（建置產生的複本） |
-| `skills/gemini/preemptive-exposure-analysis/scripts/` | `validate_inputs.py`（輸入與 scope 檢查）與它使用的分析工作流程核心（建置產生的複本，見 `docs/adr/0006`） |
+| `skills/gemini/preemptive-exposure-analysis/scripts/` | `validate_inputs.py`（腳本預檢與授權範圍守門）與它使用的分析工作流程核心（建置產生的複本，見 `docs/adr/0006`） |
 | `skills/gemini/api-workflow.py`、`requirements.txt` | API 腳本（含 `--dry-run`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 Gemini 的模型 adapter |
 | `skills/shared/*`、`examples/synthetic-org/*` | 共用規格與合成資料 |
 
