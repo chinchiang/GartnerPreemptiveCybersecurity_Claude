@@ -8,4 +8,5 @@ data/research.js
 data/skills.js
 downloads/
 skills/*/preemptive-exposure-analysis/references/
-skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py
+skills/claude/preemptive-exposure-analysis/scripts/
+skills/gemini/preemptive-exposure-analysis/scripts/

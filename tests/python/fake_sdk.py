@@ -1,4 +1,4 @@
-"""模型 adapter 測試的共用 helper：載入平臺腳本、假的 openai（Chat Completions、Responses）／anthropic／xai_sdk 模組、讓指定模組 import 失敗。
+"""模型 adapter 測試的共用 helper：載入平臺腳本、假的 openai（Chat Completions、Responses）／anthropic／xai_sdk／google.genai 模組、讓指定模組 import 失敗。
 
 不連網、不需金鑰與 SDK。平臺腳本檔名含連字號（api-workflow.py），所以用 importlib 從路徑載入。
 """
@@ -106,6 +106,28 @@ def fake_xai_sdk(replies):
     chat = types.SimpleNamespace(system=lambda text: ("system", text), user=lambda text: ("user", text),
                                  assistant=lambda text: ("assistant", text))
     return {"xai_sdk": types.SimpleNamespace(Client=Client, chat=chat), "xai_sdk.chat": chat}, record
+
+
+def fake_google_genai(replies, reject_response_format=False):
+    """回傳 ({"google": ..., "google.genai": ...}, 呼叫紀錄)。client.interactions.create 記下參數，依序回傳 replies
+    （回應帶 id＝interaction-1、interaction-2…，與 output_text）；reject_response_format=True 時，帶 response_format 的呼叫會丟出例外。
+    google 也要放進 sys.modules：from google import genai 會先找 google 這個 package。"""
+    record = {"clients": [], "calls": []}
+
+    class Interactions:
+        def create(self, **kwargs):
+            record["calls"].append(kwargs)
+            if reject_response_format and "response_format" in kwargs:
+                raise RuntimeError("response_format is not supported")
+            return types.SimpleNamespace(id=f"interaction-{len(record['calls'])}", output_text=replies.pop(0))
+
+    class Client:
+        def __init__(self, api_key=None):
+            record["clients"].append({"api_key": api_key})
+            self.interactions = Interactions()
+
+    genai = types.SimpleNamespace(Client=Client)
+    return {"google": types.SimpleNamespace(genai=genai), "google.genai": genai}, record
 
 
 class _Block(importlib.abc.MetaPathFinder):

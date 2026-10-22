@@ -324,7 +324,7 @@ def script_preflight(inputs: Inputs, input_schema: dict) -> list:
     任何一列資料缺值或型別不對，都只會變成預檢發現，不會讓腳本預檢本身失敗。
 
     嚴重度放在這裡、而不是交給各渲染端：哪一種問題該擋下分析是規則，不是呈現方式，只能有一份。
-    但它只給 Claude 技能的 validate_inputs.py 用（依它決定結束碼）；四支 api-workflow.py 刻意不看嚴重度——
+    但它只給 Claude 與 Gemini 技能的 validate_inputs.py 用（依它決定結束碼）；五支 api-workflow.py 刻意不看嚴重度——
     腳本預檢只警告、不阻擋分析，授權範圍以外的問題都交給模型寫進資料品質章節並下修信心（#59）。"""
     loaded = {f["name"]: f for f in inputs.files}
     return (_required_file_findings(loaded) + _schema_field_findings(inputs.files, input_schema)

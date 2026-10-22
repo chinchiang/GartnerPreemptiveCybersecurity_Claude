@@ -29,7 +29,7 @@ skills/claude/
     │   ├── input-schema.json          ← 與 skills/shared 相同
     │   └── output-schema.json
     └── scripts/
-        ├── validate_inputs.py         ← 輸入結構檢查（純標準函式庫）
+        ├── validate_inputs.py         ← 輸入結構檢查（純標準函式庫；由 skills/shared/ 產生的複本，勿手改，見 docs/adr/0006）
         └── analysis_workflow.py       ← validate_inputs.py 使用的分析工作流程核心（由 skills/shared/ 產生的複本，勿手改）
 ```
 

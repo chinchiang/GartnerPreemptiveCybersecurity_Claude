@@ -48,9 +48,9 @@ const loadSkillFiles = () => {
 test('data/skills.js 的 .md 檔帶 bodyStart：從那裡切開就是正文；原文仍含 frontmatter', () => {
   const md = loadSkillFiles().filter(f => f.ext === 'md');
   const withFrontmatter = md.filter(f => f.bodyStart > 0);
-  // 已知正確值：skills/ 底下 29 份 .md，其中 19 份有 frontmatter（含 Claude 的 SKILL.md）
-  assert.equal(md.length, 29);
-  assert.equal(withFrontmatter.length, 19);
+  // 已知正確值：skills/ 底下 33 份 .md，其中 21 份有 frontmatter（含 Claude 的 SKILL.md）
+  assert.equal(md.length, 33);
+  assert.equal(withFrontmatter.length, 21);
   assert.ok(withFrontmatter.some(f => f.path === 'skills/claude/preemptive-exposure-analysis/SKILL.md'), 'Claude 的 SKILL.md 有 frontmatter');
   for (const f of md) {
     assert.equal(typeof f.bodyStart, 'number', `${f.path} 沒有 bodyStart`);

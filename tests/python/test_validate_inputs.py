@@ -1,4 +1,4 @@
-"""Claude 技能的 validate_inputs.py：只渲染分析工作流程核心（技能內 scripts/ 的建置複本）的腳本預檢與授權範圍守門。
+"""Claude 與 Gemini 技能的 validate_inputs.py（skills/shared/ 母本的建置複本）：只渲染分析工作流程核心（技能內 scripts/ 的建置複本）的腳本預檢與授權範圍守門。
 結束碼 0（可分析）／1（有必要問題）／2（資料夾不存在）／3（scope 問題）；scope 問題印出核心的中止訊息，
 每個檔案那一行渲染核心的預檢發現（#59），技能資料夾單獨安裝（不帶 skills/shared/）也能執行。
 
@@ -127,11 +127,15 @@ class ValidateInputsTest(unittest.TestCase):
         self.assertEqual(self.line(out, "controls.json"), "[controls.json] 控制項=0")
 
     def test_runs_from_a_standalone_skill_folder(self):
-        installed = Path(self.tmp.name) / ".claude" / "skills" / "preemptive-exposure-analysis"
-        shutil.copytree(SKILL_DIR, installed, ignore=shutil.ignore_patterns("__pycache__"))
-        code, out, err = self.run_script(script=installed / "scripts" / "validate_inputs.py")
-        self.assertEqual(code, 0, out + err)
-        self.assertIn("結果：可以進行分析", out)
+        # Claude Code 裝在 .claude/skills/；Antigravity 與 Gemini CLI 讀工作區的 .agents/skills/
+        for platform, install_dir in (("claude", ".claude"), ("gemini", ".agents")):
+            with self.subTest(platform=platform):
+                installed = Path(self.tmp.name) / install_dir / "skills" / "preemptive-exposure-analysis"
+                shutil.copytree(ROOT / "skills" / platform / "preemptive-exposure-analysis", installed,
+                                ignore=shutil.ignore_patterns("__pycache__"))
+                code, out, err = self.run_script(script=installed / "scripts" / "validate_inputs.py")
+                self.assertEqual(code, 0, out + err)
+                self.assertIn("結果：可以進行分析", out)
 
     def test_non_object_scope_exits_3_without_traceback(self):
         for content in ("[]", '"scope"', "42", "null"):

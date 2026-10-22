@@ -1,3 +1,4 @@
+# 由 scripts/build-data.mjs 從 skills/shared/validate_inputs.py 產生，請改母本後執行 npm run build，勿手動編輯
 #!/usr/bin/env python3
 """輸入結構檢查（純標準函式庫，不連網、不執行任何掃描）。
 
@@ -6,10 +7,11 @@
 結束碼：0 可以分析；1 有必要問題；2 資料夾不存在；3 授權範圍（scope.json）有問題。
 
 這支腳本只負責渲染：授權範圍守門、輸入載入、腳本預檢與預檢發現的嚴重度都由分析工作流程核心提供
-（與四支 api-workflow.py 同一套規則；scope 有問題時印出核心的中止訊息）。每個檔案那一行由核心的預檢發現
+（與五支 api-workflow.py 同一套規則；scope 有問題時印出核心的中止訊息）。每個檔案那一行由核心的預檢發現
 依 kind 渲染、依嚴重度計數，不比對訊息字串（見 GLOSSARY.md「腳本預檢」「預檢發現」）。
-核心是同目錄的 analysis_workflow.py：由建置從 skills/shared/ 複製而來，讓技能資料夾單獨安裝或上傳時
-仍可執行（見 docs/adr/0003）；規則來源是技能內的 references/input-schema.json。
+本檔是母本：建置把它和 analysis_workflow.py 一起複製到 Claude 與 Gemini 技能的 scripts/，讓技能資料夾
+單獨安裝或上傳時仍可執行（見 docs/adr/0003、0006）。執行的是複本：核心是同目錄的 analysis_workflow.py，
+規則來源是技能內的 references/input-schema.json；skills/shared/ 底下沒有 references/，母本本身不直接執行。
 """
 import json
 import sys

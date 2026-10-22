@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-10-21T21:31:19.739Z
+執行時間：2026-10-22T03:16:21.874Z
 模式：full
-結果：98/98 通過
+結果：99/99 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -17,10 +17,10 @@
 | 載入 data/sources.js | ✅ |  |
 | 載入 data/extra.js | ✅ |  |
 | 研究文件 ≥ 7 章 | ✅ | 8 章 |
-| 五個平臺教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,deployment |
-| Skills 涵蓋五平臺 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
+| 六個平臺教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,gemini,deployment |
+| Skills 涵蓋六平臺 + shared | ✅ | chatgpt,claude,deepseek,gemini,glm,grok,shared |
 | 每個平臺都有 SKILL.md 或 system-prompt.md | ✅ |  |
-| references/ 的 .md 複本標題與母本一致 | ✅ | 11 份 |
+| references/ 的 .md 複本標題與母本一致 | ✅ | 13 份 |
 | 所有引用的來源 ID 都存在於來源表 | ✅ | 58 個 ID |
 | 每筆來源都有 verification、url（可為 null）、date、accessed | ✅ |  |
 | 待驗證清單每項都有合法 status | ✅ |  |
@@ -44,6 +44,7 @@
 | 下載檔存在 downloads/skills-chatgpt.zip | ✅ |  |
 | 下載檔存在 downloads/skills-claude.zip | ✅ |  |
 | 下載檔存在 downloads/skills-deepseek.zip | ✅ |  |
+| 下載檔存在 downloads/skills-gemini.zip | ✅ |  |
 | 下載檔存在 downloads/skills-glm.zip | ✅ |  |
 | 下載檔存在 downloads/skills-grok.zip | ✅ |  |
 | 下載檔存在 downloads/skills-shared.zip | ✅ |  |

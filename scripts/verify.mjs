@@ -27,10 +27,10 @@ function staticChecks() {
   }
   const w = ctx.window;
   ok('研究文件 ≥ 7 章', (w.RESEARCH_DOCS || []).length >= 7, `${(w.RESEARCH_DOCS || []).length} 章`);
-  ok('五個平臺教學 + 部署文件', (w.GUIDE_DOCS || []).filter(g => g.platform).length === 5 && (w.GUIDE_DOCS || []).some(g => g.id === 'deployment'), (w.GUIDE_DOCS || []).map(g => g.id).join(','));
+  ok('六個平臺教學 + 部署文件', (w.GUIDE_DOCS || []).filter(g => g.platform).length === 6 && (w.GUIDE_DOCS || []).some(g => g.id === 'deployment'), (w.GUIDE_DOCS || []).map(g => g.id).join(','));
   const platforms = new Set((w.SKILL_FILES || []).map(s => s.platform));
-  ok('Skills 涵蓋五平臺 + shared', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'shared'].every(p => platforms.has(p)), [...platforms].join(','));
-  ok('每個平臺都有 SKILL.md 或 system-prompt.md', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek'].every(p => (w.SKILL_FILES || []).some(s => s.platform === p && /SKILL\.md$|system-prompt\.md$/.test(s.name))));
+  ok('Skills 涵蓋六平臺 + shared', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'gemini', 'shared'].every(p => platforms.has(p)), [...platforms].join(','));
+  ok('每個平臺都有 SKILL.md 或 system-prompt.md', ['chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'gemini'].every(p => (w.SKILL_FILES || []).some(s => s.platform === p && /SKILL\.md$|system-prompt\.md$/.test(s.name))));
   // 複本的標題要與母本相同：網站從 frontmatter 讀標題，標註若擋在 frontmatter 前面，標題就會變成空的
   const masterOf = (s) => (w.SKILL_FILES || []).find(m => m.path === `skills/shared/${s.name}`);
   const refCopies = (w.SKILL_FILES || []).filter(s => s.ext === 'md' && s.path.includes('/references/'));

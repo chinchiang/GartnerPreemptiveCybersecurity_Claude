@@ -1,5 +1,5 @@
 {
-  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。規則只來自 skills/shared/input-schema.json 的 scope 定義，由兩份 schema 解讀判定（Python 分析工作流程核心；assets/scope-gate.js，網站示範引擎與選用後端代理共用，見 docs/adr/0004）。這份案例套在核心、四支 api-workflow.py、validate_inputs.py、網站示範引擎與選用後端代理上，判定必須一致。目前的規則：organization 須含非空白字元（不 trim）；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 必須是非空陣列，且每項為非空白字串（重複不擋）；兩個 *_authorized 必須是布林值。",
+  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。規則只來自 skills/shared/input-schema.json 的 scope 定義，由兩份 schema 解讀判定（Python 分析工作流程核心；assets/scope-gate.js，網站示範引擎與選用後端代理共用，見 docs/adr/0004）。這份案例套在核心、五支 api-workflow.py、兩份 validate_inputs.py（Claude 與 Gemini 技能）、網站示範引擎與選用後端代理上，判定必須一致。目前的規則：organization 須含非空白字元（不 trim）；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 必須是非空陣列，且每項為非空白字串（重複不擋）；兩個 *_authorized 必須是布林值。",
   "cases": [
     { "name": "合成資料原樣", "set": {}, "remove": [], "problems": [] },
     { "name": "issue #26 的重現範例", "set": { "authorized_scope.in_scope_assets": [], "authorized_scope.active_testing_authorized": "no", "reporting.audience": [] }, "remove": [],

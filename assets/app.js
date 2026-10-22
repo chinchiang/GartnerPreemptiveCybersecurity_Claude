@@ -14,8 +14,8 @@
   // 若改回 private，把這裡改成 false 即會隱藏——Pages 站點是公開的，指向 private 儲存庫的
   // 連結對訪客一律是 404。預設值放在 HTML（可見），JS 只負責隱藏，這樣 JS 失效時連結仍在。
   const REPO_PUBLIC = true;
-  const PLATFORM_META = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', glm: 'GLM', deepseek: 'DeepSeek', shared: '共用規格' };
-  const PLATFORM_ORDER = ['shared', 'chatgpt', 'claude', 'grok', 'glm', 'deepseek'];
+  const PLATFORM_META = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', glm: 'GLM', deepseek: 'DeepSeek', gemini: 'Gemini', shared: '共用規格' };
+  const PLATFORM_ORDER = ['shared', 'chatgpt', 'claude', 'grok', 'glm', 'deepseek', 'gemini'];
   const TAG = { fact: '<span class="pill fact">Gartner 明確陳述</span>', third: '<span class="pill">其他來源</span>', infer: '<span class="pill infer">本專案推論</span>', rec: '<span class="pill rec">建議</span>', todo: '<span class="pill todo">待驗證</span>' };
   const VERIFICATION = {
     full: ['已讀全文', 'fact'], 'snippet-multi': ['多來源逐字摘錄', 'fact'], 'snippet-single': ['單一摘錄逐字', 'infer'], paraphrase: ['轉述', 'infer'],
