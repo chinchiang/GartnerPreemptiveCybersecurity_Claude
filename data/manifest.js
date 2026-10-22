@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "9e6518cd4e1c",
+ "contentHash": "d5769a0537f3",
  "research": [
   {
    "id": "00-method",
@@ -94,7 +94,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
    "platform": "chatgpt",
-   "bytes": 9811
+   "bytes": 9799
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/SKILL.md",
@@ -294,7 +294,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/SKILL.md",
    "platform": "glm",
-   "bytes": 10935
+   "bytes": 10923
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/acceptance.md",

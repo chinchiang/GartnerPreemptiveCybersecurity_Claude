@@ -10,7 +10,7 @@ metadata:
 
 # 先制型曝險分析（Preemptive Exposure Analysis）— GLM 後端版
 
-> 本 skill 採 Agent Skills 開放標準（agentskills.io）的 SKILL.md 格式。**同一份 skill 在 Claude Code 內可直接使用，與模型後端無關**：不論 Claude Code 背後接的是 Anthropic 模型、或透過 `ANTHROPIC_BASE_URL` 指向 Z.ai 的 Anthropic 相容端點（GLM Coding Plan，狀態：PARTIALLY VERIFIED），指令內容都相同。`metadata.backend: glm` 只是標記本副本的預期後端，供文件與驗收記錄使用。
+> 本 skill 採 Agent Skills 開放標準（agentskills.io）的 SKILL.md 格式。**同一份 skill 在 Claude Code 內可直接使用，與模型後端無關**：不論 Claude Code 背後接的是 Anthropic 模型、或透過 `ANTHROPIC_BASE_URL` 指向 Z.ai 的 Anthropic 相容端點（GLM Coding Plan，狀態：PARTIALLY VERIFIED），指令內容都相同。`metadata.backend: glm` 只是標記預期後端，供文件與驗收記錄使用。
 >
 > 任務定義、證據要求與人工核准邊界的單一來源是 `skills/shared/task-spec.md`（本目錄 `references/task-spec.md` 為其複本，脫離 repo 時仍可讀）；本檔不得與其牴觸。
 

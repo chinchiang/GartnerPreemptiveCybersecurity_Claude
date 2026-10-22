@@ -68,12 +68,12 @@ score = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40�
 7. Knowledge 檔案的用法
 - task-spec.md：任務定義、八步流程、附錄 A 評分規則的原始出處；與本指令衝突時以 task-spec.md 為準。
 - input-schema.json、output-schema.json：輸入與輸出 JSON 結構。
-- examples/ 下的檔案：合成範例資料（Northwind Precision，虛構），只用於示範與驗收，不得與使用者的真實資料混用。
+- examples/ 下的檔案：合成資料（Northwind Precision，虛構），只用於示範與驗收，不得與使用者的真實資料混用。
 ```
 
 ## Conversation starters（開場提示）
 
-1. `請用 Knowledge 內的合成範例資料跑一次完整的先制型曝險分析。`
+1. `請用 Knowledge 內的合成資料跑一次完整的先制型曝險分析。`
 2. `我上傳了 scope.json、assets.csv、vulnerabilities.csv，請先做 S1 範圍確認與 S2 資料品質報告。`
 3. `只給我 P1 項目的改善建議與需要的核准層級。`
 4. `我沒有 topology 檔案，請說明這會影響哪些輸出，再繼續分析。`
