@@ -48,6 +48,11 @@
 
 ```bash
 gh run list --workflow=ci.yml --commit <完整 SHA> --json databaseId,event --jq '.[] | "\(.event) \(.databaseId)"'
+```
+
+GitHub API 的 `head_sha` 篩選偶爾會回傳空的結果，不會報錯（#118 實測：同一個 SHA 連續查，有時是 0 筆）。沒有輸出時再跑一次就好；也可以從 `gh pr checks <n>` 列出的連結取 run id（網址 `/runs/` 後面那段數字）。拿到兩個 run id 之後：
+
+```bash
 D=scratch/<目錄>
 gh run download <push 的 run-id> -n verify-report-and-screenshots -D "$D/push"
 gh run download <pull_request 的 run-id> -n verify-report-and-screenshots -D "$D/pr"
