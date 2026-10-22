@@ -56,21 +56,21 @@ jobs:
           fi
       - name: Python skills compile and dry-run (no API keys)
         run: |
-          python3 -m py_compile skills/shared/*.py skills/*/api-workflow.py skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py
-          for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run >/dev/null; done
-          python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org
+          python3 -m py_compile skills/shared/*.py skills/*/api-workflow.py skills/*/preemptive-exposure-analysis/scripts/*.py
+          for p in chatgpt grok glm deepseek gemini; do python3 skills/$p/api-workflow.py --dry-run >/dev/null; done
+          for p in claude gemini; do python3 skills/$p/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org >/dev/null; done
       - name: Python tests (analysis workflow core, model adapters with fake SDKs, scope gate shared cases; stdlib unittest)
         run: python3 -m unittest discover -s tests/python -v
       - name: Platform skill-package ZIPs run standalone after unzip (dry-run, no API keys)
         run: |
-          for p in chatgpt grok glm deepseek claude; do
+          for p in chatgpt grok glm deepseek gemini claude; do
             d=$(mktemp -d)
             {
               python3 -m zipfile -e "downloads/skills-$p.zip" "$d" &&
-              if [ "$p" = claude ]; then
-                (cd "$d" && python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org >/dev/null)
-              else
-                (cd "$d" && python3 "skills/$p/api-workflow.py" --dry-run >/dev/null)
+              if [ "$p" != claude ]; then (cd "$d" && python3 "skills/$p/api-workflow.py" --dry-run >/dev/null); fi &&
+              # 會被單獨安裝的技能資料夾（Claude、Gemini）：技能內的 validate_inputs.py 也要能跑
+              if [ "$p" = claude ] || [ "$p" = gemini ]; then
+                (cd "$d" && python3 "skills/$p/preemptive-exposure-analysis/scripts/validate_inputs.py" examples/synthetic-org >/dev/null)
               fi
             } || { echo "::error::downloads/skills-$p.zip 無法解壓或解壓後無法執行，請檢查 scripts/skill-packages.mjs 的對照表"; exit 1; }
             rm -rf "$d"
@@ -78,7 +78,7 @@ jobs:
       - name: Demo engine and scripts refuse without scope (--no-scope, --exclude scope)
         run: |
           node scripts/run-demo.mjs --no-scope && { echo '缺 scope 應拒絕'; exit 1; } || echo '缺 scope 已拒絕（exit 2）'
-          for p in chatgpt grok glm deepseek; do python3 skills/$p/api-workflow.py --dry-run --exclude scope >/dev/null 2>&1 && { echo "$p 缺 scope 未中止"; exit 1; } || true; done
+          for p in chatgpt grok glm deepseek gemini; do python3 skills/$p/api-workflow.py --dry-run --exclude scope >/dev/null 2>&1 && { echo "$p 缺 scope 未中止"; exit 1; } || true; done
       - name: Backend worker builds with embedded prompt (syntax only, no deploy)
         run: node scripts/build-worker.mjs && node --check backend/dist/worker.js
 

@@ -33,20 +33,25 @@ export function extractCorePrompt(md) {
 // 對照表：skills/ 底下每個目錄一列。
 // needs＝腳本執行時讀取的母本（ZIP 維持 repo 目錄結構，腳本不用改）；examples＝附上合成資料（腳本的預設輸入）；
 // copies＝要複製進 preemptive-exposure-analysis/references/ 的母本（skills/shared/ 下的檔名），讓技能包脫離 repo 時仍可讀；
-// scripts＝要複製進 preemptive-exposure-analysis/scripts/ 的 Python 母本，讓技能資料夾單獨安裝時腳本仍可執行（見 ADR 0003）；
+// scripts＝要複製進 preemptive-exposure-analysis/scripts/ 的 Python 母本，讓技能資料夾單獨安裝時腳本仍可執行（見 ADR 0003、0006）；
 // embeds＝含核心提示詞嵌入區塊的手寫檔（file 相對於 skills/<平臺>/）與區塊所在的標題：標題行以 heading 開頭（前綴比對），全檔只能有一行。
-const SCRIPT_NEEDS = [CORE_PROMPT, `${SHARED_DIR}output-schema.json`]; // 四支 api-workflow.py 共同讀取
+const SCRIPT_NEEDS = [CORE_PROMPT, `${SHARED_DIR}output-schema.json`]; // 五支 api-workflow.py 共同讀取
 // 改用分析工作流程核心的平臺另外需要核心本身，以及核心用來推導守門規則的 input-schema.json
 const WORKFLOW_NEEDS = [...SCRIPT_NEEDS, `${SHARED_DIR}input-schema.json`, `${SHARED_DIR}analysis_workflow.py`];
 const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 'scoring-rules.md', 'task-spec.md'];
 const SYSTEM_PROMPT_EMBED = { file: 'system-prompt.md', heading: '## 可直接複製的提示詞' };
 const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
+// 附 validate_inputs.py 的技能資料夾（Claude、Gemini；見 ADR 0003、0006）：SKILL.md 是手寫的精簡版、不引用 task-spec；
+// scripts/ 放 validate_inputs.py 與它載入的核心，兩支都是 skills/shared/ 母本的複本，資料夾被單獨複製或上傳時仍可執行
+const SKILL_FOLDER_REFERENCES = REFERENCES.filter(n => n !== 'task-spec.md');
+const SKILL_FOLDER_SCRIPTS = ['analysis_workflow.py', 'validate_inputs.py'];
 const PACKAGES = {
   chatgpt:  { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [], scripts: [] },
   claude:   { needs: [], examples: true,                // 沒有 api-workflow.py；合成資料給 validate_inputs.py 當預設輸入
-              copies: REFERENCES.filter(n => n !== 'task-spec.md'), embeds: [], // SKILL.md 不引用 task-spec
-              scripts: ['analysis_workflow.py'] },        // validate_inputs.py 用的核心複本：技能資料夾會被單獨複製或上傳
+              copies: SKILL_FOLDER_REFERENCES, embeds: [], scripts: SKILL_FOLDER_SCRIPTS },
   deepseek: { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED], scripts: [] },
+  gemini:   { needs: WORKFLOW_NEEDS, examples: true,    // api-workflow.py 照 ADR 0002 讀母本；技能資料夾照 Claude 的寫法單獨運作
+              copies: SKILL_FOLDER_REFERENCES, embeds: [], scripts: SKILL_FOLDER_SCRIPTS },
   glm:      { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [SYSTEM_PROMPT_EMBED, SKILL_MD_EMBED], scripts: [] },
   grok:     { needs: WORKFLOW_NEEDS, examples: true, copies: [], embeds: [SYSTEM_PROMPT_EMBED], scripts: [] }, // 沒有原生 skills，也就沒有 references/
   shared:   { needs: [], examples: false, copies: [], embeds: [], scripts: [] } // 母本本身，不是平臺；沿用現狀，skills-shared.zip 照舊只放母本
@@ -82,13 +87,14 @@ export function replaceExactlyOnce(content, pattern, replacement, message) {
   return content.replace(pattern, replacement);
 }
 
-// 規則說明行（模型側守門的規則來源，見 docs/adr/0005）：核心提示詞母本與三份改寫版裡以固定開頭辨識的一行，
+// 規則說明行（模型側守門的規則來源，見 docs/adr/0005）：核心提示詞母本與四份改寫版裡以固定開頭辨識的一行，
 // 換成「開頭＋scope 定義的規則說明＋。」；說明由 assets/scope-gate.js 從 input-schema.json 的 scope 定義產生。
 // 每個檔案須恰好一行，0 行或 2 行以上都中止。「勿手動編輯」的說明只手寫在核心提示詞與 Custom GPT 指示的 ```text 區塊外面
-// （兩份 SKILL.md 整份都會被模型讀到，所以不加），不由建置寫入；改了沒重建由測試與 CI 的 diff 擋下。
+// （三份 SKILL.md 整份都會被模型讀到，所以不加），不由建置寫入；改了沒重建由測試與 CI 的 diff 擋下。
 export const RULE_LINE_LEAD = '- scope 必填欄位的規則：';
 export const RULE_NOTE_TARGETS = [CORE_PROMPT, 'skills/chatgpt/custom-gpt-instructions.md',
-  'skills/chatgpt/preemptive-exposure-analysis/SKILL.md', 'skills/claude/preemptive-exposure-analysis/SKILL.md'];
+  'skills/chatgpt/preemptive-exposure-analysis/SKILL.md', 'skills/claude/preemptive-exposure-analysis/SKILL.md',
+  'skills/gemini/preemptive-exposure-analysis/SKILL.md'];
 function ruleNoteFiles(files) {
   const schema = files.find(f => f.path === INPUT_SCHEMA);
   if (!schema) throw new Error(`規則說明的母本不存在：${INPUT_SCHEMA}`);

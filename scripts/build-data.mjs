@@ -87,7 +87,8 @@ const skillsDir = out('skills');
 // system-prompt.md 的平臺說明是手寫的，所以輸入要含整個 skills/；scope-gate.js 不在 skills/ 底下，另外放進輸入。
 const sourceFiles = [...walk(skillsDir).map(f => ({ path: relPosix(f), content: readText(f) })),
   { path: 'assets/scope-gate.js', content: readText(out('assets/scope-gate.js')) }];
-for (const c of generatedFiles(sourceFiles)) writeFileSync(out(c.path), c.content);
+// 新平臺第一次建置時 references/、scripts/ 還不存在，先建目錄再寫
+for (const c of generatedFiles(sourceFiles)) { mkdirSync(dirname(out(c.path)), { recursive: true }); writeFileSync(out(c.path), c.content); }
 const skillFiles = walk(skillsDir).map(f => {
   const rel = relPosix(f);
   const platform = rel.split('/')[1];

@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "77a48b113b28",
+ "contentHash": "1cf3dea928a8",
  "research": [
   {
    "id": "00-method",
@@ -70,6 +70,11 @@ window.BUILD_MANIFEST = {
    "path": "docs/guides/deepseek.md"
   },
   {
+   "id": "gemini",
+   "title": "Gemini 安裝與使用教學",
+   "path": "docs/guides/gemini.md"
+  },
+  {
    "id": "deployment",
    "title": "部署與維護",
    "path": "docs/guides/deployment.md"
@@ -134,7 +139,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/README.md",
    "platform": "claude",
-   "bytes": 3411
+   "bytes": 3480
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/SKILL.md",
@@ -164,12 +169,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 39034
+   "bytes": 39045
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
    "platform": "claude",
-   "bytes": 6652
+   "bytes": 6949
   },
   {
    "path": "skills/deepseek/README.md",
@@ -220,6 +225,56 @@ window.BUILD_MANIFEST = {
    "path": "skills/deepseek/system-prompt.md",
    "platform": "deepseek",
    "bytes": 6511
+  },
+  {
+   "path": "skills/gemini/README.md",
+   "platform": "gemini",
+   "bytes": 5010
+  },
+  {
+   "path": "skills/gemini/api-workflow.py",
+   "platform": "gemini",
+   "bytes": 9788
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/SKILL.md",
+   "platform": "gemini",
+   "bytes": 7223
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/references/acceptance.md",
+   "platform": "gemini",
+   "bytes": 1977
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/references/input-schema.json",
+   "platform": "gemini",
+   "bytes": 6964
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/references/output-schema.json",
+   "platform": "gemini",
+   "bytes": 6406
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/references/scoring-rules.md",
+   "platform": "gemini",
+   "bytes": 4156
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py",
+   "platform": "gemini",
+   "bytes": 39045
+  },
+  {
+   "path": "skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py",
+   "platform": "gemini",
+   "bytes": 6949
+  },
+  {
+   "path": "skills/gemini/requirements.txt",
+   "platform": "gemini",
+   "bytes": 73
   },
   {
    "path": "skills/glm/README.md",
@@ -309,7 +364,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 38903
+   "bytes": 38914
   },
   {
    "path": "skills/shared/core-prompt.md",
@@ -335,12 +390,18 @@ window.BUILD_MANIFEST = {
    "path": "skills/shared/task-spec.md",
    "platform": "shared",
    "bytes": 11158
+  },
+  {
+   "path": "skills/shared/validate_inputs.py",
+   "platform": "shared",
+   "bytes": 6820
   }
  ],
  "downloads": [
   "downloads/skills-chatgpt.zip",
   "downloads/skills-claude.zip",
   "downloads/skills-deepseek.zip",
+  "downloads/skills-gemini.zip",
   "downloads/skills-glm.zip",
   "downloads/skills-grok.zip",
   "downloads/skills-shared.zip",

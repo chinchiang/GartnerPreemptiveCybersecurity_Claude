@@ -94,7 +94,7 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 兩段式對話：第 1 段要 Markdown 報告，第 2 段延續同一對話、只要一次 JSON。腳本不傳入任何工具，也不讀取 `tool-definitions.json`。
 
-若要使用 function calling（腳本不會自動接上）：把 `tool-definitions.json` 的 `tools` 傳入 SDK 的 `tool()` 定義，並在你的程式中實作三個函式（可直接呼叫 `skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py` 的邏輯做 `load_input_bundle`）。
+若要使用 function calling（腳本不會自動接上）：把 `tool-definitions.json` 的 `tools` 傳入 SDK 的 `tool()` 定義，並在你的程式中實作三個函式（可直接呼叫 `skills/shared/validate_inputs.py` 的邏輯做 `load_input_bundle`，它是 Claude 與 Gemini 技能裡那份複本的母本）。
 
 ## 8. 使用範例、預期結果及常見問題
 

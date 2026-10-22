@@ -41,6 +41,10 @@ const repo = [
   'skills/chatgpt/api-workflow.py',
   'skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py',
   'skills/deepseek/api-workflow.py',
+  'skills/gemini/README.md',
+  'skills/gemini/api-workflow.py',
+  'skills/gemini/preemptive-exposure-analysis/SKILL.md',
+  'skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py',
   'skills/glm/api-workflow.py',
   'skills/grok/README.md',
   'skills/grok/api-workflow.py',
@@ -48,7 +52,8 @@ const repo = [
   'skills/shared/core-prompt.md',
   'skills/shared/input-schema.json',
   'skills/shared/output-schema.json',
-  'skills/shared/task-spec.md'
+  'skills/shared/task-spec.md',
+  'skills/shared/validate_inputs.py'
 ].map(path => ({ path, content: `內容：${path}` }));
 const paths = (files) => files.map(f => f.path);
 
@@ -72,7 +77,22 @@ test('對照表宣告的母本不存在時中止，錯誤訊息指出平臺與�
 });
 
 test('skills/ 底下有對照表沒有的目錄就中止，提示要在對照表補上一列', () => {
-  assert.throws(() => packageFiles('gemini', repo), { message: /對照表.*gemini/ });
+  assert.throws(() => packageFiles('mistral', repo), { message: /對照表.*mistral/ });
+});
+
+test('Gemini 技能包：技能資料夾（單獨安裝用）加上 api-workflow.py 執行時讀取的母本與合成資料', () => {
+  assert.deepEqual(paths(packageFiles('gemini', repo)), [
+    'examples/synthetic-org/assets.csv',
+    'examples/synthetic-org/scope.json',
+    'skills/gemini/README.md',
+    'skills/gemini/api-workflow.py',
+    'skills/gemini/preemptive-exposure-analysis/SKILL.md',
+    'skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py',
+    'skills/shared/analysis_workflow.py',
+    'skills/shared/core-prompt.md',
+    'skills/shared/input-schema.json',
+    'skills/shared/output-schema.json'
+  ]);
 });
 
 test('Claude 技能包不帶母本但附合成資料；shared 只放母本本身', () => {
@@ -87,12 +107,13 @@ test('Claude 技能包不帶母本但附合成資料；shared 只放母本本身
     'skills/shared/core-prompt.md',
     'skills/shared/input-schema.json',
     'skills/shared/output-schema.json',
-    'skills/shared/task-spec.md'
+    'skills/shared/task-spec.md',
+    'skills/shared/validate_inputs.py'
   ]);
 });
 
-// 四支 api-workflow.py 執行時讀取 core-prompt.md 與 output-schema.json，預設輸入是 examples/synthetic-org/
-for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
+// 五支 api-workflow.py 執行時讀取 core-prompt.md 與 output-schema.json，預設輸入是 examples/synthetic-org/
+for (const platform of ['chatgpt', 'deepseek', 'gemini', 'glm', 'grok']) {
   test(`${platform} 技能包帶齊 api-workflow.py 執行時讀取的母本與合成資料`, () => {
     const got = paths(packageFiles(platform, repo));
     for (const p of [`skills/${platform}/api-workflow.py`, 'skills/shared/core-prompt.md', 'skills/shared/output-schema.json',
@@ -102,14 +123,15 @@ for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
   });
 }
 
-// 母本：模擬 skills/shared/ 的六份會被複製的檔案
+// 母本：模擬 skills/shared/ 的七份會被複製的檔案
 const masters = [
   { path: 'skills/shared/acceptance.md', content: '# 驗收清單\n\n| # | 檢查 |\n' },
   { path: 'skills/shared/analysis_workflow.py', content: '"""分析工作流程核心。"""\n\nimport json\n' },
   { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入",\n  "properties": { "scope": { "type": "object", "required": ["organization"], "properties": { "organization": { "type": "string", "minLength": 1 } } } }\n}\n' },
   { path: 'skills/shared/output-schema.json', content: '{\n  "title": "輸出"\n}\n' },
   { path: 'skills/shared/scoring-rules.md', content: '# 示範評分規則\n\n規則內容。\n' },
-  { path: 'skills/shared/task-spec.md', content: '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n\n# 共用任務規格\n' }
+  { path: 'skills/shared/task-spec.md', content: '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n\n# 共用任務規格\n' },
+  { path: 'skills/shared/validate_inputs.py', content: '"""輸入檢查。"""\n\nimport analysis_workflow\n' }
 ];
 // 平臺的系統提示詞：手寫的說明＋核心提示詞區塊＋手寫的範例區塊（也是 ```text）
 const systemPromptMd = (name) => `---\ntitle: ${name} 系統提示詞\n---\n\n# ${name}\n\n> 用法說明。\n\n## 可直接複製的提示詞\n\n\`\`\`text\n舊的提示詞\n\`\`\`\n\n## 建議的第一則使用者訊息（範例）\n\n\`\`\`text\n請開始分析。\n\`\`\`\n`;
@@ -119,7 +141,7 @@ const skillMd = (name) => `---\nname: preemptive-exposure-analysis\ndescription:
 const RULE_LINE = '- scope 必填欄位的規則：organization 須為非空字串。';
 const OLD_RULE_LINE = '- scope 必填欄位的規則：舊的說明。';
 const CORE_TEXT = `你是先制型曝險分析助理。\n${RULE_LINE}`;
-// 改寫版：手寫的內容裡有一行規則說明（Custom GPT 指示、Codex 與 Claude 的 SKILL.md）
+// 改寫版：手寫的內容裡有一行規則說明（Custom GPT 指示、Codex、Claude 與 Gemini 的 SKILL.md）
 const RULE_NOTE_REWRITES = RULE_NOTE_TARGETS.filter(path => path !== 'skills/shared/core-prompt.md');
 const rewriteMd = (path) => `# ${path}\n\n## 安全與授權邊界\n\n- 未提供 scope 就拒絕分析。\n${OLD_RULE_LINE}\n- 不執行攻擊指令。\n`;
 // 授權範圍守門的 JS 解讀（assets/scope-gate.js）：手寫的程式＋scope 定義的嵌入區塊（見 docs/adr/0004）
@@ -163,6 +185,14 @@ test('.py 複本放在 Claude 技能的 scripts/ 底下，檔首加一行 Python
     '"""分析工作流程核心。"""\n\nimport json\n');
 });
 
+test('validate_inputs.py 的母本在 skills/shared/：Claude 與 Gemini 技能的 scripts/ 各放一份複本，檔首加一行標註', () => {
+  for (const platform of ['claude', 'gemini']) {
+    assert.equal(copyAt(generatedFiles(sources), `skills/${platform}/preemptive-exposure-analysis/scripts/validate_inputs.py`).content,
+      '# 由 scripts/build-data.mjs 從 skills/shared/validate_inputs.py 產生，請改母本後執行 npm run build，勿手動編輯\n' +
+      '"""輸入檢查。"""\n\nimport analysis_workflow\n', platform);
+  }
+});
+
 test('要放進 scripts/ 的母本不存在時中止，錯誤訊息指出平臺與缺少的母本', () => {
   const withoutCore = sources.filter(f => f.path !== 'skills/shared/analysis_workflow.py');
   assert.throws(() => generatedFiles(withoutCore), { message: /claude.*母本不存在.*skills\/shared\/analysis_workflow\.py/ });
@@ -173,7 +203,7 @@ test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本',
   assert.throws(() => generatedFiles(withoutTaskSpec), { message: /母本不存在.*skills\/shared\/task-spec\.md/ });
 });
 
-test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-spec、另有 scripts/ 的核心複本，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
+test('建置產物集合：各平臺複本與現狀一致（Claude 與 Gemini 沒有 task-spec、另有 scripts/ 的核心與 validate_inputs.py 複本，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
   assert.deepEqual(paths(generatedFiles(sources)).sort(), [
     'assets/scope-gate.js',
     'skills/chatgpt/custom-gpt-instructions.md',
@@ -189,6 +219,7 @@ test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-s
     'skills/claude/preemptive-exposure-analysis/references/output-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py',
+    'skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py',
     'skills/deepseek/preemptive-exposure-analysis/SKILL.md',
     'skills/deepseek/preemptive-exposure-analysis/references/acceptance.md',
     'skills/deepseek/preemptive-exposure-analysis/references/input-schema.json',
@@ -196,6 +227,13 @@ test('建置產物集合：各平臺複本與現狀一致（Claude 沒有 task-s
     'skills/deepseek/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/deepseek/preemptive-exposure-analysis/references/task-spec.md',
     'skills/deepseek/system-prompt.md',
+    'skills/gemini/preemptive-exposure-analysis/SKILL.md',
+    'skills/gemini/preemptive-exposure-analysis/references/acceptance.md',
+    'skills/gemini/preemptive-exposure-analysis/references/input-schema.json',
+    'skills/gemini/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/gemini/preemptive-exposure-analysis/references/scoring-rules.md',
+    'skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py',
+    'skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py',
     'skills/glm/preemptive-exposure-analysis/SKILL.md',
     'skills/glm/preemptive-exposure-analysis/references/acceptance.md',
     'skills/glm/preemptive-exposure-analysis/references/input-schema.json',
@@ -281,8 +319,8 @@ test('SKILL.md 的「## 核心指令」標題與 ```text 區塊之間夾了文�
   assert.throws(() => generatedFiles(textBetween), { message: /skills\/deepseek\/preemptive-exposure-analysis\/SKILL\.md.*## 核心指令/ });
 });
 
-test('改用分析工作流程核心的平臺（四個有 api-workflow.py 的平臺）另外帶上核心與它讀取的 input-schema.json', () => {
-  for (const platform of ['chatgpt', 'deepseek', 'glm', 'grok']) {
+test('改用分析工作流程核心的平臺（五個有 api-workflow.py 的平臺）另外帶上核心與它讀取的 input-schema.json', () => {
+  for (const platform of ['chatgpt', 'deepseek', 'gemini', 'glm', 'grok']) {
     const got = paths(packageFiles(platform, repo));
     for (const p of ['skills/shared/analysis_workflow.py', 'skills/shared/input-schema.json']) assert.ok(got.includes(p), `${platform} 技能包缺少 ${p}`);
   }
@@ -294,7 +332,7 @@ test('核心提示詞母本的規則說明行換成由 scope 定義產生的說�
     `---\ntitle: 核心提示詞\n---\n\n\`\`\`text\n${CORE_TEXT}\n\`\`\`\n`);
 });
 
-test('改寫版（Custom GPT 指示、Codex 與 Claude 的 SKILL.md）的規則說明行換成同一行，其餘手寫內容不變', () => {
+test('改寫版（Custom GPT 指示、Codex、Claude 與 Gemini 的 SKILL.md）的規則說明行換成同一行，其餘手寫內容不變', () => {
   const generated = generatedFiles(sources);
   for (const path of RULE_NOTE_REWRITES) {
     assert.equal(copyAt(generated, path).content, rewriteMd(path).replace(OLD_RULE_LINE, RULE_LINE), path);
