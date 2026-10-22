@@ -13,7 +13,7 @@ role: readme
 |---|---|---|
 | Antigravity 的 Agent Skills | `antigravity.google/docs/skills`（頁面沒有日期）：App、CLI、IDE 都支援 SKILL.md；工作區 `<workspace>/.agents/skills/<skill>/`（相容舊的 `.agent/skills`），全域 App／IDE `~/.gemini/config/skills/`、CLI `~/.gemini/antigravity-cli/skills/`；frontmatter `name` 選填、`description` 必填；App 可打 `/<skill-name>` 手動呼叫 | **已查證** |
 | Gemini CLI 的 Agent Skills | `geminicli.com/docs/cli/skills/`（Last updated 2026-04-30）：工作區 `.gemini/skills/` 或 `.agents/skills/`（同層 `.agents/skills/` 優先），使用者 `~/.gemini/skills/` 或 `~/.agents/skills/`；`gemini skills install <git-url\|路徑> [--scope user\|workspace] [--path <子目錄>]`；模型呼叫 `activate_skill`、使用者確認後才載入 | **已查證** |
-| Gemini CLI 與 Antigravity CLI | 同一頁的公告：免費方案與 Google One 使用者的 Gemini CLI 已於 2026-06-18 由 Antigravity CLI 取代；Gemini CLI 未針對 Gemini 4 Argon 最佳化 | 已查證 |
+| Gemini CLI 與 Antigravity CLI | 同一頁的公告（2026-10-22 讀到，比頁面的 Last updated 晚）：免費方案與 Google One 使用者的 Gemini CLI 已於 2026-06-18 由 Antigravity CLI 取代；Gemini CLI 未針對 Gemini 4 Argon 最佳化 | 已查證 |
 | Gemini 應用、Gemini API 的 Skills | 沒找到官方文件 | 待驗證 |
 | 模型 | `ai.google.dev/gemini-api/docs/models`（Last updated 2026-10-21）：新專案建議 `gemini-3.8-flash`（或 3.5 Flash-Lite）；旗艦推理模型 `gemini-4-argon` | 已查證 |
 | google-genai SDK | `ai.google.dev/gemini-api/docs/libraries`（2026-10-15）：套件 `google-genai`；舊的 `google-generativeai` 自 2025-11-30 起棄用。`docs/text-generation`（2026-10-13）：`client.interactions.create(model, input, system_instruction, generation_config)`，多輪用 `previous_interaction_id`；Gemini 4 與 3.6 以上的模型忽略自訂的 temperature。`googleapis/python-genai` README：client 自動讀 `GEMINI_API_KEY` 或 `GOOGLE_API_KEY`，兩者都有時 `GOOGLE_API_KEY` 優先 | 已查證；Interactions 從哪一版開始，SDK README 沒寫（待驗證） |

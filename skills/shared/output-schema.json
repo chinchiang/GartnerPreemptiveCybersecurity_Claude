@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/skills/shared/output-schema.json",
   "title": "Preemptive Exposure Analysis — Output Bundle",
-  "description": "五平臺共用的輸出格式。每個區塊都必須帶 confidence、basis、missing_inputs、requires_human。所有攻擊路徑的 status 固定為 hypothesis，除非另有已授權驗證結果。",
+  "description": "六平臺共用的輸出格式。每個區塊都必須帶 confidence、basis、missing_inputs、requires_human。所有攻擊路徑的 status 固定為 hypothesis，除非另有已授權驗證結果。",
   "type": "object",
   "required": ["meta", "data_quality", "exposure_priorities", "attack_path_hypotheses", "remediation", "validation_plan", "executive_summary", "metrics", "human_review_points"],
   "$defs": {

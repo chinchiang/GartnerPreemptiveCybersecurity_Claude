@@ -45,4 +45,4 @@ skills/claude/
 
 - Skill 只是指令與參考檔；Claude 不會主動連到掃描器或情資平臺。需要即時資料時，透過 MCP 連接器或由使用者上傳。
 - 不執行任何主動測試；驗證計畫只是提案。
-- 同一個 skill 目錄可同時用於 Codex（`.agents/skills/`）與以 Claude Code 為宿主的 GLM／DeepSeek 後端，因為使用相同的開放標準。
+- 同一個 skill 目錄可同時用於 Codex、Antigravity、Gemini CLI（都讀 `.agents/skills/`）與以 Claude Code 為宿主的 GLM／DeepSeek 後端，因為使用相同的開放標準。

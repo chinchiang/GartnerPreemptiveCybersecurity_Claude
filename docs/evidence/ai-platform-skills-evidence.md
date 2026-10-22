@@ -1,9 +1,9 @@
-# Reusable "Skills" / Custom Instructions / Workflows Across Five AI Platforms — Evidence File
+# Reusable "Skills" / Custom Instructions / Workflows Across Six AI Platforms — Evidence File
 
-**Accessed date for all sources:** 2026-09-09
-**Scope:** ChatGPT (OpenAI), Claude (Anthropic), Grok (xAI), GLM (Zhipu / Z.ai), DeepSeek — plus the Agent Skills open standard (agentskills.io).
+**Accessed date for all sources:** 2026-09-09, except section 6 (Gemini), added 2026-10-22
+**Scope:** ChatGPT (OpenAI), Claude (Anthropic), Grok (xAI), GLM (Zhipu / Z.ai), DeepSeek, Gemini (Google) — plus the Agent Skills open standard (agentskills.io).
 
-> **中文說明**：本檔是研究代理在 2026-09-09 逐條記錄的英文原始證據（平臺能力、官方文件可達性、查證等級），供核對網站「平臺比較」與「證據與來源」表使用；正體中文整理版見 `docs/research/07-platforms.md` 與各平臺教學。注意：agentskills.io 採用清單宣告 50 筆、本檔只擷取到 45 筆，因此「xAI／Z.ai／DeepSeek 不在清單上」屬部分查證。
+> **中文說明**：本檔是研究代理在 2026-09-09 逐條記錄的英文原始證據（第 6 節 Gemini 於 2026-10-22 新增，當時官方頁面都能開啟）（平臺能力、官方文件可達性、查證等級），供核對網站「平臺比較」與「證據與來源」表使用；正體中文整理版見 `docs/research/07-platforms.md` 與各平臺教學。注意：agentskills.io 採用清單宣告 50 筆、本檔只擷取到 45 筆，因此「xAI／Z.ai／DeepSeek 不在清單上」屬部分查證。
 
 ## Verification method and an important caveat
 
@@ -241,6 +241,50 @@ DeepSeek has no first-party skills feature. Use the model through a skills-capab
 
 ---
 
+## 6. Gemini (Google) — added 2026-10-22
+
+All pages below were reachable and fetched in full on 2026-10-22 (no egress block). Quotes are verbatim; "Last updated" dates are as shown on each page.
+
+### Model vs. application
+
+- **Model layer:** Gemini models served by the Gemini API (`ai.google.dev`).
+- **Application/runtime layer:** Antigravity (App, CLI, IDE), Gemini CLI, the Gemini API (google-genai SDK; an OpenAI-compatible endpoint), and the Gemini app (gemini.google.com).
+
+### Models — VERIFIED (`ai.google.dev/gemini-api/docs/models`, Last updated 2026-10-21)
+
+- Gemini 4 Argon (`gemini-4-argon`) is labelled "Our flagship reasoning model".
+- "For any new projects, use our latest models: 3.5 Flash-Lite or 3.8 Flash." (`gemini-3.8-flash`).
+- `docs/text-generation` (Last updated 2026-10-13): Gemini 4 and Gemini 3.6+ models ignore custom temperature, top_p and top_k values.
+
+### Hosting apps and customization mechanisms
+
+- **VERIFIED — Antigravity (`antigravity.google/docs/skills`, no date shown):** skills are "an open standard" built around `SKILL.md`, available in the Antigravity App, CLI and IDE. Workspace: `<workspace-root>/.agents/skills/<skill-folder>/` ("Antigravity defaults to `.agents/skills`, but still maintains backward compatibility for `.agent/skills`"). Global: App/IDE `~/.gemini/config/skills/`, CLI `~/.gemini/antigravity-cli/skills/`. Frontmatter: `name` optional ("Defaults to the folder name if not provided"), `description` required. Manual invocation in the App: "Type `/<skill-name>` in the prompt panel to explicitly invoke a skill."
+- **VERIFIED — Gemini CLI (`geminicli.com/docs/cli/skills/`, Last updated Apr 30, 2026; same content as `google-gemini/gemini-cli` `docs/cli/skills.md`):** based on the Agent Skills standard; tiers (lowest to highest precedence) built-in, extension, user (`~/.gemini/skills/` or the `~/.agents/skills/` alias), workspace (`.gemini/skills/` or the `.agents/skills/` alias); within a tier `.agents/skills/` wins. Install: `gemini skills install <git-url-or-local-path>` with `--scope user|workspace` and `--path` for a repo subdirectory. Activation: the model calls `activate_skill`; the user confirms before the SKILL.md body is loaded.
+- **VERIFIED — notice on the same page (seen 2026-10-22; newer than the page's Last updated date):** for unpaid tier and Google One users, "Gemini CLI was replaced by Antigravity CLI on June 18th, 2026"; Gemini CLI "has not been optimized for Gemini 4 Argon".
+- **UNVERIFIED:** no official page found describing Skills (or SKILL.md uploads) in the Gemini app or the Gemini API (the URLs tried returned 404).
+
+### Agent Skills support
+
+Yes in Antigravity and Gemini CLI (VERIFIED). Gemini CLI also appears on the agentskills.io adopter list (section 0; the list itself is VERIFIED from the site's data file).
+
+### API / tool calling
+
+- **VERIFIED (`docs/libraries`, Last updated 2026-10-15):** Python package `google-genai` (repo `googleapis/python-genai`); the legacy `google-generativeai` library is "deprecated as of November 30th, 2025".
+- **VERIFIED (`docs/text-generation`):** `client.interactions.create(model=..., input=..., system_instruction=..., generation_config={"max_output_tokens": ...})`, reply in `interaction.output_text`; multi-turn via `previous_interaction_id`.
+- **VERIFIED (`docs/structured-output`, Last updated 2026-10-21):** JSON via `response_format` (`"type": "text"`, `"mime_type": "application/json"`), schema in the `schema` field; only a subset of JSON Schema is supported (`minLength`, `maxLength` etc. are not enforced). Whether `response_format` without a schema is accepted is not stated — UNVERIFIED.
+- **VERIFIED (`googleapis/python-genai` README):** "Set the `GEMINI_API_KEY` or `GOOGLE_API_KEY`. It will automatically be picked up by the client"; "if both are set, `GOOGLE_API_KEY` takes precedence". The README does not say which version added Interactions — UNVERIFIED.
+- **VERIFIED (`docs/openai`, Last updated 2026-10-14):** OpenAI-compatible base URL `https://generativelanguage.googleapis.com/v1beta/openai/`; "Support for the OpenAI libraries is still in beta". `response_format={"type": "json_object"}` is not mentioned — UNVERIFIED.
+
+### Skill-equivalent mechanism recommendation
+
+Ship a standard Agent Skill folder for Antigravity and Gemini CLI (installed into the workspace `.agents/skills/`), with a bundled input/scope checker script so the folder works on its own; plus an API script on the Interactions API, with the OpenAI-compatible endpoint as a fallback.
+
+### Unverified items
+
+- Skills in the Gemini app and the Gemini API; JSON mode without a schema; whether `system_instruction` carries over with `previous_interaction_id`; `json_object` on the OpenAI-compatible endpoint; the minimum google-genai version for Interactions.
+
+---
+
 ## Cross-platform summary (as of 2026-09-09)
 
 | Platform | Native reusable-skill format | SKILL.md (agentskills.io) support | Chat-app "project" container | Evidence tier |
@@ -250,6 +294,7 @@ DeepSeek has no first-party skills feature. Use the model through a skills-capab
 | Grok | None verified | No evidence | Workspaces / Custom Agents (reported) | API: VERIFIED via SDK; app: UNVERIFIED |
 | GLM / Z.ai | Publishes SKILL.md skills for third-party hosts; Claude Code plugin marketplace | Partial (as a skill publisher, not a host) | 智能体 / knowledge base (reported) | Models & Claude Code integration: VERIFIED; apps: UNVERIFIED |
 | DeepSeek | None; plugin-based `deepseek-harness` | No first-party evidence; third-party hosts (Deep Code, OpenClaw) | None found | V4 existence: PARTIAL + GitHub corroboration; app: UNVERIFIED |
+| Gemini (added 2026-10-22) | Agent Skills (SKILL.md) in Antigravity (App, CLI, IDE) and Gemini CLI | Yes (`.agents/skills/`; Gemini CLI also `.gemini/skills/`) | Gemini app: not checked | Antigravity, Gemini CLI, models, API: VERIFIED; Gemini app / API Skills: UNVERIFIED |
 
 ---
 
@@ -304,3 +349,11 @@ DeepSeek has no first-party skills feature. Use the model through a skills-capab
 | deepseek-ai/DeepSeek-V4-Pro-0813 (HF) | https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813 | n/a | 2026-09-09 | PARTIAL; 1.6T/49B active, 1M context (snippet); blocked |
 | chat.deepseek.com | https://chat.deepseek.com | n/a | 2026-09-09 | BLOCKED; app features UNVERIFIED |
 | Simon Willison, "Agent Skills" | https://simonwillison.net/2025/Dec/19/agent-skills/ | 2025-12-19 | 2026-09-09 | Third-party context on the standard's launch |
+| Antigravity: Agent Skills | https://antigravity.google/docs/skills | n/a | 2026-10-22 | VERIFIED; App/CLI/IDE, .agents/skills, frontmatter |
+| Gemini CLI: Agent Skills | https://geminicli.com/docs/cli/skills/ | 2026-04-30 | 2026-10-22 | VERIFIED; tiers, gemini skills install, activate_skill; Antigravity CLI notice |
+| Gemini API models | https://ai.google.dev/gemini-api/docs/models | 2026-10-21 | 2026-10-22 | VERIFIED; gemini-4-argon, 3.8 Flash for new projects |
+| Gemini API text generation | https://ai.google.dev/gemini-api/docs/text-generation | 2026-10-13 | 2026-10-22 | VERIFIED; interactions.create, previous_interaction_id |
+| Gemini API structured output | https://ai.google.dev/gemini-api/docs/structured-output | 2026-10-21 | 2026-10-22 | VERIFIED; response_format mime_type, schema subset |
+| Gemini API OpenAI compatibility | https://ai.google.dev/gemini-api/docs/openai | 2026-10-14 | 2026-10-22 | VERIFIED; base URL, beta |
+| googleapis/python-genai README | https://github.com/googleapis/python-genai | n/a | 2026-10-22 | VERIFIED; GEMINI_API_KEY / GOOGLE_API_KEY precedence |
+| Gemini API libraries | https://ai.google.dev/gemini-api/docs/libraries | 2026-10-15 | 2026-10-22 | VERIFIED; google-genai; legacy library deprecated 2025-11-30 |

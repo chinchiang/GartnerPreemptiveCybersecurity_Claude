@@ -19,7 +19,7 @@ on:
         description: 要驗收的平臺
         required: true
         type: choice
-        options: [chatgpt, grok, glm, deepseek]
+        options: [chatgpt, grok, glm, deepseek, gemini]
       model:
         description: 模型 ID（留空則用腳本預設值）
         required: false
@@ -100,6 +100,16 @@ jobs:
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
+      - name: Run baseline — Gemini
+        if: inputs.platform == 'gemini'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          test -n "$GEMINI_API_KEY" || { echo "::error::gemini 需要 GEMINI_API_KEY"; exit 1; }
+          ARGS=(--input-dir examples/synthetic-org --output-dir output/baseline)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
       - name: Check baseline against acceptance items 1-5
         run: node scripts/check-acceptance.mjs "output/baseline/$PLATFORM-output.json"
 
@@ -134,6 +144,15 @@ jobs:
         if: inputs.platform == 'deepseek'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          ARGS=(--input-dir "$RUNNER_TEMP/no-intel" --output-dir output/no-intel)
+          if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
+          python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
+
+      - name: Run no-intel — Gemini
+        if: inputs.platform == 'gemini'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           ARGS=(--input-dir "$RUNNER_TEMP/no-intel" --output-dir output/no-intel)
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi

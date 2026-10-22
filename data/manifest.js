@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "1cf3dea928a8",
+ "contentHash": "9e6518cd4e1c",
  "research": [
   {
    "id": "00-method",
@@ -39,7 +39,7 @@ window.BUILD_MANIFEST = {
   },
   {
    "id": "07-platforms",
-   "title": "7. 五個平臺的查證摘要與等效方案",
+   "title": "7. 六個平臺的查證摘要與等效方案",
    "path": "docs/research/07-platforms.md"
   }
  ],
@@ -124,7 +124,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "chatgpt",
-   "bytes": 11288
+   "bytes": 11297
   },
   {
    "path": "skills/chatgpt/project-instructions.md",
@@ -139,7 +139,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/README.md",
    "platform": "claude",
-   "bytes": 3480
+   "bytes": 3514
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/SKILL.md",
@@ -214,7 +214,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "deepseek",
-   "bytes": 11288
+   "bytes": 11297
   },
   {
    "path": "skills/deepseek/requirements.txt",
@@ -229,7 +229,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/README.md",
    "platform": "gemini",
-   "bytes": 5010
+   "bytes": 5065
   },
   {
    "path": "skills/gemini/api-workflow.py",
@@ -319,7 +319,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "glm",
-   "bytes": 11288
+   "bytes": 11297
   },
   {
    "path": "skills/glm/requirements.txt",
@@ -369,7 +369,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/core-prompt.md",
    "platform": "shared",
-   "bytes": 5799
+   "bytes": 5808
   },
   {
    "path": "skills/shared/input-schema.json",
@@ -389,7 +389,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/task-spec.md",
    "platform": "shared",
-   "bytes": 11158
+   "bytes": 11167
   },
   {
    "path": "skills/shared/validate_inputs.py",
