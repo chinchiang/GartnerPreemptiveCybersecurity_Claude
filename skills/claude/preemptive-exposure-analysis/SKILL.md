@@ -31,7 +31,7 @@ metadata:
 |---|---|---|
 | scope | 必要 | `organization`、`analysis_date`、`authorized_scope.{in_scope_assets, active_testing_authorized, external_scanning_authorized}`、`reporting.audience` |
 | assets | 必要 | `asset_id`、`name`、`type`、`business_criticality`(1–5)、`internet_exposed`、`owner`、`data_classification` |
-| vulnerabilities | 必要 | `finding_id`、`asset_id`、`vuln_id`、`title`、`cvss_base`；建議 `exploit_public`、`epss`、`kev`、`patch_available`（範例資料的 `epss_sim`／`kev_sim` 視同 `epss`／`kev`） |
+| vulnerabilities | 必要 | `finding_id`、`asset_id`、`vuln_id`、`title`、`cvss_base`；建議 `exploit_public`、`epss`、`kev`、`patch_available`（合成資料的 `epss_sim`／`kev_sim` 視同 `epss`／`kev`） |
 | exposures | 建議 | EASM 輸出：`asset_id`、`hostname`、`ports`、`issues` |
 | identities | 建議 | `account`、`privilege_level`、`mfa_enabled`、`last_login_days`、`linked_assets` |
 | misconfigurations | 建議 | `asset_id`、`control`、`status`、`severity` |
