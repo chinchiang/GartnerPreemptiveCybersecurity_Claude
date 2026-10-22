@@ -31,7 +31,14 @@
 
 `playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
 
-完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進每次執行都會變的值（例如捲動位置），否則比對每次都會失敗。
+完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進會隨環境或內容而變的值（例如捲動位置：它取決於字型與版面，本機與 CI 可能不同，上方內容一改也跟著變），否則比對會失敗。
+
+瀏覽器檢查的每個 context 都開 reduced motion（`scripts/browser-checks.mjs` 的 `opener`），網站的 `prefers-reduced-motion` 樣式會關掉 smooth scroll、transition 和 animation，所以同一個 commit 在 CI 上的截圖每次都位元組相同。要檢查動畫或 smooth scroll 本身的情境，得自己另開 context，不能用 `open`。網站畫面有變時，從 PR 的 CI 執行下載截圖，用 `cmp` 逐張跟已提交的比，不同的換成 artifact 的版本並提交（本機的截圖字型不同，照舊一律還原）：
+
+```bash
+gh run download <run-id> -n verify-report-and-screenshots -D scratch/<目錄>
+for f in scratch/<目錄>/verify-screenshots/*.png; do cmp -s "$f" "verify-screenshots/${f##*/}" || echo "不同：${f##*/}"; done
+```
 
 ## 搜尋：用 `rg`
 
