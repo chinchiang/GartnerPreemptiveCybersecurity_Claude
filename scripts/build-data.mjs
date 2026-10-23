@@ -11,7 +11,7 @@ import { join, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
-import { packageFiles, generatedFiles, replaceExactlyOnce } from './skill-packages.mjs';
+import { packageFiles, generatedFiles, sourceFilesFrom, replaceExactlyOnce } from './skill-packages.mjs';
 import { parseFrontmatter } from './frontmatter.mjs';
 import { scriptsLine, SCRIPTS_LINE } from './deployment-guide.mjs';
 import { repoFiles } from './repo-files.mjs';
@@ -74,9 +74,8 @@ writeFileSync(out('data/guides.js'), jsExport('GUIDE_DOCS', guides));
 const skillsDir = out('skills');
 // 先由技能包組裝器從 skills/shared/ 母本產生建置產物（各平臺 references/ 的複本、system-prompt.md 等的嵌入區塊，
 // 以及 assets/scope-gate.js 的 scope 定義），下面走訪 skills/ 時拿到的才是最新內容。
-// system-prompt.md 的平臺說明是手寫的，所以輸入要含整個 skills/；scope-gate.js 不在 skills/ 底下，另外放進輸入。
-const sourceFiles = [...walk(skillsDir).map(f => ({ path: relPosix(f), content: readText(f) })),
-  { path: 'assets/scope-gate.js', content: readText(out('assets/scope-gate.js')) }];
+// 輸入（整個 skills/ 加上 scope-gate.js）的組法跟 skill-packages.test.mjs 的整合檢查共用 sourceFilesFrom
+const sourceFiles = sourceFilesFrom(ROOT);
 // 新平臺第一次建置時 references/、scripts/ 還不存在，先建目錄再寫
 for (const c of generatedFiles(sourceFiles)) { mkdirSync(dirname(out(c.path)), { recursive: true }); writeFileSync(out(c.path), c.content); }
 const skillFiles = walk(skillsDir).map(f => {
