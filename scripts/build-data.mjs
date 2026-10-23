@@ -6,40 +6,23 @@
  *
  * 用法：node scripts/build-data.mjs
  */
-import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'node:fs';
-import { join, relative, extname, basename, dirname } from 'node:path';
+import { writeFileSync, readdirSync, mkdirSync, existsSync } from 'node:fs';
+import { join, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
 import { packageFiles, generatedFiles, replaceExactlyOnce } from './skill-packages.mjs';
 import { parseFrontmatter } from './frontmatter.mjs';
 import { scriptsLine, SCRIPTS_LINE } from './deployment-guide.mjs';
+import { repoFiles } from './repo-files.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = (p) => join(ROOT, p);
 mkdirSync(out('data'), { recursive: true });
 mkdirSync(out('downloads'), { recursive: true });
 
-// 以下三個工具讓建置在 Windows 與 Linux 上產生位元組相同的結果（可重現建置）：
-// relPosix：路徑一律用 /，避免 Windows 的 \ 漏進 data/*.js 與 ZIP 檔名
-const relPosix = (f) => relative(ROOT, f).split('\\').join('/');
-// readText：換行一律正規化為 LF，避免 CRLF 簽出時內容與 ZIP 位元組改變
-const readText = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
-// cmpPosix：以正規化後的路徑排序，讓兩個平臺的檔案順序一致
-const cmpPosix = (a, b) => { const x = relPosix(a), y = relPosix(b); return x < y ? -1 : x > y ? 1 : 0; };
-
-const SKIP_DIRS = new Set(['__pycache__', 'node_modules', '.git', 'dist', 'output']);
-const SKIP_FILES = /\.(pyc|pyo|DS_Store)$|^\.DS_Store$/;
-function walk(dir) {
-  const res = [];
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    const st = statSync(p);
-    if (st.isDirectory()) { if (!SKIP_DIRS.has(name)) res.push(...walk(p)); }
-    else if (!SKIP_FILES.test(name)) res.push(p);
-  }
-  return res.sort(cmpPosix);
-}
+// 走訪目錄、POSIX 路徑與 LF 換行的工具（可重現建置），見 scripts/repo-files.mjs
+const { relPosix, readText, walk } = repoFiles(ROOT);
 function parseCSV(text) {
   const rows = [];
   let row = [], field = '', inQ = false;
