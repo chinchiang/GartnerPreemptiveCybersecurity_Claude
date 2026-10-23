@@ -62,7 +62,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）；每支測試檔在測什麼，見第 1 節的 scripts/ 清單
+npm test                # 單元測試（node:test，不需 npm install）；哪些 module 有單元測試、單獨的測試檔在測什麼，見第 1 節的 scripts/ 清單；成對的測試檔另外測了什麼，見各自的檔頭第一行
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／Gemini／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、Claude 與 Gemini 的單獨安裝），以及五支 api-workflow.py 與兩份 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、下載檔、機敏字串、`index.html` 預留的最後更新時間 `<meta>`（驗收在 npm test）
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙、最後更新時間在 topbar 與頁尾的顯示

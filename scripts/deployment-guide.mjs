@@ -4,8 +4,12 @@
  * 交給呼叫端（build-data.mjs），不碰磁碟就能測試（scripts/deployment-guide.test.mjs）。所有輸入只認 LF 換行。
  */
 
-// 第 1 節程式碼區塊每一行的「檔名＋空格」都是 22 個字元，說明從第 23 個字元開始
+// 第 1 節程式碼區塊的說明從第 23 個字元開始：檔名補空格到 22 個字元（只有檔名太長的那幾行例外），scripts/ 那一行也照這個寬度
 const COLUMN = 22;
+
+// 第 1 節的 scripts/ 清單：整份部署指南只有這一行以「scripts/ 」開頭。建置（replaceExactlyOnce）與整合檢查（String#match）共用；
+// 帶 g 是 replaceExactlyOnce 的要求，所以不要拿它呼叫 test()，g 會記住 lastIndex
+export const SCRIPTS_LINE = /^scripts\/ .*$/gm;
 
 // 檔頭第一行「檔名 — 一句說明」的說明；結尾的「。」只拿掉一個，在清單裡由「）」收尾
 function headerDesc({ name, content }) {
@@ -21,8 +25,10 @@ function headerDesc({ name, content }) {
   if (!m) throw new Error(`scripts/${name}：檔頭第一行要寫成「${lead}${name} — 一句說明」`);
   const [, written, desc = ''] = m;
   if (written !== name) throw new Error(`scripts/${name}：檔頭第一行的檔名是 ${written}，要跟實際的檔名 ${name} 相同`);
-  if (!desc.trim()) throw new Error(`scripts/${name}：檔頭第一行「 — 」後面的說明是空白`);
-  return desc.replace(/。$/, '');
+  // 先拿掉結尾的「。」再檢查：說明只寫「。」也算空白，不產生空括號
+  const text = desc.replace(/。$/, '');
+  if (!text.trim()) throw new Error(`scripts/${name}：檔頭第一行「 — 」後面的說明是空白`);
+  return text;
 }
 
 // files：[{ name, content }]，順序不限

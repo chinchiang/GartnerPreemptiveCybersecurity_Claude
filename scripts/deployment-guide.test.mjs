@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { scriptsLine } from './deployment-guide.mjs';
+import { scriptsLine, SCRIPTS_LINE } from './deployment-guide.mjs';
 
 // /** 開頭的 module 與 // 開頭的測試檔，檔頭第一行之後的內容都不進清單
 const mod = (name, desc) => ({ name, content: `/**\n * ${name} — ${desc}\n * 第二行以下不進清單。\n */\nexport const x = 1;\n` });
@@ -52,6 +52,10 @@ test('「 — 」後面的說明是空白：丟錯（行尾空白被編輯器刪
     { message: 'scripts/b.test.mjs：檔頭第一行「 — 」後面的說明是空白' });
 });
 
+test('說明只有「。」：拿掉結尾的「。」之後是空白，一樣丟錯（不產生空括號）', () => {
+  assert.throws(() => scriptsLine([mod('a.mjs', '。')]), { message: 'scripts/a.mjs：檔頭第一行「 — 」後面的說明是空白' });
+});
+
 test('/** 的下一行、// 開頭的那一行不是「檔名 — 說明」：丟錯，訊息寫出該怎麼寫', () => {
   assert.throws(() => scriptsLine([{ name: 'a.mjs', content: '/**\n * a.mjs\n * 說明寫在下一行。\n */\n' }]),
     { message: 'scripts/a.mjs：檔頭第一行要寫成「 * a.mjs — 一句說明」' });
@@ -76,7 +80,7 @@ const readText = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 
 test('部署指南第 1 節的 scripts/ 那一行（整份只有一行），等於由 scripts/ 底下各支 .mjs 的檔頭第一行產生的結果', () => {
   const files = readdirSync(new URL('.', import.meta.url)).filter(f => f.endsWith('.mjs'))
     .map(name => ({ name, content: readText(`scripts/${name}`) }));
-  const committed = readText('docs/guides/deployment.md').split('\n').filter(l => l.startsWith('scripts/'));
-  assert.deepEqual(committed, [scriptsLine(files)],
+  // 跟建置用同一個 SCRIPTS_LINE 認那一行；整份只能有一行
+  assert.deepEqual(readText('docs/guides/deployment.md').match(SCRIPTS_LINE), [scriptsLine(files)],
     '部署指南第 1 節的 scripts/ 清單跟各支 .mjs 的檔頭第一行不一致：改了檔頭請執行 node scripts/build-data.mjs，勿手動編輯那一行');
 });
