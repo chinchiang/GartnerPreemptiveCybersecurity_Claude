@@ -1,6 +1,6 @@
 // skill-packages.test.mjs — 技能包組裝器的單元測試，與對已提交建置產物的整合檢查
-// 技能包組裝器的單元測試：只用 node:test，母本以記憶體中的字串提供，不碰磁碟。
-// 最後一支是整合檢查：用跟建置相同的輸入（sourceFilesFrom）重新產生，比對 repo 裡已提交的建置產物。
+// 前面是技能包組裝器的單元測試：只用 node:test，母本以記憶體中的字串提供，不碰磁碟。
+// 最後一支是整合檢查：讀 repo 的檔案，用跟建置相同的輸入（sourceFilesFrom）重新產生，比對已提交的建置產物。
 // 執行：npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -407,10 +407,10 @@ test('scope-gate.js 的標註下不是緊接 const SCOPE_SCHEMA = 時中止，�
 });
 
 // 對 repo 的整合檢查：用跟建置相同的輸入執行 generatedFiles，每個產物都要跟已提交的同一路徑檔案逐位元組相同。
-// 手改了複本、嵌入區塊、規則說明行，或改了母本沒重建，本機的 npm test 就抓得到；data/、downloads/ 仍只由 CI 的整份工作樹檢查守住
+// 手改了複本、嵌入區塊、規則說明行，或改了母本沒重建，本機的 npm test 就抓得到；data/、downloads/ 沒有逐位元組的本機檢查，仍要靠 CI 的整份工作樹檢查
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
-test('已提交的建置產物（複本、嵌入區塊、規則說明行、scope-gate.js 的 scope 定義）跟用 repo 的母本重新產生的結果逐位元組相同', () => {
+test('已提交的建置產物（複本、嵌入區塊（含 scope-gate.js 的 scope 定義）、規則說明行）跟用 repo 的母本重新產生的結果逐位元組相同', () => {
   const stale = generatedFiles(sourceFilesFrom(ROOT)).filter(c => {
     const file = join(ROOT, c.path);
     return !existsSync(file) || !readFileSync(file).equals(Buffer.from(c.content, 'utf8'));
