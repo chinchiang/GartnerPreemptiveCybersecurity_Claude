@@ -1,3 +1,4 @@
+// demo-output.test.mjs — 示範引擎對合成組織的整份輸出：黃金快照與 items 必填鍵
 // 示範引擎對合成組織（data/case.js 的 CASE_DATA）的整份輸出，對上已提交的參考：
 // 黃金快照（golden snapshot：examples/demo-snapshot.txt，run-demo.mjs 的輸出），以及 toSchema 輸出的 items 必填鍵（skills/shared/output-schema.json）。行為規則的測試在 scoring.test.mjs、attack-paths.test.mjs，驗收在 acceptance.test.mjs。
 // 執行：node --test scripts/demo-output.test.mjs

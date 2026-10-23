@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * build-data.mjs
+ * build-data.mjs — 建置：把 docs/、skills/、examples/ 轉成網站載入的 data/*.js，並產生下載用的 ZIP
  * 將儲存庫內的單一來源內容（docs/、skills/、examples/）轉成網站可直接載入的 data/*.js，
  * 並產生可下載的 ZIP（downloads/）。純 Node 內建模組，無第三方相依。
  *

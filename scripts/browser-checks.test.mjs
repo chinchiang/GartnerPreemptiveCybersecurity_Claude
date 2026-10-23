@@ -1,3 +1,4 @@
+// browser-checks.test.mjs — 瀏覽器檢查骨架的單元測試，launch 換成假瀏覽器
 // 瀏覽器檢查骨架（browser-checks.mjs）的單元測試（#100）：unit job 沒有 playwright，launch 換成記憶體裡的假瀏覽器，
 // 只做骨架會用到的那一小部分（newContext、on、newPage、goto、waitForSelector、screenshot、url、close），並記下呼叫順序。
 // 伺服器照樣用 Node 內建的 http 真的啟動。情境本身怎麼檢查網站，由完整驗證（node scripts/verify.mjs）負責。

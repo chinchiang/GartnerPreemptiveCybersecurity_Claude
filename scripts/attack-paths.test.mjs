@@ -1,3 +1,4 @@
+// attack-paths.test.mjs — 示範引擎攻擊路徑的跳數上限與入口加分、缺拓樸時不產生路徑、驗證計畫的授權旗標
 // 示範引擎的攻擊路徑假設：從 internet 出發走拓樸的邊到 crown jewel，最多 RULES.feasibility.maxHops（5）跳（見 issue #43）。
 // 影響的「可達 crown jewel 之入口」加分比照同一套路徑規則。
 // 以最小的鏈狀資料直接呼叫 analyze，只看輸出的路徑與入口資產的 factors。

@@ -1,3 +1,4 @@
+// verify-report.test.mjs — verify.mjs 的報告檔與報告渲染：verify:static 不改寫 verify-report.md
 // verify.mjs 的報告檔：verify:static（本機與 CI 的靜態驗證）只印結果、不改寫已提交的 verify-report.md；
 // 只有完整模式（含瀏覽器檢查，CI 的 browser job 會上傳）才寫入。這樣跑完靜態驗證不必再手動還原檔案，
 // CI 的生成檔檢查也才能用 git status 檢查整份工作樹。

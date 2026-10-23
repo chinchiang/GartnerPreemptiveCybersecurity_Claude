@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * stamp-last-updated.mjs — 部署時把最後更新時間寫進網站：填上 index.html 預留的 <meta name="last-updated" content="">。
+ * stamp-last-updated.mjs — 部署時把最後更新時間寫進 _site/index.html
+ * 部署時把最後更新時間寫進網站：填上 index.html 預留的 <meta name="last-updated" content="">。
  *
  *   node scripts/stamp-last-updated.mjs <index.html> "$(git log -1 --format=%cI)"
  *

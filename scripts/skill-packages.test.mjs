@@ -1,3 +1,4 @@
+// skill-packages.test.mjs — 技能包組裝器的單元測試
 // 技能包組裝器的單元測試：只用 node:test，母本以記憶體中的字串提供，不碰磁碟。
 // 執行：npm test
 import { test } from 'node:test';

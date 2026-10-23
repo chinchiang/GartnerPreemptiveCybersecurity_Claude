@@ -1,5 +1,5 @@
 /**
- * acceptance.mjs
+ * acceptance.mjs — 驗收 module，判定的唯一來源
  * 驗收（見 GLOSSARY.md「驗收」）可機器判定部分的唯一判準：對技能的輸出 JSON（output-schema.json 的形狀）逐項判定，
  * 呼叫端是 check-acceptance.mjs（CLI，模型驗收工作流程用它）與 acceptance.test.mjs（npm test）。
  * - interface 以純函式為主：acceptanceResults、expectedRecords 不讀檔；讀檔只在 loadAcceptanceContext。

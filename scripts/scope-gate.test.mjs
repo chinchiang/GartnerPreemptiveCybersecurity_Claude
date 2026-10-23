@@ -1,3 +1,4 @@
+// scope-gate.test.mjs — assets/scope-gate.js 的單元測試
 // 授權範圍守門的 JS schema 解讀（assets/scope-gate.js，見 docs/adr/0004）：規則只來自 input-schema.json 的 scope 定義。
 // 共用案例的判定另見 scope-cases.test.mjs（示範引擎與選用後端代理都委派給它）。
 import { test } from 'node:test';

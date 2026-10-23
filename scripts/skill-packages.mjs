@@ -1,5 +1,5 @@
 /**
- * skill-packages.mjs
+ * skill-packages.mjs — 技能包組裝器
  * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行與其他嵌入區塊
  * （例如 assets/scope-gate.js 帶的 scope 定義）。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，

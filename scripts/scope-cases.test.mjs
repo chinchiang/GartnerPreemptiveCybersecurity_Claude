@@ -1,3 +1,4 @@
+// scope-cases.test.mjs — 授權範圍守門的共用案例套在示範引擎與選用後端代理上，另檢查後端代理的供應商路由
 // 授權範圍守門的共用案例（tests/fixtures/scope-cases.json）套在網站示範引擎與選用後端代理（backend/worker.js）上：
 // 兩者都委派給 assets/scope-gate.js（規則只來自 schema，見 docs/adr/0004）；Python 那邊（tests/python/test_scope_gate.py）用同一份案例。
 // worker 送真的 Request 給它的 fetch，只看回應與有沒有往上游送請求；上游的 globalThis.fetch 換成假的。

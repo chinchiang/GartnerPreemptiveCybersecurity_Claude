@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * check-acceptance.mjs — 對「真實模型輸出」執行可機器判定的驗收項目。
+ * check-acceptance.mjs — 驗收的 CLI
+ * 對「真實模型輸出」執行可機器判定的驗收項目。
  *
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --variant no-intel

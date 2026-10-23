@@ -1,3 +1,4 @@
+// deployment-guide.test.mjs — 部署指南第 1 節的 scripts/ 清單列出每支 .mjs
 // 部署指南（docs/guides/deployment.md）第 1 節的檔案結構清單：scripts/ 底下每支 .mjs（含測試檔）都要列在 scripts/ 那一行
 // （CODING_STANDARDS.md §1）。用 readdir 而不是 git ls-files，新檔案還沒提交時就檢查得到。
 import { test } from 'node:test';
