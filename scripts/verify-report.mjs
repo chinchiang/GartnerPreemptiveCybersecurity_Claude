@@ -1,5 +1,6 @@
 /**
- * verify-report.mjs — 驗證報告（verify-report.md）的渲染：靜態、瀏覽器、連結三種檢查的結果都由這裡轉成 Markdown（#100）。
+ * verify-report.mjs — 驗證報告的渲染
+ * 驗證報告（verify-report.md）的渲染：靜態、瀏覽器、連結三種檢查的結果都由這裡轉成 Markdown（#100）。
  * 純函式：執行時間由呼叫端傳入，同一組結果永遠渲染出同一份文字；單元測試在 verify-report.test.mjs。
  */
 

@@ -1,3 +1,4 @@
+// acceptance.test.mjs — 驗收可機器判定的部分，判定只來自 acceptance.mjs
 // 驗收（見 GLOSSARY.md「驗收」）可機器判定的部分：判定只來自 scripts/acceptance.mjs，這裡直接呼叫它（issue #63）。
 // 第 7 項（缺 scope.json 應拒絕）以示範引擎的行為測試；第 8 項只能在對話介面人工判讀，不在這裡。
 import { test } from 'node:test';

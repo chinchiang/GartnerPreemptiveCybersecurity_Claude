@@ -1,5 +1,5 @@
 /**
- * skill-packages.mjs
+ * skill-packages.mjs — 技能包組裝器
  * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行與其他嵌入區塊
  * （例如 assets/scope-gate.js 帶的 scope 定義）。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
@@ -81,7 +81,8 @@ export function generatedFiles(files) {
 function exactlyOne(count, message) {
   if (count !== 1) throw new Error(message(count));
 }
-// pattern 須帶 g：先數符合幾處，恰好一處才替換。也 export 給 build-worker.mjs 改寫後端代理的模板（CORE_PROMPT 與 import GATE 兩個嵌入點）
+// pattern 須帶 g：先數符合幾處，恰好一處才替換。也 export 給 build-worker.mjs 改寫後端代理的模板（CORE_PROMPT 與 import GATE 兩個嵌入點），
+// 以及 build-data.mjs 寫回部署指南第 1 節的 scripts/ 清單
 export function replaceExactlyOnce(content, pattern, replacement, message) {
   exactlyOne([...content.matchAll(pattern)].length, message);
   return content.replace(pattern, replacement);

@@ -1,3 +1,4 @@
+// mutate.test.mjs — 突變工具的測試：CLI 以子行程跑暫存目錄底下的小專案
 // 突變工具（scripts/mutate.mjs）：吃一份臨時的突變清單，逐一改壞、跑測試、一定還原。
 // CLI 以子行程跑，對象是暫存目錄底下的小專案：calc.js 加一支會檢查它的 check.js；
 // 從測試輸出找出失敗測試的 failingTests、產生突變紀錄表格的 markdownTable 直接呼叫。

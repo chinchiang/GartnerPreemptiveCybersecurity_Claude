@@ -1,3 +1,4 @@
+// stamp-last-updated.test.mjs — 部署時寫入最後更新時間的測試
 // 最後更新時間的寫入（scripts/stamp-last-updated.mjs）：部署時 pages.yml 把 HEAD commit 的時間寫進 _site/index.html
 // 預留的 <meta name="last-updated" content="">；repo 裡提交的 index.html 永遠是空的。
 import { test } from 'node:test';

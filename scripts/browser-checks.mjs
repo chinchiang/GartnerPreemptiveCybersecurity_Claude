@@ -1,5 +1,6 @@
 /**
- * browser-checks.mjs — 瀏覽器檢查的骨架（#100）：verify.mjs 的各個情境透過 open／ok／shot 掛上來。
+ * browser-checks.mjs — 瀏覽器檢查的骨架：本機伺服器、每個情境全新的 context、錯誤彙總
+ * 瀏覽器檢查的骨架（#100）：verify.mjs 的各個情境透過 open／ok／shot 掛上來。
  * 骨架負責本機伺服器（含 ?stamped）、瀏覽器、每次 open 的新 context、context 層的錯誤監聽、截圖目錄；
  * 情境 { name, run } 依陣列順序執行，彼此獨立：每個情境結束（或丟出例外）時，骨架關掉它開過的所有 context。
  * 單元測試在 browser-checks.test.mjs（launch 換成假瀏覽器）；情境本身由完整驗證（node scripts/verify.mjs）負責。

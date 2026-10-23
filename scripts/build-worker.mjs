@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * build-worker.mjs
+ * build-worker.mjs — 選用後端代理的建置：把核心提示詞與授權範圍守門內嵌成單一檔案 backend/dist/worker.js
  * 把 skills/shared/core-prompt.md 內的 ```text 提示詞區塊嵌入 backend/worker.js 的 CORE_PROMPT，並把模板 import 的
  * assets/scope-gate.js（授權範圍守門，見 docs/adr/0004）內嵌進去，輸出到 backend/dist/worker.js（已列入 .gitignore，不提交）。
  * 這樣代理伺服器使用的系統提示與六平臺共用的核心提示詞永遠一致，部署的仍是單一檔案。

@@ -8,6 +8,7 @@ platform: ""
 
 純靜態網站，無建置框架、無外部相依（無 CDN、無追蹤；字型自載於 `assets/fonts/`）：
 
+<!-- 下面程式碼區塊裡 scripts/ 那一行由 scripts/build-data.mjs 從各支 .mjs 的檔頭第一行產生（scripts/deployment-guide.mjs），請改檔頭後執行 npm run build，勿手動編輯 -->
 ```
 index.html            單頁應用程式殼
 assets/styles.css     樣式（淺／深色兩套設計 token、行動裝置、列印）
@@ -22,7 +23,7 @@ downloads/*.zip       由建置腳本產生的下載包；各平臺 ZIP 的內�
 docs/                 研究文件（research/）、教學（guides/）、證據檔（evidence/）
 skills/               母本（skills/shared/）、平臺檔案與建置產生的複本（各平臺 references/、Claude 與 Gemini 技能的 scripts/）；skills/shared/analysis_workflow.py 是 Python 的分析工作流程核心，改用它的平臺腳本只剩模型 adapter（理由見 docs/adr/0002）；Claude 與 Gemini 技能的 scripts/ 放 skills/shared/validate_inputs.py 與核心的複本，技能資料夾單獨安裝時仍可執行（見 docs/adr/0003、0006），validate_inputs.py 只渲染核心的授權範圍守門與腳本預檢
 examples/             合成資料、預期輸出、示範引擎快照與驗收 fixture
-scripts/              build-data.mjs、zip-util.mjs（建置產生 ZIP 用的 CRC32，無外部相依）、verify.mjs（--static 不改寫 verify-report.md，由 verify-report.test.mjs 檢查）、verify-report.mjs（驗證報告的渲染，單元測試在 verify-report.test.mjs）、browser-checks.mjs（瀏覽器檢查的骨架：本機伺服器、每個情境全新的 context、錯誤彙總，單元測試在 browser-checks.test.mjs）、run-demo.mjs、check-acceptance.mjs（驗收的 CLI）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原，單元測試在 mutate.test.mjs）、stamp-last-updated.mjs（部署時把最後更新時間寫進 _site/index.html，單元測試在 stamp-last-updated.test.mjs）、last-updated.test.mjs（assets/last-updated.js 的單元測試）、scope-gate.test.mjs（assets/scope-gate.js 的單元測試）、scope-cases.test.mjs（授權範圍守門的共用案例套在示範引擎與選用後端代理上，另檢查後端代理的供應商路由）、scoring.test.mjs（示範引擎依示範評分規則的計算行為）、attack-paths.test.mjs（示範引擎攻擊路徑的跳數上限與入口加分、缺拓樸時不產生路徑、驗證計畫的授權旗標）、demo-output.test.mjs（示範引擎對合成組織的整份輸出：黃金快照與 items 必填鍵）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查，單元測試與整個 repo 的檢查在 glossary.test.mjs）、acceptance.mjs（驗收 module，判定的唯一來源，單元測試在 acceptance.test.mjs）、build-worker.mjs（單元測試在 build-worker.test.mjs）、skill-packages.mjs（技能包組裝器，單元測試在 skill-packages.test.mjs）、scoring-rules.mjs（評分規則一致性檢查，單元測試在 scoring-rules.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用，單元測試與對建置產物的整合檢查在 frontmatter.test.mjs）、todo-checklist.mjs（把 data/sources.js 的待驗證項目印成 Markdown 勾選清單，季度查證的 issue 用）、deployment-guide.test.mjs（scripts/ 底下每支 .mjs 都要列在這一行）
+scripts/              acceptance.mjs（驗收 module，判定的唯一來源；單元測試在 acceptance.test.mjs）、attack-paths.test.mjs（示範引擎攻擊路徑的跳數上限與入口加分、缺拓樸時不產生路徑、驗證計畫的授權旗標）、browser-checks.mjs（瀏覽器檢查的骨架：本機伺服器、每個情境全新的 context、錯誤彙總；單元測試在 browser-checks.test.mjs）、build-data.mjs（建置：把 docs/、skills/、examples/ 轉成網站載入的 data/*.js，並產生下載用的 ZIP）、build-worker.mjs（選用後端代理的建置：把核心提示詞與授權範圍守門內嵌成單一檔案 backend/dist/worker.js；單元測試在 build-worker.test.mjs）、check-acceptance.mjs（驗收的 CLI）、demo-output.test.mjs（示範引擎對合成組織的整份輸出：黃金快照與 items 必填鍵）、deployment-guide.mjs（由各支 .mjs 的檔頭第一行產生部署指南第 1 節的 scripts/ 清單；單元測試在 deployment-guide.test.mjs）、frontmatter.mjs（Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用；單元測試在 frontmatter.test.mjs）、glossary.mjs（詞彙表 _Avoid_ 詞的檢查；單元測試在 glossary.test.mjs）、last-updated.test.mjs（assets/last-updated.js 的單元測試）、mutate.mjs（突變測試：逐一改壞實作、確認測試會失敗、一定還原；單元測試在 mutate.test.mjs）、run-demo.mjs（在 Node 中執行網站示範引擎（assets/demo.js），產生確定性輸出）、scope-cases.test.mjs（授權範圍守門的共用案例套在示範引擎與選用後端代理上，另檢查後端代理的供應商路由）、scope-gate.test.mjs（assets/scope-gate.js 的單元測試）、scoring-rules.mjs（評分規則一致性檢查；單元測試在 scoring-rules.test.mjs）、scoring.test.mjs（示範引擎依示範評分規則的計算行為）、skill-packages.mjs（技能包組裝器；單元測試在 skill-packages.test.mjs）、stamp-last-updated.mjs（部署時把最後更新時間寫進 _site/index.html；單元測試在 stamp-last-updated.test.mjs）、todo-checklist.mjs（把 data/sources.js 的待驗證項目印成 Markdown 勾選清單，季度查證的 issue 用）、verify-report.mjs（驗證報告的渲染；單元測試在 verify-report.test.mjs）、verify.mjs（網站驗證腳本，--static 只印結果、不改寫 verify-report.md）、zip-util.mjs（建置產生 ZIP 用的 CRC32，無外部相依）
 tests/                fixtures/scope-cases.json（授權範圍守門的共用案例，JS 與 Python 共用）、python/（Python 測試；不出貨）
 backend/              選用的模型 API 代理範例（預設不需要）
 package.json          npm scripts（建置／驗證的唯一入口）與 Playwright 版本
@@ -61,7 +62,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 ## 4. 驗證
 
 ```bash
-npm test                # 單元測試（node:test，不需 npm install）：技能包組裝器、示範引擎的授權範圍守門、攻擊路徑跳數上限與入口加分的可達性、缺拓樸時不產生路徑與驗證計畫的授權旗標、示範引擎依示範評分規則的計算行為（每條公式的手算值與邊界，`scripts/scoring.test.mjs`）、示範引擎的整份輸出（快照與 items 必填鍵，`scripts/demo-output.test.mjs`）、驗收的機器判定（`scripts/acceptance.mjs`：每項不合格就失敗、預期筆數對照 `acceptance.md`、fixture 契約回歸、示範引擎的輸出通過驗收，`scripts/acceptance.test.mjs`）、選用後端代理的授權範圍守門、後端代理建置的兩個嵌入點恰好一處（`scripts/build-worker.test.mjs`）、評分規則一致性、`verify:static` 不改寫已提交的 `verify-report.md`、報告渲染與 `--only` 的參數檢查（`scripts/verify-report.test.mjs`）、瀏覽器檢查骨架（假瀏覽器，`scripts/browser-checks.test.mjs`）、突變工具（`scripts/mutate.test.mjs`）、手寫檔案不使用專指的 _Avoid_ 詞（`scripts/glossary.test.mjs`）、部署時寫入最後更新時間（`scripts/stamp-last-updated.test.mjs`）與它的臺北時間格式（`scripts/last-updated.test.mjs`）
+npm test                # 單元測試（node:test，不需 npm install）；哪些 module 有單元測試、單獨的測試檔在測什麼，見第 1 節的 scripts/ 清單；成對的測試檔另外測了什麼，見各自的檔頭第一行
 python3 -m unittest discover -s tests/python   # Python 測試（標準函式庫）：分析工作流程核心、ChatGPT／DeepSeek／Gemini／GLM／Grok adapter（假 SDK），validate_inputs.py（輸出、結束碼、Claude 與 Gemini 的單獨安裝），以及五支 api-workflow.py 與兩份 validate_inputs.py 的授權範圍守門
 npm run verify:static   # 資料檔、來源 ID 對應、schema、下載檔、機敏字串、`index.html` 預留的最後更新時間 `<meta>`（驗收在 npm test）
 npm run verify          # 加上 Playwright 瀏覽器檢查：導覽、搜尋、篩選、複製、下載、案例互動、行動裝置、無障礙、最後更新時間在 topbar 與頁尾的顯示
@@ -119,6 +120,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 核心提示詞（系統提示詞的嵌入區塊、選用後端代理） | `skills/shared/core-prompt.md` | `npm run build`（重寫三份 `system-prompt.md` 與兩份 `SKILL.md` 的嵌入區塊，提交；第 0 節「- scope 必填欄位的規則：」那一行也由建置從 schema 產生，見下一列）；`node scripts/build-worker.mjs` 產生 `backend/dist/worker.js`（不提交） |
 | 流程／I-O／平臺比較 | `data/process.js`、`data/io.js`、`data/platforms.js` | 無需 build |
 | Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），Claude 與 Gemini 技能 `scripts/` 的 `validate_inputs.py` 與 `analysis_workflow.py`，以及核心提示詞母本與四份改寫版（Custom GPT 指示、Codex、Claude 與 Gemini 的 `SKILL.md`）的規則說明行（見「授權範圍守門規則」一列），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表） |
+| `scripts/` 的 `.mjs`（新增，或改了用途） | 檔頭第一行寫成「`檔名 — 一句說明`」，`x.test.mjs` 會自動跟 `x.mjs` 配成一段；第 1 節的 `scripts/` 那一行由建置產生，勿手動編輯 | `npm run build`（`deployment.md` 一起提交）；`npm test` |
 | 新增建置產生的檔案 | 建置（`scripts/build-data.mjs`、`scripts/skill-packages.mjs` 的對照表）多寫出一個檔案或目錄時，把它的路徑加進根目錄的 `.ignore`：`rg` 搜尋與詞彙表測試都依它略過生成檔（見 `docs/agents/workflow.md`） | `npm run build`（產物一起提交）；`npm test` |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 合成資料 | `examples/synthetic-org/`（保持合成）；筆數變了就同步改 `skills/shared/acceptance.md` 第 1 項與 `scripts/acceptance.test.mjs` 的預期筆數字面值 | build；`npm test`（快照那一支會失敗）；`npm run demo` 對照 `examples/expected-output.md`；`npm run snapshot`；再 `npm test` |

@@ -1,3 +1,4 @@
+// build-worker.test.mjs — 後端代理建置的測試：兩個嵌入點都要恰好一處
 // 後端代理建置（build-worker.mjs）的測試：實際執行 CLI，模板由這裡讀 backend/worker.js 再改字串，寫到暫存目錄傳進去。
 // 兩個嵌入點（CORE_PROMPT 佔位字串、import GATE 那一行）都要恰好一處，0 處或 2 處以上就中止，不默默只換第一處。
 // 執行：node --test scripts/build-worker.test.mjs

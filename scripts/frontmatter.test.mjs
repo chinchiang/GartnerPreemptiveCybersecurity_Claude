@@ -1,3 +1,4 @@
+// frontmatter.test.mjs — frontmatter 判斷規則的單元測試，與對建置產物 data/skills.js 的整合檢查
 // frontmatter 的判斷規則只有一份（scripts/frontmatter.mjs）：建置用它讀標題，也用它算出 Skills 專區渲染檢視的正文起點。
 // 前半段是 parseFrontmatter 的單元測試（純函式，不碰磁碟）；後半段是整合檢查，讀已提交的建置產物 data/skills.js
 // 與 skills/ 底下的檔案，確認建置真的替每份 .md 記下正確的 bodyStart、原文沒有被改動。

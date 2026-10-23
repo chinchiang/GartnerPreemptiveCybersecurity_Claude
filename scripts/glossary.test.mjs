@@ -1,3 +1,4 @@
+// glossary.test.mjs — 詞彙表 _Avoid_ 詞的單元測試，與對整個 repo 的檢查
 // 詞彙表（GLOSSARY.md）的 _Avoid_ 詞：手寫的檔案不使用專指的 _Avoid_ 詞，改用詞條本身。
 // 純函式在 scripts/glossary.mjs；這裡先以虛構的輸入測它們，最後對整個 repo 檢查。
 import { test } from 'node:test';

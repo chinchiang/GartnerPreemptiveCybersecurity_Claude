@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * mutate.mjs — 突變測試：逐一把實作改壞，確認測試會失敗（「抓到」），然後一定還原。
+ * mutate.mjs — 突變測試：逐一改壞實作、確認測試會失敗、一定還原
+ * 突變測試：逐一把實作改壞，確認測試會失敗（「抓到」），然後一定還原。
  *
  *   node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]
  *

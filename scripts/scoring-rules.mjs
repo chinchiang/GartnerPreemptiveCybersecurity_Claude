@@ -1,5 +1,5 @@
 /**
- * scoring-rules.mjs
+ * scoring-rules.mjs — 評分規則一致性檢查
  * 評分規則一致性檢查：示範引擎匯出的規則資料（assets/demo.js 的 RULES）是規則數值的唯一可讀來源，
  * 母本以正體中文散文陳述同一套規則（給語言模型讀，維持手寫）；這裡從散文抽出數值和規則資料比對。
  * interface 是純函式——輸入文件內容、回傳漂移清單，讀檔交給呼叫端（scoring-rules.test.mjs 對 repo 的

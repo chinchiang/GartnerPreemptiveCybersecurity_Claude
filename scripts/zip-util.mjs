@@ -1,3 +1,4 @@
+// zip-util.mjs — 建置產生 ZIP 用的 CRC32，無外部相依
 // 簡易 CRC32（ZIP 使用），無外部相依。
 const TABLE = new Uint32Array(256).map((_, n) => {
   let c = n;

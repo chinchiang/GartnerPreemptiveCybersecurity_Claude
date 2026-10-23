@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * verify.mjs — 網站驗證腳本
+ * verify.mjs — 網站驗證腳本，--static 只印結果、不改寫 verify-report.md
  *   node scripts/verify.mjs --static   只做靜態檢查（資料檔存在、JSON 可解析、來源 ID 對應、schema 檔有效）
  *   node scripts/verify.mjs            靜態檢查 + 以 Playwright（Chromium）啟動本機伺服器，檢查導覽、搜尋、篩選、複製、下載、案例互動
  *   node scripts/verify.mjs --only 最後更新時間[,搜尋框與 topbar]   只跑指定名稱的瀏覽器情境（名稱見 SCENARIOS），不跑靜態檢查、不寫報告；

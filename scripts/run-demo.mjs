@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-/** 在 Node 中執行網站示範引擎（assets/demo.js）以產生確定性輸出，供文件與驗收對照。
+/**
+ * run-demo.mjs — 在 Node 中執行網站示範引擎（assets/demo.js），產生確定性輸出
+ * 在 Node 中執行網站示範引擎（assets/demo.js）以產生確定性輸出，供文件與驗收對照。
  *  用法：node scripts/run-demo.mjs [--no-intel] [--no-topology] [--no-identities] [--no-controls] [--no-misconfig] [--no-epss] [--no-exposures]
  *                                  [--no-scope] [--inventory 70] [--appetite strict|balanced|tolerant] [--json]
  *  --json 輸出符合 skills/shared/output-schema.json 的 JSON；--no-scope 模擬缺少授權範圍（驗收第 7 項）。

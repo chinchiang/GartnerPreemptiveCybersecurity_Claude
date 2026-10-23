@@ -1,3 +1,4 @@
+// last-updated.test.mjs — assets/last-updated.js 的單元測試
 // 最後更新時間的顯示格式（assets/last-updated.js，瀏覽器與 Node 共用）：固定換算成臺北時間（UTC+8），
 // 「YYYY-MM-DD HH:mm（UTC+8）」；時間是空的或不合法時回 null，畫面上就整個不顯示。預期值都是手算的字面值。
 import { test } from 'node:test';
