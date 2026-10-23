@@ -92,6 +92,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Install Playwright (from package-lock.json) and Chromium
+        timeout-minutes: 20
         run: |
           npm ci
           npx playwright install --with-deps chromium
