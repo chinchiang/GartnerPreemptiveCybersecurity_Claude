@@ -1,8 +1,10 @@
-// deployment-guide.test.mjs — 第 1 節 scripts/ 清單的產生規則（scriptsLine）的單元測試
+// deployment-guide.test.mjs — 第 1 節 scripts/ 清單的產生規則（scriptsLine）的單元測試，與對 repo 的整合檢查
 // 部署指南（docs/guides/deployment.md）第 1 節的 scripts/ 清單由 scripts/deployment-guide.mjs 從各支 .mjs 的檔頭第一行產生。
-// scriptsLine 是純函式，這裡用記憶體裡的字串測它，不碰磁碟；預期值都是手寫的整行字面值。
+// 前半段是 scriptsLine 的單元測試（純函式，用記憶體裡的字串，不碰磁碟；預期值都是手寫的整行字面值）；
+// 後半段是整合檢查，讀 scripts/ 底下實際的 .mjs 與已提交的部署指南，確認那一行是用現在的檔頭建置出來的。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { scriptsLine } from './deployment-guide.mjs';
 
 // /** 開頭的 module 與 // 開頭的測試檔，檔頭第一行之後的內容都不進清單
@@ -66,4 +68,15 @@ test('略過 shebang 後的第一行不是單獨的 /**、也不是 // 開頭：
 test('成對的測試檔不進清單，檔頭第一行照樣檢查', () => {
   assert.throws(() => scriptsLine([mod('glossary.mjs', '詞彙表'), { name: 'glossary.test.mjs', content: '// 沒寫檔名的舊寫法。\n' }]),
     { message: 'scripts/glossary.test.mjs：檔頭第一行要寫成「// glossary.test.mjs — 一句說明」' });
+});
+
+// 對 repo 的整合檢查：用 readdir 而不是 git ls-files，新檔案還沒提交時就檢查得到；換行正規化成 LF，跟建置讀檔的方式相同
+const readText = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+
+test('部署指南第 1 節的 scripts/ 那一行（整份只有一行），等於由 scripts/ 底下各支 .mjs 的檔頭第一行產生的結果', () => {
+  const files = readdirSync(new URL('.', import.meta.url)).filter(f => f.endsWith('.mjs'))
+    .map(name => ({ name, content: readText(`scripts/${name}`) }));
+  const committed = readText('docs/guides/deployment.md').split('\n').filter(l => l.startsWith('scripts/'));
+  assert.deepEqual(committed, [scriptsLine(files)],
+    '部署指南第 1 節的 scripts/ 清單跟各支 .mjs 的檔頭第一行不一致：改了檔頭請執行 node scripts/build-data.mjs，勿手動編輯那一行');
 });
