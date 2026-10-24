@@ -1,15 +1,20 @@
 /**
  * deployment-guide.mjs — 由各支 .mjs 的檔頭第一行產生部署指南第 1 節的 scripts/ 清單
- * 純函式：輸入 scripts/ 底下每支 .mjs 的檔名與內容，回傳第 1 節以 scripts/ 開頭的整行；讀檔與寫回 docs/guides/deployment.md
- * 交給呼叫端（build-data.mjs），不碰磁碟就能測試（scripts/deployment-guide.test.mjs）。所有輸入只認 LF 換行。
+ * interface 是全文進、全文出的純函式 withScriptsLine(guide, files)：輸入部署指南全文與 scripts/ 底下每支 .mjs 的檔名與內容，
+ * 回傳換上新 scripts/ 那一行的全文；寫回 docs/guides/deployment.md 交給呼叫端（build-data.mjs），不碰磁碟就能測試。
+ * 唯一的例外是 scriptFilesFrom(root)：從磁碟讀出 files，建置與整合檢查（scripts/deployment-guide.test.mjs）共用，兩邊的輸入才會相同。
+ * 所有輸入只認 LF 換行。
  */
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { repoReader } from './repo-files.mjs';
+import { replaceExactlyOnce } from './skill-packages.mjs';
 
 // 第 1 節程式碼區塊的說明從第 23 個字元開始：檔名補空格到 22 個字元（只有檔名太長的那幾行例外），scripts/ 那一行也照這個寬度
 const COLUMN = 22;
 
-// 第 1 節的 scripts/ 清單：整份部署指南只有這一行以「scripts/ 」開頭。建置（replaceExactlyOnce）與整合檢查（String#match）共用；
-// 帶 g 是 replaceExactlyOnce 的要求，所以不要拿它呼叫 test()，g 會記住 lastIndex
-export const SCRIPTS_LINE = /^scripts\/ .*$/gm;
+// 第 1 節的 scripts/ 清單：整份部署指南只有這一行以「scripts/ 」開頭。帶 g 是 replaceExactlyOnce 的要求
+const SCRIPTS_LINE = /^scripts\/ .*$/gm;
 
 // 檔頭第一行「檔名 — 一句說明」的說明；結尾的「。」只拿掉一個，在清單裡由「）」收尾
 function headerDesc({ name, content }) {
@@ -31,8 +36,8 @@ function headerDesc({ name, content }) {
   return text;
 }
 
-// files：[{ name, content }]，順序不限
-export function scriptsLine(files) {
+// files：[{ name, content }]，順序不限；回傳第 1 節以 scripts/ 開頭的整行
+function scriptsLine(files) {
   // 每支都先檢查檔頭第一行，成對的測試檔不進清單也一樣
   const desc = new Map(files.map(f => [f.name, headerDesc(f)]));
   const segments = [];
@@ -47,4 +52,17 @@ export function scriptsLine(files) {
     segments.push(desc.has(test) ? `${name}（${desc.get(name)}；單元測試在 ${test}）` : `${name}（${desc.get(name)}）`);
   }
   return 'scripts/'.padEnd(COLUMN) + segments.join('、');
+}
+
+// root：repo 根目錄。scripts/ 第一層的 .mjs（不往子目錄找）讀成 [{ name, content }]，name 是檔名，換行正規化成 LF
+export function scriptFilesFrom(root) {
+  const { readText } = repoReader(root);
+  const dir = join(root, 'scripts');
+  return readdirSync(dir).filter(name => name.endsWith('.mjs')).map(name => ({ name, content: readText(join(dir, name)) }));
+}
+
+// guide：部署指南全文；files：[{ name, content }]（例如 scriptFilesFrom 的結果）。只換掉以「scripts/ 」開頭的那一行，不是恰好一行就中止
+export function withScriptsLine(guide, files) {
+  return replaceExactlyOnce(guide, SCRIPTS_LINE, () => scriptsLine(files),
+    n => `docs/guides/deployment.md 有 ${n} 行以「scripts/ 」開頭，必須恰好一行（第 1 節的 scripts/ 清單），才知道要換哪一行`);
 }

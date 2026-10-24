@@ -1,6 +1,7 @@
 /**
  * repo-files.mjs — 讀 repo 檔案的共用工具：走訪目錄、POSIX 路徑、換行正規化成 LF
- * 建置（build-data.mjs）讀來源、技能包組裝器組建置輸入（skill-packages.mjs 的 sourceFilesFrom）都用這一份，走訪時略過哪些目錄與檔案的規則只有一份。
+ * 建置（build-data.mjs）讀來源、技能包組裝器組建置輸入（skill-packages.mjs 的 sourceFilesFrom）、讀 scripts/ 的 .mjs（deployment-guide.mjs 的
+ * scriptFilesFrom，只用 readText）都用這一份，走訪時略過哪些目錄與檔案的規則只有一份。
  * 這些工具讓建置在 Windows 與 Linux 上產生位元組相同的結果（可重現建置）。純 Node 內建模組，無第三方相依。
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
