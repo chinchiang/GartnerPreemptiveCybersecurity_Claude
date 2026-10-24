@@ -4,9 +4,12 @@
  * （例如 assets/scope-gate.js 帶的 scope 定義）。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
  * 寫檔交給呼叫端（build-data.mjs、build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
+ * 唯一的例外是 sourceFilesFrom(root)：從磁碟讀出建置的輸入，建置與對已提交產物的整合檢查共用，兩邊的輸入才會相同。
  * 純 Node 內建模組，無第三方相依。所有輸入只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
  */
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { repoFiles } from './repo-files.mjs';
 
 const GATE = createRequire(import.meta.url)('../assets/scope-gate.js');
 
@@ -74,6 +77,15 @@ export function generatedFiles(files) {
   const ruleNotes = ruleNoteFiles(files);
   const updated = files.map(f => ruleNotes.find(r => r.path === f.path) || f); // 核心提示詞先換好規則說明行，再嵌入各平臺
   return [...sharedCopies(updated), ...embeddedFiles(updated), ...ruleNotes, scopeGateFile(files)];
+}
+
+// 建置的輸入（generatedFiles 的 files）：整個 skills/ 加上 assets/scope-gate.js，讀成 [{ path, content }]，
+// 路徑相對於 root、用 /，換行正規化成 LF（走訪與讀檔的規則見 repo-files.mjs）。
+// system-prompt.md 的平臺說明是手寫的，所以要含整個 skills/；scope-gate.js 不在 skills/ 底下，另外放進來。
+export function sourceFilesFrom(root) {
+  const { relPosix, readText, walk } = repoFiles(root);
+  return [...walk(join(root, 'skills')).map(f => ({ path: relPosix(f), content: readText(f) })),
+    { path: SCOPE_GATE, content: readText(join(root, SCOPE_GATE)) }];
 }
 
 // 每種改寫都要「恰好一處」：0 處表示找不到要換的地方，2 處以上不知道要換哪一處，都中止（不默默只換第一處）。

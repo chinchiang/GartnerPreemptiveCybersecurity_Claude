@@ -1,9 +1,13 @@
-// skill-packages.test.mjs — 技能包組裝器的單元測試
-// 技能包組裝器的單元測試：只用 node:test，母本以記憶體中的字串提供，不碰磁碟。
+// skill-packages.test.mjs — 技能包組裝器的單元測試，與對已提交建置產物的整合檢查
+// 前面是技能包組裝器的單元測試：只用 node:test，母本以記憶體中的字串提供，不碰磁碟。
+// 最後一支是整合檢查：讀 repo 的檔案，用跟建置相同的輸入（sourceFilesFrom）重新產生，比對已提交的建置產物。
 // 執行：npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractCorePrompt, packageFiles, generatedFiles, RULE_NOTE_TARGETS } from './skill-packages.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { extractCorePrompt, packageFiles, generatedFiles, sourceFilesFrom, RULE_NOTE_TARGETS } from './skill-packages.mjs';
 
 test('從核心提示詞母本擷取 ```text 區塊的內容', () => {
   const md = [
@@ -204,7 +208,7 @@ test('要複製的母本不存在時中止，錯誤訊息指出缺少的母本',
   assert.throws(() => generatedFiles(withoutTaskSpec), { message: /母本不存在.*skills\/shared\/task-spec\.md/ });
 });
 
-test('建置產物集合：各平臺複本與現狀一致（Claude 與 Gemini 沒有 task-spec、另有 scripts/ 的核心與 validate_inputs.py 複本，Grok 與 shared 沒有 references/），Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
+test('建置產物的路徑集合（只比對路徑，內容由最後一支整合檢查比對）：Claude 與 Gemini 沒有 task-spec、另有 scripts/ 的核心與 validate_inputs.py 複本，Grok 與 shared 沒有 references/；Grok、GLM、DeepSeek 有含嵌入區塊的系統提示詞，GLM、DeepSeek 的 SKILL.md 也有', () => {
   assert.deepEqual(paths(generatedFiles(sources)).sort(), [
     'assets/scope-gate.js',
     'skills/chatgpt/custom-gpt-instructions.md',
@@ -400,4 +404,17 @@ test('scope-gate.js 多了一個下面沒接 const SCOPE_SCHEMA 的標註時也�
 test('scope-gate.js 的標註下不是緊接 const SCOPE_SCHEMA = 時中止，錯誤訊息指出標註下找不到區塊', () => {
   const notConst = gateJs('{}').replace('  const SCOPE_SCHEMA = {};', '  let SCOPE_SCHEMA = {};');
   assert.throws(() => generatedFiles(withGate(notConst)), { message: /assets\/scope-gate\.js.*找不到.*const SCOPE_SCHEMA/ });
+});
+
+// 對 repo 的整合檢查：用跟建置相同的輸入執行 generatedFiles，每個產物都要跟已提交的同一路徑檔案逐位元組相同。
+// 手改了複本、嵌入區塊、規則說明行，或改了母本沒重建，本機的 npm test 就抓得到；data/、downloads/ 沒有逐位元組的本機檢查，仍要靠 CI 的整份工作樹檢查
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+
+test('已提交的建置產物（複本、嵌入區塊（含 scope-gate.js 的 scope 定義）、規則說明行）跟用 repo 的母本重新產生的結果逐位元組相同', () => {
+  const stale = generatedFiles(sourceFilesFrom(ROOT)).filter(c => {
+    const file = join(ROOT, c.path);
+    return !existsSync(file) || !readFileSync(file).equals(Buffer.from(c.content, 'utf8'));
+  }).map(c => c.path);
+  assert.deepEqual(stale, [],
+    '建置產物與來源不一致：複本、嵌入區塊與規則說明行請勿手動編輯，改 skills/shared/ 的母本；改完來源後執行 node scripts/build-data.mjs 並提交（下方列出不一致的檔案）');
 });
