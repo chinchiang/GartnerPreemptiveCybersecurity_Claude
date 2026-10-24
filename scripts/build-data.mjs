@@ -6,14 +6,14 @@
  *
  * 用法：node scripts/build-data.mjs
  */
-import { writeFileSync, readdirSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, extname, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { crc32 } from './zip-util.mjs';
-import { packageFiles, generatedFiles, sourceFilesFrom, replaceExactlyOnce } from './skill-packages.mjs';
+import { packageFiles, generatedFiles, sourceFilesFrom } from './skill-packages.mjs';
 import { parseFrontmatter } from './frontmatter.mjs';
-import { scriptsLine, SCRIPTS_LINE } from './deployment-guide.mjs';
+import { withScriptsLine, scriptFilesFrom } from './deployment-guide.mjs';
 import { repoReader } from './repo-files.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,12 +57,10 @@ const research = walk(researchDir).filter(f => f.endsWith('.md')).map(f => {
 writeFileSync(out('data/research.js'), jsExport('RESEARCH_DOCS', research));
 
 // ---------- 2. 指南文件（安裝／部署／維護） ----------
-// 部署指南第 1 節的 scripts/ 清單由各支 .mjs 的檔頭第一行產生（scripts/deployment-guide.mjs），寫回 deployment.md；
-// 要在下面讀 docs/guides/ 之前寫回，data/guides.js 才是新版。整份只有那一行以「scripts/ 」開頭，0 行或 2 行以上就中止
+// 部署指南第 1 節的 scripts/ 清單由各支 .mjs 的檔頭第一行產生（scripts/deployment-guide.mjs 的 withScriptsLine），寫回 deployment.md；
+// 要在下面讀 docs/guides/ 之前寫回，data/guides.js 才是新版。以「scripts/ 」開頭的行不是恰好一行時，withScriptsLine 會中止
 const deploymentGuide = out('docs/guides/deployment.md');
-const scriptFiles = readdirSync(out('scripts')).filter(f => f.endsWith('.mjs')).map(name => ({ name, content: readText(out(`scripts/${name}`)) }));
-writeFileSync(deploymentGuide, replaceExactlyOnce(readText(deploymentGuide), SCRIPTS_LINE, () => scriptsLine(scriptFiles),
-  n => `docs/guides/deployment.md 有 ${n} 行以「scripts/ 」開頭，必須恰好一行（第 1 節的 scripts/ 清單），才知道要換哪一行`));
+writeFileSync(deploymentGuide, withScriptsLine(readText(deploymentGuide), scriptFilesFrom(ROOT)));
 const guidesDir = out('docs/guides');
 const guides = existsSync(guidesDir) ? walk(guidesDir).filter(f => f.endsWith('.md')).map(f => {
   const { meta, body } = parseFrontmatter(readText(f));

@@ -94,7 +94,7 @@ function exactlyOne(count, message) {
   if (count !== 1) throw new Error(message(count));
 }
 // pattern 須帶 g：先數符合幾處，恰好一處才替換。也 export 給 build-worker.mjs 改寫後端代理的模板（CORE_PROMPT 與 import GATE 兩個嵌入點），
-// 以及 build-data.mjs 寫回部署指南第 1 節的 scripts/ 清單
+// 以及 deployment-guide.mjs 改寫部署指南第 1 節的 scripts/ 清單
 export function replaceExactlyOnce(content, pattern, replacement, message) {
   exactlyOne([...content.matchAll(pattern)].length, message);
   return content.replace(pattern, replacement);
