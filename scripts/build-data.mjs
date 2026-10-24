@@ -14,7 +14,7 @@ import { crc32 } from './zip-util.mjs';
 import { packageFiles, generatedFiles, sourceFilesFrom, replaceExactlyOnce } from './skill-packages.mjs';
 import { parseFrontmatter } from './frontmatter.mjs';
 import { scriptsLine, SCRIPTS_LINE } from './deployment-guide.mjs';
-import { repoFiles } from './repo-files.mjs';
+import { repoReader } from './repo-files.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = (p) => join(ROOT, p);
@@ -22,7 +22,7 @@ mkdirSync(out('data'), { recursive: true });
 mkdirSync(out('downloads'), { recursive: true });
 
 // 走訪目錄、POSIX 路徑與 LF 換行的工具（可重現建置），見 scripts/repo-files.mjs
-const { relPosix, readText, walk } = repoFiles(ROOT);
+const { relPosix, readText, walk } = repoReader(ROOT);
 function parseCSV(text) {
   const rows = [];
   let row = [], field = '', inQ = false;

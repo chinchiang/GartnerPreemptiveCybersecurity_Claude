@@ -10,7 +10,7 @@ const SKIP_DIRS = new Set(['__pycache__', 'node_modules', '.git', 'dist', 'outpu
 const SKIP_FILES = /\.(pyc|pyo|DS_Store)$|^\.DS_Store$/;
 
 // root：repo 根目錄的絕對路徑；回傳的路徑都是絕對路徑，relPosix 轉成相對於 root 的 POSIX 路徑
-export function repoFiles(root) {
+export function repoReader(root) {
   // relPosix：路徑一律用 /，避免 Windows 的 \ 漏進 data/*.js 與 ZIP 檔名
   const relPosix = (f) => relative(root, f).split('\\').join('/');
   // readText：換行一律正規化為 LF，避免 CRLF 簽出時內容與 ZIP 位元組改變

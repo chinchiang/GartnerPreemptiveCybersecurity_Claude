@@ -9,7 +9,7 @@
  */
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { repoFiles } from './repo-files.mjs';
+import { repoReader } from './repo-files.mjs';
 
 const GATE = createRequire(import.meta.url)('../assets/scope-gate.js');
 
@@ -83,7 +83,7 @@ export function generatedFiles(files) {
 // 路徑相對於 root、用 /，換行正規化成 LF（走訪與讀檔的規則見 repo-files.mjs）。
 // system-prompt.md 的平臺說明是手寫的，所以要含整個 skills/；scope-gate.js 不在 skills/ 底下，另外放進來。
 export function sourceFilesFrom(root) {
-  const { relPosix, readText, walk } = repoFiles(root);
+  const { relPosix, readText, walk } = repoReader(root);
   return [...walk(join(root, 'skills')).map(f => ({ path: relPosix(f), content: readText(f) })),
     { path: SCOPE_GATE, content: readText(join(root, SCOPE_GATE)) }];
 }
