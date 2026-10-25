@@ -51,7 +51,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git status --short
             git diff
-            echo "::error::建置產物與來源不一致：複本、嵌入區塊與規則說明行請勿手動編輯，改 skills/shared/ 的母本；改完來源後執行 npm run build 並提交（上方列出不一致的檔案）"
+            echo "::error::建置產物與來源不一致：請勿手動編輯產物（複本、嵌入區塊、規則說明行、部署指南的 scripts/ 那一行、data/、downloads/），改來源後執行 npm run build 並提交（上方列出不一致的檔案）"
             exit 1
           fi
       - name: Python skills compile and dry-run (no API keys)

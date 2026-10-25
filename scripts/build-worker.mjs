@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { extractCorePrompt, replaceExactlyOnce } from './skill-packages.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-// 換行正規化為 LF（與 build-data.mjs 的 readText 一致），CRLF 簽出時也能擷取到區塊
+// 換行正規化為 LF（與 repo-files.mjs 的 readText 一致），CRLF 簽出時也能擷取到區塊
 const promptMd = readFileSync(join(ROOT, 'skills/shared/core-prompt.md'), 'utf8').replace(/\r\n/g, '\n');
 let prompt;
 try { prompt = extractCorePrompt(promptMd); } catch (e) { console.error(e.message); process.exit(1); }

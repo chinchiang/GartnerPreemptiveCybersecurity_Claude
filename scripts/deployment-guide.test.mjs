@@ -1,15 +1,13 @@
-// deployment-guide.test.mjs — 部署指南第 1 節 scripts/ 那一行的改寫（withScriptsLine、scriptFilesFrom）的單元測試，與對 repo 的整合檢查
+// deployment-guide.test.mjs — 部署指南第 1 節 scripts/ 那一行的改寫（withScriptsLine、scriptFilesFrom）的單元測試
 // 部署指南（docs/guides/deployment.md）第 1 節的 scripts/ 清單由 scripts/deployment-guide.mjs 從各支 .mjs 的檔頭第一行產生。
-// 前半段是 withScriptsLine 的單元測試（純函式，用記憶體裡的字串，不碰磁碟；預期值是手寫的字面值：整行、全文或錯誤訊息，
-// 只有「重複改寫結果相同」比的是改寫一次的結果）與 scriptFilesFrom 的單元測試（暫存目錄）；
-// 後半段是整合檢查，讀 scripts/ 底下實際的 .mjs 與已提交的部署指南，確認那一行是用現在的檔頭建置出來的。
+// withScriptsLine 的單元測試是純函式，用記憶體裡的字串，不碰磁碟；預期值是手寫的字面值：整行、全文或錯誤訊息，
+// 只有「重複改寫結果相同」比的是改寫一次的結果。scriptFilesFrom 的單元測試用暫存目錄。
+// 已提交的部署指南那一行是否最新，由 build-outputs.test.mjs 的整合檢查比對。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { repoReader } from './repo-files.mjs';
 import { withScriptsLine, scriptFilesFrom } from './deployment-guide.mjs';
 
 // /** 開頭的 module 與 // 開頭的測試檔，檔頭第一行之後的內容都不進清單
@@ -116,15 +114,4 @@ test('scriptFilesFrom 只讀 scripts/ 第一層的 .mjs：子目錄裡的與非 
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
-});
-
-// 對 repo 的整合檢查：跟建置用同一份輸入（scriptFilesFrom 讀檔，不是 git ls-files，新檔案還沒提交時就檢查得到）
-// 與同一個改寫（withScriptsLine），讀檔都經過 repoReader，換行正規化成 LF
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-
-test('已提交的部署指南，等於用 scripts/ 底下各支 .mjs 現在的檔頭第一行改寫後的結果（第 1 節的 scripts/ 那一行是最新的）', () => {
-  const committed = repoReader(ROOT).readText(join(ROOT, 'docs/guides/deployment.md'));
-  // 已提交的指南不是恰好一行以「scripts/ 」開頭時，withScriptsLine 會直接丟出那則訊息
-  assert.equal(committed, withScriptsLine(committed, scriptFilesFrom(ROOT)),
-    '部署指南第 1 節的 scripts/ 清單跟各支 .mjs 的檔頭第一行不一致：改了檔頭請執行 node scripts/build-data.mjs，勿手動編輯那一行');
 });

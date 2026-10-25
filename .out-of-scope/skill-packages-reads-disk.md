@@ -4,7 +4,7 @@
 
 ## 為什麼不搬
 
-`sourceFilesFrom(root)` 把整個 `skills/` 加上 `assets/scope-gate.js` 讀成 `[{ path, content }]`，交給 `generatedFiles()`。建置和技能包組裝器的整合檢查都呼叫它，所以兩邊的輸入一定相同。這是 #120 的要求：建置輸入的組法只寫一份（CODING_STANDARDS §6），不在測試裡另外寫一份走訪。
+`sourceFilesFrom(root)` 把整個 `skills/` 加上 `assets/scope-gate.js` 讀成 `[{ path, content }]`，交給 `generatedFiles()`。建置的讀檔函式（`scripts/build-outputs.mjs` 的 `inputFilesFrom`）呼叫它，對已提交產物的整合檢查也經過同一個函式，所以兩邊的輸入一定相同。這是 #120 的要求：建置輸入的組法只寫一份（CODING_STANDARDS §6），不在測試裡另外寫一份走訪。
 
 「需要讀哪些輸入」跟「拿這些輸入產生什麼」，會因為同一個理由一起改：技能包的組成變了。所以兩者放在同一個 module。走訪目錄、POSIX 路徑、換行正規化這些跟技能包無關的規則，已經在 `scripts/repo-files.mjs`。
 
@@ -12,7 +12,7 @@
 
 - **搬到 `repo-files.mjs`**：讀檔工具得知道 `skills/` 的版面和 `scope-gate.js` 的路徑，技能包的知識會進到一支共用工具。
 - **另開一支只放讀檔的 module**：輸入的清單和用法分在兩個地方，加一個輸入要改兩支檔案。
-- **搬回 `scripts/build-data.mjs`**：建置在頂層就會寫檔，也沒有 export，測試沒辦法 import 它，只能另寫一份組法。
+- **搬進建置的讀檔函式（`scripts/build-outputs.mjs` 的 `inputFilesFrom`）**：建置就得知道 `skills/` 的版面和 `scope-gate.js` 的路徑，跟上一點一樣，輸入的清單和用法會分在兩支 module。#133 把建置收成純函式之後，`inputFilesFrom` 呼叫 `sourceFilesFrom`，不自己走訪 `skills/`。
 
 ```js
 // 組裝器的 interface：除了這一個，都是輸入內容、回傳內容的純函式
