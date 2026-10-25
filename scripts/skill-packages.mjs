@@ -6,10 +6,12 @@
  * 寫檔交給呼叫端（建置由 build-outputs.mjs 收進產物清單、build-data.mjs 寫出；build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
  * 唯一的例外是 sourceFilesFrom(root)：從磁碟讀出組裝器的輸入，由建置的讀檔函式（build-outputs.mjs 的 inputFilesFrom）呼叫；
  * 建置與對已提交產物的整合檢查都經過它，兩邊的輸入才會相同。
- * 純 Node 內建模組，無第三方相依。所有輸入只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
+ * 純 Node 內建模組，無第三方相依。輸入預期是 LF 換行（呼叫端讀檔後須先把 CRLF 正規化為 LF）；
+ * 只有 frontmatter 的判斷交給 frontmatter.mjs 的 parseFrontmatter（接受 CRLF），其餘規則只認 LF。
  */
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { parseFrontmatter } from './frontmatter.mjs';
 import { repoReader } from './repo-files.mjs';
 
 const GATE = createRequire(import.meta.url)('../assets/scope-gate.js');
@@ -122,7 +124,7 @@ function ruleNoteFiles(files) {
 }
 
 // 複本：.json 與母本位元組相同；.py 檔首加一行 # 標註；.md 加一行標註，有 frontmatter 時放在它之後
-// （建置用 parseFrontmatter 才讀得到標題）。
+// （建置用 parseFrontmatter 才讀得到標題）。frontmatter 在哪裡結束也由 parseFrontmatter 判斷（bodyStart），跟建置同一份規則。
 function sharedCopies(files) {
   const copies = [];
   for (const [platform, pkg] of Object.entries(PACKAGES)) {
@@ -140,8 +142,8 @@ function copyContent(name, content) {
   if (name.endsWith('.py')) return `# ${markerText('', `${SHARED_DIR}${name}`)}\n${content}`;
   if (!name.endsWith('.md')) return content;
   const line = `${marker('', `${SHARED_DIR}${name}`)}\n`;
-  const fm = content.match(/^---\n[\s\S]*?\n---\n/);
-  return fm ? fm[0] + line + content.slice(fm[0].length) : line + content;
+  const { bodyStart } = parseFrontmatter(content);
+  return content.slice(0, bodyStart) + line + content.slice(bodyStart);
 }
 
 // 嵌入區塊：手寫檔＋核心提示詞。以 heading 開頭的標題行全檔須恰好一行，只換掉它下面緊接的 ```text 區塊
