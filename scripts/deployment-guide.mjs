@@ -1,8 +1,9 @@
 /**
  * deployment-guide.mjs — 由各支 .mjs 的檔頭第一行產生部署指南第 1 節的 scripts/ 清單
  * interface 是全文進、全文出的純函式 withScriptsLine(guide, files)：輸入部署指南全文與 scripts/ 底下每支 .mjs 的檔名與內容，
- * 回傳換上新 scripts/ 那一行的全文；寫回 docs/guides/deployment.md 交給呼叫端（build-data.mjs），不碰磁碟就能測試。
- * 唯一的例外是 scriptFilesFrom(root)：從磁碟讀出 files，建置與整合檢查（scripts/deployment-guide.test.mjs）共用，兩邊的輸入才會相同。
+ * 回傳換上新 scripts/ 那一行的全文；寫回 docs/guides/deployment.md 交給呼叫端（build-outputs.mjs 收進產物清單、build-data.mjs 寫出），不碰磁碟就能測試。
+ * 唯一的例外是 scriptFilesFrom(root)：從磁碟讀出 files，由建置的讀檔函式（build-outputs.mjs 的 inputFilesFrom）呼叫；
+ * 建置與整合檢查（scripts/build-outputs.test.mjs）都經過它，兩邊的輸入才會相同。
  * 所有輸入只認 LF 換行。
  */
 import { readdirSync } from 'node:fs';

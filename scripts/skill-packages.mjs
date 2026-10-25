@@ -3,8 +3,9 @@
  * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行與其他嵌入區塊
  * （例如 assets/scope-gate.js 帶的 scope 定義）。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
- * 寫檔交給呼叫端（build-data.mjs、build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
- * 唯一的例外是 sourceFilesFrom(root)：從磁碟讀出建置的輸入，建置與對已提交產物的整合檢查共用，兩邊的輸入才會相同。
+ * 寫檔交給呼叫端（建置由 build-outputs.mjs 收進產物清單、build-data.mjs 寫出；build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
+ * 唯一的例外是 sourceFilesFrom(root)：從磁碟讀出組裝器的輸入，由建置的讀檔函式（build-outputs.mjs 的 inputFilesFrom）呼叫；
+ * 建置與對已提交產物的整合檢查都經過它，兩邊的輸入才會相同。
  * 純 Node 內建模組，無第三方相依。所有輸入只認 LF 換行：呼叫端讀檔後須先把 CRLF 正規化為 LF。
  */
 import { createRequire } from 'node:module';
@@ -121,7 +122,7 @@ function ruleNoteFiles(files) {
 }
 
 // 複本：.json 與母本位元組相同；.py 檔首加一行 # 標註；.md 加一行標註，有 frontmatter 時放在它之後
-// （build-data.mjs 的 parseFrontmatter 才讀得到標題）。
+// （建置用 parseFrontmatter 才讀得到標題）。
 function sharedCopies(files) {
   const copies = [];
   for (const [platform, pkg] of Object.entries(PACKAGES)) {
