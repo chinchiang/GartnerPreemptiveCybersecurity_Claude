@@ -179,6 +179,16 @@ test('有 frontmatter 的 .md 複本，frontmatter 原封不動留在檔首，�
     '\n# 共用任務規格\n');
 });
 
+test('frontmatter 的判斷跟建置讀標題用同一份（parseFrontmatter，接受 CRLF）：CRLF 母本的標註一樣放在 frontmatter 之後；標註行以 \\n 結尾，其餘原文照舊', () => {
+  const crlf = sources.map(f => f.path === 'skills/shared/task-spec.md'
+    ? { ...f, content: '---\r\ntitle: 共用任務規格\r\nrole: shared-spec\r\n---\r\n\r\n# 共用任務規格\r\n' } : f);
+  const copy = copyAt(generatedFiles(crlf), 'skills/glm/preemptive-exposure-analysis/references/task-spec.md');
+  assert.equal(copy.content,
+    '---\r\ntitle: 共用任務規格\r\nrole: shared-spec\r\n---\r\n' +
+    '<!-- 由 scripts/build-data.mjs 從 skills/shared/task-spec.md 產生，請改母本後執行 npm run build，勿手動編輯 -->\n' +
+    '\r\n# 共用任務規格\r\n');
+});
+
 test('.py 複本放在 Claude 技能的 scripts/ 底下，檔首加一行 Python 註解標註，其後是母本原文', () => {
   const copy = copyAt(generatedFiles(sources), 'skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py');
   assert.equal(copy.content,

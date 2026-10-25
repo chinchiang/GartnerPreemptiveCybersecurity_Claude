@@ -2,7 +2,8 @@
  * frontmatter.mjs — Markdown frontmatter 的判斷規則，建置讀標題與 Skills 專區渲染檢視共用
  * Markdown 檔首 frontmatter 的唯一判斷規則：檔案以 `---` 開頭、且之後有一行 `---` 閉合，兩者之間就是 frontmatter。
  * 建置（build-outputs.mjs）用它讀研究文件、指南、Skills 檔案的標題，也用 bodyStart 告訴網站 Skills 專區的渲染檢視從哪裡開始
- * （原始碼檢視、複製、下載仍用含 frontmatter 的原文）。接受 CRLF；欄位只解析單行的 `key: value`。
+ * （原始碼檢視、複製、下載仍用含 frontmatter 的原文）。技能包組裝器（skill-packages.mjs）也用 bodyStart 決定 .md 複本的標註放在哪裡。
+ * 接受 CRLF；欄位只解析單行的 `key: value`。
  */
 export function parseFrontmatter(md) {
   const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
