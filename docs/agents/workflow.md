@@ -79,7 +79,7 @@ for f in scratch/<目錄>/verify-screenshots/*.png; do cmp -s "$f" "verify-scree
 
 ## 突變測試：`scripts/mutate.mjs`
 
-確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。每次跑測試各自計時，預設 600 秒，可以用 `--timeout` 調整（`0` 表示不限時）：超過時間就結束整個測試行程、還原檔案，這一筆記成「逾時」，再跑下一筆。突變可能讓 handle 一直開著時（例如伺服器沒關），測試指令也可以加上 `--test-force-exit`，讓測試跑完就結束，不必等到逾時。有存活或逾時就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、`--timeout` 不是 0 或正數），或測試在突變前就失敗或逾時，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。
+確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。每次跑測試各自計時，預設 600 秒，可以用 `--timeout` 調整（`0` 表示不限時）：超過時間就結束整個測試行程、還原檔案，這一筆記成「逾時」，再跑下一筆。突變可能讓 handle 一直開著時（例如伺服器沒關），測試指令也可以加上 `--test-force-exit`，讓測試跑完就結束，不必等到逾時。有存活或逾時就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、`--timeout` 不是 0 或正數），或測試在突變前就失敗或逾時，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。預測會存活的突變，跑之前先決定補測試，或取得同意後照跑、在 PR 說明交代（CODING_STANDARDS §5）；驗收寫「每一筆都要抓到」時，額外加的也算（#138 自己加的一筆預測存活卻照跑，審查才發現跟驗收衝突）。
 
 Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活／逾時、紅的測試、`--json`／`--markdown`）與 Linux 相同，逾時與中斷（Ctrl+C）時都用 `taskkill /T` 結束整棵行程樹；中斷（Ctrl+C、kill）時的還原只保證 Linux／macOS。從 WSL 用 `node.exe` 跑時，`cmd.exe` 不接受 UNC 路徑當目前目錄（會改到 `C:\Windows`），而 `node --test` 的參數是 glob，寫成 UNC 路徑也找不到，所以測試指令要先 `pushd` 到 repo 的 Windows 路徑。在 repo 根目錄、WSL 的 bash 裡，`mutate.mjs` 本身也交給 `node.exe` 執行，替換清單與測試檔即可執行：
 
@@ -106,7 +106,7 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
   `--match-head-commit` 只接受完整的 SHA，短 SHA 會被拒。
 
   CI 還沒跑完、或看起來卡住時：
-  - **等待 CI**：每 20 秒查一次 `gh pr checks <n>`，直到沒有 pending（結束碼 8 代表還有 pending）。最多查 20 次，約 8 分鐘，在工具 10 分鐘的上限內；跑完還有 pending 就再執行一次。不要用 `gh pr checks <n> --watch`，它會超過工具的上限，被移到背景執行。
+  - **等待 CI**：用 `run_in_background` 跑 `gh pr checks <n> --watch --interval 30`，所有 check 跑完它才結束，完成時會收到通知，再用 `gh pr checks <n>` 看每個工作的結果。`browser` 是 `needs: [unit, verify]`，那兩個跑完才出現在列表裡，開 PR 當下數到的工作數會比較少；回報以跑完後最後一次的 `gh pr checks <n>` 為準。要在前景等時，改用每 20 秒查一次的迴圈（結束碼 8 代表還有 pending，最多 20 次，約 8 分鐘，在工具 10 分鐘的上限內；跑完還有 pending 就再執行一次）：
     ```
     for i in $(seq 20); do gh pr checks <n> >/dev/null; [ $? -eq 8 ] || break; sleep 20; done; gh pr checks <n>
     ```
@@ -126,3 +126,5 @@ issue 與留言開頭附 AI 產生的聲明，依情境寫：triage 時（例如
 brief 與驗收條件裡的預期值（報告某一列的說明、計數、突變抓不抓得到）要從實際輸出取得：已提交的 `verify-report.md`，或實際跑一次 `node.exe scripts/verify.mjs --only <情境>`、`node scripts/mutate.mjs`，並寫明來源；只能推算的值標成「預測」。推算的算法常和檢查實際數的東西不同（#104 因此差了一倍）。
 
 brief 要求的行為，先對照被改 module 檔頭寫的契約（例如輸入的換行、由誰讀檔）。兩者衝突時，在 brief 裡一起決定是改契約還是改要求。#135 的 brief 要求 CRLF 的測試，卻沒對照技能包組裝器 #135 之前的檔頭寫的「所有輸入只認 LF」，實作途中才補留言決定。
+
+brief 的 Desired behavior 每一條都要有對應的驗收條件，文件同步那幾條也算，寫成可以用 `grep` 或 `sed -n` 確認的形式，用樣式而不是行號，例如 `sed -n '/<樣式>/p'`。#138 的 brief 要求「`mutate.mjs` 檔頭若提到逾時與中斷的實作方式，改成指向共用 module」，驗收條件沒有對應的一條，實作時漏改了逾時那一行，兩軸審查才抓到。
