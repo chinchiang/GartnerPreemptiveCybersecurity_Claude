@@ -15,13 +15,13 @@
  * 結束碼：0 全部抓到；1 有存活或有逾時；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、
  * --timeout 不是 0 或正數）或測試在突變前就失敗或逾時，這時一個檔案都不改。
  * Windows 上主流程（抓到／存活／逾時、紅的測試、--json／--markdown）與 Linux 相同，測試指令由 cmd.exe 執行。
- * 中斷（SIGINT／SIGTERM）時的還原只保證 Linux／macOS：結束測試靠 process.kill(-pid) 送給整個行程群組，Windows 不支援，
- * 測試子行程可能殘留；而且 Windows 上被 kill（SIGTERM、taskkill）會直接結束，訊號處理器不會執行，改壞的檔案不會還原。
+ * 中斷（SIGINT／SIGTERM）時先結束整組測試子行程（跟逾時同一個做法），再還原改壞的檔案。還原只保證 Linux／macOS：
+ * Windows 上被 kill（SIGTERM、taskkill）會直接結束，訊號處理器不會執行，改壞的檔案不會還原。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, relative } from 'node:path';
+import { parseTimeout, runWithTimeout } from './child-process.mjs';
 
 // 從測試輸出找出失敗的 node:test 測試 [{ name, file }]，父測試、describe、todo 不算；讀不到（例如不是 node:test）就是 []。
 // 兩種格式都讀：spec（Node 24 非 TTY 的預設）讀結尾的 failing tests 那一段，TAP（Node 22 的預設）讀 not ok。
@@ -85,10 +85,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     else if (listPath === null) listPath = args[i];
   }
   const [format = 'text'] = formats;
-  // --timeout 只收 0 或正數（可以有小數）：負數、不是數字、空字串、沒給值都算參數有誤，用正規式檢查，Number('') 的 0 才不會混進來
-  const timeoutValid = /^(\d+\.?\d*|\.\d+)$/.test(timeoutArg ?? '');
-  const timeoutSeconds = Number(timeoutArg);
-  if (!listPath || !testCommand || !timeoutValid || formats.size > 1) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]');
+  // --timeout 只收 0 或正數（可以有小數）：負數、不是數字、空字串、沒給值都算參數有誤（判定在 child-process.mjs 的 parseTimeout）
+  const timeoutSeconds = parseTimeout(timeoutArg);
+  if (!listPath || !testCommand || timeoutSeconds === null || formats.size > 1) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]');
   let mutations;
   try { mutations = JSON.parse(readFileSync(listPath, 'utf8')); }
   catch (e) { fail(`無法讀取突變清單 ${listPath}：${e.message}`); }
@@ -105,29 +104,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (problems.length) fail(problems.join('\n'));
 
   // 測試以非同步子行程執行，這樣被中斷（SIGINT／SIGTERM）時訊號處理器才跑得到：結束測試、還原正在改的檔案再離開
-  let current = null;   // 目前改壞的檔案 { file, original } 與測試子行程
-  let child = null;
-  // 逾時時結束測試子行程底下的所有行程：Linux／macOS 送 SIGKILL 給整個行程群組；Windows 沒有行程群組，用 taskkill /T 結束整棵行程樹
-  const killTree = pid => {
-    if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
-    else { try { process.kill(-pid, 'SIGKILL'); } catch {} }
-  };
+  let current = null;   // 目前改壞的檔案 { file, original }
+  let running = null;   // 目前的測試子行程（runWithTimeout 的回傳值），結束後設回 null
   // 回傳 { code, output, timedOut }：output 是 stdout（node --test 的報告寫在這裡），用來找出失敗的測試；等 close（輸出讀完）才算結束。
-  // 超過 timeoutSeconds 就結束整組測試行程、記成逾時；setTimeout 超過 2^31-1 毫秒會變成立刻觸發，所以上限壓在這裡（約 24.8 天）
-  const runTests = () => new Promise(resolve => {
-    // 拿掉 NODE_TEST_CONTEXT：被 node --test 啟動時會繼承它，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
-    const { NODE_TEST_CONTEXT, ...env } = process.env;
-    // detached 讓測試自成行程群組，中斷時才能用 process.kill(-pid) 整組結束；Windows 沒有行程群組，detached 反而讓 stdout 讀不到
-    child = spawn(testCommand, { shell: true, stdio: ['ignore', 'pipe', 'ignore'], detached: process.platform !== 'win32', env });
-    let output = '';
-    let timedOut = false;
-    const timer = timeoutSeconds > 0 && setTimeout(() => { timedOut = true; killTree(child.pid); }, Math.min(timeoutSeconds * 1000, 2 ** 31 - 1));
-    child.stdout.on('data', chunk => { output += chunk; });
-    child.on('close', code => { clearTimeout(timer); child = null; resolve({ code, output, timedOut }); });
-  });
+  // 測試指令以 shell 執行；超過 timeoutSeconds 就結束整組測試行程、記成逾時（做法見 child-process.mjs 的 runWithTimeout）
+  const runTests = async () => {
+    running = runWithTimeout({ command: testCommand, shell: true, timeoutSeconds });
+    const { code, stdout, timedOut } = await running.result;
+    running = null;
+    return { code, output: stdout, timedOut };
+  };
   for (const signal of ['SIGINT', 'SIGTERM']) {
     process.on(signal, () => {
-      if (child) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
+      if (running) running.kill();
       if (current) writeFileSync(current.file, current.original);
       console.error(`\n收到 ${signal}：已還原 ${current ? current.file : '（沒有改動中的檔案）'}`);
       process.exit(130);
