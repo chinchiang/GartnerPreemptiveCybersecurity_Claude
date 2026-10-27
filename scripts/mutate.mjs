@@ -8,7 +8,7 @@
  * mutations.json 是臨時寫的清單（不提交）：[{ "file": "scripts/x.mjs", "from": "原文", "to": "改成", "note": "說明" }]，
  * 路徑相對於目前目錄。測試指令預設 node --test scripts/*.test.mjs，以 shell 執行；結束碼非 0 視為「抓到」。
  * 每次跑測試（突變前的基準與每一筆突變）各自計時，--timeout 預設 600 秒，0 表示不限時，可以有小數。
- * 超過時間就結束整個測試行程（Linux／macOS 結束行程群組，Windows 用 taskkill /T 結束行程樹），還原檔案，
+ * 超過時間就結束整組測試行程（做法見 child-process.mjs 的 runWithTimeout），還原檔案，
  * 這一筆記成第三種結果「逾時」，再跑下一筆；逾時不列紅的測試（--json 是每筆的 timedOut 與頂層的逾時總數）。
  * 抓到時從測試輸出列出失敗的 node:test 測試（名稱與檔名，spec 與 TAP 格式都讀；--json 是每筆的 failed），
  * 測試指令不是 node:test 時就不列。--markdown 輸出總計一行加「突變｜結果｜紅的測試」表格，給 PR 說明的突變紀錄用。
@@ -85,7 +85,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     else if (listPath === null) listPath = args[i];
   }
   const [format = 'text'] = formats;
-  // --timeout 只收 0 或正數（可以有小數）：負數、不是數字、空字串、沒給值都算參數有誤（判定在 child-process.mjs 的 parseTimeout）
+  // --timeout 不合法（parseTimeout 回傳 null，規則見 child-process.mjs）就是參數有誤
   const timeoutSeconds = parseTimeout(timeoutArg);
   if (!listPath || !testCommand || timeoutSeconds === null || formats.size > 1) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]');
   let mutations;

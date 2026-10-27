@@ -26,7 +26,7 @@ export function runWithTimeout({ command, args = [], shell = false, stderr = fal
   let out = '';
   let err = '';
   let timedOut = false;
-  let closed = false;   // close 之後 pid 可能被別的行程重新使用，kill() 就不再送訊號（mutate.mjs 原本在 close 時把 child 設成 null，同一個時間點）
+  let closed = false;   // close 之後 pid 可能被別的行程重新使用，kill() 就不再送訊號
   child.stdout.on('data', chunk => { out += chunk; });
   if (stderr) child.stderr.on('data', chunk => { err += chunk; });
   const timer = timeoutSeconds > 0 && setTimeout(() => { timedOut = true; killTree(child.pid); }, Math.min(timeoutSeconds * 1000, 2 ** 31 - 1));

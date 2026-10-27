@@ -1,5 +1,5 @@
 // child-process.test.mjs — 子行程共用工具的測試
-// parseTimeout 直接呼叫；runWithTimeout 用真的子行程跑 process.execPath 執行的小程式。
+// parseTimeout 直接呼叫；runWithTimeout 用真的子行程跑 process.execPath 執行的小程式，close 之後的 kill() 另以 process.kill 的替身檢查。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs';
@@ -76,6 +76,17 @@ test('runWithTimeout：呼叫 kill() 就結束整組行程（子行程與它開�
     await waitUntilDead(pids());
     for (const pid of pids()) assert.ok(!alive(pid), `行程 ${pid} 在 kill() 之後還在執行`);
   });
+});
+
+test('runWithTimeout：子行程結束（close）之後呼叫 kill() 不送任何訊號（pid 可能已被別的行程重新使用）', async () => {
+  const { result, kill } = runWithTimeout({ command: process.execPath, args: ['-e', ''] });
+  await within10s(result);
+  // 換成只記錄呼叫的替身：真的送出的話，送給的可能是重新使用這個 pid 的別的行程群組
+  const calls = [];
+  const realKill = process.kill;
+  process.kill = (...args) => { calls.push(args); return true; };
+  try { kill(); } finally { process.kill = realKill; }
+  assert.deepEqual(calls, []);
 });
 
 test('runWithTimeout：shell 為真時 command 是整串指令，交給 shell 解析（突變工具的測試指令用這種）', async () => {
