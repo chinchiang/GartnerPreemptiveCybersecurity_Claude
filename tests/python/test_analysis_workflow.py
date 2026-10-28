@@ -346,7 +346,7 @@ class PreflightRenderingTest(unittest.TestCase):
         prompt = aw.build_report_prompt(aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA))
         section = prompt[prompt.index("【腳本預檢結果】"):].split("\n\n")[0].splitlines()
         self.assertIn("範圍外資料與未確認歸屬的對外資產已於送出前排除", section[1])
-        self.assertTrue(any("out_of_scope_asset" in line for line in section))
+        self.assertTrue(any("dangling_reference" in line for line in section))
         self.assertFalse(any("A97" in line or "A02" in line for line in section))
 
     def test_dry_run_stderr_preflight_lines_are_unchanged(self):

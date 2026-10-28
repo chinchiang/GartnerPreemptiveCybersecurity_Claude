@@ -552,6 +552,8 @@ def build_report_prompt(inputs: Inputs) -> str:
         parts += ["【本次未提供的輸入】" + "；".join(inputs.missing) + "。請依規則以替代方式處理並標示。", ""]
     counts = {}
     for finding in inputs.findings:
+        if finding.kind in NOT_IN_PROMPT:
+            continue
         key = (finding.file, finding.kind, finding.severity)
         counts[key] = counts.get(key, 0) + 1
     lines = ["範圍外資料與未確認歸屬的對外資產已於送出前排除；原始腳本預檢請在本機檢視。"]
