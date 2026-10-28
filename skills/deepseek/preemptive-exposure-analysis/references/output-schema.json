@@ -79,7 +79,7 @@
     "metrics": {
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["items"],
-      "properties": { "items": { "type": "array", "items": { "type": "object", "required": ["name", "value", "target"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
+      "properties": { "items": { "type": "array", "minItems": 6, "items": { "type": "object", "required": ["name", "value", "target"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
     },
     "human_review_points": {
       "type": "array",

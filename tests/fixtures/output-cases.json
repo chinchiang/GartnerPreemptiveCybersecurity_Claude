@@ -81,5 +81,14 @@
     ],
     "value": 0,
     "valid": true
+  },
+  {
+    "name": "至少六項指標",
+    "path": [
+      "metrics",
+      "items"
+    ],
+    "value": [],
+    "valid": false
   }
 ]
