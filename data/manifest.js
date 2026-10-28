@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "e0923d498915",
+ "contentHash": "d6b148316c20",
  "research": [
   {
    "id": "00-method",
@@ -89,7 +89,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/api-workflow.py",
    "platform": "chatgpt",
-   "bytes": 6091
+   "bytes": 6120
   },
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
