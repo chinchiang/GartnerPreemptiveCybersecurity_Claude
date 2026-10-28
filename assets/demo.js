@@ -117,7 +117,7 @@
       // 2. 利用可能性（合成資料欄位 epss_sim／kev_sim 視同 epss／kev，皆為模擬值）
       const epss = Number(v.epss ?? v.epss_sim ?? 0), kev = (v.kev ?? v.kev_sim) === true;
       if (v.exploit_public === true) { likelihood += L.exploitPublic * P.weights.exploit; f.factors.push('公開利用程式'); }
-      if (P.inputs.epss) {
+      if (P.inputs.epss && typeof (v.epss ?? v.epss_sim) === 'number' && Number.isFinite(epss) && epss >= 0 && epss <= 1 && typeof (v.kev ?? v.kev_sim) === 'boolean') {
         likelihood += L.epss * epss * P.weights.exploit;
         if (epss >= 0.5) f.factors.push(`模擬 EPSS ${epss}`);
         if (kev) { likelihood += L.kev * P.weights.exploit; f.factors.push('模擬 KEV（已知遭利用）'); }
@@ -202,7 +202,7 @@
         id: `V${i + 1}`, hypothesis: `${h.entryName} → ${h.targetName}（${h.hops} 跳）`, hypothesis_id: h.id,
         method: (external ? '授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動' : '內部桌面演練 + 設定檢視 + 讀取式驗證') + (otTouched ? '（OT 端點只做讀取式驗證）' : ''),
         requires: authorized ? '已授權主動測試（仍須依書面授權範圍執行）' : `尚未授權主動測試：需 CISO 另行核准${external && !externalOK ? '（含外部掃描授權）' : ''}並排除 OT`,
-        scope_exclusions: auth.excluded || [],
+        authorized, scope_exclusions: auth.excluded || [],
         success: '證明路徑不可行，或確認阻斷點（控制）有效'
       };
     });
@@ -235,7 +235,7 @@
     const top = hypotheses[0];
     const decisions = [
       `核准 P1（${p1List.length} 項）修補排程與補償控制`,
-      activeOK ? '依既有書面授權執行驗證計畫 V1–V3' : '決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）',
+      validation.length && validation.every(v => v.authorized) ? `依既有書面授權執行驗證計畫 ${validation.map(v => v.id).join('、')}` : '決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）',
       ...(missingSummary.length ? ['補齊缺漏資料後重跑分析'] : [])
     ];
     // 摘要正文限 300 字（含標點）；對象、日期、信心放在 header，不計入

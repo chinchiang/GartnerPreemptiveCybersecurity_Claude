@@ -7,6 +7,7 @@
  * - 第 7 項（缺 scope.json 應拒絕）由呼叫端看結束碼；第 8 項（scope 不合格應拒絕）只能在對話介面人工判讀。都不在這裡。
  * 純 Node 內建模組；所有輸入只認 LF。
  */
+import { outputProblems } from './output-schema.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -49,6 +50,8 @@ const BLOCK_FIELDS = ['confidence', 'basis', 'missing_inputs', 'requires_human']
 
 // 對一份輸出 JSON 逐項判定，回傳 [{ id, name, pass, detail }]。variant：'baseline'（驗收 1–5）或 'no-intel'（另加驗收 6）。
 export function acceptanceResults(output, { variant = 'baseline', outputSchema, synthetic }) {
+  const schemaErrors = outputProblems(output, outputSchema);
+  if (schemaErrors.length) return [{ id: 'schema', name: '輸出符合 schema', pass: false, detail: schemaErrors.join('; ') }];
   const results = [];
   const addResult = (id, name, pass, detail = '') => results.push({ id, name, pass, detail: String(detail) });
 

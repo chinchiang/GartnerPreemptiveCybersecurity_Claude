@@ -496,19 +496,72 @@ def build_system_prompt(core_prompt_md: str, platform_note: str) -> str:
     return f"{core}\n\n{platform_note}" if platform_note else core
 
 
+def scoped_files(inputs: Inputs) -> list:
+    """模型只接收範圍內的結構化資料；輸入檔與腳本預檢留在本機。"""
+    import copy
+    allowed = set(inputs.scope["authorized_scope"]["in_scope_assets"])
+    result = []
+    for source in inputs.files:
+        f = copy.deepcopy(source)
+        data, category = f["data"], f["category"]
+        if category in ("assets", "vulnerabilities", "misconfigurations"):
+            data = [row for row in data if row.get("asset_id") in allowed]
+        elif category == "identities":
+            rows = []
+            for row in data:
+                linked = [a for a in str(row.get("linked_assets", "")).split(";") if a in allowed]
+                if linked:
+                    row["linked_assets"] = ";".join(linked)
+                    rows.append(row)
+            data = rows
+        elif category == "exposures" and isinstance(data, dict):
+            data["exposures"] = [row for row in data.get("exposures", []) if isinstance(row, dict) and row.get("asset_id") in allowed]
+        elif category == "controls" and isinstance(data, dict):
+            rows = []
+            for row in data.get("controls", []):
+                row["coverage_assets"] = [a for a in row.get("coverage_assets", []) if a in allowed]
+                row["gaps"] = [a for a in row.get("gaps", []) if a in allowed]
+                if row["coverage_assets"] or row["gaps"]:
+                    rows.append(row)
+            data["controls"] = rows
+        elif category == "topology" and isinstance(data, dict):
+            data["crown_jewels"] = [a for a in data.get("crown_jewels", []) if a in allowed]
+            data["edges"] = [e for e in data.get("edges", []) if isinstance(e, dict) and (e.get("from") == "internet" or e.get("from") in allowed) and e.get("to") in allowed]
+        f["data"] = data
+        if f["name"].endswith(".csv"):
+            buf = io.StringIO()
+            writer = csv.DictWriter(buf, fieldnames=f["columns"], lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(data)
+            f["raw"] = buf.getvalue()
+        else:
+            f["raw"] = json.dumps(data, ensure_ascii=False)
+        if data == source["data"]:
+            f["raw"] = source["raw"]
+        f["records"] = count_records(data)
+        result.append(f)
+    return result
+
+
 def build_report_prompt(inputs: Inputs) -> str:
     """第一段 user 訊息：只補模型自己算不出或需要事先知道的資訊（筆數、缺漏、腳本預檢結果），
     不重複核心提示詞已有的規則（八步流程、免責聲明），也不放本機路徑。"""
     parts = ["以下是授權範圍內的輸入資料。請依系統提示的流程產出完整的正體中文 Markdown 報告；"
              "先回報每個檔案的筆數、缺欄位與異常值，缺漏不得補造。這一段先不要輸出 JSON。", ""]
+    parts.append("【輸入檔案筆數（排除前，本機統計）】" + "；".join(f"{f['name']}：{f['records'] if f['records'] is not None else 1}" for f in inputs.files))
     if inputs.missing:
         parts += ["【本次未提供的輸入】" + "；".join(inputs.missing) + "。請依規則以替代方式處理並標示。", ""]
-    lines = preflight_lines(inputs.findings)
+    counts = {}
+    for finding in inputs.findings:
+        key = (finding.file, finding.kind, finding.severity)
+        counts[key] = counts.get(key, 0) + 1
+    lines = ["範圍外資料與未確認歸屬的對外資產已於送出前排除；原始腳本預檢請在本機檢視。"]
+    lines += [f"{name}：{kind} ×{count}（{severity}）" for (name, kind, severity), count in counts.items()]
     if lines:
         parts += ["【腳本預檢結果】以下是腳本對輸入的機械檢查，請寫進資料品質章節並據以下修信心："]
         parts += [f"- {line}" for line in lines]
         parts.append("")
-    for f in inputs.files:
+    for f in scoped_files(inputs):
         count = f"（腳本預先計算筆數：{f['records']}）" if f["records"] is not None else ""
         fence = "csv" if f["name"].endswith(".csv") else "json"
         parts += [f"### {f['name']} — {f['label']}{count}", f"```{fence}\n{f['raw'].strip()}\n```", ""]
@@ -595,25 +648,69 @@ def parse_json_loose(text: str):
         return None
 
 
+def output_problems(value, schema, root=None, path="$"):
+    """依輸出 schema 驗證型別、參照、組合、必要欄位及界限；未知規則拒絕處理。"""
+    import math
+    root = schema if root is None else root
+    supported = {"$schema", "$id", "$defs", "$ref", "title", "description", "type", "required", "properties", "items", "allOf", "enum", "minimum", "maximum", "minLength", "maxLength", "minItems"}
+    if set(schema) - supported:
+        raise ValueError("不支援的輸出 schema 規則：" + str(set(schema) - supported))
+    errors = []
+    if "$ref" in schema:
+        node = root
+        for key in schema["$ref"][2:].split("/"):
+            node = node[key]
+        errors += output_problems(value, node, root, path)
+    for node in schema.get("allOf", []):
+        errors += output_problems(value, node, root, path)
+    kinds = schema.get("type", [])
+    kinds = [kinds] if isinstance(kinds, str) else kinds
+    checks = {**_TYPE_CHECKS, "null": lambda v: v is None}
+    if kinds and not any(checks[k](value) for k in kinds):
+        return errors + [path + " 型別不合格"]
+    if "enum" in schema and value not in schema["enum"]:
+        errors.append(path + " 不在允許值中")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if not math.isfinite(value) or value < schema.get("minimum", -math.inf) or value > schema.get("maximum", math.inf):
+            errors.append(path + " 數值超出範圍")
+    if isinstance(value, str) and not schema.get("minLength", 0) <= len(value) <= schema.get("maxLength", math.inf):
+        errors.append(path + " 字數不合格")
+    if isinstance(value, list):
+        if len(value) < schema.get("minItems", 0):
+            errors.append(path + " 項目不足")
+        for i, item in enumerate(value):
+            errors += output_problems(item, schema.get("items", {}), root, f"{path}[{i}]")
+    if isinstance(value, dict):
+        errors += [path + "." + key + " 必填" for key in schema.get("required", []) if key not in value]
+        for key, node in schema.get("properties", {}).items():
+            if key in value:
+                errors += output_problems(value[key], node, root, path + "." + key)
+    return errors
+
+
 def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, output_schema: dict) -> int:
     """寫出 <平臺>-report.md 與 <平臺>-output.json；JSON 解析失敗時另存 <平臺>-output.raw.txt 並回傳 4。
-    輸出後檢查（必填鍵來自 output-schema.json）只警告，完整判定交給 scripts/check-acceptance.mjs。"""
+    輸出不符合 schema 時保留原始回應並回傳 4；合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
     output_dir.mkdir(parents=True, exist_ok=True)
     report_path = output_dir / f"{platform}-report.md"
     report_path.write_text(report, encoding="utf-8")
     print(f"[完成] Markdown 報告：{report_path}")
+    (output_dir / f"{platform}-output.json").unlink(missing_ok=True)
     data = parse_json_loose(json_text)
     if not isinstance(data, dict):
         raw_path = output_dir / f"{platform}-output.raw.txt"
         raw_path.write_text(json_text, encoding="utf-8")
         print(f"[警告] JSON 解析失敗，原始回應已存至 {raw_path}；請人工檢查或重跑。", file=sys.stderr)
         return JSON_PARSE_FAILED
+    problems = output_problems(data, output_schema)
+    if problems:
+        (output_dir / f"{platform}-output.raw.txt").write_text(json_text, encoding="utf-8")
+        (output_dir / f"{platform}-output.json").unlink(missing_ok=True)
+        print("[錯誤] 輸出不符合 output-schema.json：" + "；".join(problems), file=sys.stderr)
+        return 4
     json_path = output_dir / f"{platform}-output.json"
     json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[完成] JSON 輸出：{json_path}")
-    missing = [k for k in output_schema.get("required", []) if k not in data]
-    if missing:
-        print(f"[警告] JSON 缺少 output-schema.json 的必填區塊：{', '.join(missing)}", file=sys.stderr)
     return 0
 
 
@@ -643,7 +740,7 @@ def build_parser(adapter) -> argparse.ArgumentParser:
 
 
 def main(adapter, argv=None) -> int:
-    """一次分析工作流程。結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗。
+    """一次分析工作流程。結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析或 schema 驗證失敗。
     資訊訊息一律印到 stderr；stdout 只放產物路徑與 dry-run 的提示詞。"""
     args = build_parser(adapter).parse_args(argv)
     try:

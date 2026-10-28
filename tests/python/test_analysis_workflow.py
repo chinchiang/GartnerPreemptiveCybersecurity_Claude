@@ -342,11 +342,12 @@ class PreflightRenderingTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
-    def test_report_prompt_preflight_section_is_unchanged(self):
+    def test_report_prompt_preflight_section_hides_identifiers(self):
         prompt = aw.build_report_prompt(aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA))
         section = prompt[prompt.index("【腳本預檢結果】"):].split("\n\n")[0].splitlines()
-        self.assertEqual(section, ["【腳本預檢結果】以下是腳本對輸入的機械檢查，請寫進資料品質章節並據以下修信心："]
-                         + [f"- {line}" for line in PROBLEM_PREFLIGHT_LINES])
+        self.assertIn("範圍外資料與未確認歸屬的對外資產已於送出前排除", section[1])
+        self.assertTrue(any("out_of_scope_asset" in line for line in section))
+        self.assertFalse(any("A97" in line or "A02" in line for line in section))
 
     def test_dry_run_stderr_preflight_lines_are_unchanged(self):
         stdout, stderr = io.StringIO(), io.StringIO()
@@ -477,7 +478,7 @@ class PromptTest(unittest.TestCase):
         self.assertIn("【本次未提供的輸入】", p)
         self.assertIn("threat-intel.json", p)
         self.assertIn("【腳本預檢結果】", p)
-        self.assertIn("old-test.northwind-synthetic.example", p)
+        self.assertNotIn("old-test.northwind-synthetic.example", p)
 
     def test_report_prompt_omits_local_path_step_list_and_disclaimer(self):
         p = self.report_prompt
@@ -537,7 +538,7 @@ class FakeAdapter:
         return self.replies.pop(0)
 
 
-VALID_OUTPUT = {k: {} for k in json.loads((ROOT / "skills" / "shared" / "output-schema.json").read_text(encoding="utf-8"))["required"]}
+VALID_OUTPUT = json.loads((ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8"))
 
 
 class WorkflowRunTest(unittest.TestCase):
@@ -593,11 +594,11 @@ class WorkflowRunTest(unittest.TestCase):
         self.assertEqual((self.out / "fake-output.raw.txt").read_text(encoding="utf-8"), "抱歉，我無法輸出 JSON")
         self.assertFalse((self.out / "fake-output.json").exists())
 
-    def test_missing_required_keys_only_warn(self):
+    def test_missing_required_keys_fail_validation(self):
         partial = dict(VALID_OUTPUT)
         partial.pop("metrics")
         code, out, err = self.run_main(FakeAdapter(["# 報告", json.dumps(partial)]))
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 4)
         self.assertIn("metrics", err)
 
     def test_scope_problem_exits_1_before_calling_the_model(self):

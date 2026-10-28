@@ -17,7 +17,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_sdk import ROOT, blocked, fake_openai_responses, load_platform_script  # noqa: E402
 
-VALID_OUTPUT = json.dumps({k: {} for k in json.loads((ROOT / "skills" / "shared" / "output-schema.json").read_text(encoding="utf-8"))["required"]})
+VALID_OUTPUT = (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")
 
 
 class ChatGptAdapterTest(unittest.TestCase):
@@ -117,12 +117,12 @@ class ChatGptAdapterTest(unittest.TestCase):
         self.assertFalse((self.out / "chatgpt-output.json").exists())
         self.assertTrue((self.out / "chatgpt-report.md").exists())
 
-    def test_output_check_problems_only_warn_and_exit_0(self):
+    def test_output_check_problems_fail_with_exit_4(self):
         openai, record = fake_openai_responses(["# 報告", json.dumps({"meta": {}})])
         code, out, err = self.run_main(modules={"openai": openai})
-        self.assertEqual(code, 0)  # 原本是 3；完整判定交給 scripts/check-acceptance.mjs
+        self.assertEqual(code, 4)  # 原本是 3；完整判定交給 scripts/check-acceptance.mjs
         self.assertIn("exposure_priorities", err)
-        self.assertTrue((self.out / "chatgpt-output.json").exists())
+        self.assertFalse((self.out / "chatgpt-output.json").exists())
 
     def test_dry_run_imports_no_sdk_and_prints_full_prompts(self):
         with blocked("openai"):

@@ -1,0 +1,85 @@
+[
+  {
+    "name": "分數字串",
+    "path": [
+      "exposure_priorities",
+      "items",
+      0,
+      "score"
+    ],
+    "value": "錯誤",
+    "valid": false
+  },
+  {
+    "name": "超界分數",
+    "path": [
+      "exposure_priorities",
+      "items",
+      0,
+      "score"
+    ],
+    "value": 10000,
+    "valid": false
+  },
+  {
+    "name": "布林不得當數字",
+    "path": [
+      "exposure_priorities",
+      "items",
+      0,
+      "score"
+    ],
+    "value": true,
+    "valid": false
+  },
+  {
+    "name": "不合法信心",
+    "path": [
+      "exposure_priorities",
+      "confidence"
+    ],
+    "value": "未知",
+    "valid": false
+  },
+  {
+    "name": "布林字串",
+    "path": [
+      "exposure_priorities",
+      "requires_human"
+    ],
+    "value": "false",
+    "valid": false
+  },
+  {
+    "name": "空聲明",
+    "path": [
+      "meta",
+      "disclaimer"
+    ],
+    "value": "",
+    "valid": false
+  },
+  {
+    "name": "空物件",
+    "path": [],
+    "value": {},
+    "valid": false
+  },
+  {
+    "name": "null",
+    "path": [],
+    "value": null,
+    "valid": false
+  },
+  {
+    "name": "合法分數",
+    "path": [
+      "exposure_priorities",
+      "items",
+      0,
+      "score"
+    ],
+    "value": 0,
+    "valid": true
+  }
+]

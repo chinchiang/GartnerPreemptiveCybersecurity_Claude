@@ -95,11 +95,11 @@ const failedAfter = (mutate, variant = 'baseline', base = 'acceptance-fixture.js
 const vpnOf = (o) => o.exposure_priorities.items.find(f => f.vuln_id === 'SYN-2026-0101');
 
 test('驗收 0：缺頂層鍵、區塊缺證據欄位、meta 缺必填、human_review_points 不是 array，各自判為不通過', () => {
-  assert.deepEqual(failedAfter(o => { delete o.metrics; }), ['0a', '0b']);              // metrics 也是 block，連帶 0b
-  assert.deepEqual(failedAfter(o => { delete o.remediation.basis; }), ['0b']);
-  assert.deepEqual(failedAfter(o => { delete o.meta.disclaimer; }), ['0c']);
-  assert.deepEqual(failedAfter(o => { o.human_review_points = { stage: 'x' }; }), ['0d']);
-  assert.deepEqual(failedAfter(o => { delete o.human_review_points[0].who; }), ['0d']);
+  assert.deepEqual(failedAfter(o => { delete o.metrics; }), ['schema']);              // metrics 也是 block，連帶 0b
+  assert.deepEqual(failedAfter(o => { delete o.remediation.basis; }), ['schema']);
+  assert.deepEqual(failedAfter(o => { delete o.meta.disclaimer; }), ['schema']);
+  assert.deepEqual(failedAfter(o => { o.human_review_points = { stage: 'x' }; }), ['schema']);
+  assert.deepEqual(failedAfter(o => { delete o.human_review_points[0].who; }), ['schema']);
 });
 
 test('驗收 2：vpn-gw-01/SYN-2026-0101 不是 P1、資產對不上或缺一項依據，判為不通過', () => {
@@ -115,8 +115,8 @@ test('驗收 3：找不到 vpn-gw-01 → ad-dc-01 → erp-db-01 的鏈，或任�
   const paths = (o) => o.attack_path_hypotheses.items;
   // 鏈不必相鄰（H-2 中間多一個 erp-app-01 也算），所以要讓每一條路徑都不經過 ad-dc-01
   assert.deepEqual(failedAfter(o => paths(o).forEach(p => { p.nodes = p.nodes.filter(n => n !== 'ad-dc-01'); })), ['3']);
-  assert.deepEqual(failedAfter(o => { paths(o)[1].status = 'verified'; }), ['3b']);               // 鏈仍在 H-1，但不是每條都是 hypothesis
-  assert.deepEqual(failedAfter(o => paths(o).forEach(p => { p.status = 'verified'; })), ['3', '3b']);
+  assert.deepEqual(failedAfter(o => { paths(o)[1].status = 'verified'; }), ['schema']);               // 鏈仍在 H-1，但不是每條都是 hypothesis
+  assert.deepEqual(failedAfter(o => paths(o).forEach(p => { p.status = 'verified'; })), ['schema']);
   assert.deepEqual(failedAfter(o => { o.attack_path_hypotheses.items = []; }), ['3', '3b']);
 });
 
@@ -128,7 +128,7 @@ test('驗收 4：驗證計畫為空，或任一項沒標「尚未授權」，判
 test('驗收 5：管理摘要 300 字通過、301 字不通過；缺決策請求或限制，判為不通過', () => {
   const pad = (o, length) => { o.executive_summary.text = '限制'.padEnd(length, '字'); };
   assert.deepEqual(failedAfter(o => pad(o, 300)), []);
-  assert.deepEqual(failedAfter(o => pad(o, 301)), ['5a']);
+  assert.deepEqual(failedAfter(o => pad(o, 301)), ['schema']);
   assert.deepEqual(failedAfter(o => { o.executive_summary.text = ''; }), ['5a', '5b']);
   assert.deepEqual(failedAfter(o => { o.executive_summary.decisions_requested = []; }), ['5b']);       // 摘要文字也沒寫「決策」
   assert.deepEqual(failedAfter(o => { o.executive_summary.text = o.executive_summary.text.replace(/限制|未驗證|假設/g, ''); }), ['5b']);

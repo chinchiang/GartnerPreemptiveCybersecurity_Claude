@@ -221,7 +221,25 @@
   /** 嵌入的 scope 定義（複本，改了也不影響守門）。 */
   const scopeSchema = () => JSON.parse(JSON.stringify(SCOPE_SCHEMA));
 
-  const api = { scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
+  /** 送往模型前依授權清單排除資產與結構化關聯；不修改原始資料。 */
+  function scopedBundle(bundle) {
+    const data = JSON.parse(JSON.stringify(bundle));
+    const allowed = new Set(data.scope.authorized_scope.in_scope_assets);
+    for (const key of ['assets', 'vulnerabilities', 'misconfigurations']) if (Array.isArray(data[key])) data[key] = data[key].filter(r => allowed.has(r.asset_id));
+    if (Array.isArray(data.identities)) data.identities = data.identities.flatMap(r => {
+      const linked = String(r.linked_assets || '').split(';').filter(a => allowed.has(a));
+      return linked.length ? [{ ...r, linked_assets: linked.join(';') }] : [];
+    });
+    if (data.exposures && Array.isArray(data.exposures.exposures)) data.exposures.exposures = data.exposures.exposures.filter(e => e && allowed.has(e.asset_id));
+    if (data.controls && Array.isArray(data.controls.controls)) data.controls.controls = data.controls.controls.map(c => ({ ...c, coverage_assets: (c.coverage_assets || []).filter(a => allowed.has(a)), gaps: (c.gaps || []).filter(a => allowed.has(a)) })).filter(c => c.coverage_assets.length || c.gaps.length);
+    if (data.topology) {
+      data.topology.crown_jewels = (data.topology.crown_jewels || []).filter(a => allowed.has(a));
+      data.topology.edges = (data.topology.edges || []).filter(e => e && (e.from === 'internet' || allowed.has(e.from)) && allowed.has(e.to));
+    }
+    return data;
+  }
+
+  const api = { scopedBundle, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

@@ -28,7 +28,7 @@ export default {
     let body; try { body = await request.json(); } catch { return new Response('Bad JSON', { status: 400, headers: cors }); }
     const problems = GATE.scopeProblems(body?.bundle?.scope);
     if (problems.length) return new Response(`缺少 scope 或必填欄位不合格：${problems.join('、')}；無授權範圍不得分析`, { status: 400, headers: cors });
-    const user = `請依系統指令進行先制型曝險分析。輸入：\n\`\`\`json\n${JSON.stringify(body.bundle).slice(0, 400000)}\n\`\`\``;
+    const user = `請依系統指令進行先制型曝險分析。輸入：\n\`\`\`json\n${JSON.stringify(GATE.scopedBundle(body.bundle)).slice(0, 400000)}\n\`\`\``;
     const provider = env.PROVIDER || 'openai';
     const base = env.BASE_URL || DEFAULT_BASE[provider];
     let upstream;

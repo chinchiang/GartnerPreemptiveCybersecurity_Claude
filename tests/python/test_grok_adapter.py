@@ -16,7 +16,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_sdk import ROOT, blocked, fake_openai, fake_xai_sdk, load_platform_script  # noqa: E402
 
-VALID_OUTPUT = json.dumps({k: {} for k in json.loads((ROOT / "skills" / "shared" / "output-schema.json").read_text(encoding="utf-8"))["required"]})
+VALID_OUTPUT = (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")
 
 
 class GrokAdapterTest(unittest.TestCase):
