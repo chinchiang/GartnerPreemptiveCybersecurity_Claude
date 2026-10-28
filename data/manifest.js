@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "4fe4df065178",
+ "contentHash": "771349d5762e",
  "research": [
   {
    "id": "00-method",
@@ -89,7 +89,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/api-workflow.py",
    "platform": "chatgpt",
-   "bytes": 6045
+   "bytes": 6120
   },
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
@@ -114,7 +114,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/output-schema.json",
    "platform": "chatgpt",
-   "bytes": 6406
+   "bytes": 6727
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/scoring-rules.md",
@@ -159,7 +159,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/output-schema.json",
    "platform": "claude",
-   "bytes": 6406
+   "bytes": 6727
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/scoring-rules.md",
@@ -169,7 +169,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 39045
+   "bytes": 44837
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -184,7 +184,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/api-workflow.py",
    "platform": "deepseek",
-   "bytes": 6331
+   "bytes": 6377
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
@@ -204,7 +204,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/output-schema.json",
    "platform": "deepseek",
-   "bytes": 6406
+   "bytes": 6727
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/scoring-rules.md",
@@ -234,7 +234,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/api-workflow.py",
    "platform": "gemini",
-   "bytes": 9788
+   "bytes": 9834
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/SKILL.md",
@@ -254,7 +254,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/references/output-schema.json",
    "platform": "gemini",
-   "bytes": 6406
+   "bytes": 6727
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/references/scoring-rules.md",
@@ -264,7 +264,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "gemini",
-   "bytes": 39045
+   "bytes": 44837
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -284,7 +284,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 8090
+   "bytes": 8136
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",
@@ -309,7 +309,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/output-schema.json",
    "platform": "glm",
-   "bytes": 6406
+   "bytes": 6727
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/scoring-rules.md",
@@ -339,7 +339,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/api-workflow.py",
    "platform": "grok",
-   "bytes": 7377
+   "bytes": 7423
   },
   {
    "path": "skills/grok/requirements.txt",
@@ -364,7 +364,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 38914
+   "bytes": 44706
   },
   {
    "path": "skills/shared/core-prompt.md",
@@ -379,7 +379,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/output-schema.json",
    "platform": "shared",
-   "bytes": 6406
+   "bytes": 6727
   },
   {
    "path": "skills/shared/scoring-rules.md",

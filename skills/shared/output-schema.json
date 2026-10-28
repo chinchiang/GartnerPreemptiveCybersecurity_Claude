@@ -29,11 +29,12 @@
         "generated_by": { "type": "string", "description": "平臺／模型名稱與 skill 版本" },
         "scope_reference": { "type": "string" },
         "scoring_rules": { "type": "string", "description": "實際使用的評分規則說明（預設為本專案附錄 A 示範規則）" },
-        "disclaimer": { "type": "string", "description": "必須聲明：語言模型未驗證實際曝險；所有路徑為假設；主動測試需授權" }
+        "disclaimer": { "type": "string", "minLength": 1, "description": "必須聲明：語言模型未驗證實際曝險；所有路徑為假設；主動測試需授權" }
       }
     },
     "data_quality": {
       "allOf": [{ "$ref": "#/$defs/block" }],
+      "required": ["files"],
       "properties": {
         "files": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "records": { "type": "integer" }, "missing_fields": { "type": "array", "items": { "type": "string" } }, "anomalies": { "type": "array", "items": { "type": "string" } } } } },
         "out_of_scope_excluded": { "type": "array", "items": { "type": "string" } },
@@ -42,19 +43,22 @@
     },
     "exposure_priorities": {
       "allOf": [{ "$ref": "#/$defs/block" }],
+      "required": ["items"],
       "properties": {
-        "items": { "type": "array", "items": { "type": "object", "required": ["finding_id", "asset_id", "asset_name", "vuln_id", "priority", "score", "likelihood", "impact", "factors", "confidence"], "properties": { "finding_id": { "type": "string" }, "asset_id": { "type": "string" }, "asset_name": { "type": "string" }, "vuln_id": { "type": "string" }, "title": { "type": "string" }, "priority": { "$ref": "#/$defs/priority" }, "score": { "type": "number" }, "likelihood": { "type": "number" }, "impact": { "type": "number" }, "factors": { "type": "array", "items": { "type": "string" } }, "missing": { "type": "array", "items": { "type": "string" } }, "confidence": { "$ref": "#/$defs/confidence" } } } },
+        "items": { "type": "array", "items": { "type": "object", "required": ["finding_id", "asset_id", "asset_name", "vuln_id", "priority", "score", "likelihood", "impact", "factors", "confidence"], "properties": { "finding_id": { "type": "string" }, "asset_id": { "type": "string" }, "asset_name": { "type": "string" }, "vuln_id": { "type": "string" }, "title": { "type": "string" }, "priority": { "$ref": "#/$defs/priority" }, "score": { "type": "number", "minimum": 0, "maximum": 100 }, "likelihood": { "type": "number", "minimum": 0, "maximum": 10 }, "impact": { "type": "number", "minimum": 0, "maximum": 10 }, "factors": { "type": "array", "items": { "type": "string" } }, "missing": { "type": "array", "items": { "type": "string" } }, "confidence": { "$ref": "#/$defs/confidence" } } } },
         "thresholds": { "type": "object" }
       }
     },
     "attack_path_hypotheses": {
       "allOf": [{ "$ref": "#/$defs/block" }],
+      "required": ["items"],
       "properties": {
         "items": { "type": "array", "items": { "type": "object", "required": ["id", "entry", "target", "nodes", "edges", "feasibility", "status"], "properties": { "id": { "type": "string" }, "entry": { "type": "string" }, "target": { "type": "string" }, "nodes": { "type": "array", "items": { "type": "string" } }, "edges": { "type": "array", "items": { "type": "string" } }, "feasibility": { "type": "number", "minimum": 0, "maximum": 10 }, "blocking_controls": { "type": "array", "items": { "type": "string" } }, "status": { "type": "string", "enum": ["hypothesis", "validated-feasible", "validated-blocked"] } } } }
       }
     },
     "remediation": {
       "allOf": [{ "$ref": "#/$defs/block" }],
+      "required": ["items"],
       "properties": {
         "items": { "type": "array", "items": { "type": "object", "required": ["finding_id", "priority", "action", "owner", "effort", "verify", "approval_level"], "properties": { "finding_id": { "type": "string" }, "priority": { "$ref": "#/$defs/priority" }, "action": { "type": "string" }, "owner": { "type": "string" }, "effort": { "type": "string" }, "verify": { "type": "string" }, "approval_level": { "type": "string" } } } },
         "compensating_controls": { "type": "array", "items": { "type": "object", "properties": { "control": { "type": "string" }, "gaps": { "type": "string" }, "note": { "type": "string" } } } }
@@ -62,17 +66,20 @@
     },
     "validation_plan": {
       "allOf": [{ "$ref": "#/$defs/block" }],
+      "required": ["items"],
       "properties": {
         "items": { "type": "array", "items": { "type": "object", "required": ["id", "hypothesis", "method", "authorization_required", "success_criteria"], "properties": { "id": { "type": "string" }, "hypothesis": { "type": "string" }, "method": { "type": "string" }, "authorization_required": { "type": "string" }, "scope_exclusions": { "type": "array", "items": { "type": "string" } }, "success_criteria": { "type": "string" } } } }
       }
     },
     "executive_summary": {
       "allOf": [{ "$ref": "#/$defs/block" }],
+      "required": ["text"],
       "properties": { "audience": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string", "maxLength": 300, "description": "正文 ≤ 300 字（含標點；對象／日期列另放 audience 與 meta）" }, "decisions_requested": { "type": "array", "items": { "type": "string" } } }
     },
     "metrics": {
       "allOf": [{ "$ref": "#/$defs/block" }],
-      "properties": { "items": { "type": "array", "items": { "type": "object", "required": ["name", "value", "target"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
+      "required": ["items"],
+      "properties": { "items": { "type": "array", "minItems": 6, "items": { "type": "object", "required": ["name", "value", "target"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
     },
     "human_review_points": {
       "type": "array",

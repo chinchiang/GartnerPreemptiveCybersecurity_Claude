@@ -43,7 +43,7 @@ class DeepSeekAdapterTest(unittest.TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
     def test_two_stages_use_deepseek_settings_and_json_mode(self):
-        openai, record = fake_openai(["# 報告", json.dumps({k: {} for k in REQUIRED_KEYS})])
+        openai, record = fake_openai(["# 報告", (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")])
         code, out, err = self.run_main(openai=openai)
         self.assertEqual(code, 0, err)
         self.assertEqual(record["clients"], [{"api_key": "test-key", "base_url": "https://api.deepseek.com"}])
@@ -58,7 +58,7 @@ class DeepSeekAdapterTest(unittest.TestCase):
     def test_env_and_flags_override_defaults(self):
         os.environ["DEEPSEEK_BASE_URL"] = "https://example.invalid/v1"
         os.environ["DEEPSEEK_MODEL"] = "deepseek-v4-flash"
-        openai, record = fake_openai(["# 報告", "{}"])
+        openai, record = fake_openai(["# 報告", (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")])
         code, out, err = self.run_main("--max-tokens", "2048", "--no-json-mode", openai=openai)
         self.assertEqual(code, 0, err)
         self.assertEqual(record["clients"][0]["base_url"], "https://example.invalid/v1")
@@ -67,7 +67,7 @@ class DeepSeekAdapterTest(unittest.TestCase):
         self.assertNotIn("response_format", record["calls"][1])
 
     def test_rejected_json_mode_is_retried_once_without_response_format(self):
-        openai, record = fake_openai(["# 報告", "{}"], reject_response_format=True)
+        openai, record = fake_openai(["# 報告", (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")], reject_response_format=True)
         code, out, err = self.run_main(openai=openai)
         self.assertEqual(code, 0, err)
         self.assertEqual(len(record["calls"]), 3)

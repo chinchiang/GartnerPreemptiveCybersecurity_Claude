@@ -221,7 +221,36 @@
   /** 嵌入的 scope 定義（複本，改了也不影響守門）。 */
   const scopeSchema = () => JSON.parse(JSON.stringify(SCOPE_SCHEMA));
 
-  const api = { scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
+  /** 送往模型前依授權清單排除資產與結構化關聯；不修改原始資料。 */
+  function scopedBundle(bundle) {
+    const data = JSON.parse(JSON.stringify(bundle));
+    const allowed = new Set(data.scope.authorized_scope.in_scope_assets);
+    const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+    const rows = v => Array.isArray(v) ? v.filter(object) : [];
+    const inScope = v => typeof v === 'string' && allowed.has(v);
+    const refs = v => Array.isArray(v) ? v.filter(inScope) : [];
+    for (const key of ['assets', 'vulnerabilities', 'misconfigurations']) if (key in data) data[key] = rows(data[key]).filter(r => inScope(r.asset_id));
+    if ('identities' in data) data.identities = rows(data.identities).flatMap(r => {
+      const linked = typeof r.linked_assets === 'string' ? r.linked_assets.split(';').filter(inScope) : [];
+      return linked.length ? [{ ...r, linked_assets: linked.join(';') }] : [];
+    });
+    if ('exposures' in data) {
+      data.exposures = object(data.exposures) ? data.exposures : {};
+      data.exposures.exposures = rows(data.exposures.exposures).filter(e => inScope(e.asset_id));
+    }
+    if ('controls' in data) {
+      data.controls = object(data.controls) ? data.controls : {};
+      data.controls.controls = rows(data.controls.controls).map(c => ({ ...c, coverage_assets: refs(c.coverage_assets), gaps: refs(c.gaps) })).filter(c => c.coverage_assets.length || c.gaps.length);
+    }
+    if ('topology' in data) {
+      data.topology = object(data.topology) ? data.topology : {};
+      data.topology.crown_jewels = refs(data.topology.crown_jewels);
+      data.topology.edges = rows(data.topology.edges).filter(e => (e.from === 'internet' || inScope(e.from)) && inScope(e.to));
+    }
+    return data;
+  }
+
+  const api = { scopedBundle, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

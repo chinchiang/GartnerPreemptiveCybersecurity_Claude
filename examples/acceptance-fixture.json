@@ -248,6 +248,30 @@
         "name": "未納入清冊的對外資產",
         "value": 1,
         "target": "0"
+      },
+      {
+        "name": "攻擊路徑假設數",
+        "value": null,
+        "target": "每條至少一個已驗證阻斷點",
+        "next_review": "每週"
+      },
+      {
+        "name": "高信心輸出比例",
+        "value": null,
+        "target": "至少 80%",
+        "next_review": "每週"
+      },
+      {
+        "name": "資產清冊完整度估計",
+        "value": null,
+        "target": "至少 95%",
+        "next_review": "每週"
+      },
+      {
+        "name": "未納入清冊的對外資產數",
+        "value": null,
+        "target": "0",
+        "next_review": "每週"
       }
     ]
   },
