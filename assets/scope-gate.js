@@ -225,16 +225,27 @@
   function scopedBundle(bundle) {
     const data = JSON.parse(JSON.stringify(bundle));
     const allowed = new Set(data.scope.authorized_scope.in_scope_assets);
-    for (const key of ['assets', 'vulnerabilities', 'misconfigurations']) if (Array.isArray(data[key])) data[key] = data[key].filter(r => allowed.has(r.asset_id));
-    if (Array.isArray(data.identities)) data.identities = data.identities.flatMap(r => {
-      const linked = String(r.linked_assets || '').split(';').filter(a => allowed.has(a));
+    const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+    const rows = v => Array.isArray(v) ? v.filter(object) : [];
+    const inScope = v => typeof v === 'string' && allowed.has(v);
+    const refs = v => Array.isArray(v) ? v.filter(inScope) : [];
+    for (const key of ['assets', 'vulnerabilities', 'misconfigurations']) if (key in data) data[key] = rows(data[key]).filter(r => inScope(r.asset_id));
+    if ('identities' in data) data.identities = rows(data.identities).flatMap(r => {
+      const linked = typeof r.linked_assets === 'string' ? r.linked_assets.split(';').filter(inScope) : [];
       return linked.length ? [{ ...r, linked_assets: linked.join(';') }] : [];
     });
-    if (data.exposures && Array.isArray(data.exposures.exposures)) data.exposures.exposures = data.exposures.exposures.filter(e => e && allowed.has(e.asset_id));
-    if (data.controls && Array.isArray(data.controls.controls)) data.controls.controls = data.controls.controls.map(c => ({ ...c, coverage_assets: (c.coverage_assets || []).filter(a => allowed.has(a)), gaps: (c.gaps || []).filter(a => allowed.has(a)) })).filter(c => c.coverage_assets.length || c.gaps.length);
-    if (data.topology) {
-      data.topology.crown_jewels = (data.topology.crown_jewels || []).filter(a => allowed.has(a));
-      data.topology.edges = (data.topology.edges || []).filter(e => e && (e.from === 'internet' || allowed.has(e.from)) && allowed.has(e.to));
+    if ('exposures' in data) {
+      data.exposures = object(data.exposures) ? data.exposures : {};
+      data.exposures.exposures = rows(data.exposures.exposures).filter(e => inScope(e.asset_id));
+    }
+    if ('controls' in data) {
+      data.controls = object(data.controls) ? data.controls : {};
+      data.controls.controls = rows(data.controls.controls).map(c => ({ ...c, coverage_assets: refs(c.coverage_assets), gaps: refs(c.gaps) })).filter(c => c.coverage_assets.length || c.gaps.length);
+    }
+    if ('topology' in data) {
+      data.topology = object(data.topology) ? data.topology : {};
+      data.topology.crown_jewels = refs(data.topology.crown_jewels);
+      data.topology.edges = rows(data.topology.edges).filter(e => (e.from === 'internet' || inScope(e.from)) && inScope(e.to));
     }
     return data;
   }

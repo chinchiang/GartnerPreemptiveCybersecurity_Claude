@@ -37,8 +37,8 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
   python3 skills/gemini/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出與結束碼
-  output/gemini-report.md、output/gemini-output.json（JSON 解析失敗時另存 output/gemini-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗
+  output/gemini-report.md、output/gemini-output.json（JSON 解析或輸出 schema 驗證失敗時另存 output/gemini-output.raw.txt）
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析或輸出 schema 驗證失敗
 
 安全邊界
   不啟用任何工具。原生路徑的對話狀態存在 Google 的伺服器上（previous_interaction_id），送出前請依資料分類政策評估。

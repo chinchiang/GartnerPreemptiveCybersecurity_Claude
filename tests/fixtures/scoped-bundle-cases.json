@@ -1,0 +1,705 @@
+[
+  {
+    "name": "正常資產與關聯",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "vulnerabilities": [],
+      "identities": [
+        {
+          "linked_assets": "A01"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01"
+            ],
+            "gaps": []
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "曝險物件形狀不合格 list",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": [
+        {
+          "asset_id": "A02",
+          "hostname": "EXCLUDED_SENTINEL"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": []
+      }
+    }
+  },
+  {
+    "name": "曝險物件形狀不合格 NoneType",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": null
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": []
+      }
+    }
+  },
+  {
+    "name": "曝險物件形狀不合格 str",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": "EXCLUDED_SENTINEL"
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": []
+      }
+    }
+  },
+  {
+    "name": "曝險物件形狀不合格 int",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": 42
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": []
+      }
+    }
+  },
+  {
+    "name": "曝險清單形狀不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "as_of": "2026-10-28",
+        "exposures": {
+          "asset_id": "A02"
+        }
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "as_of": "2026-10-28",
+        "exposures": []
+      }
+    }
+  },
+  {
+    "name": "曝險列型別與歸屬",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": [
+          null,
+          3,
+          {
+            "asset_id": null
+          },
+          {
+            "asset_id": [
+              "A01"
+            ]
+          },
+          {
+            "asset_id": "A02"
+          },
+          {
+            "asset_id": "A01"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": [
+          {
+            "asset_id": "A01"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "資產不是陣列",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": {
+        "asset_id": "A02",
+        "name": "EXCLUDED_SENTINEL"
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": []
+    }
+  },
+  {
+    "name": "資產列不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        null,
+        false,
+        {
+          "asset_id": [
+            "A01"
+          ]
+        },
+        {
+          "asset_id": true
+        },
+        {
+          "asset_id": "A01"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ]
+    }
+  },
+  {
+    "name": "控制列為空值",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": [
+          null,
+          42
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": []
+      }
+    }
+  },
+  {
+    "name": "控制參照空值",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": [
+          {
+            "name": "保留",
+            "coverage_assets": null,
+            "gaps": [
+              "A01",
+              "A02"
+            ]
+          },
+          {
+            "coverage_assets": null,
+            "gaps": null
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": [
+          {
+            "name": "保留",
+            "coverage_assets": [],
+            "gaps": [
+              "A01"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "控制參照不是陣列",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": "A01",
+            "gaps": {
+              "asset_id": "A02"
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": []
+      }
+    }
+  },
+  {
+    "name": "控制集合不是陣列",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": {
+          "coverage_assets": [
+            "A02"
+          ]
+        }
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": []
+      }
+    }
+  },
+  {
+    "name": "控制頂層不是物件",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": [
+        {
+          "coverage_assets": [
+            "A02"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "controls": {
+        "controls": []
+      }
+    }
+  },
+  {
+    "name": "身分連結不是字串",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "identities": [
+        null,
+        {
+          "linked_assets": [
+            "A02"
+          ]
+        },
+        {
+          "linked_assets": false
+        },
+        {
+          "linked_assets": "A01;A02"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "identities": [
+        {
+          "linked_assets": "A01"
+        }
+      ]
+    }
+  },
+  {
+    "name": "拓樸集合形狀不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "topology": {
+        "crown_jewels": null,
+        "edges": {
+          "from": "A02",
+          "to": "A01"
+        }
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "topology": {
+        "crown_jewels": [],
+        "edges": []
+      }
+    }
+  },
+  {
+    "name": "拓樸列不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "topology": {
+        "crown_jewels": [
+          [
+            "A01"
+          ],
+          "A01",
+          "A02"
+        ],
+        "edges": [
+          null,
+          false,
+          {
+            "from": [
+              "A01"
+            ],
+            "to": "A01"
+          },
+          {
+            "from": "internet",
+            "to": [
+              "A01"
+            ]
+          },
+          {
+            "from": "internet",
+            "to": "A01"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "topology": {
+        "crown_jewels": [
+          "A01"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "可選類別缺漏",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "部分必要類別形狀不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "vulnerabilities": null,
+      "misconfigurations": "EXCLUDED_SENTINEL",
+      "identities": {}
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "vulnerabilities": [],
+      "misconfigurations": [],
+      "identities": []
+    }
+  }
+]

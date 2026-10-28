@@ -500,37 +500,50 @@ def scoped_files(inputs: Inputs) -> list:
     """模型只接收範圍內的結構化資料；輸入檔與腳本預檢留在本機。"""
     import copy
     allowed = set(inputs.scope["authorized_scope"]["in_scope_assets"])
+
+    def rows(value):
+        return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
+
+    def in_scope(value):
+        return isinstance(value, str) and value in allowed
+
+    def refs(value):
+        return [ref for ref in value if in_scope(ref)] if isinstance(value, list) else []
+
     result = []
     for source in inputs.files:
         f = copy.deepcopy(source)
         data, category = f["data"], f["category"]
         if category in ("assets", "vulnerabilities", "misconfigurations"):
-            data = [row for row in data if row.get("asset_id") in allowed]
+            data = [row for row in rows(data) if in_scope(row.get("asset_id"))]
         elif category == "identities":
-            rows = []
-            for row in data:
-                linked = [a for a in str(row.get("linked_assets", "")).split(";") if a in allowed]
+            identities = []
+            for row in rows(data):
+                linked = refs(row["linked_assets"].split(";")) if isinstance(row.get("linked_assets"), str) else []
                 if linked:
                     row["linked_assets"] = ";".join(linked)
-                    rows.append(row)
-            data = rows
-        elif category == "exposures" and isinstance(data, dict):
-            data["exposures"] = [row for row in data.get("exposures", []) if isinstance(row, dict) and row.get("asset_id") in allowed]
-        elif category == "controls" and isinstance(data, dict):
-            rows = []
-            for row in data.get("controls", []):
-                row["coverage_assets"] = [a for a in row.get("coverage_assets", []) if a in allowed]
-                row["gaps"] = [a for a in row.get("gaps", []) if a in allowed]
+                    identities.append(row)
+            data = identities
+        elif category == "exposures":
+            data = data if isinstance(data, dict) else {}
+            data["exposures"] = [row for row in rows(data.get("exposures")) if in_scope(row.get("asset_id"))]
+        elif category == "controls":
+            data = data if isinstance(data, dict) else {}
+            controls = []
+            for row in rows(data.get("controls")):
+                row["coverage_assets"] = refs(row.get("coverage_assets"))
+                row["gaps"] = refs(row.get("gaps"))
                 if row["coverage_assets"] or row["gaps"]:
-                    rows.append(row)
-            data["controls"] = rows
-        elif category == "topology" and isinstance(data, dict):
-            data["crown_jewels"] = [a for a in data.get("crown_jewels", []) if a in allowed]
-            data["edges"] = [e for e in data.get("edges", []) if isinstance(e, dict) and (e.get("from") == "internet" or e.get("from") in allowed) and e.get("to") in allowed]
+                    controls.append(row)
+            data["controls"] = controls
+        elif category == "topology":
+            data = data if isinstance(data, dict) else {}
+            data["crown_jewels"] = refs(data.get("crown_jewels"))
+            data["edges"] = [e for e in rows(data.get("edges")) if (e.get("from") == "internet" or in_scope(e.get("from"))) and in_scope(e.get("to"))]
         f["data"] = data
         if f["name"].endswith(".csv"):
             buf = io.StringIO()
-            writer = csv.DictWriter(buf, fieldnames=f["columns"], lineterminator="\n")
+            writer = csv.DictWriter(buf, fieldnames=f["columns"], lineterminator="\n", extrasaction="ignore")
             writer.writeheader()
             writer.writerows(data)
             f["raw"] = buf.getvalue()
