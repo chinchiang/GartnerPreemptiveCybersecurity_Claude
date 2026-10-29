@@ -49,3 +49,41 @@ class AuditRegressionTest(unittest.TestCase):
                     self.assertEqual(aw.save_outputs(folder, 'fake', '報告', reply, schema), 4)
                 self.assertFalse((folder / 'fake-output.json').exists())
                 self.assertEqual((folder / 'fake-output.raw.txt').read_text(encoding='utf-8'), reply)
+
+
+class ExcludedAssetsTest(unittest.TestCase):
+    """稽核 1（#146）：excluded_assets 排除優先；重疊時列為異常，格式不符時列為必要問題（排除未生效）。"""
+
+    def load(self, **authorized):
+        schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            for f in (ROOT / 'examples/synthetic-org').iterdir():
+                (folder / f.name).write_bytes(f.read_bytes())
+            scope = json.loads((folder / 'scope.json').read_text(encoding='utf-8'))
+            scope['authorized_scope'].update(authorized)
+            (folder / 'scope.json').write_text(json.dumps(scope, ensure_ascii=False), encoding='utf-8')
+            return aw.load_inputs(folder, frozenset(), schema)
+
+    def test_excluded_asset_is_not_sent_and_overlap_is_reported(self):
+        inputs = self.load(excluded_assets=['A01'])
+        filtered = {f['category']: f['data'] for f in aw.scoped_files(inputs)}
+        self.assertNotIn('A01', [a['asset_id'] for a in filtered['assets']])
+        self.assertFalse([v for v in filtered['vulnerabilities'] if v['asset_id'] == 'A01'])
+        self.assertNotIn('vpn-gw-01', aw.build_report_prompt(inputs).split('【腳本預檢結果】')[0])
+        overlap = [f for f in inputs.findings if f.kind == aw.PreflightKind.EXCLUDED_ASSET]
+        self.assertEqual([(f.file, f.severity, f.detail) for f in overlap], [('assets.csv', aw.ANOMALY, ['A01'])])
+
+    def test_text_excluded_does_not_filter(self):
+        inputs = self.load(excluded=['A01'])
+        filtered = {f['category']: f['data'] for f in aw.scoped_files(inputs)}
+        self.assertIn('A01', [a['asset_id'] for a in filtered['assets']])
+        self.assertFalse([f for f in inputs.findings if f.kind in (aw.PreflightKind.EXCLUDED_ASSET, aw.PreflightKind.INVALID_EXCLUDED_ASSETS)])
+
+    def test_malformed_excluded_assets_is_a_required_problem(self):
+        for value in ['A01', ['A01', 7], ['  ']]:
+            with self.subTest(value=value):
+                inputs = self.load(excluded_assets=value)
+                bad = [f for f in inputs.findings if f.kind == aw.PreflightKind.INVALID_EXCLUDED_ASSETS]
+                self.assertEqual([(f.file, f.severity) for f in bad], [('scope.json', aw.PROBLEM)])
+                self.assertIn('excluded_assets 須為非空白字串的陣列', '\n'.join(aw.preflight_lines(inputs.findings)))

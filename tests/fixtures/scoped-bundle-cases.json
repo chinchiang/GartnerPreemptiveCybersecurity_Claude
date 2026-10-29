@@ -701,5 +701,501 @@
       "misconfigurations": [],
       "identities": []
     }
+  },
+  {
+    "name": "排除清單覆蓋允許清單（排除優先）",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            "A02"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          },
+          {
+            "from": "internet",
+            "to": "A02"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            "A02"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01"
+            ],
+            "gaps": []
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "排除清單含範圍外資產",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ],
+          "excluded_assets": [
+            "A03"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          },
+          {
+            "from": "internet",
+            "to": "A02"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ],
+          "excluded_assets": [
+            "A03"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01"
+            ],
+            "gaps": []
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "只有文字 excluded，不參與篩選",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded": [
+            "A02"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          },
+          {
+            "from": "internet",
+            "to": "A02"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded": [
+            "A02"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          },
+          {
+            "from": "internet",
+            "to": "A02"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "排除清單不是陣列，視同空的",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": "A02"
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          },
+          {
+            "from": "internet",
+            "to": "A02"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": "A02"
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "vulnerabilities": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ],
+      "identities": [
+        {
+          "linked_assets": "A01;A02"
+        }
+      ],
+      "controls": {
+        "controls": [
+          {
+            "coverage_assets": [
+              "A01",
+              "A02"
+            ],
+            "gaps": [
+              "A02"
+            ]
+          }
+        ]
+      },
+      "topology": {
+        "crown_jewels": [
+          "A02"
+        ],
+        "edges": [
+          {
+            "from": "internet",
+            "to": "A01"
+          },
+          {
+            "from": "A01",
+            "to": "A02"
+          },
+          {
+            "from": "internet",
+            "to": "A02"
+          }
+        ]
+      }
+    }
   }
 ]

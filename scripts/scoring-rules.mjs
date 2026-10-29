@@ -101,7 +101,7 @@ export const DOCUMENTS = [
     { rule: '路徑可行性範圍', start: '## 4. 攻擊路徑可行性（', expect: (R) => R.feasibility.range },
     { rule: '路徑可行性', start: '`feasibility = clamp(', expect: feasibilityFormula },
     { rule: '無發現節點取值', start: '- 節點可能性：', expect: (R) => [0, R.feasibility.unknownNode] },
-    { rule: '最大跳數', start: '- 只走 `in_scope_assets` 內的節點', expect: (R) => [R.feasibility.maxHops] }
+    { rule: '最大跳數', start: '- 只走允許範圍內的節點', expect: (R) => [R.feasibility.maxHops] }
   ] },
   { path: 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md', checks: [ // Codex 用的改寫版：評分規則的程式碼區塊、定義段落與信心一節
     { rule: '可能性', start: 'likelihood = clamp(', end: ', 0, 10)', expect: likelihoodFormula },

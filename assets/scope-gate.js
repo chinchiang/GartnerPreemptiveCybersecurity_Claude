@@ -39,11 +39,20 @@
             },
             "minItems": 1
           },
+          "excluded_assets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "[^\\u0009-\\u000d\\u001c-\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
+            },
+            "description": "排除的資產識別碼（asset_id）。允許分析的資產＝in_scope_assets 減去本清單：同一資產兩邊都有時，排除優先。"
+          },
           "excluded": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "文字限制事項（例如不得對 OT 主動測試）。只供報告與驗證計畫引用，不參與資產篩選；要排除特定資產請用 excluded_assets。"
           },
           "active_testing_authorized": {
             "type": "boolean"
@@ -221,10 +230,20 @@
   /** 嵌入的 scope 定義（複本，改了也不影響守門）。 */
   const scopeSchema = () => JSON.parse(JSON.stringify(SCOPE_SCHEMA));
 
+  /** 排除清單：excluded_assets 裡的字串（不是陣列就是空的）。與 Python 核心的 excluded_asset_ids 相同。 */
+  const excludedAssets = (authorized) => new Set(Array.isArray(authorized && authorized.excluded_assets)
+    ? authorized.excluded_assets.filter(v => typeof v === 'string') : []);
+
+  /** 允許分析的資產＝in_scope_assets 減去 excluded_assets（排除優先，見 docs/adr/0007）；與 Python 核心的 allowed_asset_ids 相同。 */
+  function allowedAssets(authorized) {
+    const excluded = excludedAssets(authorized);
+    return new Set(authorized.in_scope_assets.filter(id => !excluded.has(id)));
+  }
+
   /** 送往模型前依授權清單排除資產與結構化關聯；不修改原始資料。 */
   function scopedBundle(bundle) {
     const data = JSON.parse(JSON.stringify(bundle));
-    const allowed = new Set(data.scope.authorized_scope.in_scope_assets);
+    const allowed = allowedAssets(data.scope.authorized_scope);
     const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
     const rows = v => Array.isArray(v) ? v.filter(object) : [];
     const inScope = v => typeof v === 'string' && allowed.has(v);
@@ -250,7 +269,7 @@
     return data;
   }
 
-  const api = { scopedBundle, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
+  const api = { scopedBundle, allowedAssets, excludedAssets, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

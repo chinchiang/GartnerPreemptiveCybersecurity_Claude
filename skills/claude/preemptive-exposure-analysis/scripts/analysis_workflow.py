@@ -284,6 +284,8 @@ class PreflightKind:
     NESTED_ROWS_MISSING_FIELDS = "nested_rows_missing_fields"  # JSON 物件裡的清單有 N 筆缺必填欄位；detail＝{key, count, fields}
     DUPLICATE_ASSET_ID = "duplicate_asset_id"  # 重複 asset_id；detail＝重複的筆數
     OUT_OF_SCOPE_ASSET = "out_of_scope_asset"  # 範圍外資產；detail＝asset_id 清單
+    EXCLUDED_ASSET = "excluded_asset"  # 排除清單覆蓋允許清單的資產（排除優先）；detail＝asset_id 清單
+    INVALID_EXCLUDED_ASSETS = "invalid_excluded_assets"  # scope 的 excluded_assets 不是字串陣列，排除清單未生效
     INVALID_VALUE = "invalid_value"  # 數值欄位不是數字
     OUT_OF_RANGE = "out_of_range"  # 數值超出範圍
     DANGLING_REFERENCE = "dangling_reference"  # 指向不存在資產的參照
@@ -320,7 +322,7 @@ def _file_severity(name: str) -> str:
 
 def script_preflight(inputs: Inputs, input_schema: dict) -> list:
     """腳本預檢（見 GLOSSARY.md）：回傳有順序的 [PreflightFinding]。順序＝提示詞「腳本預檢結果」的順序：
-    必要檔案 → schema 必填欄位 → 資料完整性；提示詞不列的「無法解析」「結構不是物件」排在最後。
+    必要檔案 → schema 必填欄位 → 資料完整性 → 排除清單格式；提示詞不列的「無法解析」「結構不是物件」排在最後。
     任何一列資料缺值或型別不對，都只會變成預檢發現，不會讓腳本預檢本身失敗。
 
     嚴重度放在這裡、而不是交給各渲染端：哪一種問題該擋下分析是規則，不是呈現方式，只能有一份。
@@ -424,6 +426,10 @@ def _integrity_findings(inputs: Inputs) -> list:
         outside = sorted(asset_ids - in_scope)
         if outside:
             anomaly("assets.csv", PreflightKind.OUT_OF_SCOPE_ASSET, f"範圍外資產（分析時應排除）：{', '.join(outside)}", outside)
+        excluded = sorted(asset_ids & in_scope & excluded_asset_ids(authorized))
+        if excluded:
+            anomaly("assets.csv", PreflightKind.EXCLUDED_ASSET,
+                    f"排除清單覆蓋允許清單的資產（排除優先，分析時應排除）：{', '.join(excluded)}", excluded)
         for r in assets:
             ok = _in_range(r.get("business_criticality"), 1, 5)
             if ok is None:
@@ -459,9 +465,16 @@ def _integrity_findings(inputs: Inputs) -> list:
 
 
 def _file_status_findings(inputs: Inputs, input_schema: dict) -> list:
-    """檔案層級的狀態：無法解析、schema 是物件但資料不是物件（兩者都不列在提示詞，見 NOT_IN_PROMPT）。"""
+    """檔案層級的狀態：scope 的 excluded_assets 格式不符（必要問題，列在提示詞）；
+    無法解析、schema 是物件但資料不是物件（這兩種不列在提示詞，見 NOT_IN_PROMPT）。"""
     loaded = {f["name"]: f for f in inputs.files}
     findings = []
+    authorized = inputs.scope.get("authorized_scope") if isinstance(inputs.scope.get("authorized_scope"), dict) else {}
+    value = authorized.get("excluded_assets")
+    # 排除清單寫錯格式時排除不會生效：這是必要問題，不能默默放行而讓使用者以為已經排除
+    if "excluded_assets" in authorized and not (isinstance(value, list) and all(isinstance(v, str) and re.search(NON_BLANK_PATTERN, v) for v in value)):
+        findings.append(PreflightFinding("scope.json", PreflightKind.INVALID_EXCLUDED_ASSETS, PROBLEM,
+                                         "excluded_assets 須為非空白字串的陣列；格式不符的項目不會被排除"))
     for name, category, _, _ in INPUT_FILES:
         if name in inputs.unparsable:
             findings.append(PreflightFinding(name, PreflightKind.UNPARSABLE, _file_severity(name), f"無法解析：{inputs.unparsable[name]}",
@@ -496,10 +509,21 @@ def build_system_prompt(core_prompt_md: str, platform_note: str) -> str:
     return f"{core}\n\n{platform_note}" if platform_note else core
 
 
+def excluded_asset_ids(authorized: dict) -> set:
+    """排除清單：excluded_assets 裡的字串（不是清單就是空的；格式不符另有預檢發現）。與 JS 的 excludedAssets 相同。"""
+    value = authorized.get("excluded_assets") if isinstance(authorized, dict) else None
+    return {v for v in value if isinstance(v, str)} if isinstance(value, list) else set()
+
+
+def allowed_asset_ids(authorized: dict) -> set:
+    """允許分析的資產＝in_scope_assets 減去 excluded_assets（排除優先，見 docs/adr/0007）。與 JS 的 allowedAssets 相同。"""
+    return set(authorized.get("in_scope_assets") or []) - excluded_asset_ids(authorized)
+
+
 def scoped_files(inputs: Inputs) -> list:
-    """模型只接收範圍內的結構化資料；輸入檔與腳本預檢留在本機。"""
+    """模型只接收允許範圍內的結構化資料（in_scope_assets 減去 excluded_assets）；輸入檔與腳本預檢留在本機。"""
     import copy
-    allowed = set(inputs.scope["authorized_scope"]["in_scope_assets"])
+    allowed = allowed_asset_ids(inputs.scope["authorized_scope"])
 
     def rows(value):
         return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []

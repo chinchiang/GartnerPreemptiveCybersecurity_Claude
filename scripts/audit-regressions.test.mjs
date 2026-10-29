@@ -57,3 +57,18 @@ test('後端的資料篩選排除範圍外資產、身分、控制與路徑，�
   assert.equal(result.topology.edges.length, 1);
   assert.equal(bundle.assets.length, 2);
 });
+test('稽核 1（#146）：excluded_assets 排除優先，示範引擎不分析被排除的資產並另行記錄；文字 excluded 不參與篩選', () => {
+  const data = structuredClone(ctx.window.CASE_DATA);
+  assert.ok(data.scope.authorized_scope.in_scope_assets.includes('A01'));
+  data.scope.authorized_scope.excluded_assets = ['A01'];
+  const r = demo.analyze(data);
+  assert.equal(r.findings.filter(f => f.asset_id === 'A01').length, 0);
+  assert.deepEqual(r.excludedByList, ['A01']);
+  assert.ok(r.missingSummary.some(m => m.startsWith('依排除清單排除：A01')));
+  assert.ok(!r.outOfScope.includes('A01'), '被排除的資產不算範圍外，分開記錄');
+  assert.ok(demo.toSchema(r, data).data_quality.out_of_scope_excluded.includes('A01'));
+  assert.ok(r.hypotheses.every(h => !h.nodes.includes('A01')), '被排除的資產不出現在攻擊路徑假設');
+  const text = structuredClone(ctx.window.CASE_DATA);
+  text.scope.authorized_scope.excluded = ['A01'];
+  assert.equal(demo.analyze(text).findings.filter(f => f.asset_id === 'A01').length, 2, '文字 excluded 只是限制事項');
+});

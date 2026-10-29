@@ -26,7 +26,7 @@ version: 1.0.0
 
 | 編號 | 名稱 | 格式 | 必填欄位 | 缺少時 |
 |---|---|---|---|---|
-| I1 | 授權範圍與分析參數（scope） | JSON | `organization`、`analysis_date`、`authorized_scope.in_scope_assets`、`authorized_scope.active_testing_authorized`、`authorized_scope.external_scanning_authorized`、`reporting.audience` | **中止**：無授權範圍不得分析。要求使用者補齊。 |
+| I1 | 授權範圍與分析參數（scope） | JSON | `organization`、`analysis_date`、`authorized_scope.in_scope_assets`、`authorized_scope.active_testing_authorized`、`authorized_scope.external_scanning_authorized`、`reporting.audience`；選填 `authorized_scope.excluded_assets`（排除的資產識別碼，排除優先） | **中止**：無授權範圍不得分析。要求使用者補齊。 |
 | I2 | 資產清冊 + 業務重要性（assets） | CSV/JSON | `asset_id`、`name`、`type`、`business_criticality`(1–5)、`internet_exposed`、`owner` | **中止**或要求至少提供最小清冊；若無 `business_criticality`，以資料等級或使用者口述推估並標示「推估」。 |
 | I3 | 弱點與發現（vulnerabilities） | CSV/JSON | `finding_id`、`asset_id`、`vuln_id`、`title`、`cvss_base` | 若無弱點資料，僅能依曝露與設定產出「曝險面清單」，並降低信心。 |
 
@@ -44,7 +44,7 @@ version: 1.0.0
 
 ### 2.3 輸入處理規則
 
-1. 先驗證 I1；任何資產若不在 `in_scope_assets` 內，**排除並記錄**。
+1. 先驗證 I1；任何資產若不在 `in_scope_assets` 內，或列在 `excluded_assets`（同一資產兩邊都有時排除優先），**排除並記錄**。`excluded` 是文字限制事項（例如不得對 OT 主動測試），寫進驗證計畫的範圍排除，不用來篩選資產。
 2. 解析每個檔案後回報：筆數、缺欄位、異常值（例如 CVSS > 10、重複 ID）。
 3. 不得補造資料；缺漏就標示，並在輸出中列出「資料缺漏對結論的影響」。
 4. 機敏欄位（帳號、IP、主機名稱）只用於分析，輸出時依 `reporting` 設定決定是否遮罩。
