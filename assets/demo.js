@@ -245,11 +245,25 @@
     const shortTitle = (t) => String(t).replace(/\s*\(synthetic\)\s*/i, '').slice(0, 40);
     const limitNote = missingSummary.length ? missingSummary.map(m => m.replace(/（.*?）/g, '')).join('；').slice(0, 80) : '無重大資料缺漏';
     const summaryHeader = `**對象：** ${scope.reporting.audience.join('、')}｜**日期：** ${scope.analysis_date}｜**信心：** ${findings.filter(f => f.confidence === '高').length}/${findings.length} 項高信心${maskIds ? '｜識別資訊已遮罩' : ''}`;
-    const summaryText = `1. 現況：${findings.length} 項發現，${p1List.length} 項 P1（${ext.length} 項對外曝露）${ext.length ? `；最急迫：${display(ext[0].asset_id)} 之 ${shortTitle(ext[0].title)}` : ''}。
-2. 最可能路徑：${top ? `internet → ${top.nodes.map(n => (maskIds ? n : display(n))).join(' → ')}（可行性 ${top.feasibility}/10，未驗證），阻斷點為身分與網段控制。` : '未提供拓樸，本週無路徑假設。'}
+    // 超過上限時逐級精簡（#149），不截斷整段：決策請求與「所有路徑為假設」每一級都保留，完整缺漏清單在 data_quality。
+    // 0 完整版；1 最急迫只寫資產；2 路徑只寫入口與目標；3 限制只寫缺漏項數；4 路徑改指向攻擊路徑假設章節
+    const SUMMARY_MAX = 300;
+    const pathNode = (n) => (maskIds ? n : display(n));
+    const composeSummary = (level) => {
+      const urgent = ext.length ? `；最急迫：${display(ext[0].asset_id)}${level >= 1 ? '' : ` 之 ${shortTitle(ext[0].title)}`}` : '';
+      const path = !top ? '未提供拓樸，本週無路徑假設。'
+        : level >= 4 ? `${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證，詳見攻擊路徑假設。`
+        : level >= 2 ? `internet → ${pathNode(top.nodes[0])} → … → ${pathNode(top.target)}（${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證）。`
+        : `internet → ${top.nodes.map(pathNode).join(' → ')}（可行性 ${top.feasibility}/10，未驗證），阻斷點為身分與網段控制。`;
+      const limit = level >= 3 ? (missingSummary.length ? `資料缺漏 ${missingSummary.length} 項，詳見資料品質` : '無重大資料缺漏') : limitNote;
+      return `1. 現況：${findings.length} 項發現，${p1List.length} 項 P1（${ext.length} 項對外曝露）${urgent}。
+2. 最可能路徑：${path}
 3. 決策請求：${decisions.map((d, i) => `（${i + 1}）${d}`).join('；')}。
-4. 限制：${limitNote}；所有路徑為假設，模型未驗證實際曝險。`;
-    const summary = { audience: scope.reporting.audience, header: summaryHeader, text: summaryText, decisions, masked: maskIds, length: [...summaryText].length };
+4. 限制：${limit}；所有路徑為假設，模型未驗證實際曝險。`;
+    };
+    let summaryLevel = 0, summaryText = composeSummary(0);
+    while ([...summaryText].length > SUMMARY_MAX && summaryLevel < 4) summaryText = composeSummary(++summaryLevel);
+    const summary = { audience: scope.reporting.audience, header: summaryHeader, text: summaryText, decisions, masked: maskIds, length: [...summaryText].length, compaction: summaryLevel };
 
     return { params: P, findings, hypotheses, recs, compensating, validation, metrics, reviewPoints, missingSummary, hidden, outOfScope, excludedByList, thresholds: th, summary, authorization: { active: activeOK, external: externalOK } };
   }
