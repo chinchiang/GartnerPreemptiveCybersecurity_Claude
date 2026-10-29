@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "1f7ddd6b9d37",
+ "contentHash": "ab03fb7fe246",
  "research": [
   {
    "id": "00-method",
@@ -99,7 +99,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/SKILL.md",
    "platform": "chatgpt",
-   "bytes": 11820
+   "bytes": 11901
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md",
@@ -124,7 +124,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "chatgpt",
-   "bytes": 11928
+   "bytes": 12044
   },
   {
    "path": "skills/chatgpt/project-instructions.md",
@@ -214,7 +214,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "deepseek",
-   "bytes": 11928
+   "bytes": 12044
   },
   {
    "path": "skills/deepseek/requirements.txt",
@@ -319,7 +319,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/task-spec.md",
    "platform": "glm",
-   "bytes": 11928
+   "bytes": 12044
   },
   {
    "path": "skills/glm/requirements.txt",
@@ -389,7 +389,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/task-spec.md",
    "platform": "shared",
-   "bytes": 11798
+   "bytes": 11914
   },
   {
    "path": "skills/shared/validate_inputs.py",
