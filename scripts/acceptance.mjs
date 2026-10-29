@@ -7,7 +7,7 @@
  * - 第 7 項（缺 scope.json 應拒絕）由呼叫端看結束碼；第 8 項（scope 不合格應拒絕）只能在對話介面人工判讀。都不在這裡。
  * 純 Node 內建模組；所有輸入只認 LF。
  */
-import { outputProblems } from './output-schema.mjs';
+import { outputProblems, outputConsistencyProblems } from './output-schema.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -73,6 +73,8 @@ export function acceptanceResults(output, { variant = 'baseline', outputSchema, 
     !point || typeof point !== 'object' || ['stage', 'who', 'what'].some(k => !(k in point)));
   addResult('0d', 'human_review_points 符合 schema array 契約', !badReviewPoints,
     Array.isArray(reviewPoints) ? `${reviewPoints.length} 項` : '不是 array');
+  const inconsistent = outputConsistencyProblems(output); // schema 之外的第二層（#148）
+  addResult('0e', '輸出內容一致（分數與分級、參照完整性、驗證證據）', inconsistent.length === 0, inconsistent.join('; '));
 
   // ---------- 1. 資料品質：9 個檔案的筆數（預期值由合成資料推出；no-intel 不看 threat-intel） ----------
   const expected = expectedRecords(synthetic);

@@ -22,6 +22,8 @@ test('後端實際送出的每份 bundle 都符合共用案例，不傳出不合
   const originalFetch = globalThis.fetch;
   try {
     for (const [i, c] of cases.entries()) {
+      // 合格的完整 scope 疊上案例自己的授權清單（in_scope_assets、excluded_assets、excluded），排除清單的案例才會真的經過後端
+      const caseScope = { ...scope, authorized_scope: { ...scope.authorized_scope, ...c.bundle.scope.authorized_scope } };
       let sent;
       globalThis.fetch = async (url, options) => {
         const content = JSON.parse(options.body).messages[1].content;
@@ -30,10 +32,10 @@ test('後端實際送出的每份 bundle 都符合共用案例，不傳出不合
       };
       const response = await worker.fetch(new Request('https://test.invalid/api/analyze', {
         method: 'POST', headers: { origin: 'https://allowed.invalid', 'cf-connecting-ip': `192.0.2.${i + 1}` },
-        body: JSON.stringify({ bundle: { ...c.bundle, scope } })
+        body: JSON.stringify({ bundle: { ...c.bundle, scope: caseScope } })
       }), { ALLOWED_ORIGIN: 'https://allowed.invalid', MODEL: 'fake', PROVIDER_API_KEY: 'fake' });
       assert.equal(response.status, 200, c.name);
-      assert.deepEqual(sent, { ...c.expected, scope }, c.name);
+      assert.deepEqual(sent, { ...c.expected, scope: caseScope }, c.name);
     }
   } finally { globalThis.fetch = originalFetch; }
 });

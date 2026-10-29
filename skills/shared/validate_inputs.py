@@ -59,6 +59,8 @@ def main(folder: str) -> int:
     by_file = {}
     for f in inputs.findings:
         by_file.setdefault(f.file, []).append(f)
+    for f in by_file.get("scope.json", []):   # 例如 excluded_assets 格式不符；合成資料沒有這類發現，輸出維持原樣
+        print(f"[scope.json] {f.severity}：{f.message}")
     for name, _, _, required in analysis_workflow.INPUT_FILES:
         if not name.endswith(".csv"):
             continue

@@ -125,11 +125,11 @@ export OPENAI_MODEL=gpt-6-astra                           # 預設值；在意�
 python3 skills/chatgpt/api-workflow.py
 ```
 
-輸出：`output/chatgpt-report.md`、`output/chatgpt-output.json`（JSON 解析或輸出 schema 驗證失敗時另存 `output/chatgpt-output.raw.txt`）。
+輸出：`output/chatgpt-report.md`、`output/chatgpt-output.json`（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 `output/chatgpt-output.raw.txt`）。
 
 兩段式對話：第 1 段要 Markdown 報告，第 2 段延續同一對話（`instructions` 放系統提示，`input` 放整串訊息）、只要 JSON，output-schema.json 放在第 2 段。不啟用任何工具。
 
-結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含 API 回覆沒有文字內容）；4 JSON 解析或輸出 schema 驗證失敗。JSON 缺少必填區塊或格式不符會以 4 結束並保留原始回應；合成案例的業務驗收請用 `node scripts/check-acceptance.mjs output/chatgpt-output.json`。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含 API 回覆沒有文字內容）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致。JSON 缺少必填區塊或格式不符會以 4 結束並保留原始回應；合成案例的業務驗收請用 `node scripts/check-acceptance.mjs output/chatgpt-output.json`。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 

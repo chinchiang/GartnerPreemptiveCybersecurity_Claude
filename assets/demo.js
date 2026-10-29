@@ -51,7 +51,7 @@
     if (problems.length) {
       return {
         refused: true, reason: '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。', requiredFields: GATE.requiredScopeFields(), problemFields: problems,
-        params: P, findings: [], hypotheses: [], recs: [], compensating: [], validation: [], metrics: [], reviewPoints: [], missingSummary: ['授權範圍（scope）'], hidden: [], outOfScope: [], thresholds: th
+        params: P, findings: [], hypotheses: [], recs: [], compensating: [], validation: [], metrics: [], reviewPoints: [], missingSummary: ['授權範圍（scope）'], hidden: [], outOfScope: [], excludedByList: [], thresholds: th
       };
     }
     const scope = data.scope;
@@ -60,10 +60,12 @@
     const externalOK = auth.external_scanning_authorized === true;
     const maskIds = !(scope.reporting && scope.reporting.mask_identifiers === false); // 預設遮罩（input-schema：mask_identifiers 預設 true）
 
-    // 只分析授權範圍內的資產；範圍外者排除並記錄
-    const inScope = new Set(auth.in_scope_assets);
+    // 只分析授權範圍內、且不在排除清單的資產（排除優先，見 docs/adr/0007）；範圍外與被排除者分開記錄
+    const inScope = GATE.allowedAssets(auth);
+    const excludedIds = GATE.excludedAssets(auth);
     const allAssets = data.assets || [];
-    const outOfScope = allAssets.filter(a => !inScope.has(a.asset_id)).map(a => a.asset_id);
+    const excludedByList = allAssets.filter(a => excludedIds.has(a.asset_id)).map(a => a.asset_id);
+    const outOfScope = allAssets.filter(a => !inScope.has(a.asset_id) && !excludedIds.has(a.asset_id)).map(a => a.asset_id);
     const scopedAssets = allAssets.filter(a => inScope.has(a.asset_id));
     const assets = new Map(scopedAssets.map(a => [a.asset_id, a]));
     const display = (id) => { const a = assets.get(id); if (!a) return id; return maskIds ? `${a.type}（${a.asset_id}）` : a.name; };
@@ -178,11 +180,18 @@
     const recs = [];
     for (const f of findings.filter(x => x.priority === 'P1' || x.priority === 'P2')) {
       const isConfig = /設定|policy|MFA|signing|logs|exposed/i.test(f.notes + f.title);
+      // 修補狀態三態（#150）：缺少或不是布林值＝尚未確認，不能寫成「無修補」
+      const patch = f.patch_available === true ? 'available' : f.patch_available === false ? 'none' : 'unknown';
+      const verifyHow = f.asset.internet_exposed ? '以授權的外部驗證確認服務版本／不可利用' : '以內部弱掃或設定檢查確認';
       recs.push({
         finding_id: f.finding_id, asset: f.asset.name, asset_id: f.asset_id, priority: f.priority,
-        action: f.patch_available === true && !isConfig ? `套用修補（${f.vuln_id}）並驗證版本` : isConfig ? `修正設定：${f.title}` : `無修補可用：套用廠商緩解措施、限制存取來源、加強監控`,
+        action: isConfig ? `修正設定：${f.title}`
+          : patch === 'available' ? `套用修補（${f.vuln_id}）並驗證版本`
+          : patch === 'none' ? '確認無修補：套用廠商緩解措施、限制存取來源、加強監控'
+          : `修補狀態未確認：先查閱廠商公告確認 ${f.vuln_id} 是否有修補；確認前先套用暫行緩解（限制存取來源、加強監控）`,
         owner: f.asset.owner, effort: isConfig ? '低' : f.asset.type.includes('OT') || f.asset.environment === 'OT-DMZ' ? '高（需維護窗口／OT 變更審查）' : '中',
-        verify: f.asset.internet_exposed ? '修補後以授權的外部驗證確認服務版本／不可利用' : '修補後以內部弱掃或設定檢查確認',
+        verify: !isConfig && patch === 'unknown' ? `確認修補狀態後再決定修補或緩解；處置後${verifyHow}` : `修補後${verifyHow}`,
+        patch_status: isConfig ? 'not-applicable' : patch,
         approval: (f.asset.environment === 'OT-DMZ' || Number(f.asset.business_criticality) >= 5) ? '需變更委員會／OT 負責人／系統擁有者核准' : '一般變更流程'
       });
     }
@@ -228,6 +237,7 @@
     const missingSummary = [...new Set(findings.flatMap(f => f.missing))];
     if (hidden.length) missingSummary.push(`資產清冊不完整：${hidden.length} 筆資產未納入分析（${hidden.map(h => h.name).join('、')}）`);
     if (outOfScope.length) missingSummary.push(`範圍外資產已排除：${outOfScope.join('、')}`);
+    if (excludedByList.length) missingSummary.push(`依排除清單排除：${excludedByList.join('、')}`);
 
     // S7 管理摘要（O5）：依 reporting.mask_identifiers 決定是否遮罩主機名稱；含「決策請求」與「限制」
     const p1List = findings.filter(f => f.priority === 'P1');
@@ -242,13 +252,27 @@
     const shortTitle = (t) => String(t).replace(/\s*\(synthetic\)\s*/i, '').slice(0, 40);
     const limitNote = missingSummary.length ? missingSummary.map(m => m.replace(/（.*?）/g, '')).join('；').slice(0, 80) : '無重大資料缺漏';
     const summaryHeader = `**對象：** ${scope.reporting.audience.join('、')}｜**日期：** ${scope.analysis_date}｜**信心：** ${findings.filter(f => f.confidence === '高').length}/${findings.length} 項高信心${maskIds ? '｜識別資訊已遮罩' : ''}`;
-    const summaryText = `1. 現況：${findings.length} 項發現，${p1List.length} 項 P1（${ext.length} 項對外曝露）${ext.length ? `；最急迫：${display(ext[0].asset_id)} 之 ${shortTitle(ext[0].title)}` : ''}。
-2. 最可能路徑：${top ? `internet → ${top.nodes.map(n => (maskIds ? n : display(n))).join(' → ')}（可行性 ${top.feasibility}/10，未驗證），阻斷點為身分與網段控制。` : '未提供拓樸，本週無路徑假設。'}
+    // 超過上限時逐級精簡（#149），不截斷整段：決策請求與「所有路徑為假設」每一級都保留，完整缺漏清單在 data_quality。
+    // 0 完整版；1 最急迫只寫資產；2 路徑只寫入口與目標；3 限制只寫缺漏項數；4 路徑改指向攻擊路徑假設章節
+    const SUMMARY_MAX = 300;
+    const pathNode = (n) => (maskIds ? n : display(n));
+    const composeSummary = (level) => {
+      const urgent = ext.length ? `；最急迫：${display(ext[0].asset_id)}${level >= 1 ? '' : ` 之 ${shortTitle(ext[0].title)}`}` : '';
+      const path = !top ? '未提供拓樸，本週無路徑假設。'
+        : level >= 4 ? `${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證，詳見攻擊路徑假設。`
+        : level >= 2 ? `internet → ${(top.nodes.length > 2 ? [top.nodes[0], '…', top.target] : top.nodes).map(n => (n === '…' ? n : pathNode(n))).join(' → ')}（${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證）。`
+        : `internet → ${top.nodes.map(pathNode).join(' → ')}（可行性 ${top.feasibility}/10，未驗證），阻斷點為身分與網段控制。`;
+      const limit = level >= 3 ? (missingSummary.length ? `資料缺漏 ${missingSummary.length} 項，詳見資料品質` : '無重大資料缺漏') : limitNote;
+      return `1. 現況：${findings.length} 項發現，${p1List.length} 項 P1（${ext.length} 項對外曝露）${urgent}。
+2. 最可能路徑：${path}
 3. 決策請求：${decisions.map((d, i) => `（${i + 1}）${d}`).join('；')}。
-4. 限制：${limitNote}；所有路徑為假設，模型未驗證實際曝險。`;
-    const summary = { audience: scope.reporting.audience, header: summaryHeader, text: summaryText, decisions, masked: maskIds, length: [...summaryText].length };
+4. 限制：${limit}；所有路徑為假設，模型未驗證實際曝險。`;
+    };
+    let summaryLevel = 0, summaryText = composeSummary(0);
+    while ([...summaryText].length > SUMMARY_MAX && summaryLevel < 4) summaryText = composeSummary(++summaryLevel);
+    const summary = { audience: scope.reporting.audience, header: summaryHeader, text: summaryText, decisions, masked: maskIds, length: [...summaryText].length, compaction: summaryLevel };
 
-    return { params: P, findings, hypotheses, recs, compensating, validation, metrics, reviewPoints, missingSummary, hidden, outOfScope, thresholds: th, summary, authorization: { active: activeOK, external: externalOK } };
+    return { params: P, findings, hypotheses, recs, compensating, validation, metrics, reviewPoints, missingSummary, hidden, outOfScope, excludedByList, thresholds: th, summary, authorization: { active: activeOK, external: externalOK } };
   }
 
   /** 把引擎結果轉成 skills/shared/output-schema.json 的格式 */
@@ -282,7 +306,7 @@
         scoring_rules: `本專案示範規則（task-spec 附錄 A）；風險胃納 ${R.params.riskAppetite}，門檻 P1 ≥ ${R.thresholds[0]}、P2 ≥ ${R.thresholds[1]}、P3 ≥ ${R.thresholds[2]}；權重 ${JSON.stringify(R.params.weights)}`,
         disclaimer: '本輸出由確定性示範引擎依合成資料產生；語言模型或引擎皆未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與正式環境變更需人工書面授權。'
       },
-      data_quality: { ...block('各檔案筆數與可用性'), files, out_of_scope_excluded: R.outOfScope, inventory_completeness_estimate: R.params.inventoryCompleteness },
+      data_quality: { ...block('各檔案筆數與可用性'), files, out_of_scope_excluded: [...R.outOfScope, ...(R.excludedByList || [])], inventory_completeness_estimate: R.params.inventoryCompleteness },
       exposure_priorities: { ...block('可能性 × 影響（附錄 A 示範規則）'), items: R.findings.map(f => ({ finding_id: f.finding_id, asset_id: f.asset_id, asset_name: f.asset.name, vuln_id: f.vuln_id, title: f.title, priority: f.priority, score: f.score, likelihood: round1(f.likelihood), impact: round1(f.impact), factors: f.factors, missing: f.missing, confidence: f.confidence })), thresholds: { P1: R.thresholds[0], P2: R.thresholds[1], P3: R.thresholds[2] } },
       attack_path_hypotheses: { ...block(`拓樸邊 + 節點可能性的 DFS 推論（最長 ${F.maxHops} 跳）`), items: R.hypotheses.map(h => ({ id: h.id, entry: nameOf(h.entry), target: nameOf(h.target), entry_id: h.entry, target_id: h.target, nodes: ['internet', ...h.nodes.map(nameOf)], node_ids: h.nodes, edges: h.edges.map(e => `${nameOf(e.from)} → ${nameOf(e.to)}（${e.via}；${e.trust}）`), feasibility: h.feasibility, blocking_controls: h.blockingControls, status: 'hypothesis' })) },
       remediation: { ...block('P1/P2 發現的規則對映'), items: R.recs.map(r => ({ finding_id: r.finding_id, asset_name: r.asset, priority: r.priority, action: r.action, owner: r.owner, effort: r.effort, verify: r.verify, approval_level: r.approval })), compensating_controls: R.compensating },

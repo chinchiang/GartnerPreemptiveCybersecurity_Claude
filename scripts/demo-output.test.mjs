@@ -36,3 +36,23 @@ for (const section of ['attack_path_hypotheses', 'validation_plan', 'remediation
     assert.deepEqual(items.flatMap((item, i) => required.filter(k => !(k in item)).map(k => `第 ${i + 1} 筆缺 ${k}`)), []);
   });
 }
+
+test('稽核 5（#150）：修補狀態三態——有修補、確認無修補、尚未確認（缺少或不是布林值）', () => {
+  const actionFor = (value) => {
+    const data = structuredClone(CASE_DATA);
+    const v = data.vulnerabilities.find(x => x.finding_id === 'F001');
+    if (value === undefined) delete v.patch_available; else v.patch_available = value;
+    return DEMO.analyze(data).recs.find(r => r.finding_id === 'F001');
+  };
+  assert.equal(actionFor(true).patch_status, 'available');
+  assert.match(actionFor(true).action, /^套用修補（SYN-2026-0101）/);
+  assert.equal(actionFor(false).patch_status, 'none');
+  assert.match(actionFor(false).action, /^確認無修補：/);
+  for (const unknown of [undefined, 'true', null]) {
+    const r = actionFor(unknown);
+    assert.equal(r.patch_status, 'unknown', String(unknown));
+    assert.match(r.action, /^修補狀態未確認：先查閱廠商公告/, String(unknown));
+    assert.doesNotMatch(r.action, /無修補/, String(unknown));
+    assert.match(r.verify, /^確認修補狀態後再決定修補或緩解/, String(unknown));
+  }
+});

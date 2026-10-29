@@ -81,9 +81,9 @@ export DEEPSEEK_MODEL=deepseek-v4-pro            # 以 api-docs.deepseek.com 確
 python3 skills/deepseek/api-workflow.py
 ```
 
-輸出：`output/deepseek-report.md`、`output/deepseek-output.json`（JSON 解析或輸出 schema 驗證失敗時另存 `output/deepseek-output.raw.txt`）。
+輸出：`output/deepseek-report.md`、`output/deepseek-output.json`（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 `output/deepseek-output.raw.txt`）。
 
-結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析或輸出 schema 驗證失敗。授權範圍不合格（例如 `in_scope_assets` 是空陣列、`active_testing_authorized` 不是布林值）時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致。授權範圍不合格（例如 `in_scope_assets` 是空陣列、`active_testing_authorized` 不是布林值）時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 
