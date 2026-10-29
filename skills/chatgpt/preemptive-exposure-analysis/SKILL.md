@@ -115,6 +115,7 @@ score      = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 �
 
 - scope 缺少或不合格：停止，列出缺少或不合格的欄位（見 1.1 第 2 步）。
 - 缺 assets 或 vulnerabilities：不等待回覆，直接降級為只產出曝險面清單；在資料品質與限制寫明缺少哪一類、哪些輸出因此無法產出，並下修信心。
+- 某筆弱點缺 patch_available：視為修補狀態未確認，不得寫成「無修補可用」；建議先查閱廠商公告確認是否有修補，確認前先套用暫行緩解。
 - 缺 topology：跳過 S4，並在 O5 說明。
 - 缺 threat_intel：不做情資加權，`missing_inputs` 寫「未納入威脅情資」，信心下修。
 - 缺 exposures：以 `internet_exposed` 近似，標示「未經 EASM 確認」。

@@ -67,6 +67,7 @@ metadata:
 
 - scope 缺少或不合格：停止，列出缺少或不合格的欄位。
 - 缺 assets 或 vulnerabilities：不等待回覆，直接降級為只產出曝險面清單；在資料品質與限制寫明缺少哪一類、哪些輸出因此無法產出，並下修信心。
+- 某筆弱點缺 patch_available：視為修補狀態未確認，不得寫成「無修補可用」；建議先查閱廠商公告確認是否有修補，確認前先套用暫行緩解。
 - 缺 topology：跳過 S4，在 S7 說明。
 - 其他缺漏：依 `references/scoring-rules.md` 的替代規則處理並標示。
 

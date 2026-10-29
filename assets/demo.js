@@ -180,11 +180,18 @@
     const recs = [];
     for (const f of findings.filter(x => x.priority === 'P1' || x.priority === 'P2')) {
       const isConfig = /設定|policy|MFA|signing|logs|exposed/i.test(f.notes + f.title);
+      // 修補狀態三態（#150）：缺少或不是布林值＝尚未確認，不能寫成「無修補」
+      const patch = f.patch_available === true ? 'available' : f.patch_available === false ? 'none' : 'unknown';
+      const verifyHow = f.asset.internet_exposed ? '以授權的外部驗證確認服務版本／不可利用' : '以內部弱掃或設定檢查確認';
       recs.push({
         finding_id: f.finding_id, asset: f.asset.name, asset_id: f.asset_id, priority: f.priority,
-        action: f.patch_available === true && !isConfig ? `套用修補（${f.vuln_id}）並驗證版本` : isConfig ? `修正設定：${f.title}` : `無修補可用：套用廠商緩解措施、限制存取來源、加強監控`,
+        action: isConfig ? `修正設定：${f.title}`
+          : patch === 'available' ? `套用修補（${f.vuln_id}）並驗證版本`
+          : patch === 'none' ? '確認無修補：套用廠商緩解措施、限制存取來源、加強監控'
+          : `修補狀態未確認：先查閱廠商公告確認 ${f.vuln_id} 是否有修補；確認前先套用暫行緩解（限制存取來源、加強監控）`,
         owner: f.asset.owner, effort: isConfig ? '低' : f.asset.type.includes('OT') || f.asset.environment === 'OT-DMZ' ? '高（需維護窗口／OT 變更審查）' : '中',
-        verify: f.asset.internet_exposed ? '修補後以授權的外部驗證確認服務版本／不可利用' : '修補後以內部弱掃或設定檢查確認',
+        verify: !isConfig && patch === 'unknown' ? `確認修補狀態後再決定修補或緩解；處置後${verifyHow}` : `修補後${verifyHow}`,
+        patch_status: isConfig ? 'not-applicable' : patch,
         approval: (f.asset.environment === 'OT-DMZ' || Number(f.asset.business_criticality) >= 5) ? '需變更委員會／OT 負責人／系統擁有者核准' : '一般變更流程'
       });
     }
