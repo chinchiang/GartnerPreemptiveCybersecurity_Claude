@@ -260,7 +260,7 @@
       const urgent = ext.length ? `；最急迫：${display(ext[0].asset_id)}${level >= 1 ? '' : ` 之 ${shortTitle(ext[0].title)}`}` : '';
       const path = !top ? '未提供拓樸，本週無路徑假設。'
         : level >= 4 ? `${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證，詳見攻擊路徑假設。`
-        : level >= 2 ? `internet → ${pathNode(top.nodes[0])} → … → ${pathNode(top.target)}（${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證）。`
+        : level >= 2 ? `internet → ${(top.nodes.length > 2 ? [top.nodes[0], '…', top.target] : top.nodes).map(n => (n === '…' ? n : pathNode(n))).join(' → ')}（${top.hops} 跳，可行性 ${top.feasibility}/10，未驗證）。`
         : `internet → ${top.nodes.map(pathNode).join(' → ')}（可行性 ${top.feasibility}/10，未驗證），阻斷點為身分與網段控制。`;
       const limit = level >= 3 ? (missingSummary.length ? `資料缺漏 ${missingSummary.length} 項，詳見資料品質` : '無重大資料缺漏') : limitNote;
       return `1. 現況：${findings.length} 項發現，${p1List.length} 項 P1（${ext.length} 項對外曝露）${urgent}。

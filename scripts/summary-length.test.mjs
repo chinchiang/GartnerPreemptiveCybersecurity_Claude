@@ -33,3 +33,17 @@ test('預設參數不精簡：基準案例的摘要與示範快照逐字相同',
   assert.equal(summary.compaction, 0);
   assert.ok(readFileSync(new URL('../examples/demo-snapshot.txt', import.meta.url), 'utf8').includes(summary.text));
 });
+
+test('精簡後的路徑只在真的省略節點時寫「…」：只有一個節點的路徑照實寫出', () => {
+  // 不遮罩、入口即 crown jewel 且名稱很長，摘要會精簡到用「入口與目標」寫法的等級（2 或 3）
+  const data = structuredClone(ctx.window.CASE_DATA);
+  data.scope.reporting.mask_identifiers = false;
+  const crown = data.topology.crown_jewels[0];
+  data.topology.edges = [{ from: 'internet', to: crown, via: '直連（測試用）', trust: 'network' }];
+  data.assets.find(a => a.asset_id === crown).name = 'N'.repeat(50);
+  const keys = Object.keys(demo.DEFAULTS.inputs);
+  const { summary } = demo.analyze(data, { inputs: Object.fromEntries(keys.map(k => [k, k === 'topology'])), inventoryCompleteness: 50, riskAppetite: 'strict' });
+  assert.ok(summary.compaction >= 2 && summary.compaction < 4, `精簡等級 ${summary.compaction}，沒有測到入口與目標的寫法`);
+  assert.ok(!summary.text.includes('…'), summary.text);
+  assert.ok(summary.text.includes(`internet → ${'N'.repeat(50)}（1 跳`), summary.text);
+});
