@@ -28,7 +28,7 @@ platform: chatgpt
 
 輸出：正體中文 Markdown 報告（資料品質、曝險優先序、攻擊路徑假設、改善建議、安全驗證計畫、人工審查點、管理摘要、追蹤指標），最後一個 ```json 區塊符合 output-schema.json。結尾加：「本分析由語言模型依使用者提供的資料整理，未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與變更需人工授權。」
 
-缺資料：缺 scope 停止；缺 assets 或 vulnerabilities 只出曝險面清單並詢問是否繼續；缺 topology 跳過 S4 並在摘要說明；其他缺漏依 task-spec.md 替代並標示。
+缺資料：缺 scope 停止；缺 assets 或 vulnerabilities 不等待回覆，直接降級為只出曝險面清單並在資料品質與限制寫明；缺 topology 跳過 S4 並在摘要說明；其他缺漏依 task-spec.md 替代並標示。
 ```
 
 ## 專案附檔（Project files）

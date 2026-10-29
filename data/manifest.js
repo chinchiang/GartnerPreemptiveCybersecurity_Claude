@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "e5b49e07ffc4",
+ "contentHash": "65286c051c18",
  "research": [
   {
    "id": "00-method",
@@ -94,12 +94,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
    "platform": "chatgpt",
-   "bytes": 9799
+   "bytes": 10025
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/SKILL.md",
    "platform": "chatgpt",
-   "bytes": 11285
+   "bytes": 11515
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md",
@@ -129,7 +129,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/project-instructions.md",
    "platform": "chatgpt",
-   "bytes": 4713
+   "bytes": 4758
   },
   {
    "path": "skills/chatgpt/requirements.txt",
@@ -144,7 +144,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/SKILL.md",
    "platform": "claude",
-   "bytes": 6732
+   "bytes": 6962
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/acceptance.md",
@@ -169,7 +169,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 46895
+   "bytes": 47015
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -189,7 +189,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
    "platform": "deepseek",
-   "bytes": 11664
+   "bytes": 11766
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/acceptance.md",
@@ -224,7 +224,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/system-prompt.md",
    "platform": "deepseek",
-   "bytes": 6635
+   "bytes": 6737
   },
   {
    "path": "skills/gemini/README.md",
@@ -239,7 +239,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/SKILL.md",
    "platform": "gemini",
-   "bytes": 7223
+   "bytes": 7453
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/references/acceptance.md",
@@ -264,7 +264,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "gemini",
-   "bytes": 46895
+   "bytes": 47015
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -294,7 +294,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/SKILL.md",
    "platform": "glm",
-   "bytes": 11047
+   "bytes": 11149
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/acceptance.md",
@@ -329,7 +329,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/system-prompt.md",
    "platform": "glm",
-   "bytes": 6565
+   "bytes": 6667
   },
   {
    "path": "skills/grok/README.md",
@@ -349,7 +349,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/system-prompt.md",
    "platform": "grok",
-   "bytes": 6642
+   "bytes": 6744
   },
   {
    "path": "skills/grok/tool-definitions.json",
@@ -364,12 +364,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 46764
+   "bytes": 46884
   },
   {
    "path": "skills/shared/core-prompt.md",
    "platform": "shared",
-   "bytes": 5932
+   "bytes": 6034
   },
   {
    "path": "skills/shared/input-schema.json",

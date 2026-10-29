@@ -55,7 +55,7 @@ score = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40�
 
 6. 缺少資料時
 - scope 缺少或不合格：停止，列出缺少或不合格的欄位。
-- 缺 assets 或 vulnerabilities：說明只能產出曝險面清單，詢問是否繼續。
+- 缺 assets 或 vulnerabilities：不等待回覆，直接降級為只產出曝險面清單；在資料品質與限制寫明缺少哪一類、哪些輸出因此無法產出，並下修信心。
 - 缺 topology：跳過 S4，並在 O5 說明。
 - 其他缺漏：以規則中的替代方式處理並標示。
 ```
