@@ -87,3 +87,34 @@ class ExcludedAssetsTest(unittest.TestCase):
                 bad = [f for f in inputs.findings if f.kind == aw.PreflightKind.INVALID_EXCLUDED_ASSETS]
                 self.assertEqual([(f.file, f.severity) for f in bad], [('scope.json', aw.PROBLEM)])
                 self.assertIn('excluded_assets 須為非空白字串的陣列', '\n'.join(aw.preflight_lines(inputs.findings)))
+
+
+class OutputConsistencyTest(unittest.TestCase):
+    """稽核 3（#148）：與 JS 共用 tests/fixtures/consistency-cases.json，訊息逐字相同。"""
+
+    def test_shared_cases(self):
+        schema = json.loads((ROOT / 'skills/shared/output-schema.json').read_text(encoding='utf-8'))
+        cases = json.loads((ROOT / 'tests/fixtures/consistency-cases.json').read_text(encoding='utf-8'))['cases']
+        for c in cases:
+            with self.subTest(c['name']):
+                output = json.loads((ROOT / 'examples/acceptance-fixture.json').read_text(encoding='utf-8'))
+                for path, value in c['changes']:
+                    node = output
+                    for key in path[:-1]:
+                        node = node[key]
+                    node[path[-1]] = value
+                self.assertEqual(aw.output_problems(output, schema), [])
+                self.assertEqual(aw.output_consistency_problems(output), c['problems'])
+
+    def test_save_outputs_rejects_inconsistent_output(self):
+        schema = json.loads((ROOT / 'skills/shared/output-schema.json').read_text(encoding='utf-8'))
+        output = json.loads((ROOT / 'examples/acceptance-fixture.json').read_text(encoding='utf-8'))
+        output['remediation']['items'][0]['finding_id'] = 'F-999'
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            folder = Path(tmp)
+            (folder / 'fake-output.json').write_text('{}', encoding='utf-8')   # 上一次成功的輸出
+            code = aw.save_outputs(folder, 'fake', '# 報告', json.dumps(output, ensure_ascii=False), schema)
+            self.assertEqual(code, 4)
+            self.assertFalse((folder / 'fake-output.json').exists())
+            self.assertTrue((folder / 'fake-output.raw.txt').exists())
+            self.assertIn('輸出內容不一致', err.getvalue())

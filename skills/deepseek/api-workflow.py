@@ -33,8 +33,8 @@ DeepSeek API 工作流程：先制型曝險分析（Preemptive Exposure Analysis
   python3 skills/deepseek/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出與結束碼
-  output/deepseek-report.md、output/deepseek-output.json（JSON 解析或輸出 schema 驗證失敗時另存 output/deepseek-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析或輸出 schema 驗證失敗
+  output/deepseek-report.md、output/deepseek-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/deepseek-output.raw.txt）
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
 
 安全邊界
   本腳本只做「資料整理 → 呼叫語言模型 → 存檔」。不掃描、不探測、不變更任何系統。

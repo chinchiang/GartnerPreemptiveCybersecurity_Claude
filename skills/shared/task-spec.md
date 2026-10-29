@@ -64,7 +64,7 @@ version: 1.0.0
 
 ## 4. 輸出（Outputs）
 
-所有輸出必須包含：`confidence`（高／中／低）、`basis`（判斷依據）、`missing_inputs`（影響此輸出的缺漏）、`requires_human`（是否需人工核准）。完整 JSON schema 見 `output-schema.json`。
+所有輸出必須包含：`confidence`（高／中／低）、`basis`（判斷依據）、`missing_inputs`（影響此輸出的缺漏）、`requires_human`（是否需人工核准）。完整 JSON schema 見 `output-schema.json`。格式之外，內容也必須自洽：每項 `priority` 與 `score` 及 `thresholds` 一致；`remediation` 只引用曝險優先序裡的 `finding_id`；攻擊路徑改標 `validated-*` 時必須附 `evidence`（授權參考、執行日期、結果）。API 工作流程以程式檢查這三條，不一致時以結束碼 4 結束。
 
 | 編號 | 名稱 | 結構重點 | 使用對象 |
 |---|---|---|---|

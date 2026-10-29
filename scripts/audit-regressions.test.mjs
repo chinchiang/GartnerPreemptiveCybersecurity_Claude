@@ -72,3 +72,15 @@ test('稽核 1（#146）：excluded_assets 排除優先，示範引擎不分析�
   text.scope.authorized_scope.excluded = ['A01'];
   assert.equal(demo.analyze(text).findings.filter(f => f.asset_id === 'A01').length, 2, '文字 excluded 只是限制事項');
 });
+test('稽核 3（#148）：格式合格但內容不一致的輸出被第二層擋下；共用案例逐字相同', async () => {
+  const { outputConsistencyProblems } = await import('./output-schema.mjs');
+  const { cases } = JSON.parse(readFileSync(new URL('../tests/fixtures/consistency-cases.json', import.meta.url)));
+  for (const c of cases) {
+    const o = fixture();
+    for (const [path, value] of c.changes) path.slice(0, -1).reduce((n, k) => n[k], o)[path.at(-1)] = value;
+    assert.deepEqual(outputProblems(o, context.outputSchema), [], `${c.name}：每例都要符合 schema，才證明這是 schema 擋不到的問題`);
+    assert.deepEqual(outputConsistencyProblems(o), c.problems, c.name);
+  }
+  const ctxDemo = { window: {} }; vm.runInNewContext(readFileSync(new URL('../data/case.js', import.meta.url), 'utf8'), ctxDemo);
+  assert.deepEqual(outputConsistencyProblems(demo.toSchema(demo.analyze(ctxDemo.window.CASE_DATA), ctxDemo.window.CASE_DATA)), [], '示範引擎的輸出必須一致');
+});

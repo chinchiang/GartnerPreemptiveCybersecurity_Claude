@@ -727,9 +727,73 @@ def output_problems(value, schema, root=None, path="$"):
     return errors
 
 
+_RANK = {"P1": 1, "P2": 2, "P3": 3, "P4": 4}
+_EVIDENCE_FIELDS = ("authorization_reference", "performed_at", "result")
+
+
+def _is_number(value) -> bool:
+    import math
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _fmt(value) -> str:
+    """數字寫成與 JS 範本字串相同的樣子（86.0 寫成 86）。"""
+    return str(int(value)) if float(value).is_integer() else repr(value)
+
+
+def output_consistency_problems(data) -> list:
+    """輸出內容一致性（schema 之外的第二層，#148）：分數與分級、參照完整性、驗證狀態要有證據。
+    形狀不合格的部分略過，交給 output_problems 回報。與 JS 的 outputConsistencyProblems（scripts/output-schema.mjs）
+    逐字相同，由 tests/fixtures/consistency-cases.json 守住。"""
+    if not isinstance(data, dict):
+        return []
+    problems = []
+
+    def block(key):
+        return data[key] if isinstance(data.get(key), dict) else {}
+
+    def indexed(key):
+        items = block(key).get("items")
+        return [(i, item) for i, item in enumerate(items) if isinstance(item, dict)] if isinstance(items, list) else []
+
+    # 1. 分數與分級：有完整門檻就逐項比對；沒有門檻就檢查分級越高、分數不得越低
+    findings = indexed("exposure_priorities")
+    scored = [(i, f) for i, f in findings if isinstance(f.get("priority"), str) and f["priority"] in _RANK and _is_number(f.get("score"))]
+    th = block("exposure_priorities").get("thresholds")
+    th = th if isinstance(th, dict) else {}
+    if all(_is_number(th.get(k)) for k in ("P1", "P2", "P3")):
+        if not (th["P1"] >= th["P2"] >= th["P3"]):
+            problems.append("$.exposure_priorities.thresholds 門檻須為 P1 ≥ P2 ≥ P3")
+        for i, f in scored:
+            s = f["score"]
+            expected = "P1" if s >= th["P1"] else "P2" if s >= th["P2"] else "P3" if s >= th["P3"] else "P4"
+            if expected != f["priority"]:
+                problems.append(f"$.exposure_priorities.items[{i}] 分數 {_fmt(s)} 依門檻應為 {expected}，卻標為 {f['priority']}")
+    else:
+        for i, high in scored:
+            for j, low in scored:
+                if _RANK[high["priority"]] < _RANK[low["priority"]] and high["score"] < low["score"]:
+                    problems.append(f"$.exposure_priorities.items[{i}] {high['priority']} 的分數 {_fmt(high['score'])} "
+                                    f"低於 items[{j}] {low['priority']} 的分數 {_fmt(low['score'])}")
+    # 2. 參照完整性：改善建議指向的發現必須存在
+    ids = {f.get("finding_id") for _, f in findings}
+    for i, r in indexed("remediation"):
+        if isinstance(r.get("finding_id"), str) and r["finding_id"] not in ids:
+            problems.append(f"$.remediation.items[{i}].finding_id {r['finding_id']} 不在曝險優先序中")
+    # 3. 驗證狀態：不是 hypothesis 就要附授權驗證的證據
+    for i, h in indexed("attack_path_hypotheses"):
+        if not isinstance(h.get("status"), str) or h["status"] == "hypothesis":
+            continue
+        evidence = h["evidence"] if isinstance(h.get("evidence"), dict) else {}
+        missing = [k for k in _EVIDENCE_FIELDS if not (isinstance(evidence.get(k), str) and re.search(NON_BLANK_PATTERN, evidence[k]))]
+        if missing:
+            problems.append(f"$.attack_path_hypotheses.items[{i}] 狀態 {h['status']} 缺少驗證證據：{'、'.join(missing)}")
+    return problems
+
+
 def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, output_schema: dict) -> int:
     """寫出 <平臺>-report.md 與 <平臺>-output.json；JSON 解析失敗時另存 <平臺>-output.raw.txt 並回傳 4。
-    輸出不符合 schema 時保留原始回應並回傳 4；合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
+    輸出不符合 schema，或內容不一致（output_consistency_problems）時，保留原始回應並回傳 4；合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
     output_dir.mkdir(parents=True, exist_ok=True)
     report_path = output_dir / f"{platform}-report.md"
     report_path.write_text(report, encoding="utf-8")
@@ -746,6 +810,11 @@ def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, o
         (output_dir / f"{platform}-output.raw.txt").write_text(json_text, encoding="utf-8")
         (output_dir / f"{platform}-output.json").unlink(missing_ok=True)
         print("[錯誤] 輸出不符合 output-schema.json：" + "；".join(problems), file=sys.stderr)
+        return 4
+    inconsistent = output_consistency_problems(data)
+    if inconsistent:
+        (output_dir / f"{platform}-output.raw.txt").write_text(json_text, encoding="utf-8")
+        print("[錯誤] 輸出內容不一致：" + "；".join(inconsistent), file=sys.stderr)
         return 4
     json_path = output_dir / f"{platform}-output.json"
     json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -779,7 +848,7 @@ def build_parser(adapter) -> argparse.ArgumentParser:
 
 
 def main(adapter, argv=None) -> int:
-    """一次分析工作流程。結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析或 schema 驗證失敗。
+    """一次分析工作流程。結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、schema 驗證失敗或內容不一致。
     資訊訊息一律印到 stderr；stdout 只放產物路徑與 dry-run 的提示詞。"""
     args = build_parser(adapter).parse_args(argv)
     try:

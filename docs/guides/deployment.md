@@ -154,7 +154,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 
 ## 分析結果驗證與資料邊界
 
-API 工作流程以共用輸出 schema 驗證巢狀型別、必要欄位、列舉、字數及數值範圍；解析或格式失敗以結束碼 4 結束，原始回應保留為 `*-output.raw.txt`，不留下可誤認成功的 JSON。合成案例的業務驗收仍另由 `check-acceptance.mjs` 執行。JS 與 Python 的驗證器只支援目前 schema 使用的關鍵字；新增不支援規則必須先實作，不得略過。
+API 工作流程以共用輸出 schema 驗證巢狀型別、必要欄位、列舉、字數及數值範圍；格式合格之後再檢查內容一致性（分數與分級、改善建議引用的 finding_id 必須存在、攻擊路徑改標已驗證時必須附授權證據；`output_consistency_problems`，JS 端為 `outputConsistencyProblems`）。解析失敗、格式不合格或內容不一致都以結束碼 4 結束，原始回應保留為 `*-output.raw.txt`，不留下可誤認成功的 JSON。合成案例的業務驗收仍另由 `check-acceptance.mjs` 執行。JS 與 Python 的驗證器只支援目前 schema 使用的關鍵字；新增不支援規則必須先實作，不得略過。
 
 送往模型前依允許範圍（`in_scope_assets` 減去 `excluded_assets`，排除優先）篩選資產、弱點、設定、身分關聯、控制措施及拓樸；未確認歸屬的對外資產留在本機，先確認範圍後再納入。輸入檔與完整腳本預檢保留本機，提示詞分別標示排除前筆數及實際送出筆數。自由文字中的識別資訊仍須資料擁有者在上傳前確認，結構化篩選不等同去識別化。
 

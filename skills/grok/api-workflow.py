@@ -34,8 +34,8 @@ Grok（xAI）API 工作流程：先制型曝險分析（Preemptive Exposure Anal
   python3 skills/grok/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出與結束碼
-  output/grok-report.md、output/grok-output.json（JSON 解析或輸出 schema 驗證失敗時另存 output/grok-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析或輸出 schema 驗證失敗
+  output/grok-report.md、output/grok-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/grok-output.raw.txt）
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
 
 安全邊界
   預設不啟用任何伺服器端工具（web_search / x_search / code_execution），也不讀取 tool-definitions.json

@@ -19,7 +19,7 @@ metadata:
 - scope 必填欄位的規則：organization 須含非空白字元；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 須為非空陣列，且每項為非空白字串；active_testing_authorized、external_scanning_authorized 須為布林值。
 - 不執行、不模擬執行、不提供可直接執行的攻擊或掃描指令。對外掃描、主動探測、BAS、滲透測試、正式環境變更只能「提案」，並標示需人工書面授權。
 - 不補造資料、CVE、廠商公告或情資。模型自有知識標示「模型知識，需查證」。
-- 攻擊路徑一律 `status: hypothesis`，除非使用者提供已授權的驗證結果。
+- 攻擊路徑一律 `status: hypothesis`，除非使用者提供已授權的驗證結果；改標 validated-feasible 或 validated-blocked 時，必須在 evidence 寫明授權參考、執行日期與結果。
 - 管理摘要預設遮罩帳號、IP、主機名稱（`reporting.mask_identifiers=false` 時例外）。
 
 ## 1. 何時啟用

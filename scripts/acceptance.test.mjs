@@ -27,7 +27,7 @@ const failed = (results) => results.filter(r => !r.pass).map(r => r.id);
 test('判定名稱固定（CLI 輸出、模型驗收工作流程與驗收報告範本都引用它們）', () => {
   assert.deepEqual(check(fixture('acceptance-fixture.json')).map(r => r.name), [
     '頂層鍵齊全（output-schema.json required）', 'schema block 都有 confidence／basis／missing_inputs／requires_human',
-    'meta 必填欄位齊全', 'human_review_points 符合 schema array 契約', '驗收 1：資料品質回報 9 個適用檔案且筆數正確',
+    'meta 必填欄位齊全', 'human_review_points 符合 schema array 契約', '輸出內容一致（分數與分級、參照完整性、驗證證據）', '驗收 1：資料品質回報 9 個適用檔案且筆數正確',
     '驗收 2：vpn-gw-01/SYN-2026-0101 為 P1 且含四項依據', '驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 且為 hypothesis',
     '所有攻擊路徑的 status 均為 hypothesis', '驗收 4：驗證計畫每項標「尚未授權主動測試」', '驗收 5：管理摘要 ≤ 300 字',
     '驗收 5：管理摘要含決策請求與限制'
@@ -36,7 +36,7 @@ test('判定名稱固定（CLI 輸出、模型驗收工作流程與驗收報告�
 
 test('契約回歸：符合 schema 的 baseline fixture 全部通過，判定項目與 id 固定', () => {
   const results = check(fixture('acceptance-fixture.json'));
-  assert.deepEqual(results.map(r => r.id), ['0a', '0b', '0c', '0d', '1', '2', '3', '3b', '4', '5a', '5b']);
+  assert.deepEqual(results.map(r => r.id), ['0a', '0b', '0c', '0d', '0e', '1', '2', '3', '3b', '4', '5a', '5b']);
   assert.deepEqual(failed(results), []);
 });
 
@@ -103,7 +103,9 @@ test('驗收 0：缺頂層鍵、區塊缺證據欄位、meta 缺必填、human_r
 });
 
 test('驗收 2：vpn-gw-01/SYN-2026-0101 不是 P1、資產對不上或缺一項依據，判為不通過', () => {
-  assert.deepEqual(failedAfter(o => { vpnOf(o).priority = 'P2'; }), ['2']);
+  // 降級時分數也要降到其他 P1 之下，否則同時違反內容一致（0e）；只改分級的情況另外確認兩列都不通過
+  assert.deepEqual(failedAfter(o => { vpnOf(o).priority = 'P2'; vpnOf(o).score = 50; }), ['2']);
+  assert.deepEqual(failedAfter(o => { vpnOf(o).priority = 'P2'; }), ['0e', '2']);
   assert.deepEqual(failedAfter(o => { vpnOf(o).asset_id = 'A02'; }), ['2']);
   assert.deepEqual(failedAfter(o => { vpnOf(o).factors = vpnOf(o).factors.filter(f => !/KEV/.test(f)); }), ['2']);
   assert.deepEqual(failedAfter(o => { vpnOf(o).factors = vpnOf(o).factors.filter(f => !/情資/.test(f)); }), ['2']);
@@ -138,7 +140,7 @@ test('驗收 6（no-intel）：沒宣告缺漏、信心仍是「高」、SYN-202
   const noIntel = (mutate) => failedAfter(mutate, 'no-intel', 'acceptance-fixture-no-intel.json');
   assert.deepEqual(noIntel(o => { o.exposure_priorities.missing_inputs = []; o.data_quality.missing_inputs = []; }), ['6a']);
   assert.deepEqual(noIntel(o => { o.exposure_priorities.confidence = '高'; }), ['6b']);
-  assert.deepEqual(noIntel(o => { vpnOf(o).priority = 'P2'; }), ['2', '6c']);
+  assert.deepEqual(noIntel(o => { vpnOf(o).priority = 'P2'; vpnOf(o).score = 50; }), ['2', '6c']);
 });
 
 test('CLI（check-acceptance.mjs）接上 module：全部通過結束碼 0、有未通過 1、參數或檔案錯誤 2', () => {
@@ -147,7 +149,7 @@ test('CLI（check-acceptance.mjs）接上 module：全部通過結束碼 0、有
   const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
   const pass = run(fixturePath);
   assert.equal(pass.status, 0, pass.stderr);
-  assert.match(pass.stdout, /11\/11 通過/);
+  assert.match(pass.stdout, /12\/12 通過/);
   assert.equal(run(fixturePath, '--variant', 'no-intel').status, 1);
   assert.equal(run().status, 2);
   assert.equal(run(fixturePath + '.missing').status, 2);
