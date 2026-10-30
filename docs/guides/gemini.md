@@ -104,11 +104,13 @@ python3 skills/gemini/api-workflow.py --compat   # 改走 OpenAI 相容端點（
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 8 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止；技能則是模型照 SKILL.md 先執行 `scripts/validate_inputs.py`，以結束碼 3 擋下，模型有沒有照做，要在 Antigravity 或 Gemini CLI 裡貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏：
+依 `task-spec.md` 第 7 節 9 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止；技能則是模型照 SKILL.md 先執行 `scripts/validate_inputs.py`，以結束碼 3 擋下，模型有沒有照做，要在 Antigravity 或 Gemini CLI 裡貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏；第 9 項先產生提示注入變體，再以 `--input-dir` 執行：
 
 ```bash
 python3 skills/gemini/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項
 python3 skills/gemini/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出必填欄位
+node scripts/injection-variant.mjs examples/synthetic-org output/injection-input   # 第 9 項：產生提示注入變體
+python3 skills/gemini/api-workflow.py --dry-run --input-dir output/injection-input   # 第 9 項：注入的文字留在 assets.csv 自己的資料區塊內；正式執行後以 check-acceptance.mjs --variant injection 檢查
 python3 skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org   # 技能的輸入檢查：結果：可以進行分析
 ```
 
