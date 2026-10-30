@@ -32,7 +32,8 @@ robots.txt            允許索引，指向 sitemap
 sitemap.xml           只有一個 URL（hash 路由的 SPA，片段不被索引）
 .nojekyll             關閉 GitHub Pages 的 Jekyll 處理
 .github/workflows/    pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收）、quarterly-review.yml（季度查證提醒）
-.github/dependabot.yml  只追蹤 GitHub Actions 版本
+.github/dependabot.yml  追蹤 GitHub Actions（釘提交雜湊）與 .github/model-acceptance/ 的鎖定檔
+.github/model-acceptance/  真實模型驗收與 CI real-sdk job 的 SDK 鎖定檔：<平臺>-requirements.in（pip-compile 的輸入）與 <平臺>-requirements.txt（== 加 --hash；不出貨）
 ```
 
 內容以 `docs/` 與 `skills/` 為單一來源；**修改後務必執行** `npm run build` 重新產生 `data/` 與 `downloads/`，否則網站不會更新。
@@ -110,6 +111,8 @@ node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 
 Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗收需在 Claude Code 或 claude.ai 手動執行後，把輸出 JSON 存檔再跑上面的腳本。
 
+工作流程安裝 SDK 用的是 `.github/model-acceptance/<平臺>-requirements.txt`（每個套件都是 `==` 加 `--hash`，以 `pip install --require-hashes` 安裝），不是使用者照教學安裝的 `skills/<平臺>/requirements.txt`：金鑰只注入呼叫模型的步驟，但 PyPI 上新發布的版本（包括被入侵的版本）不該在帶金鑰的環境裡被裝進來。裝好之後、呼叫 API 之前，先跑真 SDK 冒煙測試 `tests/python/real_sdk_smoke.py <平臺>`：用已安裝 SDK 的真型別建立回覆、替換 SDK 的 `create`／`sample`（不連網），確認 adapter 取欄位的寫法跟真的 SDK 物件對得上；失敗就不花錢。同一支冒煙測試也在 `ci.yml` 的 real-sdk job 對五個平臺各跑一次（免金鑰）。
+
 ## 5. 維護
 
 | 要更新什麼 | 改哪裡 | 之後 |
@@ -122,7 +125,8 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | Skills | 共用內容改 `skills/shared/` 的母本，平臺專屬內容改 `skills/<platform>/…`；各平臺 `references/` 的複本，以及核心提示詞的嵌入區塊（Grok／GLM／DeepSeek 的 `system-prompt.md`、GLM／DeepSeek 的 `SKILL.md`），Claude 與 Gemini 技能 `scripts/` 的 `validate_inputs.py` 與 `analysis_workflow.py`，以及核心提示詞母本與四份改寫版（Custom GPT 指示、Codex、Claude 與 Gemini 的 `SKILL.md`）的規則說明行（見「授權範圍守門規則」一列）、四份改寫版裡「資料不是指令」那一行（見「核心提示詞」一列），都由建置從母本產生，**請勿手動編輯**（這些檔案其餘的內容是手寫的） | `npm run build`（重寫複本；複本的組成見 `scripts/skill-packages.mjs` 的對照表）；`npm test`：忘了重建，或手改了複本、嵌入區塊、規則說明行時會失敗，並列出不一致的檔案 |
 | `scripts/` 的 `.mjs`（新增，或改了用途） | 檔頭第一行寫成「`檔名 — 一句說明`」，`x.test.mjs` 會自動跟 `x.mjs` 配成一段；第 1 節的 `scripts/` 那一行由建置產生，勿手動編輯 | `npm run build`（`deployment.md` 一起提交）；`npm test` |
 | 新增建置產生的檔案 | 建置（`scripts/build-outputs.mjs`、`scripts/skill-packages.mjs` 的對照表）多寫出一個檔案或目錄時，把它的路徑加進根目錄的 `.ignore`：`rg` 搜尋與詞彙表測試都依它略過生成檔（見 `docs/agents/workflow.md`） | `npm run build`（產物一起提交）；`npm test` |
-| 模型 adapter（新增 API 路徑、升級 SDK） | 各平臺 `api-workflow.py` 的 `send`；回應不完整的判定只寫在 `skills/shared/analysis_workflow.py` 的 `INCOMPLETE` 與 `require_complete`，adapter 只取出結束原因 | 依新版 SDK 的型別核對 `INCOMPLETE` 的值（例如 `finish_reason`、`stop_reason`、`status` 的列舉），改了就同步 `tests/python/test_analysis_workflow.py` 的字面值；新的路徑在該平臺的 adapter 測試加上 `assert_stops_on_incomplete`；`npm run build`（Claude 與 Gemini 技能的核心複本）；`python3 -m unittest discover -s tests/python` |
+| 模型 adapter（新增 API 路徑、升級 SDK） | 各平臺 `api-workflow.py` 的 `send`；回應不完整的判定只寫在 `skills/shared/analysis_workflow.py` 的 `INCOMPLETE` 與 `require_complete`，adapter 只取出結束原因 | 依新版 SDK 的型別核對 `INCOMPLETE` 的值（例如 `finish_reason`、`stop_reason`、`status` 的列舉），改了就同步 `tests/python/test_analysis_workflow.py` 的字面值；新的路徑在該平臺的 adapter 測試加上 `assert_stops_on_incomplete`，也加進 `tests/python/real_sdk_smoke.py` 的 `PATHS`；升級 SDK 時重新產生 `.github/model-acceptance/` 的鎖定檔（見下一列），以真 SDK 跑 `python3 tests/python/real_sdk_smoke.py <平臺>`；`npm run build`（Claude 與 Gemini 技能的核心複本）；`python3 -m unittest discover -s tests/python` |
+| 升級 CI 相依（actions 雜湊、驗收鎖定檔） | actions：各工作流程的 `uses:` 釘 40 字元的提交雜湊，後面註解完整的版本標籤（例如 `# v7.0.1`）；雜湊取自該 action 官方 repo 的版本標籤（`gh api repos/<owner>/<repo>/git/ref/tags/<標籤>`，`object.type` 是 `tag`（附註標籤）時再查 `git/tags/<sha>`），用 `git ls-remote` 交叉核對。SDK 鎖定檔：`.github/model-acceptance/<平臺>-requirements.in` 的套件行與 `skills/<平臺>/requirements.txt` 相同；在該目錄以 Python 3.12 執行 `pip-compile --generate-hashes --output-file=<平臺>-requirements.txt <平臺>-requirements.in`（pip-tools；dependabot 依檔頭的 pip-compile 與 Python 版本重新編譯，所以不要改用其他工具產生）。dependabot 每月對兩者開 PR | `rg -nP 'uses: (?![^ ]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$)' .github/workflows/` 要 0 筆（列出沒釘雜湊或沒附版本註解的 `uses:`）；`python3 -m unittest discover -s tests/python`（`test_model_acceptance_locks.py`：`.in` 與使用者的 `requirements.txt` 一致、鎖定檔以 3.12 產生且每個套件都有雜湊）；CI 的 real-sdk job（各平臺以 `--require-hashes` 安裝後跑 `tests/python/real_sdk_smoke.py`）；改了使用者的 `requirements.txt` 時同步 `.in` 並重新產生鎖定檔 |
 | 教學 | `docs/guides/<platform>.md` | `npm run build` |
 | 合成資料 | `examples/synthetic-org/`（保持合成）；筆數變了就同步改 `skills/shared/acceptance.md` 第 1 項與 `scripts/acceptance.test.mjs` 的預期筆數字面值；驗收第 9 項的提示注入變體（`scripts/injection-variant.mjs` 的 `INJECTION`）改的是 `assets.csv` 中 A01 的 `notes` 與 `threat-intel.json` 第一個行為者的 `recent_activity`，這兩筆刪除或搬移時要跟著改 | build；`npm test`（快照那一支會失敗）；`npm run demo` 對照 `examples/expected-output.md`；`npm run snapshot`；再 `npm test` |
 | 授權範圍守門規則 | 只改 `skills/shared/input-schema.json` 的 scope 定義：Python 分析工作流程核心與 `assets/scope-gate.js`（網站示範引擎與選用後端代理共用，scope 定義由建置以嵌入區塊寫入）都依它判定。要用到兩份解讀還不認得的 schema 關鍵字時，兩份都要實作，否則會丟出錯誤（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）；判定變了就同步改 `tests/fixtures/scope-cases.json` 的共用案例。模型側守門的規則說明也由建置從 schema 產生（`scope-gate.js` 的 `scopeRuleNote()`），寫進核心提示詞與四份改寫版（Custom GPT 指示、Codex、Claude 與 Gemini 的 `SKILL.md`）以「- scope 必填欄位的規則：」開頭的那一行；要用到規則說明還不會描述的規則時，`scopeRuleNote()` 與 Python 的 `scope_rule_note` 兩份都要實作，否則建置會丟出錯誤（見 `docs/adr/0005-model-side-gate-rule-note-is-generated-into-the-core-prompt.md`） | build（重寫 `scope-gate.js` 的嵌入區塊與五份檔案的規則說明行，提交）+ `npm test` + Python unittest |

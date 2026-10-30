@@ -1,11 +1,25 @@
 version: 2
 
-# 只盯 GitHub Actions。網站本身沒有執行期相依（無框架、無 CDN），
+# 盯 GitHub Actions 與真實模型驗收的 SDK 鎖定檔。網站本身沒有執行期相依（無框架、無 CDN），
 # npm 只有 Playwright 一個開發相依，且版本刻意釘死以確保瀏覽器驗證可重現，
 # 因此不開 npm ecosystem——由人在需要時一併升級 playwright 與 package-lock.json。
 updates:
+  # 工作流程的 uses: 釘完整的提交雜湊（後面註解版本標籤），dependabot 會一起更新雜湊與註解。
   - package-ecosystem: github-actions
     directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'ci'
+    labels:
+      - dependencies
+    open-pull-requests-limit: 3
+
+  # 真實模型驗收與 CI real-sdk job 的鎖定檔（<平臺>-requirements.txt，由同目錄的 .in 以 pip-compile 產生）：
+  # 檔頭有 pip-compile 與 Python 3.12，dependabot 用同樣的選項重新編譯，雜湊與間接相依一起更新。
+  # 只盯這個目錄；使用者照教學安裝的 skills/<平臺>/requirements.txt 不在這裡。
+  - package-ecosystem: pip
+    directory: /.github/model-acceptance
     schedule:
       interval: monthly
     commit-message:
