@@ -90,7 +90,7 @@ python3 skills/gemini/api-workflow.py --compat   # 改走 OpenAI 相容端點（
 
 輸出：`output/gemini-report.md`、`output/gemini-output.json`（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 `output/gemini-output.raw.txt`）。
 
-結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷，這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 

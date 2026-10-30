@@ -646,6 +646,43 @@ def build_json_prompt(output_schema_text: str, generated_by: str) -> str:
 #                                SDK 在這裡才載入，--dry-run 不會呼叫它。
 #   adapter 遇到使用者能處理的問題（缺 SDK、缺金鑰）時丟出 Abort(訊息)；其他例外由核心轉成結束碼 1。
 
+# 回覆不完整就中止（#161）：判定只寫在這裡，各平臺 adapter 只負責從 SDK 的回覆取出結束原因交給 require_complete。
+# 每種介面：{結束原因: 類別}；不在表裡的值（正常結束、缺值、不認得的值）一律放行。
+OUTPUT_LIMIT = "output_limit"              # 因為輸出上限被截斷
+MAYBE_OUTPUT_LIMIT = "maybe_output_limit"  # 介面沒有原因欄位，可能是輸出上限
+OTHER = "other"                            # 其他原因的不完整（內容過濾、上下文上限、時間上限等）
+INCOMPLETE = {
+    "chat_completions": {"length": OUTPUT_LIMIT, "content_filter": OTHER},
+    "anthropic": {"max_tokens": OUTPUT_LIMIT, "model_context_window_exceeded": OTHER, "refusal": OTHER},
+    # Responses 的結束原因由 adapter 取：status 是 incomplete 時取 incomplete_details.reason（沒有原因就是 incomplete），否則取 status
+    "responses": {"max_output_tokens": OUTPUT_LIMIT, "content_filter": OTHER, "max_messages": OTHER, "steered": OTHER,
+                  "incomplete": OTHER, "failed": OTHER, "cancelled": OTHER},
+    "xai": {"REASON_MAX_LEN": OUTPUT_LIMIT, "REASON_MAX_CONTEXT": OTHER, "REASON_TIME_LIMIT": OTHER},
+    # google-genai 的 Interaction 只有 status、沒有原因欄位：completed 以外的已知狀態都算不完整
+    "interactions": {"incomplete": MAYBE_OUTPUT_LIMIT, "budget_exceeded": OTHER, "failed": OTHER, "cancelled": OTHER,
+                     "requires_continuation": OTHER, "in_progress": OTHER, "queued": OTHER, "requires_action": OTHER},
+}
+STAGE_NAMES = {"report": "第 1 段（Markdown 報告）", "json": "第 2 段（JSON）"}
+
+
+def require_complete(api: str, finish, stage: str, args) -> None:
+    """finish 是 api 這種介面的結束原因；在 INCOMPLETE 裡就以 Abort（結束碼 1）中止，不存任何輸出檔。
+    第 1 段中止時，呼叫端還沒送第 2 段，所以也省下一次呼叫。"""
+    if api not in INCOMPLETE:   # adapter 寫錯介面名稱是程式錯誤，不能當成「沒有不完整」放行
+        raise ValueError(f"require_complete 不認得介面 {api!r}；可用的介面：{'、'.join(INCOMPLETE)}")
+    if finish not in INCOMPLETE[api]:
+        return
+    category = INCOMPLETE[api][finish]
+    if category == OTHER:
+        hint = "原因不是輸出上限，請檢查模型的回覆與帳戶設定"
+    else:
+        cause = "因為輸出上限被截斷" if category == OUTPUT_LIMIT else "可能因為輸出上限被截斷（這種介面沒有提供原因）"
+        limit = getattr(args, "max_tokens", None)
+        hint = (f"{cause}，可以調高 --max-tokens（目前 {limit}）重跑" if limit is not None
+                else f"{cause}；這個平臺的腳本沒有輸出上限的參數，可以換用輸出上限較高的模型")
+    raise Abort(f"[錯誤] {STAGE_NAMES[stage]}的回覆不完整（結束原因：{finish}）：{hint}。這次不存任何輸出檔。")
+
+
 def run_conversation(adapter, args, system_prompt: str, report_prompt: str, json_prompt: str):
     """第一段要報告；延續同一對話，第二段要 JSON。回傳 (報告, JSON 回覆原文)。"""
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": report_prompt}]
@@ -858,7 +895,7 @@ def build_parser(adapter) -> argparse.ArgumentParser:
 
 
 def main(adapter, argv=None) -> int:
-    """一次分析工作流程。結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、schema 驗證失敗或內容不一致。
+    """一次分析工作流程。結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，見 require_complete）；4 JSON 解析、schema 驗證失敗或內容不一致。
     資訊訊息一律印到 stderr；stdout 只放產物路徑與 dry-run 的提示詞。"""
     args = build_parser(adapter).parse_args(argv)
     try:

@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fake_sdk import ROOT, blocked, fake_openai, fake_xai_sdk, load_platform_script  # noqa: E402
+from fake_sdk import CHAT_COMPLETIONS, as_modules, assert_stops_on_incomplete, ROOT, blocked, fake_openai, fake_xai_sdk, load_platform_script  # noqa: E402
 
 VALID_OUTPUT = (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")
 
@@ -42,6 +42,17 @@ class GrokAdapterTest(unittest.TestCase):
         with mock.patch.dict(sys.modules, modules or {}), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = self.module.analysis_workflow.main(adapter, ["--output-dir", str(self.out), *extra])
         return code, stdout.getvalue(), stderr.getvalue()
+
+
+    def test_xai_sdk_path_stops_when_the_reply_is_incomplete(self):
+        # 缺值用 REASON_INVALID：protobuf 列舉的預設值 0，代表沒有設定
+        assert_stops_on_incomplete(self, self.run_main, fake_xai_sdk, calls=lambda rec: len(rec["chats"]),
+                                   output_limit="REASON_MAX_LEN", other_incomplete="REASON_MAX_CONTEXT", missing_value="REASON_INVALID",
+                                   max_tokens_flag=False)
+
+    def test_compat_path_stops_when_the_reply_is_incomplete(self):
+        assert_stops_on_incomplete(self, self.run_main, lambda r: as_modules("openai", fake_openai(r)), extra=("--compat",),
+                                   calls=lambda rec: len(rec["calls"]), **CHAT_COMPLETIONS, max_tokens_flag=False)
 
     def test_xai_sdk_two_stages(self):
         modules, record = fake_xai_sdk(["# 報告", VALID_OUTPUT])

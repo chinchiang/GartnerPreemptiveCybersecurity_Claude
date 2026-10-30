@@ -35,7 +35,7 @@ Grok（xAI）API 工作流程：先制型曝險分析（Preemptive Exposure Anal
 
 輸出與結束碼
   output/grok-report.md、output/grok-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/grok-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
 
 安全邊界
   預設不啟用任何伺服器端工具（web_search / x_search / code_execution），也不讀取 tool-definitions.json
@@ -91,13 +91,16 @@ class GrokAdapter:
         # 照搬原本的設定：兩條路徑都不指定 temperature、max_tokens（用 xAI 的預設值）
         if args.compat:
             reply = self._openai_client().chat.completions.create(model=args.model, messages=messages)
+            analysis_workflow.require_complete("chat_completions", getattr(reply.choices[0], "finish_reason", None), stage, args)
             return reply.choices[0].message.content or ""
         client, roles = self._xai_client_and_roles()
         # 注意：不傳入任何 tools=[...]，因此不會啟用 web_search / x_search / code_execution。
         chat = client.chat.create(model=args.model)
         for m in messages:
             chat.append(roles[m["role"]](m["content"]))
-        return chat.sample().content
+        response = chat.sample()
+        analysis_workflow.require_complete("xai", getattr(response, "finish_reason", None), stage, args)
+        return response.content
 
     def _xai_client_and_roles(self):
         """回傳 (Client, 角色 → 訊息建構函式)。xai_sdk 的對話物件要逐則 append 訊息，不吃 [{role, content}]。"""

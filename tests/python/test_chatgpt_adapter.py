@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fake_sdk import ROOT, blocked, fake_openai_responses, load_platform_script  # noqa: E402
+from fake_sdk import CHAT_COMPLETIONS, as_modules, assert_stops_on_incomplete, ROOT, blocked, fake_openai_responses, load_platform_script  # noqa: E402
 
 VALID_OUTPUT = (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")
 
@@ -41,6 +41,22 @@ class ChatGptAdapterTest(unittest.TestCase):
         with mock.patch.dict(sys.modules, modules or {}), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = self.module.analysis_workflow.main(self.module.ChatGptAdapter(), ["--output-dir", str(self.out), *extra])
         return code, stdout.getvalue(), stderr.getvalue()
+
+
+    def test_incomplete_without_a_reason_also_stops(self):
+        # status="incomplete" 但 incomplete_details 沒有原因：仍然不完整，不能當成缺值放行
+        no_reason = types.SimpleNamespace(output_text="# 報告寫到一半", output=[], status="incomplete",
+                                          incomplete_details=types.SimpleNamespace(reason=None))
+        openai, record = fake_openai_responses([no_reason, VALID_OUTPUT])
+        code, out, err = self.run_main(modules={"openai": openai})
+        self.assertEqual((code, len(record["calls"])), (1, 1), err)
+        self.assertIn("結束原因：incomplete", err)
+
+    def test_stops_when_the_response_is_incomplete(self):
+        # 因輸出上限：status="incomplete"＋reason="max_output_tokens"；其他不完整：reason="content_filter"
+        assert_stops_on_incomplete(self, self.run_main, lambda r: as_modules("openai", fake_openai_responses(r)),
+                                   calls=lambda rec: len(rec["calls"]), output_limit="max_output_tokens", other_incomplete="content_filter",
+                                   missing_value=None, max_tokens_flag=False)
 
     def test_responses_api_two_stages(self):
         openai, record = fake_openai_responses(["# 報告", VALID_OUTPUT])

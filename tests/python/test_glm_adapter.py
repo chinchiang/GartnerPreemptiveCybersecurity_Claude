@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fake_sdk import ROOT, blocked, fake_anthropic, fake_openai, load_platform_script  # noqa: E402
+from fake_sdk import CHAT_COMPLETIONS, as_modules, assert_stops_on_incomplete, ROOT, blocked, fake_anthropic, fake_openai, load_platform_script  # noqa: E402
 
 VALID_OUTPUT = (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")
 
@@ -42,6 +42,16 @@ class GlmAdapterTest(unittest.TestCase):
         with mock.patch.dict(sys.modules, modules or {}), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = self.module.analysis_workflow.main(adapter, ["--output-dir", str(self.out), *extra])
         return code, stdout.getvalue(), stderr.getvalue()
+
+
+    def test_anthropic_compatible_path_stops_when_the_reply_is_incomplete(self):
+        assert_stops_on_incomplete(self, self.run_main, lambda r: as_modules("anthropic", fake_anthropic(r)),
+                                   extra=("--anthropic-compatible",), calls=lambda rec: len(rec["calls"]), output_limit="max_tokens",
+                                   other_incomplete="model_context_window_exceeded", missing_value=None, max_tokens_flag=True)
+
+    def test_openai_compatible_path_stops_when_the_reply_is_incomplete(self):
+        assert_stops_on_incomplete(self, self.run_main, lambda r: as_modules("openai", fake_openai(r)),
+                                   calls=lambda rec: len(rec["calls"]), **CHAT_COMPLETIONS, max_tokens_flag=True)
 
     def test_openai_compatible_two_stages(self):
         openai, record = fake_openai(["# 報告", VALID_OUTPUT])
