@@ -504,6 +504,40 @@ class PromptTest(unittest.TestCase):
         self.assertIn("core-prompt.md", str(ctx.exception))
 
 
+class IncompleteReplyTableTest(unittest.TestCase):
+    def test_table_lists_every_known_incomplete_finish_of_each_api(self):
+        # 預期值來自讀已安裝 SDK 的型別（#161 調查：openai 3.41.0、anthropic 2.3.0、xai-sdk 1.21.0、google-genai 2.34.0）；
+        # output_limit＝因輸出上限、maybe_output_limit＝介面沒有原因欄位（可能是輸出上限）、other＝其他不完整。
+        # 正常結束與缺值不在表裡（放行）；interactions 除了 completed 以外的已知狀態都列入。
+        L, M, O = "output_limit", "maybe_output_limit", "other"
+        self.assertEqual(aw.INCOMPLETE, {
+            "chat_completions": {"length": L, "content_filter": O},
+            "anthropic": {"max_tokens": L, "model_context_window_exceeded": O, "refusal": O},
+            "responses": {"max_output_tokens": L, "content_filter": O, "max_messages": O, "steered": O,
+                          "incomplete": O, "failed": O, "cancelled": O},
+            "xai": {"REASON_MAX_LEN": L, "REASON_MAX_CONTEXT": O, "REASON_TIME_LIMIT": O},
+            "interactions": {"incomplete": M, "budget_exceeded": O, "failed": O, "cancelled": O,
+                             "requires_continuation": O, "in_progress": O, "queued": O, "requires_action": O},
+        })
+
+    def test_message_tells_a_definite_output_limit_from_a_possible_one(self):
+        args = mock.Mock(max_tokens=16000)
+        with self.assertRaises(aw.Abort) as definite:
+            aw.require_complete("chat_completions", "length", "report", args)
+        with self.assertRaises(aw.Abort) as possible:
+            aw.require_complete("interactions", "incomplete", "json", args)
+        self.assertEqual(str(definite.exception), "[錯誤] 第 1 段（Markdown 報告）的回覆不完整（結束原因：length）："
+                         "因為輸出上限被截斷，可以調高 --max-tokens（目前 16000）重跑。這次不存任何輸出檔。")
+        self.assertEqual(str(possible.exception), "[錯誤] 第 2 段（JSON）的回覆不完整（結束原因：incomplete）："
+                         "可能因為輸出上限被截斷（這種介面沒有提供原因），可以調高 --max-tokens（目前 16000）重跑。這次不存任何輸出檔。")
+
+    def test_unknown_api_name_is_a_programming_error_even_for_a_normal_finish(self):
+        # adapter 把介面名稱打錯時不能默默放行：連正常結束也要丟出錯誤，否則打錯了也看不出來
+        for finish in ("stop", "length", None):
+            with self.subTest(finish=finish), self.assertRaisesRegex(ValueError, "chat_completion"):
+                aw.require_complete("chat_completion", finish, "report", mock.Mock(max_tokens=100))
+
+
 class FakeAdapter:
     """測試用的模型 adapter：記錄每一段收到的訊息，依序回傳預先寫好的回覆。"""
     platform = "fake"

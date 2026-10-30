@@ -34,7 +34,7 @@ DeepSeek API 工作流程：先制型曝險分析（Preemptive Exposure Analysis
 
 輸出與結束碼
   output/deepseek-report.md、output/deepseek-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/deepseek-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
 
 安全邊界
   本腳本只做「資料整理 → 呼叫語言模型 → 存檔」。不掃描、不探測、不變更任何系統。
@@ -111,6 +111,7 @@ class DeepSeekAdapter:
                   file=sys.stderr)
             kwargs.pop("response_format")
             reply = client.chat.completions.create(**kwargs)
+        analysis_workflow.require_complete("chat_completions", getattr(reply.choices[0], "finish_reason", None), stage, args)
         return reply.choices[0].message.content or ""
 
 

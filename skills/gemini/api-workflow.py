@@ -38,7 +38,7 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
 
 輸出與結束碼
   output/gemini-report.md、output/gemini-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/gemini-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
 
 安全邊界
   不啟用任何工具。原生路徑的對話狀態存在 Google 的伺服器上（previous_interaction_id），送出前請依資料分類政策評估。
@@ -101,6 +101,7 @@ class GeminiAdapter:
             if json_mode:
                 kwargs["response_format"] = {"type": "json_object"}   # 相容端點是否支援 json_object，官方文件沒寫（待驗證）
             reply = _create_with_json_fallback(self._openai_client().chat.completions.create, kwargs, json_mode)
+            analysis_workflow.require_complete("chat_completions", getattr(reply.choices[0], "finish_reason", None), stage, args)
             return reply.choices[0].message.content or ""
         # 第 1 段送報告的提示詞；第 2 段只送最後一則 user 訊息，以 previous_interaction_id 延續第 1 段。
         # system_instruction 兩段都帶：延續對話時會不會保留它，官方文件沒寫（待驗證）
@@ -111,6 +112,7 @@ class GeminiAdapter:
         if json_mode:
             kwargs["response_format"] = JSON_MIME
         interaction = _create_with_json_fallback(self._genai_client().interactions.create, kwargs, json_mode)
+        analysis_workflow.require_complete("interactions", getattr(interaction, "status", None), stage, args)
         if stage == "report":
             self._previous_id = interaction.id
         return interaction.output_text or ""

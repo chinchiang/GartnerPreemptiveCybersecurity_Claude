@@ -33,7 +33,7 @@ GLM（Zhipu AI / Z.ai）API 工作流程：先制型曝險分析（Preemptive Ex
 
 輸出與結束碼
   output/glm-report.md、output/glm-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/glm-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
 
 安全邊界
   本腳本只做「資料整理 → 呼叫語言模型 → 存檔」。不掃描、不探測、不變更任何系統。
@@ -96,9 +96,11 @@ class GlmAdapter:
             system, conversation = messages[0]["content"], messages[1:]
             reply = self._anthropic_client().messages.create(model=args.model, system=system, max_tokens=args.max_tokens,
                                                              temperature=temperature, messages=conversation)
+            analysis_workflow.require_complete("anthropic", getattr(reply, "stop_reason", None), stage, args)
             return "".join(getattr(block, "text", "") for block in reply.content)
         reply = self._openai_client().chat.completions.create(model=args.model, messages=messages,
                                                               temperature=temperature, max_tokens=args.max_tokens)
+        analysis_workflow.require_complete("chat_completions", getattr(reply.choices[0], "finish_reason", None), stage, args)
         return reply.choices[0].message.content or ""
 
     def _openai_client(self):
