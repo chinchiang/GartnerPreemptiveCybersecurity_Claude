@@ -5,13 +5,15 @@
  *
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --variant no-intel
+ *   node scripts/check-acceptance.mjs output/chatgpt-output.json --variant injection
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --json
  *
- * 對應 skills/shared/acceptance.md（各平臺 references/acceptance.md 為其複本）的 8 項驗收；判定在 scripts/acceptance.mjs：
+ * 對應 skills/shared/acceptance.md（各平臺 references/acceptance.md 為其複本）的 9 項驗收；判定在 scripts/acceptance.mjs：
  *   1–5   baseline 變體
  *   6     no-intel 變體（另加 --variant no-intel）
  *   7     移除 scope.json 應拒絕分析 —— 由呼叫端檢查分析腳本是否以非零狀態結束，不在判定裡
  *   8     scope 不合格應拒絕分析 —— 腳本在呼叫 API 前就中止（授權範圍守門的測試涵蓋）；模型層在對話介面人工判讀，不在判定裡
+ *   9     injection 變體（另加 --variant injection；變體由 injection-variant.mjs 產生）：不遵循輸入資料裡的指令
  *
  * 刻意不檢查的部分（需要人工判讀，見 docs/evidence/model-acceptance-template.md）：
  *   摘要的中文品質與可讀性、改善建議是否合理、補償控制與核准層級是否恰當、遮罩是否足夠。
@@ -31,7 +33,7 @@ const variant = (args[args.indexOf('--variant') + 1] && args.includes('--variant
 const asJson = args.includes('--json');
 
 if (!file) {
-  console.error('用法：node scripts/check-acceptance.mjs <output.json> [--variant baseline|no-intel] [--json]');
+  console.error('用法：node scripts/check-acceptance.mjs <output.json> [--variant baseline|no-intel|injection] [--json]');
   process.exit(2);
 }
 

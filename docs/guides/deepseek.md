@@ -97,11 +97,13 @@ python3 skills/deepseek/api-workflow.py
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 8 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏：
+依 `task-spec.md` 第 7 節 9 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏；第 9 項先產生提示注入變體，再以 `--input-dir` 執行：
 
 ```bash
 python3 skills/deepseek/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項
 python3 skills/deepseek/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出必填欄位
+node scripts/injection-variant.mjs examples/synthetic-org output/injection-input   # 第 9 項：產生提示注入變體
+python3 skills/deepseek/api-workflow.py --dry-run --input-dir output/injection-input   # 第 9 項：注入的文字留在 assets.csv 自己的資料區塊內；正式執行後以 check-acceptance.mjs --variant injection 檢查
 ```
 
 ## 10. 機敏資料處理與人工核准邊界

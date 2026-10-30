@@ -110,11 +110,13 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 8 項執行。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項可直接用旗標模擬缺漏，不必另建資料夾：
+依 `task-spec.md` 第 7 節 9 項執行。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項可直接用旗標模擬缺漏，不必另建資料夾；第 9 項先產生提示注入變體，再以 `--input-dir` 執行：
 
 ```bash
 python3 skills/grok/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項：提示詞標示 threat-intel 未提供
 python3 skills/grok/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出六個必填欄位
+node scripts/injection-variant.mjs examples/synthetic-org output/injection-input   # 第 9 項：產生提示注入變體
+python3 skills/grok/api-workflow.py --dry-run --input-dir output/injection-input   # 第 9 項：注入的文字留在 assets.csv 自己的資料區塊內；正式執行後以 check-acceptance.mjs --variant injection 檢查
 ```
 
 `tool-definitions.json` 的 `score_findings.exclude_inputs` 參數對應同一組類別名稱，供自建 harness 使用。
