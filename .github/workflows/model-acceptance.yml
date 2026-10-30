@@ -36,21 +36,27 @@ jobs:
       # 經由環境變數傳入，不直接內插到 shell 指令中（避免工作流程輸入被當成指令執行）。
       MODEL: ${{ inputs.model }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Provider secrets只注入下方實際模型呼叫step；checkout、setup與安裝均不可見。
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: skills/*/requirements.txt
+          cache-dependency-path: .github/model-acceptance/*-requirements.txt
 
-      - name: Install platform SDK
-        run: pip install -r "skills/$PLATFORM/requirements.txt"
+      # 鎖定檔（== 加 --hash，#162）：PyPI 上新發布的版本（包括被入侵的版本）不會被裝進來讀到金鑰。
+      # 使用者照教學安裝的 skills/<平臺>/requirements.txt 不變。
+      - name: Install platform SDK from the hashed lock file
+        run: pip install --require-hashes -r ".github/model-acceptance/$PLATFORM-requirements.txt"
+
+      # 呼叫付費的 API 之前，先確認裝好的 SDK 跟 adapter 對得上（與 ci.yml 的 real-sdk job 相同）。
+      - name: Real-SDK smoke test (no network calls, no API keys)
+        run: python3 tests/python/real_sdk_smoke.py "$PLATFORM"
 
       - name: Prepare variant input directories
         run: |
@@ -231,7 +237,7 @@ jobs:
 
       - name: Upload model output for human review
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: model-acceptance-${{ inputs.platform }}
           path: output/
