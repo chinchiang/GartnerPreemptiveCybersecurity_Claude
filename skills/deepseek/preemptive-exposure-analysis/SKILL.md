@@ -90,7 +90,7 @@ score = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40�
 | 檔案 | 類別 | 必要 | 缺少時 |
 |---|---|---|---|
 | `scope.json` | I1 授權範圍 | 是 | 中止 |
-| `assets.csv` | I2 資產清冊 | 是 | 中止或只產曝險面清單 |
+| `assets.csv` | I2 資產清冊 | 是 | 不等待回覆，直接降級：只產曝險面清單、在限制寫明、信心下修 |
 | `vulnerabilities.csv` | I3 弱點 | 是 | 只產曝險面清單、信心下修 |
 | `exposures.json` | I4 EASM | 否 | 以 `internet_exposed` 近似 |
 | `identities.csv` | I6 身分 | 否 | 身分邊標「未知」 |

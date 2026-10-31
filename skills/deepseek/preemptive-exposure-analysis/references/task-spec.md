@@ -28,7 +28,7 @@ version: 1.0.0
 | 編號 | 名稱 | 格式 | 必填欄位 | 缺少時 |
 |---|---|---|---|---|
 | I1 | 授權範圍與分析參數（scope） | JSON | `organization`、`analysis_date`、`authorized_scope.in_scope_assets`、`authorized_scope.active_testing_authorized`、`authorized_scope.external_scanning_authorized`、`reporting.audience`；選填 `authorized_scope.excluded_assets`（排除的資產識別碼，排除優先） | **中止**：無授權範圍不得分析。要求使用者補齊。 |
-| I2 | 資產清冊 + 業務重要性（assets） | CSV/JSON | `asset_id`、`name`、`type`、`business_criticality`(1–5)、`internet_exposed`、`owner` | **中止**或要求至少提供最小清冊；若無 `business_criticality`，以資料等級或使用者口述推估並標示「推估」。 |
+| I2 | 資產清冊 + 業務重要性（assets） | CSV/JSON | `asset_id`、`name`、`type`、`business_criticality`(1–5)、`internet_exposed`、`owner` | **降級**：不等待回覆，直接降級為只產出「曝險面清單」，在資料品質與限制寫明缺少資產清冊、哪些輸出因此無法產出，並下修信心。若無 `business_criticality`，以資料等級或使用者口述推估並標示「推估」。 |
 | I3 | 弱點與發現（vulnerabilities） | CSV/JSON | `finding_id`、`asset_id`、`vuln_id`、`title`、`cvss_base` | 若無弱點資料，僅能依曝露與設定產出「曝險面清單」，並降低信心。 |
 
 ### 2.2 建議輸入

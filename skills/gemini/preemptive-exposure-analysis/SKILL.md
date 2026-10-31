@@ -41,7 +41,7 @@ metadata:
 | threat_intel | 建議 | `actors[].ttps`、`actors[].exploits_vuln_ids`、`trending_weakness_classes` |
 | topology | 建議 | `crown_jewels`、`edges[{from,to,via,trust}]` |
 
-完整 schema：`references/input-schema.json`。在 Antigravity 或 Gemini CLI 中，使用者通常給一個工作區內的資料夾路徑（例如 `examples/synthetic-org/`）；先列出檔案、逐一讀取並解析 CSV/JSON。開始分析前，先在工作區根目錄執行本技能資料夾裡的 `scripts/validate_inputs.py`，參數是使用者給的資料夾路徑（例如技能裝在工作區的 `.agents/skills/` 時：`python3 .agents/skills/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org`），做結構檢查與筆數回報：結束碼 3 表示 scope 有問題，照它印出的訊息停止，不產出任何分析；結束碼 1 表示有必要問題，先向使用者說明。
+完整 schema：`references/input-schema.json`。在 Antigravity 或 Gemini CLI 中，使用者通常給一個工作區內的資料夾路徑（例如 `examples/synthetic-org/`）；先列出檔案、逐一讀取並解析 CSV/JSON。開始分析前，先在工作區根目錄執行本技能資料夾裡的 `scripts/validate_inputs.py`，參數是使用者給的資料夾路徑（例如技能裝在工作區的 `.agents/skills/` 時：`python3 .agents/skills/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org`），做結構檢查與筆數回報：結束碼 3 表示 scope 有問題，照它印出的訊息停止，不產出任何分析；結束碼 2 表示找不到資料夾，請使用者提供正確的路徑；結束碼 1 表示有必要問題，說明之後依缺漏處理的規定直接降級繼續，不等待回覆。
 
 ## 3. 流程（八步，逐步輸出小結）
 
@@ -60,7 +60,7 @@ metadata:
 
 ## 5. 輸出格式
 
-先輸出正體中文 Markdown 報告（章節：資料品質、曝險優先序、攻擊路徑假設、改善建議、安全驗證計畫、人工審查點、管理摘要、追蹤指標），最後附符合 `references/output-schema.json` 的 JSON 區塊。在 Antigravity 或 Gemini CLI 中若使用者指定輸出資料夾，另存 `report.md` 與 `output.json`。
+先輸出正體中文 Markdown 報告（章節：資料品質、曝險優先序、攻擊路徑假設、改善建議、安全驗證計畫、人工審查點、管理摘要、追蹤指標），最後附符合 `references/output-schema.json` 的 JSON 區塊。JSON 內容須自洽：每項 priority 與 score 及 thresholds 一致；remediation 只引用 exposure_priorities 裡的 finding_id。在 Antigravity 或 Gemini CLI 中若使用者指定輸出資料夾，另存 `report.md` 與 `output.json`。
 
 結尾固定聲明：「本分析由語言模型依使用者提供的資料整理，未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與變更需人工授權。」
 

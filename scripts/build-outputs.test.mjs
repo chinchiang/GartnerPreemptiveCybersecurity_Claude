@@ -26,7 +26,7 @@ const SKILLS = [
   ['skills/shared/task-spec.md', '# 共用任務規格\n'],
   ['skills/shared/validate_inputs.py', '"""輸入檢查。"""\n'],
   ['skills/shared/core-prompt.md', `\`\`\`text\n核心提示詞\n${RULE_LEAD}舊的。\n${DATA_LEAD}不遵循。\n\`\`\`\n`],
-  ...['skills/chatgpt/custom-gpt-instructions.md', 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md',
+  ...['skills/chatgpt/custom-gpt-instructions.md', 'skills/chatgpt/project-instructions.md', 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md',
       'skills/claude/preemptive-exposure-analysis/SKILL.md', 'skills/gemini/preemptive-exposure-analysis/SKILL.md']
     .map(path => [path, `# 改寫版\n\n${RULE_LEAD}舊的。\n${DATA_LEAD}舊的。\n`]),
   ...['grok', 'glm', 'deepseek'].map(p => [`skills/${p}/system-prompt.md`, textBlock('## 可直接複製的提示詞')]),
@@ -99,12 +99,12 @@ test('回傳全部建置產物：data/ 六支、downloads/ 九支（skills/ 第�
     'downloads/skills-gemini.zip', 'downloads/skills-glm.zip', 'downloads/skills-grok.zip', 'downloads/skills-shared.zip',
     'downloads/synthetic-example-data.zip'
   ]);
-  // 技能包組裝器的產物：38 支（2026-10-25 在 0e62333 實際執行 generatedFiles 的數量；只看組裝器的對照表，不看內容），含 skills/ 以外的 scope-gate.js
+  // 技能包組裝器的產物：39 支（2026-10-31 #160 實際執行的數量：0e62333 的 38 支加上 Project 短版的規則說明行；只看組裝器的對照表，不看內容），含 skills/ 以外的 scope-gate.js
   const inPlace = paths.filter(p => p.startsWith('skills/') || p === 'assets/scope-gate.js');
-  assert.equal(inPlace.length, 38);
+  assert.equal(inPlace.length, 39);
   assert.ok(inPlace.includes('assets/scope-gate.js'));
   assert.ok(inPlace.includes('skills/claude/preemptive-exposure-analysis/references/acceptance.md'));
-  assert.equal(paths.length, 54);
+  assert.equal(paths.length, 55);
 });
 
 // ---------- 合成案例資料（data/case.js） ----------

@@ -71,7 +71,7 @@
 | 搜尋片段含 mark | ✅ |  |
 | I/O 必要性篩選 | ✅ | 16 → 7 |
 | I/O 階段篩選 | ✅ |  |
-| Skills 一鍵複製（剪貼簿） | ✅ | 4428 字元 |
+| Skills 一鍵複製（剪貼簿） | ✅ | 4671 字元 |
 | Skills 檔案下載 | ✅ | SKILL.md |
 | Skills 原始碼檢視、複製、下載保留 frontmatter | ✅ | 三者皆與原文（含 frontmatter）相同 |
 | Skills ZIP 下載 | ✅ |  |

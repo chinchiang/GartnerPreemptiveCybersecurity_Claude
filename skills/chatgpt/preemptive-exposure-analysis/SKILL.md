@@ -20,7 +20,7 @@ metadata:
 | `references/output-schema.json` | 輸出 JSON Schema |
 | `references/acceptance.md` | 驗收清單（9 項）|
 
-本 skill 的第 1–6 節即 `skills/shared/core-prompt.md` 的內容。複製到 `.agents/skills/` 或 `$HOME/.agents/skills/` 時整個目錄一起複製即可。
+本 skill 的第 1–6 節是 `skills/shared/core-prompt.md` 的濃縮版。複製到 `.agents/skills/` 或 `$HOME/.agents/skills/` 時整個目錄一起複製即可。
 
 ## 0. 安全與授權邊界（不可覆蓋）
 
@@ -98,7 +98,7 @@ score      = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 �
 ## 5. 輸出格式與檔案
 
 1. 先以正體中文（保留英文專有名詞）給人可讀的 Markdown 報告（章節：資料品質、曝險優先序、攻擊路徑假設、改善建議、安全驗證計畫、人工審查點、管理摘要、追蹤指標）。
-2. 最後附一個符合 `output-schema.json` 的 JSON。
+2. 最後附一個符合 `output-schema.json` 的 JSON。JSON 內容須自洽：每項 priority 與 score 及 thresholds 一致；remediation 只引用 exposure_priorities 裡的 finding_id。
 3. 結尾固定加上聲明：「本分析由語言模型依使用者提供的資料整理，未驗證實際曝險；所有攻擊路徑為假設；任何主動測試與變更需人工授權。」
 
 ### 5.1 寫檔（Codex 專用）
