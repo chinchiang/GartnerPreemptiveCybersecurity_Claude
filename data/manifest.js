@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "0e6cdd512d17",
+ "contentHash": "f5bd1f081220",
  "research": [
   {
    "id": "00-method",
@@ -129,7 +129,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/project-instructions.md",
    "platform": "chatgpt",
-   "bytes": 6379
+   "bytes": 6606
   },
   {
    "path": "skills/chatgpt/requirements.txt",

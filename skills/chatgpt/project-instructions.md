@@ -6,7 +6,7 @@ platform: chatgpt
 
 # ChatGPT Projects 指令（短版）
 
-> 用途：在 ChatGPT 建立一個 Project，把下面的短版指令貼入 Project 的「Instructions」（欄位名稱以官方介面為準；Projects 的指令字數上限與檔案數上限均 UNVERIFIED，見 `docs/evidence/ai-platform-skills-evidence.md` 第 1 節）。短版保留了不可覆蓋的邊界、流程與輸出格式，把評分公式與 schema 交給專案內附的 `task-spec.md`、`output-schema.json` 承載。
+> 用途：在 ChatGPT 建立一個 Project，把下面的短版指令貼入 Project 的「Instructions」（欄位名稱以官方介面為準；指令字數上限官方未公布；檔案數上限見下方「專案附檔」一節）。短版保留了不可覆蓋的邊界、流程與輸出格式，把評分公式與 schema 交給專案內附的 `task-spec.md`、`output-schema.json` 承載。
 
 ## Instructions（貼入）
 
@@ -46,7 +46,7 @@ platform: chatgpt
 | 建議 | `skills/shared/input-schema.json` | 輸入結構，供助理檢查缺欄位 |
 | 選用（示範用） | `examples/synthetic-org/` 內 9 個檔案 | 合成範例；若專案要放真實資料，建議**不要**同時附合成檔，避免混用 |
 
-若 Projects 的檔案數上限比 12 小（第三方報告 Free 方案為 5 個，UNVERIFIED），優先順序為：task-spec.md → output-schema.json → scope.json → assets.csv → vulnerabilities.csv；其餘檔案改在對話中逐一上傳。
+每個專案可放的檔案數依方案而定（[官方說明](https://help.openai.com/en/articles/10169521-using-projects-in-chatgpt)：Free 5 個；Go、Plus 25 個；Edu、Pro、Business、Enterprise 40 個；一次最多上傳 10 個；2026-10-31 查證）。上限比 12 小時（例如 Free 方案），優先順序為：task-spec.md → output-schema.json → scope.json → assets.csv → vulnerabilities.csv；其餘檔案改在對話中逐一上傳。
 
 ## 與 Custom GPT 的差異
 
@@ -54,7 +54,7 @@ platform: chatgpt
 |---|---|---|
 | 分享 | 個人工作空間為主（分享功能以官方說明為準） | 可分享給團隊或以連結分享 |
 | 檔案 | 附在專案內，所有對話共用 | Knowledge 綁在 GPT 上 |
-| 指令長度 | 未查證 | 未查證 |
+| 指令長度 | 官方未公布（2026-10-31 查證） | 官方未公布（2026-10-31 查證） |
 | 適合 | 自己反覆分析同一組織 | 提供固定行為給多位使用者 |
 
 ## 每次對話的建議開場
