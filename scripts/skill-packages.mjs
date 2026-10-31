@@ -47,7 +47,7 @@ const WORKFLOW_NEEDS = [...SCRIPT_NEEDS, `${SHARED_DIR}input-schema.json`, `${SH
 const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 'scoring-rules.md', 'task-spec.md'];
 const SYSTEM_PROMPT_EMBED = { file: 'system-prompt.md', heading: '## 可直接複製的提示詞' };
 const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
-// 附 validate_inputs.py 的技能資料夾（Claude、Gemini；見 ADR 0003、0006）：SKILL.md 是手寫的精簡版、不引用 task-spec；
+// 附 validate_inputs.py 的技能資料夾（Claude、Gemini；見 ADR 0003、0006）：SKILL.md 是手寫的改寫版、不引用 task-spec；
 // scripts/ 放 validate_inputs.py 與它載入的核心，兩支都是 skills/shared/ 母本的複本，資料夾被單獨複製或上傳時仍可執行
 const SKILL_FOLDER_REFERENCES = REFERENCES.filter(n => n !== 'task-spec.md');
 const SKILL_FOLDER_SCRIPTS = ['analysis_workflow.py', 'validate_inputs.py'];
