@@ -66,6 +66,19 @@ done
 
 迴圈以 push 那次的截圖為準。只出現在 pr 那次的截圖，以及網站拿掉、已提交的版本該刪除的截圖，它都不會列出，要用 `ls` 另外比對三邊的檔名。
 
+兩次執行剛好拿到同一個雜訊版本時，迴圈會把它列成「畫面有變」，其實畫面沒變。雜訊不是每次都不同，而是在少數幾個固定版本之間輪流出現：`io.png`（`#/io` 頁）在 PR #173 與 #174 的六次執行裡只出現過兩個版本，各 3 次，彼此只差 2 個像素，每個色彩通道差 1～2 個色階。PR #173 的兩次執行各拿到一個；#174 的第一個提交兩次都拿到已提交的那一個，第二個提交兩次都拿到另一個，迴圈就把它列成「畫面有變」。所以列成「畫面有變」的截圖，換之前先確認兩件事：
+
+1. **PR 有沒有改到那一頁的來源**：截圖檔名是 `scripts/verify.mjs` 的 `ROUTES` 去掉 `#/`（`io.png` 是 `#/io`）。頁面內容來自 `data/` 對應的檔案，或建置時從 `docs/`、`skills/` 寫進 `data/` 的內容；版面來自 `assets/` 與 `index.html`。用 `git diff main...HEAD --name-only` 看有沒有碰到。
+2. **這個版本以前出現過沒有**：下載之前幾次 CI 執行的 artifact，對照 `md5sum`：
+
+```bash
+gh run list --workflow=ci.yml --limit 10 --json databaseId,event,headSha --jq '.[] | "\(.databaseId) \(.event) \(.headSha[0:7])"'
+gh run download <之前的 run-id> -n verify-report-and-screenshots -D "$D/<之前的 run-id>"
+md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
+```
+
+兩個都成立（沒改到來源，而且以前出現過）才是雜訊，保留已提交的版本，並在 PR 說明寫出對照的 md5 與 run id。有一個不成立，就照上表的「無法自動判斷」處理：看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
+
 只有一次執行可用時（例如只 push、沒開 PR），沒辦法交叉比對，就退回單次比對，換之前先看圖，確認不是零星的像素差異：
 
 ```bash
