@@ -20,7 +20,7 @@ metadata:
 | `references/output-schema.json` | 輸出 JSON Schema |
 | `references/acceptance.md` | 驗收清單（9 項）|
 
-本 skill 的第 1–6 節是 `skills/shared/core-prompt.md` 的濃縮版。複製到 `.agents/skills/` 或 `$HOME/.agents/skills/` 時整個目錄一起複製即可。
+本 skill 的第 1–6 節是 `skills/shared/core-prompt.md` 的改寫版。複製到 `.agents/skills/` 或 `$HOME/.agents/skills/` 時整個目錄一起複製即可。
 
 ## 0. 安全與授權邊界（不可覆蓋）
 
