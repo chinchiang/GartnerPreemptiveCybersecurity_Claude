@@ -67,7 +67,7 @@ test('規則說明不受註記關鍵字影響', () => {
   assert.equal(GATE.ruleNoteAgainst(withField('organization', node)), RULE_NOTE);
 });
 
-test('核心提示詞與四份改寫版各有恰好一行規則說明，等於固定開頭＋規則說明＋句號（手改或改了母本忘了重建都會失敗）', () => {
+test('核心提示詞與五份改寫版各有恰好一行規則說明，等於固定開頭＋規則說明＋句號（手改或改了母本忘了重建都會失敗）', () => {
   const expected = `${RULE_LINE_LEAD}${GATE.scopeRuleNote()}。`;
   for (const path of RULE_NOTE_TARGETS) {
     const lines = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').split(/\r?\n/).filter(l => l.startsWith(RULE_LINE_LEAD));
