@@ -42,10 +42,11 @@ test('示範引擎守門：必填欄位有填但不合格時拒絕分析，reaso
 
 let upstreamRequests = []; // 假的上游收到的 [網址, fetch 的第二個參數]
 let ip = 0; // worker 每個 IP 每分鐘只放行 5 次，每個請求用不同的 IP
+// ALLOWED_ORIGIN 是必填（#151），請求帶相符的 origin
 const analyze = (scope, target = worker, env = {}) => target.fetch(new Request('https://worker.example/api/analyze', {
-  method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': `203.0.113.${++ip}` },
+  method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://site.example', 'cf-connecting-ip': `203.0.113.${++ip}` },
   body: JSON.stringify({ bundle: { scope } })
-}), { PROVIDER: 'openai', MODEL: 'test-model', PROVIDER_API_KEY: 'test-key', ...env });
+}), { PROVIDER: 'openai', MODEL: 'test-model', PROVIDER_API_KEY: 'test-key', ALLOWED_ORIGIN: 'https://site.example', ...env });
 
 describe('後端代理（backend/worker.js）', () => {
   const realFetch = globalThis.fetch;
