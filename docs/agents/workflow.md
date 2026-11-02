@@ -39,6 +39,12 @@
 
 Windows 的測試子行程維持連接模式（非 detached），保留 stdout 報告；Unix 仍用獨立行程群組。可收尾取消支援終端機 SIGINT、Unix SIGTERM，以及以 IPC 啟動時由父行程傳送 `{ type: 'cancel' }`。Windows 取消時先以 `taskkill /PID <本工具啟動的子行程 PID> /T /F` 結束測試行程樹，再還原檔案；Windows 的 `child.kill('SIGTERM')` 或其他外部強制終止不會執行收尾。延遲輸出的回歸測試使用 Node，Windows 等待寫入者完成，Unix 另保留父行程先退出的情境。
 
+## 共用內容維護
+
+修改共用內容時，編輯 `skills/shared/` 的母本，再依下一節重建複本與嵌入區塊；這兩類建置產物由建置更新，手寫檔案的其餘部分照常編輯。
+
+規則說明行也由建置更新，即使位於母本中仍以 `skills/shared/input-schema.json` 的 `properties.scope` 為來源。修改授權範圍規則時，依 ADR 0005 更新規則描述能力並重建。複本的提交決策見 ADR 0001。
+
 ## 改了來源就重建，產物一起提交
 
 改了什麼來源要重建、要一起提交哪些產物，以部署指南第 5 節的維護表為準（`docs/guides/deployment.md`）。原則是：改完來源就執行 `node scripts/build-data.mjs`，把產生的變動一起提交；CI 建置後會檢查整份工作樹必須沒有變動（生成檔為什麼要提交，見 ADR 0001）。
