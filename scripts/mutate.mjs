@@ -10,11 +10,11 @@
  * 測試指令不是 node:test 時就不列。--markdown 輸出總計一行加「突變｜結果｜紅的測試」表格，給 PR 說明的突變紀錄用。
  * 結束碼：0 全部抓到；1 有存活；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處）
  * 或測試在突變前就失敗，這時一個檔案都不改。
- * 中斷（SIGINT／SIGTERM）時的還原只保證 Linux／macOS：結束測試靠 process.kill(-pid) 送給整個行程群組，Windows 不支援，
- * 測試子行程可能殘留。
+ * 可收尾取消：終端機 SIGINT、Unix SIGTERM，或父行程透過 IPC 傳送 { type: 'cancel' }。
+ * Windows 以 taskkill /T /F 結束本工具啟動的測試行程樹，再還原；外部強制終止本工具無法收尾。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, relative } from 'node:path';
 
@@ -98,19 +98,27 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const runTests = () => new Promise(resolve => {
     // 拿掉 NODE_TEST_CONTEXT：被 node --test 啟動時會繼承它，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
     const { NODE_TEST_CONTEXT, ...env } = process.env;
-    child = spawn(testCommand, { shell: true, stdio: ['ignore', 'pipe', 'ignore'], detached: true, env });
+    child = spawn(testCommand, { shell: true, stdio: ['ignore', 'pipe', 'ignore'], detached: process.platform !== 'win32', windowsHide: true, env });
     let output = '';
+    child.stdout.setEncoding('utf8'); // 跨 chunk 的中文字元由 stream 解碼，避免名稱損壞。
     child.stdout.on('data', chunk => { output += chunk; });
     child.on('close', code => { child = null; resolve({ code, output }); });
   });
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-      if (child) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
-      if (current) writeFileSync(current.file, current.original);
-      console.error(`\n收到 ${signal}：已還原 ${current ? current.file : '（沒有改動中的檔案）'}`);
-      process.exit(130);
-    });
-  }
+  const cancel = reason => {
+    if (child) {
+      if (process.platform === 'win32') {
+        // 僅終止本工具持有的子行程樹；Windows 的負 PID 不代表行程群組。
+        const stopped = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, encoding: 'utf8', timeout: 5000 });
+        if (stopped.error || stopped.status !== 0) console.error('結束測試行程失敗：' + (stopped.error?.message || stopped.stderr));
+      } else { try { process.kill(-child.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') console.error(e.message); } }
+    }
+    if (current) writeFileSync(current.file, current.original);
+    console.error(`\n收到 ${reason}：已還原 ${current ? current.file : '（沒有改動中的檔案）'}`);
+    process.exit(130);
+  };
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => cancel(signal));
+  if (process.channel) process.on('message', message => { if (message?.type === 'cancel') cancel('IPC cancel'); });
+
 
   // 基準：測試在突變之前就必須通過，否則每一種突變都會被誤判成「抓到」
   if ((await runTests()).code !== 0) {

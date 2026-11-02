@@ -37,6 +37,8 @@
 
 確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。有存活就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處），或測試在突變前就失敗，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。
 
+Windows 的測試子行程維持連接模式（非 detached），保留 stdout 報告；Unix 仍用獨立行程群組。可收尾取消支援終端機 SIGINT、Unix SIGTERM，以及以 IPC 啟動時由父行程傳送 `{ type: 'cancel' }`。Windows 取消時先以 `taskkill /PID <本工具啟動的子行程 PID> /T /F` 結束測試行程樹，再還原檔案；Windows 的 `child.kill('SIGTERM')` 或其他外部強制終止不會執行收尾。延遲輸出的回歸測試使用 Node，Windows 等待寫入者完成，Unix 另保留父行程先退出的情境。
+
 ## 改了來源就重建，產物一起提交
 
 改了什麼來源要重建、要一起提交哪些產物，以部署指南第 5 節的維護表為準（`docs/guides/deployment.md`）。原則是：改完來源就執行 `node scripts/build-data.mjs`，把產生的變動一起提交；CI 建置後會檢查整份工作樹必須沒有變動（生成檔為什麼要提交，見 ADR 0001）。

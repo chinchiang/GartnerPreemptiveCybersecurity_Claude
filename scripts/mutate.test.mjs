@@ -86,9 +86,13 @@ test('抓到時列出失敗的測試（附檔名）：只列紅的那個，--jso
 test('測試指令結束後才寫完的輸出也讀得到：等輸出讀完（close）才判定，不是行程一結束（exit）', () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }], { nodeTest: true });
   try {
-    // shell 帶著測試的結束碼先結束，報告由背景行程 0.3 秒後才寫出
-    const late = 'node --test scripts/calc.test.mjs > out.txt; s=$?; (sleep 0.3; cat out.txt) & exit $s';
-    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', late], { cwd: dir, encoding: 'utf8' });
+    // Unix：父行程先結束，子行程延遲寫報告，守住 close 而非 exit。
+    // Windows 不保留已退出父行程的 stdout 控制代碼，等待寫入者完成以驗證延遲輸出收集。
+    writeFileSync(join(dir, 'late-print.cjs'), "setTimeout(() => process.stdout.write(require('fs').readFileSync('out.txt')), 300);\n");
+    writeFileSync(join(dir, 'late.cjs'),
+      "const {spawnSync,spawn}=require('child_process'); const r=spawnSync(process.execPath,['--test','scripts/calc.test.mjs']);\n" +
+      "require('fs').writeFileSync('out.txt',r.stdout); const p=spawn(process.execPath,['late-print.cjs'],{stdio:['ignore',process.stdout,'ignore']});if(process.platform==='win32')p.on('close',()=>process.exit(r.status));else{p.unref();process.exit(r.status);}\n");
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node late.cjs'], { cwd: dir, encoding: 'utf8' });
     assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法（紅：1 \+ 2 = 3［scripts\/calc\.test\.mjs］）$/m, r.stdout + r.stderr);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -130,21 +134,28 @@ test('測試在突變之前就失敗：結束碼 2，不做任何突變（否則
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('跑測試時被中斷（SIGTERM）：檔案仍然還原', async () => {
+test('跑測試時取消（Windows 用 IPC，Unix 用 SIGTERM）：檔案還原且測試子行程停止', async () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
   try {
-    // 讀到突變後的 calc.js 就睡 10 秒，留時間送出中斷
+    // 確認測試子行程已啟動並持續等待，再取消；同時檢查其 PID 已消失。
     writeFileSync(join(dir, 'check.js'),
-      "const src = require('fs').readFileSync(__dirname + '/calc.js', 'utf8');\nif (src.includes('a - b')) setTimeout(() => process.exit(1), 10000);\n");
-    const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: 'ignore' });
+      "const src = require('fs').readFileSync(__dirname + '/calc.js', 'utf8');\nif (src.includes('a - b')) { require('fs').writeFileSync(__dirname + '/test-pid.txt', String(process.pid)); setInterval(() => {}, 1000); }\n");
+    const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
     const mutated = () => readFileSync(join(dir, 'calc.js'), 'utf8').includes('a - b');
-    for (let i = 0; i < 100 && !mutated(); i++) await new Promise(r => setTimeout(r, 50));
+    for (let i = 0; i < 100 && !(mutated() && existsSync(join(dir, 'test-pid.txt'))); i++) await new Promise(r => setTimeout(r, 50));
     assert.ok(mutated(), '突變沒有開始');
     const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
-    child.kill('SIGTERM');
+    if (process.platform === 'win32') child.send({ type: 'cancel' });
+    else child.kill('SIGTERM');
     const { code } = await exited;
-    assert.notEqual(code, 0);
+    assert.equal(code, 130);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+    const pid = Number(readFileSync(join(dir, 'test-pid.txt'), 'utf8'));
+    for (let i = 0; i < 100; i++) {
+      try { process.kill(pid, 0); } catch { break; }
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -330,6 +341,15 @@ test('failingTests 讀 TAP：not ok 裡排除父測試（subtestsFailed）與 to
 test('failingTests 的檔名一律用 /：Windows 的 node --test 印出的是 scripts\\a.test.mjs', () => {
   const windowsSpec = '✖ failing tests:\n\ntest at scripts\\a.test.mjs:1:65\n✖ 失敗的 A (0.66ms)\n';
   assert.deepEqual(failingTests(windowsSpec, 'D:\\repo'), [{ name: '失敗的 A', file: 'scripts/a.test.mjs' }]);
+});
+
+for (const reporter of ['spec', 'tap']) test(`實際 ${reporter} 輸出：失敗名稱與檔名可跨平臺讀取`, () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b' }], { nodeTest: true });
+  try {
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', `node --test --test-reporter=${reporter} scripts/calc.test.mjs`, '--json'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout).results[0].failed, [{ name: '1 + 2 = 3', file: 'scripts/calc.test.mjs' }]);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('failingTests 讀不到 node:test 的失敗：回傳 []', () => {
