@@ -27,7 +27,7 @@
 
 `playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
 
-完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進每次執行都會變的值（例如捲動位置），否則比對每次都會失敗。
+完整模式每次先將報告與截圖寫入獨立的 `scratch/verification-runs/run-*/`，並更新 `verify-report.md`；全部通過才更新 `verify-screenshots/`。失敗時查終端機印出的本次目錄，CI 也只上傳這個目錄的產物，避免混入舊截圖。執行例外會標示未完成，資源關閉錯誤也會列入報告；靜態模式仍只輸出至終端機。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進每次執行都會變的值（例如捲動位置），否則比對每次都會失敗。
 
 ## 搜尋：用 `rg`
 

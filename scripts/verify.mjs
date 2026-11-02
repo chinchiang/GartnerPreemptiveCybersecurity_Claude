@@ -5,20 +5,18 @@
  *   node scripts/verify.mjs            靜態檢查 + 以 Playwright（Chromium）啟動本機伺服器，檢查導覽、搜尋、篩選、複製、下載、案例互動
  * 完整模式的結果寫入 verify-report.md（實際檢查結果紀錄）；--static 只印到 stdout，不改寫這個已提交的檔案。
  */
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
+import { runVerification, anchorInViewport } from './verification-run.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const results = [];
-const ok = (name, pass, detail = '') => { results.push({ name, pass, detail }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
 
 // ---------- 靜態檢查 ----------
-function staticChecks() {
+function staticChecks(ok) {
   const ctx = { window: {} }; vm.createContext(ctx);
   for (const f of ['data/manifest.js', 'data/research.js', 'data/guides.js', 'data/skills.js', 'data/case.js', 'data/process.js', 'data/io.js', 'data/platforms.js', 'data/sources.js', 'data/extra.js']) {
     try { vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx); ok(`載入 ${f}`, true); } catch (e) { ok(`載入 ${f}`, false, e.message); }
@@ -115,23 +113,7 @@ function staticChecks() {
 }
 
 // ---------- 瀏覽器檢查 ----------
-async function browserChecks() {
-  let chromium;
-  try { ({ chromium } = await import('playwright')); } catch { try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (e) { ok('Playwright 可用', false, e.message); return; } }
-  const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.zip': 'application/zip', '.md': 'text/markdown', '.csv': 'text/csv' };
-  // ?stamped：回傳以固定時間填好 last-updated 的 index.html，等同部署後的網站（repo 裡提交的是空的）
-  const STAMPED_AT = '2026-10-17T16:30:00+00:00';
-  const server = createServer((req, res) => {
-    let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html';
-    const f = join(ROOT, p);
-    if (!existsSync(f)) { res.writeHead(404); res.end(); return; }
-    const body = p === '/index.html' && req.url.includes('?stamped') ? stampLastUpdated(readFileSync(f, 'utf8'), STAMPED_AT) : readFileSync(f);
-    res.writeHead(200, { 'content-type': mime[p.slice(p.lastIndexOf('.'))] || 'application/octet-stream' }); res.end(body);
-  }).listen(0);
-  const port = server.address().port;
-  const base = `http://127.0.0.1:${port}/`;
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-  const shots = join(ROOT, 'verify-screenshots'); mkdirSync(shots, { recursive: true });
+async function browserChecks({ browser, base, shots, stampedAt: STAMPED_AT, ok }) {
   const errors = [];
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true });
   const page = await context.newPage();
@@ -157,12 +139,13 @@ async function browserChecks() {
   // 目錄錨點（中文 slug 需 decode）與 tab 鍵盤操作
   const tocLink = await page.$('.doc-toc a:nth-child(3)');
   const tocHref = await tocLink.getAttribute('href');
-  await tocLink.click(); await page.waitForTimeout(150);
+  await tocLink.click();
   const anchorId = decodeURIComponent(tocHref.split('#')[2] || '');
-  const anchorEl = anchorId ? await page.$(`[id="${anchorId.replace(/"/g, '')}"]`) : null;
-  // scrollY 每次執行都不同（捲動還在進行），只在失敗時寫進說明，否則已提交的報告每次都會過時
+  const anchorReached = await page.waitForFunction(anchorInViewport, { id: anchorId, documentId: '01-definition' }, { timeout: 5000 })
+    .then(() => true, error => { if (error.name === 'TimeoutError') return false; throw error; });
+  // 成功報告不寫入每次不同的捲動位置；逾時仍列為失敗並繼續後續檢查。
   const scrollY = await page.evaluate(() => window.scrollY);
-  ok('目錄錨點：同章且元素存在', page.url().includes('doc=01-definition') && !!anchorEl && scrollY > 0, scrollY > 0 ? anchorId : `${anchorId} scrollY=${scrollY}`);
+  ok('目錄錨點：同章且元素存在', anchorReached, anchorReached ? anchorId : `${anchorId} 未在 5 秒內捲入可視範圍 scrollY=${scrollY}`);
   await page.focus('.tabs [role="tab"][aria-selected="true"]'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150);
   ok('Tabs 方向鍵切換', page.url().includes('doc=02-relations'), page.url().split('#')[1]);
   // skip link 不應觸發「找不到頁面」
@@ -319,7 +302,6 @@ async function browserChecks() {
     (await shown(midPage, '#last-updated')) === false && (await shown(midPage, '#last-updated-footer')) === true && midFoot === LAST_UPDATED_TEXT, midFoot);
   await mid.close();
   ok('無 JS 執行錯誤', errors.length === 0, errors.slice(0, 3).join(' | '));
-  await browser.close(); server.close();
 }
 
 // ---------- 連結檢查（可選） ----------
@@ -340,13 +322,5 @@ async function linkChecks() {
   console.log(rows.join('\n'));
 }
 
-const args = process.argv.slice(2);
-staticChecks();
-if (!args.includes('--static')) await browserChecks();
-if (args.includes('--links')) await linkChecks();
-const passed = results.filter(r => r.pass).length;
-const report = `# 驗證報告\n\n執行時間：${new Date().toISOString()}\n模式：${args.join(' ') || 'full'}\n結果：${passed}/${results.length} 通過\n\n| 檢查 | 結果 | 說明 |\n|---|---|---|\n${results.map(r => `| ${r.name} | ${r.pass ? '✅' : '❌'} | ${r.detail.replace(/\|/g, '/')} |`).join('\n')}\n`;
-// 只有完整模式（含瀏覽器檢查）寫入 verify-report.md；--static 只印結果，不改寫已提交的報告
-if (args.includes('--static')) console.log(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
-else { writeFileSync(join(ROOT, 'verify-report.md'), report); console.log(`\n${passed}/${results.length} 通過 → verify-report.md`); }
-process.exit(passed === results.length ? 0 : 1);
+const { exitCode } = await runVerification({ root: ROOT, args: process.argv.slice(2), staticChecks, browserChecks, linkChecks });
+process.exit(exitCode);

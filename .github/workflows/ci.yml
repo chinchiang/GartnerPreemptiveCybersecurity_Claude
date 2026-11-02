@@ -93,6 +93,7 @@ jobs:
       - name: Build data files and downloads
         run: npm run build
       - name: Browser verification (navigation, search, filters, copy, download, case interaction, mobile, a11y)
+        id: verification
         run: npm run verify
       - name: Committed verify-report.md is up to date (ignoring the run time line)
         # 報告嵌入網站附錄，過時了沒有別的檢查會發現；執行時間每次都不同，其餘內容要逐行相同。截圖逐位元組比對不穩定，不比對
@@ -102,11 +103,11 @@ jobs:
             exit 1
           fi
       - name: Upload verification report and screenshots
-        if: always()
+        if: ${{ always() && steps.verification.outputs.run-directory != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: verify-report-and-screenshots
           path: |
-            verify-report.md
-            verify-screenshots/
+            ${{ steps.verification.outputs.run-directory }}/verify-report.md
+            ${{ steps.verification.outputs.run-directory }}/verify-screenshots/
           retention-days: 14
