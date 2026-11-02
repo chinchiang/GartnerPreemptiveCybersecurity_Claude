@@ -1,8 +1,8 @@
 # 驗證報告
 
-執行時間：2026-10-18T20:47:21.180Z
+執行時間：2026-10-30T14:18:52.036Z
 模式：full
-結果：100/100 通過
+結果：99/99 通過
 
 | 檢查 | 結果 | 說明 |
 |---|---|---|
@@ -17,27 +17,22 @@
 | 載入 data/sources.js | ✅ |  |
 | 載入 data/extra.js | ✅ |  |
 | 研究文件 ≥ 7 章 | ✅ | 8 章 |
-| 五個平臺教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,deployment |
-| Skills 涵蓋五平臺 + shared | ✅ | chatgpt,claude,deepseek,glm,grok,shared |
+| 六個平臺教學 + 部署文件 | ✅ | chatgpt,claude,grok,glm,deepseek,gemini,deployment |
+| Skills 涵蓋六平臺 + shared | ✅ | chatgpt,claude,deepseek,gemini,glm,grok,shared |
 | 每個平臺都有 SKILL.md 或 system-prompt.md | ✅ |  |
-| references/ 的 .md 複本標題與母本一致 | ✅ | 11 份 |
-| 所有引用的來源 ID 都存在於來源表 | ✅ | 57 個 ID |
+| references/ 的 .md 複本標題與母本一致 | ✅ | 13 份 |
+| 所有引用的來源 ID 都存在於來源表 | ✅ | 66 個 ID |
 | 每筆來源都有 verification、url（可為 null）、date、accessed | ✅ |  |
 | 待驗證清單每項都有合法 status | ✅ |  |
-| 待驗證項目都寫出了下一步（how） | ✅ | 15 項待處理 |
+| 待驗證項目都寫出了下一步（how） | ✅ | 16 項待處理 |
 | 已完成項目都有 resolvedAt 日期 | ✅ | 1 項已完成 |
-| 證據檔已嵌入網站 | ✅ | 3 份 |
+| 證據檔已嵌入網站 | ✅ | 4 份 |
 | 流程步驟 derivedFrom 指向存在的步驟 | ✅ |  |
 | 流程步驟引用的 I/O 都存在 | ✅ |  |
 | JSON 有效 skills/shared/input-schema.json | ✅ |  |
 | JSON 有效 skills/shared/output-schema.json | ✅ |  |
 | JSON 有效 skills/grok/tool-definitions.json | ✅ |  |
 | JSON 有效 skills/glm/claude-code-settings.example.json | ✅ |  |
-| 缺拓樸：信心下修且無路徑假設 | ✅ |  |
-| 清冊 < 80%：信心「低」 | ✅ |  |
-| 驗證計畫：外部驗證需兩個授權旗標 | ✅ |  |
-| 引擎 JSON 符合 output-schema 結構 | ✅ | required、block 欄位、items 必填鍵、摘要長度 |
-| 示範引擎輸出與 examples/demo-snapshot.txt 一致 | ✅ | 50 行 |
 | index.html 有 CSP meta 且允許 inline style（app.js 用 style 屬性） | ✅ |  |
 | index.html 有 OG／Twitter 卡片與 canonical | ✅ |  |
 | index.html 恰好一個空的 last-updated <meta>（部署時才填得進最後更新時間） | ✅ |  |
@@ -49,6 +44,7 @@
 | 下載檔存在 downloads/skills-chatgpt.zip | ✅ |  |
 | 下載檔存在 downloads/skills-claude.zip | ✅ |  |
 | 下載檔存在 downloads/skills-deepseek.zip | ✅ |  |
+| 下載檔存在 downloads/skills-gemini.zip | ✅ |  |
 | 下載檔存在 downloads/skills-glm.zip | ✅ |  |
 | 下載檔存在 downloads/skills-grok.zip | ✅ |  |
 | 下載檔存在 downloads/skills-shared.zip | ✅ |  |
@@ -75,7 +71,7 @@
 | 搜尋片段含 mark | ✅ |  |
 | I/O 必要性篩選 | ✅ | 16 → 7 |
 | I/O 階段篩選 | ✅ |  |
-| Skills 一鍵複製（剪貼簿） | ✅ | 3996 字元 |
+| Skills 一鍵複製（剪貼簿） | ✅ | 4671 字元 |
 | Skills 檔案下載 | ✅ | SKILL.md |
 | Skills 原始碼檢視、複製、下載保留 frontmatter | ✅ | 三者皆與原文（含 frontmatter）相同 |
 | Skills ZIP 下載 | ✅ |  |
@@ -86,10 +82,10 @@
 | 案例：移除情資後顯示缺漏警示 | ✅ |  |
 | 案例：移除拓樸後無路徑假設 | ✅ |  |
 | 案例：清冊完整度調整 | ✅ |  |
-| 案例：風險胃納切換改變 P1 數 | ✅ | 10 → 12 |
+| 案例：風險胃納切換改變 P1 數 | ✅ | 8 → 12 |
 | 案例：輸出 JSON 下載 | ✅ |  |
 | 案例：複製報告 Markdown | ✅ |  |
-| 來源頁所有連結為 http(s) | ✅ | 55 個連結 |
+| 來源頁所有連結為 http(s) | ✅ | 64 個連結 |
 | 來源頁類型篩選 | ✅ |  |
 | 來源頁查證等級篩選 | ✅ |  |
 | 來源頁：證據檔附錄可展開 | ✅ |  |
@@ -105,4 +101,7 @@
 | 最後更新時間：填了時 1280px 的 topbar 顯示臺北時間、頁尾不顯示 | ✅ | 最後更新：2026-10-18 00:30（UTC+8）｜2026-10-17T16:30:00+00:00 |
 | 最後更新時間：填了時 390px 的 topbar 隱藏、頁尾顯示同一段文字 | ✅ | 最後更新：2026-10-18 00:30（UTC+8） |
 | 最後更新時間：填了時 1100px 的 topbar 隱藏、頁尾顯示（topbar 放不下，否則搜尋框會被擠窄） | ✅ | 最後更新：2026-10-18 00:30（UTC+8） |
+| 搜尋框：填了時 901px 至少 160px | ✅ |  |
+| 搜尋框：填了時 1151px 至少 160px（時間在 topbar 的最窄寬度） | ✅ |  |
+| topbar：1920px 時搜尋框到了 max-width，右側按鈕仍靠右 | ✅ |  |
 | 無 JS 執行錯誤 | ✅ |  |

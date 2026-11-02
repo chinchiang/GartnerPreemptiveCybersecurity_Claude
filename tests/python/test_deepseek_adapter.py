@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fake_sdk import ROOT, blocked, fake_openai, load_platform_script  # noqa: E402
+from fake_sdk import CHAT_COMPLETIONS, as_modules, assert_stops_on_incomplete, ROOT, blocked, fake_openai, load_platform_script  # noqa: E402
 
 REQUIRED_KEYS = json.loads((ROOT / "skills" / "shared" / "output-schema.json").read_text(encoding="utf-8"))["required"]
 
@@ -35,15 +35,15 @@ class DeepSeekAdapterTest(unittest.TestCase):
         self.env.stop()
         self.tmp.cleanup()
 
-    def run_main(self, *extra, openai=None):
+    def run_main(self, *extra, openai=None, modules=None):
         stdout, stderr = io.StringIO(), io.StringIO()
-        modules = {"openai": openai} if openai is not None else {}
+        modules = modules if modules is not None else ({"openai": openai} if openai is not None else {})
         with mock.patch.dict(sys.modules, modules), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = self.module.analysis_workflow.main(self.module.DeepSeekAdapter(), ["--output-dir", str(self.out), *extra])
         return code, stdout.getvalue(), stderr.getvalue()
 
     def test_two_stages_use_deepseek_settings_and_json_mode(self):
-        openai, record = fake_openai(["# 報告", json.dumps({k: {} for k in REQUIRED_KEYS})])
+        openai, record = fake_openai(["# 報告", (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")])
         code, out, err = self.run_main(openai=openai)
         self.assertEqual(code, 0, err)
         self.assertEqual(record["clients"], [{"api_key": "test-key", "base_url": "https://api.deepseek.com"}])
@@ -55,10 +55,14 @@ class DeepSeekAdapterTest(unittest.TestCase):
         self.assertTrue((self.out / "deepseek-report.md").exists())
         self.assertTrue((self.out / "deepseek-output.json").exists())
 
+    def test_stops_when_the_reply_is_incomplete(self):
+        assert_stops_on_incomplete(self, self.run_main, lambda r: as_modules("openai", fake_openai(r)),
+                                   calls=lambda rec: len(rec["calls"]), **CHAT_COMPLETIONS, max_tokens_flag=True)
+
     def test_env_and_flags_override_defaults(self):
         os.environ["DEEPSEEK_BASE_URL"] = "https://example.invalid/v1"
         os.environ["DEEPSEEK_MODEL"] = "deepseek-v4-flash"
-        openai, record = fake_openai(["# 報告", "{}"])
+        openai, record = fake_openai(["# 報告", (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")])
         code, out, err = self.run_main("--max-tokens", "2048", "--no-json-mode", openai=openai)
         self.assertEqual(code, 0, err)
         self.assertEqual(record["clients"][0]["base_url"], "https://example.invalid/v1")
@@ -67,7 +71,7 @@ class DeepSeekAdapterTest(unittest.TestCase):
         self.assertNotIn("response_format", record["calls"][1])
 
     def test_rejected_json_mode_is_retried_once_without_response_format(self):
-        openai, record = fake_openai(["# 報告", "{}"], reject_response_format=True)
+        openai, record = fake_openai(["# 報告", (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")], reject_response_format=True)
         code, out, err = self.run_main(openai=openai)
         self.assertEqual(code, 0, err)
         self.assertEqual(len(record["calls"]), 3)

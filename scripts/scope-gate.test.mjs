@@ -1,3 +1,4 @@
+// scope-gate.test.mjs — assets/scope-gate.js 的單元測試
 // 授權範圍守門的 JS schema 解讀（assets/scope-gate.js，見 docs/adr/0004）：規則只來自 input-schema.json 的 scope 定義。
 // 共用案例的判定另見 scope-cases.test.mjs（示範引擎與選用後端代理都委派給它）。
 import { test } from 'node:test';
@@ -66,7 +67,7 @@ test('規則說明不受註記關鍵字影響', () => {
   assert.equal(GATE.ruleNoteAgainst(withField('organization', node)), RULE_NOTE);
 });
 
-test('核心提示詞與三份改寫版各有恰好一行規則說明，等於固定開頭＋規則說明＋句號（手改或改了母本忘了重建都會失敗）', () => {
+test('核心提示詞與五份改寫版各有恰好一行規則說明，等於固定開頭＋規則說明＋句號（手改或改了母本忘了重建都會失敗）', () => {
   const expected = `${RULE_LINE_LEAD}${GATE.scopeRuleNote()}。`;
   for (const path of RULE_NOTE_TARGETS) {
     const lines = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').split(/\r?\n/).filter(l => l.startsWith(RULE_LINE_LEAD));

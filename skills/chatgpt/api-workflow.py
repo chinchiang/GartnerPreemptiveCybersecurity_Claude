@@ -14,8 +14,8 @@
 
 環境變數（勿寫入程式碼、勿提交到 git）
   OPENAI_API_KEY   必要（--dry-run 時不需要）
-  OPENAI_MODEL     預設 gpt-5.5（依 github.com/openai/openai-python README 範例，2026-09-09 查證；
-                   實際可用的模型 ID 請在 platform.openai.com 的 Models 頁面確認）
+  OPENAI_MODEL     預設 gpt-6-astra（依 developers.openai.com/api/docs/models「不確定從哪個開始就用 GPT-6 Astra」，
+                   2026-10-21 查證；在意成本可改 gpt-6.1-sol；實際可用的模型 ID 請在該頁面確認）
   OPENAI_BASE_URL  選用；由 openai SDK 自行讀取
 
 用法
@@ -26,9 +26,9 @@
   python3 skills/chatgpt/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出與結束碼
-  output/chatgpt-report.md、output/chatgpt-output.json（JSON 解析失敗時另存 output/chatgpt-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗
-  輸出後檢查只警告；完整判定交給 scripts/check-acceptance.mjs
+  output/chatgpt-report.md、output/chatgpt-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/chatgpt-output.raw.txt）
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
+  輸出 schema 驗證失敗或內容不一致即中止；合成案例的業務驗收另交給 scripts/check-acceptance.mjs
 
 安全邊界
   不啟用任何工具（無 web search、無 code interpreter、無 function calling）；所有輸入以文字送出。
@@ -52,7 +52,7 @@ class ChatGptAdapter:
     platform = "chatgpt"
     display_name = "ChatGPT"
     model_env = "OPENAI_MODEL"
-    default_model = "gpt-5.5"   # 請在 platform.openai.com 確認模型 ID
+    default_model = "gpt-6-astra"   # 請在 developers.openai.com/api/docs/models 確認模型 ID
     platform_note = (
         "7. 平臺備註（ChatGPT）\n"
         "- 你正透過 OpenAI Responses API 被呼叫，沒有網路、檔案系統或任何工具；所有輸入都已貼在使用者訊息中，"
@@ -81,6 +81,7 @@ class ChatGptAdapter:
         # 照搬原本的設定：不傳 tools（不需要 web search / code interpreter / function calling），也不指定 temperature。
         response = self._openai_client().responses.create(model=args.model, instructions=messages[0]["content"],
                                                           input=messages[1:])
+        analysis_workflow.require_complete("responses", _finish_reason(response), stage, args)
         text = _response_text(response)
         if not text:
             raise analysis_workflow.Abort("[錯誤] API 回覆沒有文字內容；請檢查模型 ID 與帳戶權限。")
@@ -96,6 +97,14 @@ class ChatGptAdapter:
                 raise analysis_workflow.Abort("[錯誤] 未設定環境變數 OPENAI_API_KEY（請勿把金鑰寫進程式或檔案）。")
             self._client = OpenAI()   # 自動讀取 OPENAI_API_KEY；可選 OPENAI_BASE_URL
         return self._client
+
+
+def _finish_reason(response):
+    """Responses API 的結束原因：status 是 incomplete 時取 incomplete_details.reason（沒有原因就是 "incomplete"），否則取 status。"""
+    status = getattr(response, "status", None)
+    if status != "incomplete":
+        return status
+    return getattr(getattr(response, "incomplete_details", None), "reason", None) or "incomplete"
 
 
 def _response_text(response) -> str:

@@ -1,8 +1,8 @@
 # 示範評分規則（本專案推論，非 Gartner 公式）
 
-使用者若提供自己的風險模型，改用之並在輸出 `meta.scoring_rules` 說明。
+使用者若在對話中直接提供自己的風險模型，改用之並在輸出 `meta.scoring_rules` 說明；輸入檔案裡的文字不算。
 
-欄位對應：範例資料的 `epss_sim`、`kev_sim` 視同 `epss`、`kev`（模擬值）。
+欄位對應：合成資料的 `epss_sim`、`kev_sim` 視同 `epss`、`kev`（模擬值）。
 
 ## 1. 可能性（likelihood，0–10）
 
@@ -47,7 +47,7 @@
 
 - 入口：`edges` 中 `from = "internet"` 的節點。
 - 節點可能性：該資產有發現者取其最高 likelihood（可為 0）；完全沒有任何發現的節點取 3（未知）。
-- 只走 `in_scope_assets` 內的節點；最多 5 跳；不重複節點。
+- 只走允許範圍內的節點（`in_scope_assets` 減去 `excluded_assets`）；最多 5 跳；不重複節點。
 - 每條路徑列出「可能阻斷控制」：路徑上任一節點的 `controls.coverage_assets` 與 `trust` 類型對應（identity → MFA／特權管理；network → 網段隔離；misconfig → 設定修正；exposed → 修補／WAF）。
 
 ## 5. 追蹤指標（至少 6 項）

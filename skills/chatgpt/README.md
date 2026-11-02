@@ -9,9 +9,9 @@ role: readme
 
 ## 1. 先分清楚：模型 vs. 承載應用
 
-| 層 | 名稱 | 說明 | 查證狀態（依 `docs/evidence/ai-platform-skills-evidence.md`，2026-09-09） |
+| 層 | 名稱 | 說明 | 查證狀態（依 `docs/evidence/ai-platform-skills-evidence.md`，2026-09-09；模型依 `docs/evidence/openai-gpt-6-models-evidence.md`，2026-10-21） |
 |---|---|---|---|
-| 模型 | GPT-5.x 系列 | 官方 `openai/openai-python` README 範例以 `gpt-5.5` 為主 | VERIFIED（GitHub README）；ChatGPT 選單內的模型顯示名稱 UNVERIFIED |
+| 模型 | GPT-6 家族 | 官方模型頁建議不確定時從 `gpt-6-astra` 開始（腳本預設）；在意成本可改 `gpt-6.1-sol` | VERIFIED（developers.openai.com/api/docs/models）；ChatGPT 選單內的模型顯示名稱 UNVERIFIED |
 | 應用 | **ChatGPT app** | Custom Instructions（全域偏好）、Projects（指令 + 檔案的工作容器）、Custom GPTs（可分享的「指令 + Knowledge + Actions」包） | PARTIALLY VERIFIED（官方說明頁存在但無法抓取）；字數／檔案數上限 UNVERIFIED |
 | 應用 | **Codex**（CLI／IDE／桌面／雲端） | 支援 Agent Skills 開放標準；從 `.agents/skills`（repo 層）與 `$HOME/.agents/skills`（使用者層）讀取 `SKILL.md`；`$skill-name` 叫用 | Agent Skills 標準與 `openai/skills`、`openai/plugins` repo：VERIFIED；路徑細節：PARTIALLY VERIFIED |
 | 應用 | **OpenAI API（Responses API）** | `client.responses.create(model=..., input=...)`，官方 SDK 建議優先於 Chat Completions | VERIFIED（SDK README） |
@@ -38,7 +38,8 @@ role: readme
 
 | 項目 | 狀態 | 依據 |
 |---|---|---|
-| Responses API 呼叫方式與 `gpt-5.5` 模型 ID | VERIFIED | https://github.com/openai/openai-python |
+| Responses API 呼叫方式 | VERIFIED | https://github.com/openai/openai-python |
+| 模型 ID `gpt-6-astra`（預設）、`gpt-6.1-sol`（在意成本時） | VERIFIED | https://developers.openai.com/api/docs/models |
 | Codex 支援 Agent Skills；`openai/skills` 已標示 deprecated 並改指向 `openai/plugins` | VERIFIED | https://github.com/openai/skills 、https://github.com/openai/plugins |
 | Codex 讀取 `.agents/skills` 與 `$HOME/.agents/skills` | PARTIALLY VERIFIED | https://developers.openai.com/codex/skills（搜尋摘要） |
 | Custom GPT：每個 GPT 最多 20 個檔案、單檔 512 MB／2M tokens | PARTIALLY VERIFIED | https://help.openai.com/en/articles/8555545-file-uploads-faq（搜尋摘要） |

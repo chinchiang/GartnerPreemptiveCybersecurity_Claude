@@ -1,3 +1,4 @@
+// frontmatter.test.mjs — frontmatter 判斷規則的單元測試，與對建置產物 data/skills.js 的整合檢查
 // frontmatter 的判斷規則只有一份（scripts/frontmatter.mjs）：建置用它讀標題，也用它算出 Skills 專區渲染檢視的正文起點。
 // 前半段是 parseFrontmatter 的單元測試（純函式，不碰磁碟）；後半段是整合檢查，讀已提交的建置產物 data/skills.js
 // 與 skills/ 底下的檔案，確認建置真的替每份 .md 記下正確的 bodyStart、原文沒有被改動。
@@ -48,9 +49,9 @@ const loadSkillFiles = () => {
 test('data/skills.js 的 .md 檔帶 bodyStart：從那裡切開就是正文；原文仍含 frontmatter', () => {
   const md = loadSkillFiles().filter(f => f.ext === 'md');
   const withFrontmatter = md.filter(f => f.bodyStart > 0);
-  // 已知正確值：skills/ 底下 29 份 .md，其中 19 份有 frontmatter（含 Claude 的 SKILL.md）
-  assert.equal(md.length, 29);
-  assert.equal(withFrontmatter.length, 19);
+  // 已知正確值：skills/ 底下 33 份 .md，其中 21 份有 frontmatter（含 Claude 的 SKILL.md）
+  assert.equal(md.length, 33);
+  assert.equal(withFrontmatter.length, 21);
   assert.ok(withFrontmatter.some(f => f.path === 'skills/claude/preemptive-exposure-analysis/SKILL.md'), 'Claude 的 SKILL.md 有 frontmatter');
   for (const f of md) {
     assert.equal(typeof f.bodyStart, 'number', `${f.path} 沒有 bodyStart`);

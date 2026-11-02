@@ -1,5 +1,7 @@
 # Claude 技能附一份建置產生的分析工作流程核心複本
 
+> 範圍已由 ADR 0006 擴大：例外適用於所有附 `validate_inputs.py` 的技能資料夾（Claude、Gemini），`validate_inputs.py` 的母本也搬到了 `skills/shared/`。以下是當時的決定，未改動。
+
 Claude 技能的 `validate_inputs.py` 改用分析工作流程核心，但**不**依 ADR 0002 從 `skills/shared/` 載入：建置把 `skills/shared/analysis_workflow.py` 複製成 `skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py`（檔首一行 `#` 標註，比照 ADR 0001 的複本，同樣提交進 git），`validate_inputs.py` 載入同目錄的這份複本，守門規則讀技能內的 `references/input-schema.json`。這是 ADR 0002 的例外，只適用於 Claude 技能。
 
 理由：ADR 0002 的前提是「平臺資料夾從來不是單獨可跑的」，四支 `api-workflow.py` 確實如此；Claude 技能卻不是。它的三種安裝方式（複製到 `.claude/skills/`、壓成 zip 上傳 claude.ai、以 API 上傳）都只帶走 `preemptive-exposure-analysis/` 這一個資料夾，`references/` 的複本本來就是為此存在。從 `skills/shared/` 載入核心，會讓三種安裝方式下的 `validate_inputs.py` 全部失效。

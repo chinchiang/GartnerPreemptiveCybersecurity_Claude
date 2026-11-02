@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * todo-checklist.mjs — 把 data/sources.js 的 TODO_ITEMS 印成 Markdown 勾選清單。
+ * todo-checklist.mjs — 把 data/sources.js 的待驗證項目印成 Markdown 勾選清單，季度查證的 issue 用
+ * 把 data/sources.js 的 TODO_ITEMS 印成 Markdown 勾選清單。
  *
  *   node scripts/todo-checklist.mjs            # 只列 pending
  *   node scripts/todo-checklist.mjs --all      # 連 done 一起列

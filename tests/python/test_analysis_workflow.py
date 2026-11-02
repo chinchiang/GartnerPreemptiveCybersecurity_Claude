@@ -342,11 +342,12 @@ class PreflightRenderingTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
-    def test_report_prompt_preflight_section_is_unchanged(self):
+    def test_report_prompt_preflight_section_hides_identifiers(self):
         prompt = aw.build_report_prompt(aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA))
         section = prompt[prompt.index("【腳本預檢結果】"):].split("\n\n")[0].splitlines()
-        self.assertEqual(section, ["【腳本預檢結果】以下是腳本對輸入的機械檢查，請寫進資料品質章節並據以下修信心："]
-                         + [f"- {line}" for line in PROBLEM_PREFLIGHT_LINES])
+        self.assertIn("範圍外資料與未確認歸屬的對外資產已於送出前排除", section[1])
+        self.assertTrue(any("dangling_reference" in line for line in section))
+        self.assertFalse(any("A97" in line or "A02" in line for line in section))
 
     def test_dry_run_stderr_preflight_lines_are_unchanged(self):
         stdout, stderr = io.StringIO(), io.StringIO()
@@ -477,7 +478,7 @@ class PromptTest(unittest.TestCase):
         self.assertIn("【本次未提供的輸入】", p)
         self.assertIn("threat-intel.json", p)
         self.assertIn("【腳本預檢結果】", p)
-        self.assertIn("old-test.northwind-synthetic.example", p)
+        self.assertNotIn("old-test.northwind-synthetic.example", p)
 
     def test_report_prompt_omits_local_path_step_list_and_disclaimer(self):
         p = self.report_prompt
@@ -501,6 +502,40 @@ class PromptTest(unittest.TestCase):
         with self.assertRaises(aw.Abort) as ctx:
             aw.build_system_prompt("# 沒有 text 區塊\n", "")
         self.assertIn("core-prompt.md", str(ctx.exception))
+
+
+class IncompleteReplyTableTest(unittest.TestCase):
+    def test_table_lists_every_known_incomplete_finish_of_each_api(self):
+        # 預期值來自讀已安裝 SDK 的型別（#161 調查：openai 3.41.0、anthropic 2.3.0、xai-sdk 1.21.0、google-genai 2.34.0）；
+        # output_limit＝因輸出上限、maybe_output_limit＝介面沒有原因欄位（可能是輸出上限）、other＝其他不完整。
+        # 正常結束與缺值不在表裡（放行）；interactions 除了 completed 以外的已知狀態都列入。
+        L, M, O = "output_limit", "maybe_output_limit", "other"
+        self.assertEqual(aw.INCOMPLETE, {
+            "chat_completions": {"length": L, "content_filter": O},
+            "anthropic": {"max_tokens": L, "model_context_window_exceeded": O, "refusal": O},
+            "responses": {"max_output_tokens": L, "content_filter": O, "max_messages": O, "steered": O,
+                          "incomplete": O, "failed": O, "cancelled": O},
+            "xai": {"REASON_MAX_LEN": L, "REASON_MAX_CONTEXT": O, "REASON_TIME_LIMIT": O},
+            "interactions": {"incomplete": M, "budget_exceeded": O, "failed": O, "cancelled": O,
+                             "requires_continuation": O, "in_progress": O, "queued": O, "requires_action": O},
+        })
+
+    def test_message_tells_a_definite_output_limit_from_a_possible_one(self):
+        args = mock.Mock(max_tokens=16000)
+        with self.assertRaises(aw.Abort) as definite:
+            aw.require_complete("chat_completions", "length", "report", args)
+        with self.assertRaises(aw.Abort) as possible:
+            aw.require_complete("interactions", "incomplete", "json", args)
+        self.assertEqual(str(definite.exception), "[錯誤] 第 1 段（Markdown 報告）的回覆不完整（結束原因：length）："
+                         "因為輸出上限被截斷，可以調高 --max-tokens（目前 16000）重跑。這次不存任何輸出檔。")
+        self.assertEqual(str(possible.exception), "[錯誤] 第 2 段（JSON）的回覆不完整（結束原因：incomplete）："
+                         "可能因為輸出上限被截斷（這種介面沒有提供原因），可以調高 --max-tokens（目前 16000）重跑。這次不存任何輸出檔。")
+
+    def test_unknown_api_name_is_a_programming_error_even_for_a_normal_finish(self):
+        # adapter 把介面名稱打錯時不能默默放行：連正常結束也要丟出錯誤，否則打錯了也看不出來
+        for finish in ("stop", "length", None):
+            with self.subTest(finish=finish), self.assertRaisesRegex(ValueError, "chat_completion"):
+                aw.require_complete("chat_completion", finish, "report", mock.Mock(max_tokens=100))
 
 
 class FakeAdapter:
@@ -537,7 +572,7 @@ class FakeAdapter:
         return self.replies.pop(0)
 
 
-VALID_OUTPUT = {k: {} for k in json.loads((ROOT / "skills" / "shared" / "output-schema.json").read_text(encoding="utf-8"))["required"]}
+VALID_OUTPUT = json.loads((ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8"))
 
 
 class WorkflowRunTest(unittest.TestCase):
@@ -593,11 +628,11 @@ class WorkflowRunTest(unittest.TestCase):
         self.assertEqual((self.out / "fake-output.raw.txt").read_text(encoding="utf-8"), "抱歉，我無法輸出 JSON")
         self.assertFalse((self.out / "fake-output.json").exists())
 
-    def test_missing_required_keys_only_warn(self):
+    def test_missing_required_keys_fail_validation(self):
         partial = dict(VALID_OUTPUT)
         partial.pop("metrics")
         code, out, err = self.run_main(FakeAdapter(["# 報告", json.dumps(partial)]))
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 4)
         self.assertIn("metrics", err)
 
     def test_scope_problem_exits_1_before_calling_the_model(self):

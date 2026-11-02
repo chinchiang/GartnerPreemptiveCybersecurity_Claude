@@ -87,9 +87,9 @@ export GLM_MODEL=glm-5.3                                    # 以官方模型列
 python3 skills/glm/api-workflow.py                          # 或 --anthropic-compatible
 ```
 
-輸出：`output/glm-report.md`、`output/glm-output.json`（JSON 解析失敗時另存 `output/glm-output.raw.txt`）。
+輸出：`output/glm-report.md`、`output/glm-output.json`（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 `output/glm-output.raw.txt`）。
 
-結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤；4 JSON 解析失敗。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
+結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷，這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 
 ## 8. 使用範例、預期結果及常見問題
 
@@ -103,11 +103,13 @@ python3 skills/glm/api-workflow.py                          # 或 --anthropic-co
 
 ## 9. 簡單、可重現的驗收方式
 
-依 `task-spec.md` 第 7 節 8 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏：
+依 `task-spec.md` 第 7 節 9 項。第 8 項（scope 不合格）API 腳本會在呼叫 API 之前就中止，模型層要在對話介面貼上不合格的 `scope.json` 驗證。第 6、7 項用旗標模擬缺漏；第 9 項先產生提示注入變體，再以 `--input-dir` 執行：
 
 ```bash
 python3 skills/glm/api-workflow.py --dry-run --exclude threat_intel   # 第 6 項
 python3 skills/glm/api-workflow.py --dry-run --exclude scope          # 第 7 項：立即中止並列出必填欄位
+node scripts/injection-variant.mjs examples/synthetic-org output/injection-input   # 第 9 項：產生提示注入變體
+python3 skills/glm/api-workflow.py --dry-run --input-dir output/injection-input   # 第 9 項：注入的文字留在 assets.csv 自己的資料區塊內；正式執行後以 check-acceptance.mjs --variant injection 檢查
 ```
 
 ## 10. 機敏資料處理與人工核准邊界

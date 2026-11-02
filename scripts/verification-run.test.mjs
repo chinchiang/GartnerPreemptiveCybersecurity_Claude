@@ -1,3 +1,4 @@
+// verification-run.test.mjs — 驗證例外收尾、產物隔離、錨點與網站路徑邊界的回歸測試
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
@@ -35,6 +36,19 @@ async function project(check) {
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
 const options = root => ({ root, githubOutput: undefined, log() {}, staticChecks: ok => ok('靜態項目', true),
   browserType: { launch: async () => ({ close: async () => {} }) }, browserChecks: async () => {} });
+
+test('--only 情境模式：不執行靜態檢查、不改寫維護用報告與截圖', () => project(async root => {
+  const result = await runVerification({ ...options(root), args: ['--only', '導覽'],
+    staticChecks: () => { throw new Error('不應執行靜態檢查'); },
+    browserChecks: ({ ok, shots }) => {
+      ok('指定情境', true);
+      writeFileSync(join(shots, 'partial.png'), 'partial');
+    } });
+  assert.equal(result.exitCode, 0);
+  assert.equal(readReport(root), 'old report');
+  assert.deepEqual(readdirSync(join(root, 'verify-screenshots')), ['old.png']);
+  assert.equal(readFileSync(join(result.runDir, 'verify-screenshots', 'partial.png'), 'utf8'), 'partial');
+}));
 
 test('網站檔案邊界：拒絕編碼越界與符號連結逃逸，仍可讀取一般檔案', () => project(async root => {
   const outside = mkdtempSync(root + '-outside-');

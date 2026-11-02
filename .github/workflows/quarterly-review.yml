@@ -19,8 +19,8 @@ jobs:
   reminder:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
       - name: Create the review issue
@@ -36,7 +36,7 @@ jobs:
             echo '### 另外要看的東西'
             echo ''
             echo '- [ ] Gartner 是否有新文件（尤其 Impact Radar 與 Hype Cycle 更新）'
-            echo '- [ ] 五個平臺的模型 ID 與功能是否變動（`data/platforms.js`、各平臺教學第 1 節）'
+            echo '- [ ] 六個平臺的模型 ID 與功能是否變動（`data/platforms.js`、各平臺教學第 1 節）'
             echo '- [ ] 本季 `link-check.yml` 的執行結果是否已判讀並更新 `link-check.md`'
             echo '- [ ] 是否要重跑 `model-acceptance.yml`（模型換版後值得重驗）'
           } > body.md

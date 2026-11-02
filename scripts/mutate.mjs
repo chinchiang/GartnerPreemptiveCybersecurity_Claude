@@ -1,22 +1,27 @@
 #!/usr/bin/env node
 /**
- * mutate.mjs — 突變測試：逐一把實作改壞，確認測試會失敗（「抓到」），然後一定還原。
+ * mutate.mjs — 突變測試：逐一改壞實作、確認測試會失敗、一定還原
+ * 突變測試：逐一把實作改壞，確認測試會失敗（「抓到」），然後一定還原。
  *
- *   node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json | --markdown]
+ *   node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]
  *
  * mutations.json 是臨時寫的清單（不提交）：[{ "file": "scripts/x.mjs", "from": "原文", "to": "改成", "note": "說明" }]，
  * 路徑相對於目前目錄。測試指令預設 node --test scripts/*.test.mjs，以 shell 執行；結束碼非 0 視為「抓到」。
+ * 每次跑測試（突變前的基準與每一筆突變）各自計時，--timeout 預設 600 秒，0 表示不限時，可以有小數。
+ * 超過時間就結束整組測試行程（做法見 child-process.mjs 的 runWithTimeout），還原檔案，
+ * 這一筆記成第三種結果「逾時」，再跑下一筆；逾時不列紅的測試（--json 是每筆的 timedOut 與頂層的逾時總數）。
  * 抓到時從測試輸出列出失敗的 node:test 測試（名稱與檔名，spec 與 TAP 格式都讀；--json 是每筆的 failed），
  * 測試指令不是 node:test 時就不列。--markdown 輸出總計一行加「突變｜結果｜紅的測試」表格，給 PR 說明的突變紀錄用。
- * 結束碼：0 全部抓到；1 有存活；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處）
- * 或測試在突變前就失敗，這時一個檔案都不改。
- * 可收尾取消：終端機 SIGINT、Unix SIGTERM，或父行程透過 IPC 傳送 { type: 'cancel' }。
- * Windows 以 taskkill /T /F 結束本工具啟動的測試行程樹，再還原；外部強制終止本工具無法收尾。
+ * 結束碼：0 全部抓到；1 有存活或有逾時；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、
+ * --timeout 不是 0 或正數）或測試在突變前就失敗或逾時，這時一個檔案都不改。
+ * Windows 上主流程（抓到／存活／逾時、紅的測試、--json／--markdown）與 Linux 相同，測試指令由 cmd.exe 執行。
+ * 可收尾取消支援終端機 SIGINT、Unix SIGTERM，以及 IPC { type: 'cancel' }；透過 child-process.mjs 結束測試行程樹後還原。
+ * Windows 外部強制終止（SIGTERM、taskkill）會直接結束工具，無法執行收尾。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, relative } from 'node:path';
+import { parseTimeout, runWithTimeout } from './child-process.mjs';
 
 // 從測試輸出找出失敗的 node:test 測試 [{ name, file }]，父測試、describe、todo 不算；讀不到（例如不是 node:test）就是 []。
 // 兩種格式都讀：spec（Node 24 非 TTY 的預設）讀結尾的 failing tests 那一段，TAP（Node 22 的預設）讀 not ok。
@@ -54,28 +59,35 @@ export function failingTests(output, cwd = process.cwd()) {
 // 紅的測試：「名稱［檔名］」，多個以「、」分隔；文字輸出與 markdownTable 共用
 const redTests = failed => failed.map(t => `${t.name}［${t.file}］`).join('、');
 
-// 突變紀錄的 Markdown 表格（突變｜結果｜紅的測試）；儲存格裡的 | 跳脫、換行換成空白，表格才不會斷欄
+// 每一筆的結果：逾時、抓到、存活三種；文字輸出與 markdownTable 共用
+const outcome = r => r.timedOut ? '逾時' : r.caught ? '抓到' : '存活';
+
+// 突變紀錄的 Markdown 表格（突變｜結果｜紅的測試）；儲存格裡的 | 跳脫、換行換成空白，表格才不會斷欄。逾時不列紅的測試，儲存格空白
 export function markdownTable(results) {
   const cell = text => text.replace(/\r\n?|\n/g, ' ').replace(/\|/g, '\\|');
-  const redCell = r => !r.caught ? '—' : r.failed.length ? redTests(r.failed) : '（沒有 node:test 的名稱）';
+  const redCell = r => r.timedOut ? '' : !r.caught ? '—' : r.failed.length ? redTests(r.failed) : '（沒有 node:test 的名稱）';
   return ['| 突變 | 結果 | 紅的測試 |', '|---|---|---|',
-    ...results.map(r => `| ${cell(r.note || r.from)} | ${r.caught ? '抓到' : '存活'} | ${cell(redCell(r))} |`)].join('\n');
+    ...results.map(r => `| ${cell(r.note || r.from)} | ${outcome(r)} | ${cell(redCell(r))} |`)].join('\n');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  // 參數：<清單> [--test "<測試指令>"] [--json | --markdown]；參數或讀檔有誤一律結束碼 2，不和「有存活」的 1 混在一起
+  // 參數：<清單> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]；參數或讀檔有誤一律結束碼 2，不和「有存活」的 1 混在一起
   const fail = (message) => { console.error(message); process.exit(2); };
   const args = process.argv.slice(2);
   let listPath = null;
   let testCommand = 'node --test scripts/*.test.mjs';
+  let timeoutArg = '600';   // 每次跑測試的時間上限（秒）；0 表示不限時
   const formats = new Set();   // 輸出格式：--json、--markdown 擇一，都沒給是文字輸出
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--test') testCommand = args[++i];
+    else if (args[i] === '--timeout') timeoutArg = args[++i];
     else if (args[i] === '--json' || args[i] === '--markdown') formats.add(args[i]);
     else if (listPath === null) listPath = args[i];
   }
   const [format = 'text'] = formats;
-  if (!listPath || !testCommand || formats.size > 1) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--json | --markdown]');
+  // --timeout 不合法（parseTimeout 回傳 null，規則見 child-process.mjs）就是參數有誤
+  const timeoutSeconds = parseTimeout(timeoutArg);
+  if (!listPath || !testCommand || timeoutSeconds === null || formats.size > 1) fail('用法：node scripts/mutate.mjs <mutations.json> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]');
   let mutations;
   try { mutations = JSON.parse(readFileSync(listPath, 'utf8')); }
   catch (e) { fail(`無法讀取突變清單 ${listPath}：${e.message}`); }
@@ -92,26 +104,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (problems.length) fail(problems.join('\n'));
 
   // 測試以非同步子行程執行，這樣被中斷（SIGINT／SIGTERM）時訊號處理器才跑得到：結束測試、還原正在改的檔案再離開
-  let current = null;   // 目前改壞的檔案 { file, original } 與測試子行程
-  let child = null;
-  // 回傳 { code, output }：output 是 stdout（node --test 的報告寫在這裡），用來找出失敗的測試；等 close（輸出讀完）才算結束
-  const runTests = () => new Promise(resolve => {
-    // 拿掉 NODE_TEST_CONTEXT：被 node --test 啟動時會繼承它，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
-    const { NODE_TEST_CONTEXT, ...env } = process.env;
-    child = spawn(testCommand, { shell: true, stdio: ['ignore', 'pipe', 'ignore'], detached: process.platform !== 'win32', windowsHide: true, env });
-    let output = '';
-    child.stdout.setEncoding('utf8'); // 跨 chunk 的中文字元由 stream 解碼，避免名稱損壞。
-    child.stdout.on('data', chunk => { output += chunk; });
-    child.on('close', code => { child = null; resolve({ code, output }); });
-  });
+  let current = null;   // 目前改壞的檔案 { file, original }
+  let running = null;   // 目前的測試子行程（runWithTimeout 的回傳值），結束後設回 null
+  // 回傳 { code, output, timedOut }：output 是 stdout（node --test 的報告寫在這裡），用來找出失敗的測試；等 close（輸出讀完）才算結束。
+  // 測試指令以 shell 執行；超過 timeoutSeconds 就結束整組測試行程、記成逾時（做法見 child-process.mjs 的 runWithTimeout）
+  const runTests = async () => {
+    running = runWithTimeout({ command: testCommand, shell: true, timeoutSeconds });
+    const { code, stdout, timedOut } = await running.result;
+    running = null;
+    return { code, output: stdout, timedOut };
+  };
   const cancel = reason => {
-    if (child) {
-      if (process.platform === 'win32') {
-        // 僅終止本工具持有的子行程樹；Windows 的負 PID 不代表行程群組。
-        const stopped = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, encoding: 'utf8', timeout: 5000 });
-        if (stopped.error || stopped.status !== 0) console.error('結束測試行程失敗：' + (stopped.error?.message || stopped.stderr));
-      } else { try { process.kill(-child.pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') console.error(e.message); } }
-    }
+    if (running) running.kill();
     if (current) writeFileSync(current.file, current.original);
     console.error(`\n收到 ${reason}：已還原 ${current ? current.file : '（沒有改動中的檔案）'}`);
     process.exit(130);
@@ -119,9 +123,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => cancel(signal));
   if (process.channel) process.on('message', message => { if (message?.type === 'cancel') cancel('IPC cancel'); });
 
-
-  // 基準：測試在突變之前就必須通過，否則每一種突變都會被誤判成「抓到」
-  if ((await runTests()).code !== 0) {
+  // 基準：測試在突變之前就必須通過，否則每一種突變都會被誤判成「抓到」；逾時也一樣，一個檔案都還沒改
+  const baseline = await runTests();
+  if (baseline.timedOut) {
+    console.error(`測試在突變之前就逾時（超過 ${timeoutSeconds} 秒：${testCommand}），先讓測試能在時間內結束，或用 --timeout 調整`);
+    process.exit(2);
+  }
+  if (baseline.code !== 0) {
     console.error(`測試在突變之前就失敗（${testCommand}），先讓測試通過再做突變`);
     process.exit(2);
   }
@@ -132,24 +140,27 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     current = { file: m.file, original };
     try {
       writeFileSync(m.file, original.replace(m.from, () => m.to));
-      const { code, output } = await runTests();
-      results.push({ ...m, caught: code !== 0, failed: code !== 0 ? failingTests(output) : [] });
+      const { code, output, timedOut } = await runTests();
+      const caught = !timedOut && code !== 0;
+      results.push({ ...m, caught, timedOut, failed: caught ? failingTests(output) : [] });
     } finally {
       writeFileSync(m.file, original);
       current = null;
     }
   }
 
-  const survived = results.filter(r => !r.caught).length;
-  const summary = `突變 ${results.length} 種：抓到 ${results.length - survived}、存活 ${survived}`;
+  const timedOut = results.filter(r => r.timedOut).length;
+  const survived = results.filter(r => !r.caught && !r.timedOut).length;
+  const caught = results.length - survived - timedOut;
+  const summary = `突變 ${results.length} 種：抓到 ${caught}、存活 ${survived}、逾時 ${timedOut}`;
   if (format === '--json') {
-    console.log(JSON.stringify({ total: results.length, caught: results.length - survived, survived, results }, null, 2));
+    console.log(JSON.stringify({ total: results.length, caught, survived, timedOut, results }, null, 2));
   } else if (format === '--markdown') {
     console.log(`${summary}\n\n${markdownTable(results)}`);
   } else {
     const red = r => r.failed.length ? `（紅：${redTests(r.failed)}）` : '';
-    for (const r of results) console.log(`${r.caught ? '抓到' : '存活'}  ${r.file}  ${r.note || r.from}${red(r)}`);
+    for (const r of results) console.log(`${outcome(r)}  ${r.file}  ${r.note || r.from}${red(r)}`);
     console.log(`\n${summary}`);
   }
-  process.exit(survived ? 1 : 0);
+  process.exit(survived || timedOut ? 1 : 0);
 }

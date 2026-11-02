@@ -1,3 +1,4 @@
+// scoring-rules.test.mjs — 評分規則一致性：母本散文的數值與示範引擎的規則資料比對
 // 評分規則一致性：示範引擎匯出的規則資料是規則數值的唯一可讀來源，
 // scripts/scoring-rules.mjs 的一致性檢查從母本抽出數值和它比對（見 issue #39）。
 import { test } from 'node:test';

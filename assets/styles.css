@@ -185,7 +185,9 @@ code, kbd, samp { font-family: var(--mono); font-feature-settings: normal; }
   color: #fff; background-color: #7447ff; background-image: var(--grad-brand);
   border-radius: 13px 5px 13px 5px; box-shadow: var(--glow-accent); font-size: 12px; font-weight: 900; letter-spacing: -.04em;
 }
-.topbar .spacer { flex: 1; }
+/* 剩下的空間先給搜尋框（到 max-width 為止），多的才由 spacer 的 auto margin 吃掉、把右側按鈕推到右緣；
+   spacer 若也 flex: 1，會和搜尋框平分，901px 與 1151px 時搜尋框只剩約 127px（#75，verify.mjs 檢查至少 160px） */
+.topbar .spacer { flex: none; margin-left: auto; }
 .search-box { position: relative; flex: 1; max-width: 520px; min-width: 0; }
 .search-box input { width: 100%; min-height: 44px; padding: 8px 12px 8px 38px; border: 1px solid transparent; border-radius: 12px; background: var(--surface-2); color: var(--text); font-size: 14.5px; }
 .search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); outline: none; }
@@ -204,7 +206,7 @@ code, kbd, samp { font-family: var(--mono); font-feature-settings: normal; }
 .live-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 999px; font-size: 11px; font-weight: 850; letter-spacing: .08em; color: #174f35; background: #e8fff1; border: 1px solid #c6f5d8; white-space: nowrap; }
 :root[data-theme="dark"] .live-chip { color: #baf7d9; background: rgba(0, 217, 119, .12); border-color: rgba(0, 217, 119, .45); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .live-chip { color: #baf7d9; background: rgba(0, 217, 119, .12); border-color: rgba(0, 217, 119, .45); } }
-/* 最後更新時間：寬螢幕在 topbar，≤ 1150px 改在頁尾（topbar 多了它，搜尋框少約 124px，再窄就比 901px 時的搜尋框還窄）；
+/* 最後更新時間：寬螢幕在 topbar，≤ 1150px 改在頁尾（topbar 多了它，搜尋框少約 247px，再窄就比 901px 時的搜尋框還窄）；
    沒有時間時元素帶 hidden，class 的 display 不能蓋過它 */
 .last-updated { color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .last-updated-footer { display: none; }

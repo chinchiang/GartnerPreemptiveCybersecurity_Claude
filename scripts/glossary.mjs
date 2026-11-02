@@ -1,5 +1,5 @@
 /**
- * glossary.mjs
+ * glossary.mjs — 詞彙表 _Avoid_ 詞的檢查
  * 詞彙表（GLOSSARY.md）的 _Avoid_ 詞檢查：手寫的檔案不使用專指的 _Avoid_ 詞（見 docs/agents/domain.md）。
  * interface 是純函式：輸入文字、回傳結果，讀檔交給呼叫端（scripts/glossary.test.mjs），不碰磁碟就能測試。
  */

@@ -1,13 +1,13 @@
-# 先制型曝險分析：五平臺技能與互動網站
+# 先制型曝險分析：六平臺技能與互動網站
 
-把 Gartner Preemptive Cybersecurity 研究轉成可在五個 AI 平臺上執行的「先制型曝險分析」技能，並以靜態網站發布研究、技能與示範案例。
+把 Gartner Preemptive Cybersecurity 研究轉成可在六個 AI 平臺上執行的「先制型曝險分析」技能，並以靜態網站發布研究、技能與示範案例。
 
 ## Language
 
 ### 技能與發布
 
 **平臺**：
-英文：Platform。技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek。文件裡「曝險管理平臺」「PTI 平臺」這類指資安產品的「…平臺」只是一般用語，不屬於此詞條。
+英文：Platform。技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek、Gemini。文件裡「曝險管理平臺」「PTI 平臺」這類指資安產品的「…平臺」只是一般用語，不屬於此詞條。
 _Avoid_: 供應商、模型、後端
 
 **技能包**：
@@ -15,7 +15,7 @@ _Avoid_: 供應商、模型、後端
 _Avoid_: skill 資料夾、平臺目錄
 
 **母本**：
-英文：Canonical source。所有平臺共用內容的唯一來源檔案。
+英文：Canonical source。`skills/shared/` 裡、所有平臺共用內容的唯一來源檔案。
 _Avoid_: 單一來源檔、原始檔、主檔
 
 **複本**：
@@ -30,6 +30,10 @@ _Avoid_: 內嵌複本、注入區塊
 英文：Core prompt。所有平臺共用的系統提示詞本文；各平臺的系統提示詞（以及部分平臺的 SKILL.md）由手寫內容加上它的嵌入區塊組成。
 _Avoid_: 主提示詞、base prompt
 
+**改寫版**：
+英文：Rewritten variant。不嵌入核心提示詞、改用手寫方式重寫其內容的平臺指示：Custom GPT 指示、Project 短版，以及 Codex、Claude、Gemini 的 SKILL.md。除了建置寫入的規則說明行等少數幾行，措辭由各平臺自訂。
+_Avoid_: 濃縮版、精簡版
+
 **分析工作流程**：
 英文：Analysis workflow。在授權範圍內，把輸入資料交給模型、取得報告與結構化輸出的一次執行；各平臺只在「怎麼呼叫模型」上不同。
 _Avoid_: pipeline、腳本流程
@@ -37,6 +41,10 @@ _Avoid_: pipeline、腳本流程
 **授權範圍守門**：
 英文：Scope gate。分析工作流程開始前，確認授權範圍（scope）的必填欄位都存在且合格；不合格就停止，說明缺少或不合格的欄位，不把任何資料交給模型。與只警告、不阻擋的腳本預檢不同。追查規則與實作時，見[授權範圍來源](docs/agents/domain.md#授權範圍來源)。
 _Avoid_: scope 檢查、I1 驗證、預檢
+
+**排除清單**：
+英文：Exclusion list。授權範圍裡的 `excluded_assets`：不得分析、也不送往模型的資產識別碼。允許分析的資產是 `in_scope_assets` 減去排除清單，同一資產兩邊都有時排除優先。`excluded` 是文字限制事項，不屬於排除清單。
+_Avoid_: 黑名單、排除資產列表
 
 **腳本預檢**：
 英文：Script precheck。分析工作流程開始前，腳本對輸入資料的機械檢查：必要檔案、必填欄位與資料完整性。結果只警告、不阻擋分析，與授權範圍守門不同。
@@ -54,8 +62,12 @@ _Avoid_: 提示詞守門、模型驗證
 英文：Rule note line。核心提示詞與各改寫版裡寫出授權範圍規則的那一行，由建置從授權範圍的定義產生，是模型側守門唯一的規則來源。追查產生方式時，見[授權範圍來源](docs/agents/domain.md#授權範圍來源)。
 _Avoid_: 規則嵌入區塊、規則說明區塊
 
+**契約條款**：
+英文：Contract clause。核心提示詞與每一份適用的平臺指示（系統提示詞、SKILL.md、Custom GPT 與 Projects 的指示）都必須逐字包含的一句關鍵規定，例如「缺必要輸入時不等待回覆，直接降級」。只要求意思相同、各平臺可以用自己的話寫的規定不算。
+_Avoid_: 平臺契約、共用規則、必要條款
+
 **技能包組裝器**：
-英文：Skill package assembler。決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行的模組。追查組裝方式時，見[技能包來源](docs/agents/domain.md#技能包來源)。
+英文：Skill package assembler。決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行與其他嵌入區塊（例如授權範圍守門帶的 scope 定義）的 module。追查組裝方式時，見[技能包來源](docs/agents/domain.md#技能包來源)。
 _Avoid_: 打包腳本、packager
 
 ### 網站示範

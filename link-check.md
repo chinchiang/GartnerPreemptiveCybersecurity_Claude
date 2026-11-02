@@ -1,4 +1,8 @@
-# 連結檢查 2026-09-21T06:28:44.279Z
+# 連結檢查 2026-10-01T03:20:36.629Z
+
+> 403 表示執行環境無法判定連結是否有效（出口 proxy 或站方 bot 防護），不代表連結失效。
+
+檢查 55 個 URL，另有 2 個來源無公開連結。
 
 | ID | 狀態 | URL |
 |---|---|---|
@@ -26,20 +30,20 @@
 | G29 | 403 | https://www.gartner.com/reviews/market/exposure-assessment-platforms |
 | G30 | 403 | https://www.gartner.com/en/documents/4016760 |
 | G31 | 403 | https://www.gartner.com/en/documents/3286317 |
-| G32 | 403 | https://www.gartner.com/en/documents/ |
-| G33 | 403 | https://www.morphisec.com/blog/how-exposure-management-powers-preemptive-cyber-defense/ |
-| G34 | 403 | https://www.dropzone.ai/blog/gartner-hype-cycle-security-operations-2026 |
-| G-IR | 403 | https://simspace.com/wp-content/uploads/2026/04/Emerging_Tech_Impact_830315_ndx.pdf |
+| G32 | 403 | https://www.gartner.com/en/search?keywords=Top%20Funded%20Startups%20for%20Preemptive%20Exposure%20Management |
+| V8 | 403 | https://www.morphisec.com/blog/how-exposure-management-powers-preemptive-cyber-defense/ |
+| V9 | 200 | https://www.dropzone.ai/blog/gartner-hype-cycle-security-operations-2026 |
+| G-IR | 200 | https://simspace.com/wp-content/uploads/2026/04/Emerging_Tech_Impact_830315_ndx.pdf |
 | G-SRM25 | 403 | https://www.gartner.com/en/newsroom/press-releases/2025-09-22-gartner-security-and-risk-management-summit-emea-2025-day-1-highlights |
-| M1 | 403 | https://www.cybersecuritydive.com/news/preemptive-security-predicted-half-it-security-2030/760642/ |
-| M2 | 403 | https://www.helpnetsecurity.com/2025/09/23/preemptive-cybersecurity-solutions-shift/ |
-| V2 | 403 | https://www.countercraftsec.com/blog/gartner-preemptive-cybersecurity-deception-technology/ |
-| V4 | 403 | https://www.picussecurity.com/resource/blog/what-is-preemptive-security-the-future-of-cyber-defense |
-| V5 | 403 | https://www.splunk.com/en_us/blog/learn/preemptive-cybersecurity.html |
-| V6 | 403 | https://info.xmcyber.com/intelligent-simulation-2025 |
-| V7 | 403 | https://www.vectra.ai/topics/ctem |
-| U1 | 200 | https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude |
-| U2 | 200 | https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude |
+| M1 | 200 | https://www.cybersecuritydive.com/news/preemptive-security-predicted-half-it-security-2030/760642/ |
+| M2 | 200 | https://www.helpnetsecurity.com/2025/09/23/preemptive-cybersecurity-solutions-shift/ |
+| V2 | 200 | https://www.countercraftsec.com/blog/gartner-preemptive-cybersecurity-deception-technology/ |
+| V4 | 200 | https://www.picussecurity.com/resource/blog/what-is-preemptive-security-the-future-of-cyber-defense |
+| V5 | 200 | https://www.splunk.com/en_us/blog/learn/preemptive-cybersecurity.html |
+| V6 | 200 | https://info.xmcyber.com/intelligent-simulation-2025 |
+| V7 | 200 | https://www.vectra.ai/topics/ctem |
+| U1 | －（無公開連結） | — |
+| U2 | －（無公開連結） | — |
 | P-AS1 | 200 | https://github.com/agentskills/agentskills |
 | P-C1 | 200 | https://platform.claude.com/docs/en/about-claude/models/overview |
 | P-C2 | 200 | https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview |
@@ -49,13 +53,13 @@
 | P-O1 | 200 | https://github.com/openai/skills |
 | P-O2 | 200 | https://github.com/openai/plugins |
 | P-O3 | 200 | https://github.com/openai/openai-python |
-| P-O4 | 403 | https://developers.openai.com/codex/skills |
+| P-O4 | 200 | https://developers.openai.com/codex/skills |
 | P-O5 | 403 | https://help.openai.com/en/articles/8554397-creating-a-gpt |
 | P-X1 | 200 | https://github.com/xai-org/xai-sdk-python |
-| P-X2 | 403 | https://docs.x.ai/developers/tools/overview |
+| P-X2 | 200 | https://docs.x.ai/developers/tools/overview |
 | P-Z1 | 200 | https://github.com/zai-org/GLM-5 |
 | P-Z2 | 200 | https://github.com/zai-org/zai-coding-plugins |
-| P-Z3 | 403 | https://docs.z.ai/guides/llm/glm-5 |
+| P-Z3 | 200 | https://docs.z.ai/guides/llm/glm-5 |
 | P-D1 | 200 | https://github.com/deepseek-ai/awesome-deepseek-agent |
-| P-D2 | 403 | https://api-docs.deepseek.com/news/news260813/ |
-| P-D3 | 403 | https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813 |
+| P-D2 | 200 | https://api-docs.deepseek.com/news/news260813/ |
+| P-D3 | 200 | https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813 |

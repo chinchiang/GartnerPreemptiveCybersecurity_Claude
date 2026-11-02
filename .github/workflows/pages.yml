@@ -5,21 +5,21 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# 工作流程層級只給讀取；Pages 的寫入與 OIDC token 只給 deploy job，建置（npm run build 等）拿不到。
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# 不取消進行中的部署（GitHub Pages 官方範本的做法）：新的推送排在後面，部署做到一半被取消可能留下不完整的狀態。
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
       - name: Build data files and downloads
@@ -33,16 +33,21 @@ jobs:
           du -sh _site
       - name: Stamp last-updated time (HEAD commit time, only in the _site copy)
         run: node scripts/stamp-last-updated.mjs _site/index.html "$(git log -1 --format=%cI)"
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # 確認 Pages 已啟用；它要呼叫 Pages API，放在有 pages 權限的 deploy job（沒用靜態網站產生器，不需要 checkout）。
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

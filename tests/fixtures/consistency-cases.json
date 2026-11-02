@@ -1,0 +1,194 @@
+{
+  "$comment": "輸出內容一致性的跨語言共用案例（#148）：以 examples/acceptance-fixture.json 為基準套用 changes，每例都符合 output-schema.json，problems 是 outputConsistencyProblems（JS）與 output_consistency_problems（Python）應逐字回傳的結果。",
+  "cases": [
+    {
+      "name": "合格基準（無門檻）",
+      "changes": [],
+      "problems": []
+    },
+    {
+      "name": "分數 0 卻標 P1（有門檻）",
+      "changes": [
+        [
+          [
+            "exposure_priorities",
+            "thresholds"
+          ],
+          {
+            "P1": 60,
+            "P2": 40,
+            "P3": 20
+          }
+        ],
+        [
+          [
+            "exposure_priorities",
+            "items",
+            1,
+            "score"
+          ],
+          0
+        ]
+      ],
+      "problems": [
+        "$.exposure_priorities.items[1] 分數 0 依門檻應為 P4，卻標為 P1"
+      ]
+    },
+    {
+      "name": "小數分數落在較低分級",
+      "changes": [
+        [
+          [
+            "exposure_priorities",
+            "thresholds"
+          ],
+          {
+            "P1": 80,
+            "P2": 40,
+            "P3": 20
+          }
+        ]
+      ],
+      "problems": [
+        "$.exposure_priorities.items[1] 分數 72.5 依門檻應為 P2，卻標為 P1"
+      ]
+    },
+    {
+      "name": "門檻順序不合理",
+      "changes": [
+        [
+          [
+            "exposure_priorities",
+            "thresholds"
+          ],
+          {
+            "P1": 20,
+            "P2": 40,
+            "P3": 60
+          }
+        ]
+      ],
+      "problems": [
+        "$.exposure_priorities.thresholds 門檻須為 P1 ≥ P2 ≥ P3"
+      ]
+    },
+    {
+      "name": "無門檻時分級較高、分數卻較低",
+      "changes": [
+        [
+          [
+            "exposure_priorities",
+            "items",
+            1,
+            "priority"
+          ],
+          "P2"
+        ],
+        [
+          [
+            "exposure_priorities",
+            "items",
+            1,
+            "score"
+          ],
+          90
+        ]
+      ],
+      "problems": [
+        "$.exposure_priorities.items[0] P1 的分數 86 低於 items[1] P2 的分數 90"
+      ]
+    },
+    {
+      "name": "改善建議指向不存在的發現",
+      "changes": [
+        [
+          [
+            "remediation",
+            "items",
+            0,
+            "finding_id"
+          ],
+          "F-999"
+        ]
+      ],
+      "problems": [
+        "$.remediation.items[0].finding_id F-999 不在曝險優先序中"
+      ]
+    },
+    {
+      "name": "改成已驗證卻沒有證據",
+      "changes": [
+        [
+          [
+            "attack_path_hypotheses",
+            "items",
+            0,
+            "status"
+          ],
+          "validated-feasible"
+        ]
+      ],
+      "problems": [
+        "$.attack_path_hypotheses.items[0] 狀態 validated-feasible 缺少驗證證據：authorization_reference、performed_at、result"
+      ]
+    },
+    {
+      "name": "證據欄位只有全形空白",
+      "changes": [
+        [
+          [
+            "attack_path_hypotheses",
+            "items",
+            0,
+            "status"
+          ],
+          "validated-blocked"
+        ],
+        [
+          [
+            "attack_path_hypotheses",
+            "items",
+            0,
+            "evidence"
+          ],
+          {
+            "authorization_reference": "AUTH-2026-01",
+            "performed_at": "2026-10-01",
+            "result": "　"
+          }
+        ]
+      ],
+      "problems": [
+        "$.attack_path_hypotheses.items[0] 狀態 validated-blocked 缺少驗證證據：result"
+      ]
+    },
+    {
+      "name": "已驗證且證據齊全",
+      "changes": [
+        [
+          [
+            "attack_path_hypotheses",
+            "items",
+            0,
+            "status"
+          ],
+          "validated-feasible"
+        ],
+        [
+          [
+            "attack_path_hypotheses",
+            "items",
+            0,
+            "evidence"
+          ],
+          {
+            "authorization_reference": "AUTH-2026-01",
+            "performed_at": "2026-10-01",
+            "result": "授權 BAS 證實可橫向移動至 erp-db-01"
+          }
+        ]
+      ],
+      "problems": []
+    }
+  ]
+}

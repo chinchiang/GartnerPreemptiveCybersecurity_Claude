@@ -1,4 +1,4 @@
-"""授權範圍守門：四支 api-workflow.py 與 Claude 的 validate_inputs.py，對共用案例的判定必須與 JS 的守門（assets/scope-gate.js，網站示範引擎與選用後端代理共用）一致。
+"""授權範圍守門：五支 api-workflow.py 與 Claude、Gemini 技能的 validate_inputs.py，對共用案例的判定必須與 JS 的守門（assets/scope-gate.js，網站示範引擎與選用後端代理共用）一致。
 
 案例在 tests/fixtures/scope-cases.json（JS 那邊由 scripts/scope-cases.test.mjs 套在示範引擎與選用後端代理上）。
 這裡只看腳本的外部行為：結束碼與輸出訊息。執行：python3 -m unittest discover -s tests/python
@@ -16,8 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SYNTHETIC = ROOT / "examples" / "synthetic-org"
 CASES = json.loads((ROOT / "tests" / "fixtures" / "scope-cases.json").read_text(encoding="utf-8"))["cases"]
-API_PLATFORMS = ["chatgpt", "grok", "glm", "deepseek"]
-VALIDATE_INPUTS = ROOT / "skills" / "claude" / "preemptive-exposure-analysis" / "scripts" / "validate_inputs.py"
+API_PLATFORMS = ["chatgpt", "grok", "glm", "deepseek", "gemini"]
+SKILL_FOLDER_PLATFORMS = ["claude", "gemini"]   # validate_inputs.py 是 skills/shared/ 母本的複本，兩份各跑一次
 
 
 def apply_case(scope: dict, case: dict) -> dict:
@@ -72,16 +72,18 @@ class ScopeGateTest(unittest.TestCase):
                         self.assertEqual(r.returncode, 0, out[-500:])
 
     def test_validate_inputs_follows_shared_cases(self):
-        for case in CASES:
-            with self.subTest(case=case["name"]):
-                r = self.run_case(case, [VALIDATE_INPUTS, "{input}"])
-                out = r.stdout + r.stderr
-                if case["problems"]:
-                    self.assertEqual(r.returncode, 3, f"應以 3 中止：{out[-300:]}")
-                    for field in case["problems"]:
-                        self.assertIn(field, out)
-                else:
-                    self.assertEqual(r.returncode, 0, out[-500:])
+        for platform in SKILL_FOLDER_PLATFORMS:
+            script = ROOT / "skills" / platform / "preemptive-exposure-analysis" / "scripts" / "validate_inputs.py"
+            for case in CASES:
+                with self.subTest(platform=platform, case=case["name"]):
+                    r = self.run_case(case, [script, "{input}"])
+                    out = r.stdout + r.stderr
+                    if case["problems"]:
+                        self.assertEqual(r.returncode, 3, f"應以 3 中止：{out[-300:]}")
+                        for field in case["problems"]:
+                            self.assertIn(field, out)
+                    else:
+                        self.assertEqual(r.returncode, 0, out[-500:])
 
 
 if __name__ == "__main__":

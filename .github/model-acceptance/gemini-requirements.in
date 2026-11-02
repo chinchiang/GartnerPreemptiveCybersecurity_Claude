@@ -1,0 +1,4 @@
+# pip-compile 的輸入（#162）：套件行與 skills/gemini/requirements.txt 相同，由 tests/python/test_model_acceptance_locks.py 守住。
+# 鎖定檔的產生方式見部署指南第 5 節維護表「升級 CI 相依」。
+google-genai
+openai>=1.0

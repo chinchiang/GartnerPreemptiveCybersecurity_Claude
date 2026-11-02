@@ -18,26 +18,87 @@
 
 本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，放在 `scratch/` 底下執行。
 
+改到行程、路徑、shell 相關的行為時，Windows 也要跑：CI 的 unit job 另以 `windows-latest` 跑 Node 24。在 WSL 本機可以直接用 Windows 版的 `node.exe`（WSL 的 PATH 上就有）執行 `node.exe --test scripts/*.test.mjs`；repo 是以 `\\wsl.localhost\…` 的 UNC 路徑開啟的，測試的暫存目錄在 Windows 的 `%TEMP%`。
+
 完整的瀏覽器檢查（`node scripts/verify.mjs`）在 Windows 這一側可以本機執行，不必 push 之後等 CI：
 
 | 環境 | 狀態 |
 |---|---|
-| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 有 Windows 版 `npm ci` 裝的 `playwright@1.56.1`，`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（100/100，報告除了執行時間逐行相同） |
+| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 要有 `npm ci` 裝的 `playwright@1.56.1`（clone 之後沒有，要先裝；它是純 JS，見下段），`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（報告除了執行時間逐行相同） |
 | WSL（Ubuntu 26.04） | 還不能用。Playwright 1.56.1 不支援這個版本，`install-deps` 會拒絕，要手動 `sudo apt install libnss3 libnspr4 libasound2t64`；再用 Linux 版 node 同目錄的 npm（`~/.local/opt/node-v24.19.0-linux-x64/bin/npm`，PATH 上的 `npm` 是 Windows 版）執行 `npx playwright install chromium-headless-shell`。尚未實測（#73） |
+
+只改到部分情境時，可以先用 `node.exe scripts/verify.mjs --only <情境>[,<情境>]` 在本機迭代：只跑指定的瀏覽器情境（名稱見 `scripts/verify.mjs` 的 `SCENARIOS`，有空白的名稱要加引號），不跑靜態檢查、不寫報告。PR 之前仍要跑完整驗證。
 
 `playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
 
-完整模式每次先將報告與截圖寫入獨立的 `scratch/verification-runs/run-*/`，並更新 `verify-report.md`；全部通過才更新 `verify-screenshots/`。失敗時查終端機印出的本次目錄，CI 也只上傳這個目錄的產物，避免混入舊截圖。執行例外會標示未完成，資源關閉錯誤也會列入報告；靜態模式仍只輸出至終端機。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進每次執行都會變的值（例如捲動位置），否則比對每次都會失敗。
+完整模式每次先將報告與截圖寫入獨立的 `scratch/verification-runs/run-*/`，並更新 `verify-report.md`；全部通過才更新 `verify-screenshots/`。失敗時查終端機印出的本次目錄，CI 也只上傳這個目錄的產物，避免混入舊截圖。情境中斷保留失敗結果並繼續其他獨立情境；資源初始化或骨架執行例外標示未完成，資源關閉錯誤也會列入報告；靜態模式仍只輸出至終端機。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進會隨環境或內容而變的值（例如捲動位置：它取決於字型與版面，本機與 CI 可能不同，上方內容一改也跟著變），否則比對會失敗。
+
+瀏覽器檢查的每個 context 都開 reduced motion（`scripts/browser-checks.mjs` 的 `opener`），網站的 `prefers-reduced-motion` 樣式會關掉 smooth scroll、transition 和 animation，所以同一個 commit 在 CI 上的截圖幾乎每次都位元組相同。偶爾還是會有零星的反鋸齒像素差異：#115 統計了 12 次執行、156 張截圖，有 1 張差 2 個像素，每個色彩通道差 1～2 個色階。要檢查動畫或 smooth scroll 本身的情境，得自己另開 context，不能用 `open`。
+
+網站畫面有變時，用 PR 最後一個 commit 的兩次 CI 執行（push 與 pull_request）交叉比對，把雜訊排除掉，再決定要換哪些截圖（本機的截圖字型不同，照舊一律還原）。pull_request 那次跑的是 PR 跟 `main` 合併後的結果（`refs/pull/<n>/merge`），不是 commit 本身；比對之前，分支要先跟上 `main`（例如 `git merge main` 後再 push），否則兩次執行的差異可能是真的內容不同，不是雜訊：
+
+| 兩次執行彼此 | 跟已提交的比 | 結論 |
+| --- | --- | --- |
+| 相同 | 相同 | 不用動 |
+| 相同 | 不同，或還沒提交過 | 畫面有變，換成 artifact 的版本並提交 |
+| 不同 | 其中一次跟已提交的相同 | 雜訊，保留已提交的版本 |
+| 不同 | 兩次都跟已提交的不同 | 無法自動判斷：可能畫面有變又剛好碰上雜訊，要看圖，或重跑 CI（對外動作，先取得同意） |
+
+下面的指令只列出不是「不用動」的截圖，並標出屬於哪一種：
+
+```bash
+gh run list --workflow=ci.yml --commit <完整 SHA> --json databaseId,event --jq '.[] | "\(.event) \(.databaseId)"'
+```
+
+GitHub API 的 `head_sha` 篩選偶爾會回傳空的結果，不會報錯（#118 實測：同一個 SHA 連續查，有時是 0 筆）。沒有輸出時再跑一次就好；也可以從 `gh pr checks <n>` 列出的連結取 run id（網址 `/runs/` 後面那段數字）。拿到兩個 run id 之後：
+
+```bash
+D=scratch/<目錄>
+gh run download <push 的 run-id> -n verify-report-and-screenshots -D "$D/push"
+gh run download <pull_request 的 run-id> -n verify-report-and-screenshots -D "$D/pr"
+for push in "$D"/push/verify-screenshots/*.png; do
+  n=${push##*/}; pr="$D/pr/verify-screenshots/$n"; committed="verify-screenshots/$n"
+  if cmp -s "$push" "$pr"; then cmp -s "$push" "$committed" || echo "畫面有變，換成新版：$n"
+  elif cmp -s "$push" "$committed" || cmp -s "$pr" "$committed"; then echo "雜訊，保留已提交的：$n"
+  else echo "無法自動判斷，要看圖：$n"; fi
+done
+```
+
+迴圈以 push 那次的截圖為準。只出現在 pr 那次的截圖，以及網站拿掉、已提交的版本該刪除的截圖，它都不會列出，要用 `ls` 另外比對三邊的檔名。
+
+兩次執行剛好拿到同一個雜訊版本時，迴圈會把它列成「畫面有變」，其實畫面沒變。雜訊不是每次都不同，而是在少數幾個固定版本之間輪流出現：`io.png`（`#/io` 頁）在 PR #173 與 #174 的六次執行裡只出現過兩個版本，各 3 次，彼此只差 2 個像素，每個色彩通道差 1～2 個色階。PR #173 的兩次執行各拿到一個；#174 的第一個提交兩次都拿到已提交的那一個，第二個提交兩次都拿到另一個，迴圈就把它列成「畫面有變」。所以列成「畫面有變」的截圖，換之前先確認兩件事：
+
+1. **PR 有沒有改到那一頁的來源**：截圖檔名是 `scripts/verify.mjs` 的 `ROUTES` 去掉 `#/`（`io.png` 是 `#/io`）。頁面內容來自 `data/` 對應的檔案，或建置時從 `docs/`、`skills/` 寫進 `data/` 的內容；版面來自 `assets/` 與 `index.html`。用 `git diff main...HEAD --name-only` 看有沒有碰到。
+2. **這個版本以前出現過沒有**：下載之前幾次 CI 執行的 artifact，對照 `md5sum`：
+
+```bash
+gh run list --workflow=ci.yml --limit 10 --json databaseId,event,headSha --jq '.[] | "\(.databaseId) \(.event) \(.headSha[0:7])"'
+gh run download <之前的 run-id> -n verify-report-and-screenshots -D "$D/<之前的 run-id>"
+md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
+```
+
+兩個都成立（沒改到來源，而且以前出現過）才是雜訊，保留已提交的版本，並在 PR 說明寫出對照的 md5 與 run id。有一個不成立，就照上表的「無法自動判斷」處理：看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
+
+只有一次執行可用時（例如只 push、沒開 PR），沒辦法交叉比對，就退回單次比對，換之前先看圖，確認不是零星的像素差異：
+
+```bash
+gh run download <run-id> -n verify-report-and-screenshots -D scratch/<目錄>
+for f in scratch/<目錄>/verify-screenshots/*.png; do cmp -s "$f" "verify-screenshots/${f##*/}" || echo "不同：${f##*/}"; done
+```
 
 ## 搜尋：用 `rg`
 
-搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 技能的核心複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與詞彙表測試都會跟著略過。
+搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 與 Gemini 技能 `scripts/` 的複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與詞彙表測試都會跟著略過。
 
 ## 突變測試：`scripts/mutate.mjs`
 
-確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。有存活就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處），或測試在突變前就失敗，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。
+確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。每次跑測試各自計時，預設 600 秒，可以用 `--timeout` 調整（`0` 表示不限時）：超過時間就結束整個測試行程、還原檔案，這一筆記成「逾時」，再跑下一筆。突變可能讓 handle 一直開著時（例如伺服器沒關），測試指令也可以加上 `--test-force-exit`，讓測試跑完就結束，不必等到逾時。有存活或逾時就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、`--timeout` 不是 0 或正數），或測試在突變前就失敗或逾時，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。預測會存活的突變，跑之前先決定怎麼處理（做法見 CODING_STANDARDS §5），要照跑就先取得同意；驗收條件寫「每一筆都要抓到」時，額外加的也算（#138 自己加的一筆預測存活卻照跑，審查才發現跟驗收條件衝突）。
 
-Windows 的測試子行程維持連接模式（非 detached），保留 stdout 報告；Unix 仍用獨立行程群組。可收尾取消支援終端機 SIGINT、Unix SIGTERM，以及以 IPC 啟動時由父行程傳送 `{ type: 'cancel' }`。Windows 取消時先以 `taskkill /PID <本工具啟動的子行程 PID> /T /F` 結束測試行程樹，再還原檔案；Windows 的 `child.kill('SIGTERM')` 或其他外部強制終止不會執行收尾。延遲輸出的回歸測試使用 Node，Windows 等待寫入者完成，Unix 另保留父行程先退出的情境。
+Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活／逾時、紅的測試、`--json`／`--markdown`）與 Linux 相同，逾時與中斷（Ctrl+C）時都用 `taskkill /T` 結束整棵行程樹；終端機 SIGINT 與 IPC cancel 支援還原；Windows 外部強制終止（SIGTERM、taskkill）不會執行收尾。從 WSL 用 `node.exe` 跑時，`cmd.exe` 不接受 UNC 路徑當目前目錄（會改到 `C:\Windows`），而 `node --test` 的參數是 glob，寫成 UNC 路徑也找不到，所以測試指令要先 `pushd` 到 repo 的 Windows 路徑。在 repo 根目錄、WSL 的 bash 裡，`mutate.mjs` 本身也交給 `node.exe` 執行，替換清單與測試檔即可執行：
+
+```bash
+node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) && node.exe --test scripts/x.test.mjs" --markdown
+```
 
 ## 共用內容維護
 
@@ -56,13 +117,33 @@ Windows 的測試子行程維持連接模式（非 detached），保留 stdout �
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
 - **更新 PR 說明**：用 `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<檔>`。`gh pr edit` 在本 repo 會因 Projects classic 的 GraphQL 錯誤而失敗。
-- **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。
+- **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。它只認 PR 說明裡的 `Closes #<n>`，不認 commit 訊息裡的（commit 訊息的 `Closes` 合併後仍會關閉 issue，只是合併前查不到），所以 PR 說明也要寫 `Closes #<n>`。開 PR 或更新說明後要等幾秒再查，馬上查可能還是空的。
 - **合併**：先確認 `gh pr checks <n>` 全綠、`mergeStateStatus` 是 `CLEAN`，再照 repo 的格式合併：
   ```
   gh pr merge <n> --merge --subject "Merge pull request #<n>: <標題>" --body "<標題>" --match-head-commit <完整 40 碼 SHA>
   ```
   `--match-head-commit` 只接受完整的 SHA，短 SHA 會被拒。
 
+  CI 還沒跑完、或看起來卡住時：
+  - **等待 CI**：用 `run_in_background` 跑 `gh pr checks <n> --watch --interval 30`，列表裡沒有 pending 就結束，完成時會收到通知，再用 `gh pr checks <n>` 看每個工作的結果。`browser` 是 `needs: [unit, verify]`，那兩個跑完才出現在列表裡：開 PR 當下數到的工作數會比較少，`--watch` 也可能在它出現前就結束。結束後確認列表裡有 `browser`，沒有就再跑一次；回報以最後一次的 `gh pr checks <n>` 為準。要在前景等時，改用每 20 秒查一次的迴圈（結束碼 8 代表還有 pending，最多 20 次，約 8 分鐘，在工具 10 分鐘的上限內；跑完還有 pending 就再執行一次）：
+    ```
+    for i in $(seq 20); do gh pr checks <n> >/dev/null; [ $? -eq 8 ] || break; sleep 20; done; gh pr checks <n>
+    ```
+  - **check 一直停在 pending**：`gh pr checks` 的狀態會落後，job 早就完成了還顯示 pending。用 jobs API 看實際的狀態和每個步驟；job id 是 `gh pr checks` 連結裡 `/job/` 後面那段數字。如果所有步驟都已經 `completed`，就是狀態還沒更新，等一下再查。`gh run view <run-id>` 也可能先回報完成、個別 job 卻還在跑，一樣以 jobs API 為準。
+    ```
+    gh api repos/<owner>/<repo>/actions/jobs/<job-id> --jq '"\(.status) \(.conclusion)", (.steps[] | "  \(.status) \(.conclusion) \(.name)")'
+    ```
+  - **Install Playwright 那一步逾時失敗**：browser job 的「Install Playwright (from package-lock.json) and Chromium」設了 20 分鐘逾時（整個 browser job 正常不到 6 分鐘，慢但成功的最久約 11 分鐘）。逾時通常是 runner 的套件來源太慢，跟改動無關，只重跑失敗的 job；run id 是連結裡 `/runs/` 後面那段數字。重跑是對外動作，要先取得同意。
+    ```
+    gh run rerun <run-id> --failed
+    ```
+
 ## Triage
 
-issue 與留言開頭附 `> *This was generated by AI during triage.*`。標籤對應見 `docs/agents/triage-labels.md`；`needs-info`、`ready-for-human` 在 repo 裡還沒建立，第一次用到時要先建立。
+issue 與留言開頭附 AI 產生的聲明，依情境寫：triage 時（例如開 issue、寫 brief、追問、wontfix 的說明）用 `> *This was generated by AI during triage.*`；實作途中（例如補記 brief 沒料到、實作時才定的決定）用 `> *This was generated by AI during implementation.*`。標籤對應見 `docs/agents/triage-labels.md`；`needs-info` 在 repo 裡還沒建立，第一次用到時要先建立。
+
+brief 與驗收條件裡的預期值（報告某一列的說明、計數、突變抓不抓得到）要從實際輸出取得：已提交的 `verify-report.md`，或實際跑一次 `node.exe scripts/verify.mjs --only <情境>`、`node scripts/mutate.mjs`，並寫明來源；只能推算的值標成「預測」。推算的算法常和檢查實際數的東西不同（#104 因此差了一倍）。
+
+brief 要求的行為，先對照被改 module 檔頭寫的契約（例如輸入的換行、由誰讀檔）。兩者衝突時，在 brief 裡一起決定是改契約還是改要求。#135 的 brief 要求 CRLF 的測試，卻沒對照技能包組裝器 #135 之前的檔頭寫的「所有輸入只認 LF」，實作途中才補留言決定。
+
+brief 的 Desired behavior 每一條都要有對應的驗收條件，文件同步那幾條也算，寫成可以用 `grep` 或 `sed -n` 確認的形式，用樣式而不是行號，例如 `sed -n '/<樣式>/p'`。#138 的 brief 要求「`mutate.mjs` 檔頭若提到逾時與中斷的實作方式，改成指向共用 module」，驗收條件沒有對應的一條，實作時漏改了逾時那一行，兩軸審查才抓到。

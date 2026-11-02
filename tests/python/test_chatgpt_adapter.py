@@ -15,9 +15,9 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fake_sdk import ROOT, blocked, fake_openai_responses, load_platform_script  # noqa: E402
+from fake_sdk import CHAT_COMPLETIONS, as_modules, assert_stops_on_incomplete, ROOT, blocked, fake_openai_responses, load_platform_script  # noqa: E402
 
-VALID_OUTPUT = json.dumps({k: {} for k in json.loads((ROOT / "skills" / "shared" / "output-schema.json").read_text(encoding="utf-8"))["required"]})
+VALID_OUTPUT = (ROOT / "examples/acceptance-fixture.json").read_text(encoding="utf-8")
 
 
 class ChatGptAdapterTest(unittest.TestCase):
@@ -42,6 +42,22 @@ class ChatGptAdapterTest(unittest.TestCase):
             code = self.module.analysis_workflow.main(self.module.ChatGptAdapter(), ["--output-dir", str(self.out), *extra])
         return code, stdout.getvalue(), stderr.getvalue()
 
+
+    def test_incomplete_without_a_reason_also_stops(self):
+        # status="incomplete" 但 incomplete_details 沒有原因：仍然不完整，不能當成缺值放行
+        no_reason = types.SimpleNamespace(output_text="# 報告寫到一半", output=[], status="incomplete",
+                                          incomplete_details=types.SimpleNamespace(reason=None))
+        openai, record = fake_openai_responses([no_reason, VALID_OUTPUT])
+        code, out, err = self.run_main(modules={"openai": openai})
+        self.assertEqual((code, len(record["calls"])), (1, 1), err)
+        self.assertIn("結束原因：incomplete", err)
+
+    def test_stops_when_the_response_is_incomplete(self):
+        # 因輸出上限：status="incomplete"＋reason="max_output_tokens"；其他不完整：reason="content_filter"
+        assert_stops_on_incomplete(self, self.run_main, lambda r: as_modules("openai", fake_openai_responses(r)),
+                                   calls=lambda rec: len(rec["calls"]), output_limit="max_output_tokens", other_incomplete="content_filter",
+                                   missing_value=None, max_tokens_flag=False)
+
     def test_responses_api_two_stages(self):
         openai, record = fake_openai_responses(["# 報告", VALID_OUTPUT])
         code, out, err = self.run_main(modules={"openai": openai})
@@ -50,14 +66,14 @@ class ChatGptAdapterTest(unittest.TestCase):
         report_call, json_call = record["calls"]
         for call in (report_call, json_call):
             self.assertEqual(set(call), {"model", "instructions", "input"})  # 不傳 tools、temperature
-            self.assertEqual(call["model"], "gpt-5.5")
+            self.assertEqual(call["model"], "gpt-6-astra")
             self.assertIn("7. 平臺備註（ChatGPT）", call["instructions"])  # system 放在 instructions
         self.assertEqual([m["role"] for m in report_call["input"]], ["user"])
         self.assertNotIn("output-schema.json", report_call["input"][0]["content"])  # schema 放在第二段
         self.assertEqual([m["role"] for m in json_call["input"]], ["user", "assistant", "user"])
         self.assertEqual(json_call["input"][1]["content"], "# 報告")
         self.assertIn("output-schema.json", json_call["input"][-1]["content"])
-        self.assertIn("ChatGPT API（Responses API）/ gpt-5.5 /", json_call["input"][-1]["content"])  # generated_by
+        self.assertIn("ChatGPT API（Responses API）/ gpt-6-astra /", json_call["input"][-1]["content"])  # generated_by
         self.assertEqual((self.out / "chatgpt-report.md").read_text(encoding="utf-8"), "# 報告")
         self.assertTrue((self.out / "chatgpt-output.json").exists())
 
@@ -100,8 +116,8 @@ class ChatGptAdapterTest(unittest.TestCase):
         self.assertIn("pip install -r skills/chatgpt/requirements.txt", err)
 
     def test_model_from_env_and_flag(self):
-        os.environ["OPENAI_MODEL"] = "gpt-5.5-mini"
-        for extra, expected in (((), "gpt-5.5-mini"), (("--model", "gpt-6"), "gpt-6")):
+        os.environ["OPENAI_MODEL"] = "example-env-model"
+        for extra, expected in (((), "example-env-model"), (("--model", "example-flag-model"), "example-flag-model")):
             with self.subTest(args=extra):
                 openai, record = fake_openai_responses(["# 報告", VALID_OUTPUT])
                 code, out, err = self.run_main(*extra, modules={"openai": openai})
@@ -117,12 +133,12 @@ class ChatGptAdapterTest(unittest.TestCase):
         self.assertFalse((self.out / "chatgpt-output.json").exists())
         self.assertTrue((self.out / "chatgpt-report.md").exists())
 
-    def test_output_check_problems_only_warn_and_exit_0(self):
+    def test_output_check_problems_fail_with_exit_4(self):
         openai, record = fake_openai_responses(["# 報告", json.dumps({"meta": {}})])
         code, out, err = self.run_main(modules={"openai": openai})
-        self.assertEqual(code, 0)  # 原本是 3；完整判定交給 scripts/check-acceptance.mjs
+        self.assertEqual(code, 4)  # 原本是 3；完整判定交給 scripts/check-acceptance.mjs
         self.assertIn("exposure_priorities", err)
-        self.assertTrue((self.out / "chatgpt-output.json").exists())
+        self.assertFalse((self.out / "chatgpt-output.json").exists())
 
     def test_dry_run_imports_no_sdk_and_prints_full_prompts(self):
         with blocked("openai"):

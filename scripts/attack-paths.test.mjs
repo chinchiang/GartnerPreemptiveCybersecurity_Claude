@@ -1,3 +1,4 @@
+// attack-paths.test.mjs — 示範引擎攻擊路徑的跳數上限與入口加分、缺拓樸時不產生路徑、驗證計畫的授權旗標
 // 示範引擎的攻擊路徑假設：從 internet 出發走拓樸的邊到 crown jewel，最多 RULES.feasibility.maxHops（5）跳（見 issue #43）。
 // 影響的「可達 crown jewel 之入口」加分比照同一套路徑規則。
 // 以最小的鏈狀資料直接呼叫 analyze，只看輸出的路徑與入口資產的 factors。
@@ -52,4 +53,24 @@ test('入口加分只走清冊看得到的節點：中間節點被隱藏時不�
   const data = caseWith([edge('internet', 'A'), edge('A', 'H'), edge('H', 'B')], 'B');
   assert.equal(entryBonusOf(data), true);
   assert.equal(entryBonusOf(data, { inventoryCompleteness: 25 }), false);
+});
+
+test('缺拓樸（inputs.topology = false）時不產生路徑假設：資料裡有拓樸也不走', () => {
+  assert.deepEqual(hopsOf(chain(2)), [2]);
+  assert.deepEqual(DEMO.analyze(chain(2), { inputs: { topology: false } }).hypotheses, []);
+});
+
+// 驗證計畫的授權（task-spec.md「對外掃描、主動探測…需 external_scanning_authorized / active_testing_authorized 為 true」）：
+// 入口對外時兩個旗標缺一不可，入口不對外時只看主動測試。chain(2) 的入口 A 對外，internalEntry 把它改成不對外
+const withAuth = (data, active, external) => ({ ...data, scope: { ...data.scope,
+  authorized_scope: { ...data.scope.authorized_scope, active_testing_authorized: active, external_scanning_authorized: external } } });
+const internalEntry = (data) => ({ ...data, assets: data.assets.map(a => a.asset_id === 'A' ? { ...a, internet_exposed: false } : a) });
+const requiresOf = (data) => DEMO.analyze(data).validation.map(v => v.requires);
+const AUTHORIZED = '已授權主動測試（仍須依書面授權範圍執行）';
+
+test('驗證計畫：入口對外時主動測試與外部掃描兩個授權旗標缺一不可，入口不對外時只看主動測試', () => {
+  assert.deepEqual(requiresOf(withAuth(chain(2), true, false)), ['尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT']);
+  assert.deepEqual(requiresOf(withAuth(chain(2), true, true)), [AUTHORIZED]);
+  assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), true, false)), [AUTHORIZED]);
+  assert.deepEqual(requiresOf(withAuth(chain(2), false, true)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
 });
