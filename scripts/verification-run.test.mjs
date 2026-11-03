@@ -207,3 +207,63 @@ test('網站例外後晚到的檢查結果不再列入報告或結果陣列', ()
   assert.doesNotMatch(report, /晚到的結果/);
   assert.equal(readReport(root), report);
 }));
+
+// 對本機驗證伺服器送原始請求；headers 可覆寫 Host，模擬 DNS rebinding 帶來的外部網域。
+const requestServer = (base, path, headers = {}) => new Promise((resolve, reject) => {
+  const req = get({ hostname: '127.0.0.1', port: new URL(base).port, path, headers }, res => {
+    let body = ''; res.setEncoding('utf8');
+    res.on('data', chunk => { body += chunk; });
+    res.on('end', () => resolve({ status: res.statusCode, body }));
+  });
+  req.on('error', reject);
+});
+
+test('網站 Host 守門：只回應 127.0.0.1 與 localhost，外部網域（DNS rebinding）回 403', () => project(async root => {
+  writeFileSync(join(root, 'page.txt'), 'PAGE_CONTENT');
+  const result = await runVerification({ ...options(root), browserChecks: async ({ base }) => {
+    const port = new URL(base).port;
+    for (const host of [`127.0.0.1:${port}`, `localhost:${port}`, `LOCALHOST:${port}`]) {
+      assert.deepEqual(await requestServer(base, '/page.txt', { host }), { status: 200, body: 'PAGE_CONTENT' }, host);
+    }
+    for (const host of [`attacker.example:${port}`, 'attacker.example', `127.0.0.1.attacker.example:${port}`, `localhost:${Number(port) + 1}`, `127.0.0.1`]) {
+      const response = await requestServer(base, '/page.txt', { host });
+      assert.equal(response.status, 403, host);
+      assert.doesNotMatch(response.body, /PAGE_CONTENT/, host);
+    }
+  } });
+  assert.equal(result.exitCode, 0, readReport(root));
+}));
+
+test('網站隱藏路徑：以 . 開頭的路徑段（.git、.env）回 403，一般檔名中的點仍可讀取', () => project(async root => {
+  mkdirSync(join(root, '.git')); writeFileSync(join(root, '.git', 'config'), 'HIDDEN_SECRET');
+  writeFileSync(join(root, '.env'), 'HIDDEN_SECRET');
+  mkdirSync(join(root, 'data')); writeFileSync(join(root, 'data', '.secret'), 'HIDDEN_SECRET');
+  writeFileSync(join(root, 'data', 'a.b.txt'), 'DOTTED_NAME');
+  const result = await runVerification({ ...options(root), browserChecks: async ({ base }) => {
+    const host = new URL(base).host;
+    for (const path of ['/.git/config', '/.env', '/data/.secret', '/%2egit/config', '/data/%2Esecret', '/data/..%2f.env', '/.GIT/config']) {
+      const response = await requestServer(base, path, { host });
+      assert.equal(response.status, 403, path);
+      assert.doesNotMatch(response.body, /HIDDEN_SECRET/, path);
+    }
+    assert.deepEqual(await requestServer(base, '/data/a.b.txt', { host }), { status: 200, body: 'DOTTED_NAME' });
+  } });
+  assert.equal(result.exitCode, 0, readReport(root));
+}));
+
+test('網站私有目錄：backend/ 與 scratch/ 回 403，含大小寫、尾端點、.. 與連結繞道', () => project(async root => {
+  for (const dir of ['backend', 'scratch']) { mkdirSync(join(root, dir)); writeFileSync(join(root, dir, 'secret.txt'), 'PRIVATE_DIR_SECRET'); }
+  mkdirSync(join(root, 'data')); writeFileSync(join(root, 'data', 'backend-notes.txt'), 'PUBLIC_NOTES');
+  symlinkSync(join(root, 'backend'), join(root, 'data', 'alias'), process.platform === 'win32' ? 'junction' : 'dir');
+  const result = await runVerification({ ...options(root), browserChecks: async ({ base }) => {
+    const host = new URL(base).host;
+    for (const path of ['/backend/secret.txt', '/scratch/secret.txt', '/Backend/secret.txt', '/SCRATCH/secret.txt',
+      '/backend./secret.txt', '/backend%20/secret.txt', '/data/%2e%2e/backend/secret.txt', '/data/alias/secret.txt', '/backend/']) {
+      const response = await requestServer(base, path, { host });
+      assert.equal(response.status, 403, path);
+      assert.doesNotMatch(response.body, /PRIVATE_DIR_SECRET/, path);
+    }
+    assert.deepEqual(await requestServer(base, '/data/backend-notes.txt', { host }), { status: 200, body: 'PUBLIC_NOTES' });
+  } });
+  assert.equal(result.exitCode, 0, readReport(root));
+}));

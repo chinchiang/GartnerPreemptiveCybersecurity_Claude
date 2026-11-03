@@ -14,19 +14,31 @@ function withinRoot(root, file) {
   return path !== '..' && !path.startsWith('..' + sep) && !isAbsolute(path);
 }
 
+// 根目錄內也不提供的路徑：以 . 開頭的路徑段（.git、.env 等），以及頂層的 backend/ 與 scratch/。
+// Windows 不分大小寫，且會忽略路徑段尾端的點與空白，所以比對前先正規化。
+const PRIVATE_DIRS = new Set(['backend', 'scratch']);
+function hiddenFromWebsite(root, file) {
+  const segments = relative(root, file).split(sep).map(segment => segment.toLowerCase().replace(/[. ]+$/, ''));
+  return segments.some(segment => segment.startsWith('.')) || PRIVATE_DIRS.has(segments[0]);
+}
+
 // CLI 生命週期與獨立瀏覽器骨架共用同一份路徑守門；這裡只建立伺服器，啟動與釋放由呼叫端持有。
 export function createWebsiteServer(root, onError = () => {}) {
   const realRoot = realpathSync(root);
   const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.zip': 'application/zip', '.md': 'text/markdown', '.csv': 'text/csv' };
   return createServer((req, res) => {
     try {
+      // 只回應本機名稱；外部網域即使經 DNS rebinding 解析到 127.0.0.1，也讀不到 repo 檔案。
+      const port = req.socket.localPort;
+      const host = String(req.headers.host || '').toLowerCase();
+      if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) { res.writeHead(403); res.end(); return; }
       let p = decodeURIComponent(req.url.split('?')[0]).replace(/\\/g, '/'); if (p === '/') p = '/index.html';
       if (!p.startsWith('/')) { res.writeHead(403); res.end(); return; }
       const file = resolve(realRoot, '.' + p);
-      if (!withinRoot(realRoot, file)) { res.writeHead(403); res.end(); return; }
+      if (!withinRoot(realRoot, file) || hiddenFromWebsite(realRoot, file)) { res.writeHead(403); res.end(); return; }
       if (!existsSync(file)) { res.writeHead(404); res.end(); return; }
       const realFile = realpathSync(file);
-      if (!withinRoot(realRoot, realFile)) { res.writeHead(403); res.end(); return; }
+      if (!withinRoot(realRoot, realFile) || hiddenFromWebsite(realRoot, realFile)) { res.writeHead(403); res.end(); return; }
       if (!statSync(realFile).isFile()) { res.writeHead(404); res.end(); return; }
       const body = p === '/index.html' && req.url.includes('?stamped')
         ? stampLastUpdated(readFileSync(realFile, 'utf8'), STAMPED_AT) : readFileSync(realFile);
