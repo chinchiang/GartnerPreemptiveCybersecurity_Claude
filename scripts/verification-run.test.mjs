@@ -1,7 +1,7 @@
 // verification-run.test.mjs — 驗證例外收尾、產物隔離、錨點與網站路徑邊界的回歸測試
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync, existsSync } from 'node:fs';
 import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -264,6 +264,35 @@ test('網站私有目錄：backend/ 與 scratch/ 回 403，含大小寫、尾端
       assert.doesNotMatch(response.body, /PRIVATE_DIR_SECRET/, path);
     }
     assert.deepEqual(await requestServer(base, '/data/backend-notes.txt', { host }), { status: 200, body: 'PUBLIC_NOTES' });
+  } });
+  assert.equal(result.exitCode, 0, readReport(root));
+}));
+
+test('網站私有目錄（Windows）：NTFS 目錄串流後綴 ::$INDEX_ALLOCATION 不能繞過 backend/ 與 scratch/', { skip: process.platform !== 'win32' && '只有 NTFS 會把目錄串流當成目錄本身' }, () => project(async root => {
+  for (const dir of ['backend', 'scratch']) { mkdirSync(join(root, dir)); writeFileSync(join(root, dir, 'secret.txt'), 'PRIVATE_DIR_SECRET'); }
+  const result = await runVerification({ ...options(root), browserChecks: async ({ base }) => {
+    const host = new URL(base).host;
+    for (const path of ['/backend::$INDEX_ALLOCATION/secret.txt', '/backend:$I30:$INDEX_ALLOCATION/secret.txt',
+      '/scratch::$INDEX_ALLOCATION/secret.txt', '/backend%3a%3a$INDEX_ALLOCATION/secret.txt', '/BACKEND::$index_allocation/secret.txt']) {
+      const response = await requestServer(base, path, { host });
+      assert.equal(response.status, 403, path);
+      assert.doesNotMatch(response.body, /PRIVATE_DIR_SECRET/, path);
+    }
+  } });
+  assert.equal(result.exitCode, 0, readReport(root));
+}));
+
+test('網站隱藏路徑（Windows）：8.3 短檔名（GIT~1）不能繞過以 . 開頭的路徑段', t => project(async root => {
+  mkdirSync(join(root, '.git')); writeFileSync(join(root, '.git', 'config'), 'HIDDEN_SECRET');
+  // 短檔名由磁碟區設定決定；沒有產生時無法重現這種繞道。
+  if (process.platform !== 'win32' || !existsSync(join(root, 'GIT~1', 'config'))) { t.skip('此磁碟區沒有 8.3 短檔名'); return; }
+  const result = await runVerification({ ...options(root), browserChecks: async ({ base }) => {
+    const host = new URL(base).host;
+    for (const path of ['/GIT~1/config', '/git~1/config']) {
+      const response = await requestServer(base, path, { host });
+      assert.equal(response.status, 403, path);
+      assert.doesNotMatch(response.body, /HIDDEN_SECRET/, path);
+    }
   } });
   assert.equal(result.exitCode, 0, readReport(root));
 }));

@@ -24,7 +24,8 @@ function hiddenFromWebsite(root, file) {
 
 // CLI 生命週期與獨立瀏覽器骨架共用同一份路徑守門；這裡只建立伺服器，啟動與釋放由呼叫端持有。
 export function createWebsiteServer(root, onError = () => {}) {
-  const realRoot = realpathSync(root);
+  // 用作業系統的 realpath：Windows 會展開 8.3 短檔名（GIT~1 → .git）並還原實際大小寫，根目錄與檔案須用同一種寫法比對。
+  const realRoot = realpathSync.native(root);
   const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.zip': 'application/zip', '.md': 'text/markdown', '.csv': 'text/csv' };
   return createServer((req, res) => {
     try {
@@ -33,11 +34,12 @@ export function createWebsiteServer(root, onError = () => {}) {
       const host = String(req.headers.host || '').toLowerCase();
       if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) { res.writeHead(403); res.end(); return; }
       let p = decodeURIComponent(req.url.split('?')[0]).replace(/\\/g, '/'); if (p === '/') p = '/index.html';
-      if (!p.startsWith('/')) { res.writeHead(403); res.end(); return; }
+      // 冒號會讓 NTFS 開啟串流（backend::$INDEX_ALLOCATION 就是 backend 目錄本身），網站檔名也用不到，一律拒絕。
+      if (!p.startsWith('/') || p.includes(':')) { res.writeHead(403); res.end(); return; }
       const file = resolve(realRoot, '.' + p);
       if (!withinRoot(realRoot, file) || hiddenFromWebsite(realRoot, file)) { res.writeHead(403); res.end(); return; }
       if (!existsSync(file)) { res.writeHead(404); res.end(); return; }
-      const realFile = realpathSync(file);
+      const realFile = realpathSync.native(file);
       if (!withinRoot(realRoot, realFile) || hiddenFromWebsite(realRoot, realFile)) { res.writeHead(403); res.end(); return; }
       if (!statSync(realFile).isFile()) { res.writeHead(404); res.end(); return; }
       const body = p === '/index.html' && req.url.includes('?stamped')
