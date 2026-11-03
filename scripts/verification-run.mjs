@@ -39,7 +39,12 @@ export function createWebsiteServer(root, onError = () => {}) {
       const file = resolve(realRoot, '.' + p);
       if (!withinRoot(realRoot, file) || hiddenFromWebsite(realRoot, file)) { res.writeHead(403); res.end(); return; }
       if (!existsSync(file)) { res.writeHead(404); res.end(); return; }
-      const realFile = realpathSync.native(file);
+      let realFile;
+      // 作業系統的 realpath 須開啟路徑；沒有讀取權限時視同拒絕存取，不當成伺服器錯誤中斷驗證。
+      try { realFile = realpathSync.native(file); } catch (error) {
+        if (error.code === 'EPERM' || error.code === 'EACCES') { res.writeHead(403); res.end(); return; }
+        throw error;
+      }
       if (!withinRoot(realRoot, realFile) || hiddenFromWebsite(realRoot, realFile)) { res.writeHead(403); res.end(); return; }
       if (!statSync(realFile).isFile()) { res.writeHead(404); res.end(); return; }
       const body = p === '/index.html' && req.url.includes('?stamped')

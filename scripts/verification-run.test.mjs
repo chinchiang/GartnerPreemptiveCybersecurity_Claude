@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync, existsSync } from 'node:fs';
 import { get } from 'node:http';
-import { tmpdir } from 'node:os';
+import { tmpdir, userInfo } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { runVerification } from './verification-run.mjs';
 import { anchorInViewport } from './verification-run.mjs';
@@ -295,4 +296,22 @@ test('網站隱藏路徑（Windows）：8.3 短檔名（GIT~1）不能繞過以 
     }
   } });
   assert.equal(result.exitCode, 0, readReport(root));
+}));
+
+test('網站無權限路徑（Windows）：拒絕讀取的目錄回 403，不視為伺服器錯誤、不中斷驗證', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
+  const locked = join(root, 'locked');
+  mkdirSync(locked); writeFileSync(join(root, 'page.txt'), 'PAGE_CONTENT');
+  const user = userInfo().username;
+  execFileSync('icacls', [locked, '/deny', `${user}:(R)`], { stdio: 'ignore' });
+  try {
+    const result = await runVerification({ ...options(root), browserChecks: async ({ base, ok }) => {
+      const host = new URL(base).host;
+      assert.equal((await requestServer(base, '/locked', { host })).status, 403);
+      assert.deepEqual(await requestServer(base, '/page.txt', { host }), { status: 200, body: 'PAGE_CONTENT' });
+      ok('無權限路徑之後的檢查', true);
+    } });
+    assert.equal(result.exitCode, 0, readReport(root));
+    assert.match(readReport(root), /無權限路徑之後的檢查/);
+    assert.doesNotMatch(readReport(root), /執行中斷|提供網站檔案/);
+  } finally { execFileSync('icacls', [locked, '/remove:d', user], { stdio: 'ignore' }); }
 }));
