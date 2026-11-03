@@ -32,7 +32,14 @@ async function project(check) {
   writeFileSync(join(root, 'verify-screenshots', 'old.png'), 'old image');
   writeFileSync(join(root, 'verify-report.md'), 'old report');
   writeFileSync(join(root, 'index.html'), '<meta name="last-updated" content="">');
-  try { await check(root); } finally { rmSync(root, { recursive: true, force: true }); }
+  try { await check(root); } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch (error) {
+      // 拒絕權限沒還原時刪不掉：先重設整棵樹的 ACL 再刪，仍失敗才拋出。
+      if (process.platform !== 'win32') throw error;
+      icacls(root, '/reset', '/T', '/C', '/Q');
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
 }
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
 const options = root => ({ root, githubOutput: undefined, log() {}, staticChecks: ok => ok('靜態項目', true),
@@ -315,13 +322,31 @@ test('網站無權限目錄（Windows）：拒絕讀取的目錄回 403，不視
   } finally { restore(); }
 }));
 
-// 以 SID 拒絕目前使用者讀取（不靠帳號名稱解析）；回傳的還原函式不拋錯，避免蓋掉原本的斷言錯誤。
-// 用 System32 的完整路徑：Git Bash 的 PATH 會先找到 coreutils 的 whoami。
+// whoami、icacls 用 System32 的完整路徑：Git Bash 的 PATH 會先找到 coreutils 的 whoami。
+const system32 = () => join(process.env.SystemRoot, 'System32');
+
+// 失敗時把結束碼與 icacls 的輸出帶進錯誤訊息（以 UTF-8 解碼；在地化語系的輸出可能顯示為亂碼）。
+function icacls(...args) {
+  try { execFileSync(join(system32(), 'icacls.exe'), args, { stdio: 'pipe', encoding: 'utf8' }); } catch (error) {
+    const output = `${error.stdout || ''}${error.stderr || ''}`.trim();
+    throw new Error(`icacls ${args.join(' ')} 失敗（結束碼 ${error.status}）${output ? '：' + output : ''}`);
+  }
+}
+
+// whoami /user /fo csv /nh 只輸出一行「"網域\帳號","SID"」；不符就丟錯，不拿解析殘片去設定權限。
+function currentUserSid() {
+  const output = execFileSync(join(system32(), 'whoami.exe'), ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8' });
+  const match = /^"[^"]*","(S-1-\d+(?:-\d+)+)"$/.exec(output.trim());
+  if (!match) throw new Error(`whoami 輸出無法解析：${JSON.stringify(output)}`);
+  return match[1];
+}
+
+// 以 SID 拒絕目前使用者讀取（不靠帳號名稱解析）；回傳的還原函式不拋錯，避免蓋掉原本的斷言錯誤，
+// 還原失敗留下的拒絕權限由 project() 清理時重設。
 function denyRead(path) {
-  const system32 = join(process.env.SystemRoot, 'System32');
-  const sid = execFileSync(join(system32, 'whoami.exe'), ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8' }).trim().split(',').pop().replace(/"/g, '');
-  execFileSync(join(system32, 'icacls.exe'), [path, '/deny', `*${sid}:(R)`], { stdio: 'ignore' });
-  return () => { try { execFileSync(join(system32, 'icacls.exe'), [path, '/remove:d', `*${sid}`], { stdio: 'ignore' }); } catch {} };
+  const sid = currentUserSid();
+  icacls(path, '/deny', `*${sid}:(R)`);
+  return () => { try { icacls(path, '/remove:d', `*${sid}`); } catch {} };
 }
 
 test('網站無權限檔案（Windows）：拒絕讀取的檔案仍視為伺服器錯誤，中斷驗證並保留原因', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
