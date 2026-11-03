@@ -12,8 +12,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
-import { runVerification, anchorInViewport } from './verification-run.mjs';
-import { runBrowserChecks, STAMPED_AT } from './browser-checks.mjs';
+import { runVerification, anchorInViewport, STAMPED_AT } from './verification-run.mjs';
+import { runBrowserChecks } from './browser-checks.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 

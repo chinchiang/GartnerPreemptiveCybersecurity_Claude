@@ -9,8 +9,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { once } from 'node:events';
-import { createWebsiteServer, STAMPED_AT } from './verification-run.mjs';
-export { STAMPED_AT };
+import { createWebsiteServer } from './verification-run.mjs';
 
 // 本機伺服器：把 root 底下的檔案原樣送出，回傳 base（http://127.0.0.1:<port>/）與 close（等伺服器真的關好才 resolve）
 async function serve(root) {

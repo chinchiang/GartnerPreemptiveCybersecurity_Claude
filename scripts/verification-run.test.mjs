@@ -6,8 +6,7 @@ import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { runVerification } from './verification-run.mjs';
-import { anchorInViewport } from './verification-run.mjs';
+import { runVerification, anchorInViewport } from './verification-run.mjs';
 import vm from 'node:vm';
 
 test('目錄錨點：捲動須到達可視範圍，不能只因 scrollY 大於零就通過', () => {

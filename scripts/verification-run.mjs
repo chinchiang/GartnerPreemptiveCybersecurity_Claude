@@ -1,5 +1,11 @@
 /**
  * verification-run.mjs — 驗證執行的資源清理、本次產物隔離與網站檔案邊界
+ * runVerification：一次驗證的生命週期，verify.mjs 呼叫。持有本機伺服器、瀏覽器與本次產物目錄（scratch/verification-runs/ 底下的 run- 目錄），
+ *   檢查敘述只透過 ok 記結果；回傳 { exitCode, results, incomplete, runDir }。有任一項失敗，exitCode 就是 1；
+ *   資源初始化、骨架或清理出錯時 incomplete 為真，報告標示「未完成」；完整模式全部通過才更新 verify-screenshots/。
+ * createWebsiteServer：只供本機驗證的網站伺服器與路徑守門，browser-checks.mjs 的獨立骨架也重用。
+ * anchorInViewport：目錄錨點是否已捲入可視範圍，由 Playwright 在頁面中執行。STAMPED_AT：?stamped 用的固定時間。
+ * 單元測試在 verification-run.test.mjs（瀏覽器換成可控的實作，伺服器用真實 HTTP 請求）。
  */
 import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, mkdtempSync, cpSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute, sep } from 'node:path';
@@ -106,7 +112,6 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
     if (!browserOnly) await staticChecks(ok);
     if (!staticOnly) {
       phase = '啟動伺服器';
-      const stampedAt = STAMPED_AT;
       let rejectServing;
       const servingFailure = new Promise((_, reject) => { rejectServing = reject; });
       servingFailure.catch(() => {}); // 啟動瀏覽器期間也可能失敗，避免未處理的拒絕。
@@ -122,7 +127,7 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
       }
       browser = await browserType.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
       phase = '瀏覽器檢查';
-      await Promise.race([browserChecks({ browser, base: `http://127.0.0.1:${server.address().port}/`, shots, stampedAt, ok, isActive: () => acceptingChecks }), servingFailure]);
+      await Promise.race([browserChecks({ browser, base: `http://127.0.0.1:${server.address().port}/`, shots, ok, isActive: () => acceptingChecks }), servingFailure]);
     }
     if (args.includes('--links')) { phase = '連結檢查'; await linkChecks(); }
   } catch (error) { fail(`執行中斷：${phase}`, error); }
