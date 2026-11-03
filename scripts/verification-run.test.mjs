@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync, existsSync } from 'node:fs';
 import { get } from 'node:http';
-import { tmpdir, userInfo } from 'node:os';
+import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { runVerification } from './verification-run.mjs';
@@ -298,11 +298,10 @@ test('網站隱藏路徑（Windows）：8.3 短檔名（GIT~1）不能繞過以 
   assert.equal(result.exitCode, 0, readReport(root));
 }));
 
-test('網站無權限路徑（Windows）：拒絕讀取的目錄回 403，不視為伺服器錯誤、不中斷驗證', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
+test('網站無權限目錄（Windows）：拒絕讀取的目錄回 403，不視為伺服器錯誤、不中斷驗證', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
   const locked = join(root, 'locked');
   mkdirSync(locked); writeFileSync(join(root, 'page.txt'), 'PAGE_CONTENT');
-  const user = userInfo().username;
-  execFileSync('icacls', [locked, '/deny', `${user}:(R)`], { stdio: 'ignore' });
+  const restore = denyRead(locked);
   try {
     const result = await runVerification({ ...options(root), browserChecks: async ({ base, ok }) => {
       const host = new URL(base).host;
@@ -313,5 +312,28 @@ test('網站無權限路徑（Windows）：拒絕讀取的目錄回 403，不視
     assert.equal(result.exitCode, 0, readReport(root));
     assert.match(readReport(root), /無權限路徑之後的檢查/);
     assert.doesNotMatch(readReport(root), /執行中斷|提供網站檔案/);
-  } finally { execFileSync('icacls', [locked, '/remove:d', user], { stdio: 'ignore' }); }
+  } finally { restore(); }
+}));
+
+// 以 SID 拒絕目前使用者讀取（不靠帳號名稱解析）；回傳的還原函式不拋錯，避免蓋掉原本的斷言錯誤。
+// 用 System32 的完整路徑：Git Bash 的 PATH 會先找到 coreutils 的 whoami。
+function denyRead(path) {
+  const system32 = join(process.env.SystemRoot, 'System32');
+  const sid = execFileSync(join(system32, 'whoami.exe'), ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8' }).trim().split(',').pop().replace(/"/g, '');
+  execFileSync(join(system32, 'icacls.exe'), [path, '/deny', `*${sid}:(R)`], { stdio: 'ignore' });
+  return () => { try { execFileSync(join(system32, 'icacls.exe'), [path, '/remove:d', `*${sid}`], { stdio: 'ignore' }); } catch {} };
+}
+
+test('網站無權限檔案（Windows）：拒絕讀取的檔案仍視為伺服器錯誤，中斷驗證並保留原因', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
+  writeFileSync(join(root, 'locked.txt'), 'LOCKED_CONTENT');
+  const restore = denyRead(join(root, 'locked.txt'));
+  try {
+    const result = await runVerification({ ...options(root), browserChecks: async ({ base }) => {
+      const response = await requestServer(base, '/locked.txt', { host: new URL(base).host });
+      assert.equal(response.status, 500);
+      assert.doesNotMatch(response.body, /LOCKED_CONTENT/);
+    } });
+    assert.equal(result.exitCode, 1);
+    assert.match(readReport(root), /執行中斷：瀏覽器檢查.*提供網站檔案：EPERM/);
+  } finally { restore(); }
 }));
