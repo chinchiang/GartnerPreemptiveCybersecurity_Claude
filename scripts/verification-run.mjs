@@ -7,6 +7,8 @@ import { createServer } from 'node:http';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
 import { renderReport } from './verify-report.mjs';
 
+// ?stamped 回傳以這個固定時間填好 last-updated 的 index.html，等同部署後的網站（repo 裡提交的是空的）。
+// 改這個時間時，verify.mjs 的 LAST_UPDATED_TEXT（臺北時間的顯示文字），以及 browser-checks.test.mjs、verification-run.test.mjs 的字面值也要一起改
 export const STAMPED_AT = '2026-10-17T16:30:00+00:00';
 
 function withinRoot(root, file) {
