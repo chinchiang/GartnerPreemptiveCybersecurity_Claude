@@ -80,6 +80,7 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
   const staticOnly = args.includes('--static');
   const browserOnly = args.includes('--only');
   let phase = '初始化', incomplete = false, browser, server, runDir, shots;
+  // 一定記一筆失敗：截圖更新與結束碼只看 results 就會擋下；incomplete 只決定報告的「未完成」狀態列與回傳值。
   const fail = (name, error) => {
     incomplete = true;
     record(name, false, error?.message || String(error));
@@ -134,13 +135,13 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
     }));
   }
   // 只有全部通過才更新維護用截圖；失敗執行保留自己的部分截圖。
-  if (!staticOnly && !browserOnly && !incomplete && results.every(r => r.pass)) {
+  if (!staticOnly && !browserOnly && results.every(r => r.pass)) {
     try { cpSync(shots, join(root, 'verify-screenshots'), { recursive: true }); }
     catch (error) { fail('更新截圖', error); }
   }
   const passed = results.filter(r => r.pass).length;
   const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString(), incomplete });
-  let exitCode = incomplete || passed !== results.length ? 1 : 0;
+  let exitCode = passed !== results.length ? 1 : 0;
   if (staticOnly) log(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
   else if (browserOnly) log(`\n${passed}/${results.length} 通過（--only 不寫入 verify-report.md）`);
   else {
