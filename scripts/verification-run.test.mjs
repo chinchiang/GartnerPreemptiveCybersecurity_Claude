@@ -1,7 +1,7 @@
 // verification-run.test.mjs — 驗證例外收尾、產物隔離、錨點與網站路徑邊界的回歸測試
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync, linkSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, lstatSync, rmSync, symlinkSync, linkSync, existsSync } from 'node:fs';
 import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -47,11 +47,14 @@ async function project(check) {
 }
 // 逐層重設目錄的 ACL 再往下走，不用 /T：icacls /reset /T 會穿過 junction，重設根目錄外的檔案。
 // 只進入真正的目錄：連結（junction、symlink）的 Dirent 不是目錄，不會被重設或進入，之後的 rmSync 只刪連結本身。
-// 檔案不重設：hard link 與根目錄外的檔案共用同一份 ACL；目錄可讀寫後，刪除檔案也用不到檔案本身的 ACL。
+// 檔案的拒絕權限也會擋住刪除，所以只有一個連結的檔案才重設；hard link（nlink > 1）與根目錄外的檔案
+// 共用同一份 ACL，不重設，留給 rmSync 刪掉連結本身。
 function resetAcl(dir) {
   icacls(dir, '/reset', '/C', '/Q');
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) resetAcl(join(dir, entry.name));
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) resetAcl(path);
+    else if (entry.isFile() && lstatSync(path).nlink === 1) icacls(path, '/reset', '/C', '/Q');
   }
 }
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
@@ -468,6 +471,16 @@ test('暫存目錄清理（Windows）：子目錄的拒絕權限沒還原時，�
     mkdirSync(join(root, 'locked'));
     writeFileSync(join(root, 'locked', 'inner.txt'), 'inner'); // 有內容：刪除時一定要列出這個目錄
     denyRead(join(root, 'locked')); // 刻意不還原：第一次刪除失敗，根目錄本身沒有被鎖
+  });
+  assert.equal(existsSync(root), false);
+});
+
+test('暫存目錄清理（Windows）：檔案的拒絕權限沒還原時，也重設後刪除', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, async () => {
+  let root;
+  await project(async r => {
+    root = r;
+    writeFileSync(join(root, 'locked.txt'), 'locked');
+    denyRead(join(root, 'locked.txt')); // 刻意不還原：目錄可讀寫，檔案本身的 ACL 仍擋住刪除
   });
   assert.equal(existsSync(root), false);
 });
