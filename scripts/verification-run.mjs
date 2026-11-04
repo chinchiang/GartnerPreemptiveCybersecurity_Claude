@@ -152,6 +152,15 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
       server.closeAllConnections();
     }));
   }
+  // 摘要行先輸出：log 在這裡拋錯時，say() 記的失敗還來得及擋下截圖更新並寫進報告。
+  // 摘要的數字是更新截圖之前的；更新截圖失敗時，接著會印出那一筆 FAIL。
+  const summary = `${results.filter(r => r.pass).length}/${results.length} 通過`;
+  if (staticOnly) say(`\n${summary}（--static 不寫入 verify-report.md）`);
+  else if (browserOnly) say(`\n${summary}（--only 不寫入 verify-report.md）`);
+  else {
+    say(`\n${summary} → verify-report.md`);
+    if (runDir) say(`本次產物：${runDir}`);
+  }
   // 只有全部通過才更新維護用截圖；失敗執行保留自己的部分截圖。
   if (!staticOnly && !browserOnly && results.every(r => r.pass)) {
     try { cpSync(shots, join(root, 'verify-screenshots'), { recursive: true }); }
@@ -160,18 +169,12 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
   const passed = results.filter(r => r.pass).length;
   const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString(), incomplete });
   let exitCode = passed !== results.length ? 1 : 0;
-  if (staticOnly) say(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
-  else if (browserOnly) say(`\n${passed}/${results.length} 通過（--only 不寫入 verify-report.md）`);
-  else {
+  if (!staticOnly && !browserOnly) {
     // 先寫本次產物，再更新維護用報告；任一寫入失敗也回傳失敗。
     for (const file of [runDir && join(runDir, 'verify-report.md'), join(root, 'verify-report.md')].filter(Boolean)) {
       try { writeFileSync(file, report); }
       catch (error) { exitCode = 1; say(`FAIL  寫入報告 ${file} — ${error.message}`); }
     }
-    say(`\n${passed}/${results.length} 通過 → verify-report.md`);
-    if (runDir) say(`本次產物：${runDir}`);
   }
-  // 摘要行在報告寫完後才輸出；log 這時才拋錯，報告已無法標示，至少結束碼要回報失敗。
-  if (logFailed) exitCode = 1;
   return { exitCode, results, incomplete, runDir };
 }

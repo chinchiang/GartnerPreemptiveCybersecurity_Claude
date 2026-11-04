@@ -195,12 +195,19 @@ test('log 本身拋錯：仍寫出未完成報告、關閉伺服器並回傳失�
   await assert.rejects(fetch(base));
 }));
 
-test('log 只在報告寫完後的摘要行拋錯：檢查都通過也回傳失敗', () => project(async root => {
-  const result = await runVerification({ ...options(root),
-    log(message) { if (message.includes('通過 → verify-report.md')) throw new Error('summary boom'); },
-    browserChecks: async ({ ok }) => { ok('瀏覽器檢查', true); } });
-  assert.equal(result.exitCode, 1);
-  assert.match(readReport(root), /瀏覽器檢查.*✅/); // 報告在摘要之前就寫好了
+test('log 只在摘要行拋錯：檢查都通過，報告仍標示未完成、不更新維護用截圖並回傳失敗', () => project(async root => {
+  for (const line of ['通過 → verify-report.md', '本次產物：']) {
+    const result = await runVerification({ ...options(root),
+      log(message) { if (message.includes(line)) throw new Error('summary boom'); },
+      browserChecks: async ({ ok, shots }) => {
+        ok('瀏覽器檢查', true);
+        writeFileSync(join(shots, 'current.png'), 'current');
+      } });
+    assert.equal(result.exitCode, 1);
+    assert.match(readReport(root), /狀態：未完成/);
+    assert.match(readReport(root), /輸出紀錄.*❌.*summary boom/);
+    assert.deepEqual(readdirSync(join(root, 'verify-screenshots')), ['old.png']);
+  }
 }));
 
 test('靜態例外：靜態模式保留報告且不建目錄；完整模式仍產生本次未完成報告', () => project(async root => {
