@@ -461,6 +461,17 @@ test('暫存目錄清理（Windows）：拒絕權限沒還原時重設 ACL 後�
   }
 });
 
+test('暫存目錄清理（Windows）：子目錄的拒絕權限沒還原時，也重設後刪除', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, async () => {
+  let root;
+  await project(async r => {
+    root = r;
+    mkdirSync(join(root, 'locked'));
+    writeFileSync(join(root, 'locked', 'inner.txt'), 'inner'); // 有內容：刪除時一定要列出這個目錄
+    denyRead(join(root, 'locked')); // 刻意不還原：第一次刪除失敗，根目錄本身沒有被鎖
+  });
+  assert.equal(existsSync(root), false);
+});
+
 test('網站無權限檔案（Windows）：拒絕讀取的檔案仍視為伺服器錯誤，中斷驗證並保留原因', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
   writeFileSync(join(root, 'locked.txt'), 'LOCKED_CONTENT');
   const restore = denyRead(join(root, 'locked.txt'));
