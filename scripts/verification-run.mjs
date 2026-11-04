@@ -161,23 +161,29 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
     say(`\n${summary} → verify-report.md`);
     if (runDir) say(`本次產物：${runDir}`);
   }
-  // 只有全部通過才更新維護用截圖；失敗執行保留自己的部分截圖。
-  if (!staticOnly && !browserOnly && results.every(r => r.pass)) {
-    try { cpSync(shots, join(root, 'verify-screenshots'), { recursive: true }); }
-    catch (error) {
-      fail('更新截圖', error);
-      say(`更新截圖失敗，修正後：${results.filter(r => r.pass).length}/${results.length} 通過`);
-    }
-  }
-  const passed = results.filter(r => r.pass).length;
-  const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString(), incomplete });
-  let exitCode = passed !== results.length ? 1 : 0;
-  if (!staticOnly && !browserOnly) {
-    // 先寫本次產物，再更新維護用報告；任一寫入失敗也回傳失敗。
+  // 先寫本次產物，再更新維護用報告；任一寫入失敗也回傳失敗。
+  const at = new Date().toISOString();
+  let reportFailed = false;
+  const writeReports = () => {
+    const report = renderReport(results, { mode: args.join(' ') || 'full', at, incomplete });
     for (const file of [runDir && join(runDir, 'verify-report.md'), join(root, 'verify-report.md')].filter(Boolean)) {
       try { writeFileSync(file, report); }
-      catch (error) { exitCode = 1; say(`FAIL  寫入報告 ${file} — ${error.message}`); }
+      catch (error) { reportFailed = true; say(`FAIL  寫入報告 ${file} — ${error.message}`); }
+    }
+  };
+  if (!staticOnly && !browserOnly) {
+    writeReports();
+    // 報告都寫成功、而且全部通過，才更新維護用截圖：報告寫不出來時，截圖不能先換成這次的。
+    // 失敗執行保留自己的部分截圖。更新截圖失敗時重寫報告，記下那一筆。
+    if (!reportFailed && results.every(r => r.pass)) {
+      try { cpSync(shots, join(root, 'verify-screenshots'), { recursive: true }); }
+      catch (error) {
+        fail('更新截圖', error);
+        say(`更新截圖失敗，修正後：${results.filter(r => r.pass).length}/${results.length} 通過`);
+        writeReports();
+      }
     }
   }
+  const exitCode = reportFailed || results.some(r => !r.pass) ? 1 : 0;
   return { exitCode, results, incomplete, runDir };
 }

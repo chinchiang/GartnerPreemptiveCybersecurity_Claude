@@ -237,6 +237,18 @@ test('更新截圖失敗：終端機最後的摘要不寫全部通過，與報�
   assert.ok(lines.findIndex(line => line.startsWith('FAIL  更新截圖')) < lines.lastIndexOf(summaries.at(-1)));
 }));
 
+test('寫入維護用報告失敗：檢查都通過也不更新維護用截圖，回傳失敗', () => project(async root => {
+  rmSync(join(root, 'verify-report.md'));
+  mkdirSync(join(root, 'verify-report.md')); // 是目錄，寫入報告會失敗
+  const result = await runVerification({ ...options(root), browserChecks: async ({ ok, shots }) => {
+    ok('瀏覽器檢查', true);
+    writeFileSync(join(shots, 'current.png'), 'current');
+  } });
+  assert.equal(result.exitCode, 1);
+  assert.deepEqual(readdirSync(join(root, 'verify-screenshots')), ['old.png']);
+  assert.match(readFileSync(join(result.runDir, 'verify-report.md'), 'utf8'), /瀏覽器檢查.*✅/); // 本次產物仍寫出
+}));
+
 test('靜態例外：靜態模式保留報告且不建目錄；完整模式仍產生本次未完成報告', () => project(async root => {
   const config = { ...options(root), staticChecks: () => { throw new Error('static failed'); } };
   const staticResult = await runVerification({ ...config, args: ['--static'] });
