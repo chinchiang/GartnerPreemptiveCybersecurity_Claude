@@ -1,7 +1,7 @@
 // verification-run.test.mjs — 驗證例外收尾、產物隔離、錨點與網站路徑邊界的回歸測試
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, rmSync, symlinkSync, linkSync, existsSync } from 'node:fs';
 import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -45,15 +45,15 @@ async function project(check) {
     }
   }
 }
-// 逐層重設 ACL 再往下走，不用 /T：icacls /reset /T 會穿過 junction，重設根目錄外的檔案。
-// 連結（junction、symlink）只刪掉連結本身，不重設也不進入。
+// 逐層重設目錄的 ACL 再往下走，不用 /T：icacls /reset /T 會穿過 junction，重設根目錄外的檔案。
+// 連結（junction、symlink）只刪掉連結本身，不重設也不進入。檔案不重設：hard link 與根目錄外的檔案
+// 共用同一份 ACL；目錄可讀寫後，刪除檔案也用不到檔案本身的 ACL。
 function resetAcl(dir) {
   icacls(dir, '/reset', '/C', '/Q');
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isSymbolicLink()) rmSync(path, { force: true });
     else if (entry.isDirectory()) resetAcl(path);
-    else icacls(path, '/reset', '/C', '/Q');
   }
 }
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
@@ -408,18 +408,23 @@ function denyRead(path) {
   return () => { try { icacls(path, '/remove:d', `*${sid}`); } catch {} };
 }
 
-test('暫存目錄清理（Windows）：拒絕權限沒還原時重設 ACL 後刪除，不穿過 junction 動到根目錄外的檔案', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, async () => {
+test('暫存目錄清理（Windows）：拒絕權限沒還原時重設 ACL 後刪除，不經由 junction 或 hard link 動到根目錄外的檔案', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, async () => {
   const outside = mkdtempSync(join(tmpdir(), 'verification-run-outside-'));
   const target = join(outside, 'outside.txt');
   writeFileSync(target, 'outside');
-  const acl = () => execFileSync(join(system32(), 'icacls.exe'), [target], { encoding: 'utf8' });
+  const subdir = join(outside, 'sub');
+  mkdirSync(subdir);
+  const acl = () => [subdir, target].map(path => execFileSync(join(system32(), 'icacls.exe'), [path], { encoding: 'utf8' })).join('');
   try {
-    icacls(target, '/grant', '*S-1-1-0:(R)'); // 明確的 ACE：被 /reset 穿過就會消失
+    // 外部的子目錄與檔案各加一筆明確的 ACE：經由 junction 或 hard link 被 /reset 就會消失
+    icacls(subdir, '/grant', '*S-1-1-0:(R)');
+    icacls(target, '/grant', '*S-1-1-0:(R)');
     const before = acl();
     let root;
     await project(async r => {
       root = r;
       symlinkSync(outside, join(root, 'escape'), 'junction');
+      linkSync(target, join(root, 'hard.txt')); // hard link 與外部檔案共用同一份 ACL
       denyRead(root); // 刻意不還原：第一次刪除失敗，走重設 ACL 的備援
     });
     assert.equal(existsSync(root), false);
