@@ -31,12 +31,17 @@ async function project(check) {
   writeFileSync(join(root, 'verify-screenshots', 'old.png'), 'old image');
   writeFileSync(join(root, 'verify-report.md'), 'old report');
   writeFileSync(join(root, 'index.html'), '<meta name="last-updated" content="">');
-  try { await check(root); } finally {
-    try { rmSync(root, { recursive: true, force: true }); } catch (error) {
+  let failure;
+  try { await check(root); } catch (error) { failure = error; throw error; } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch (first) {
       // 拒絕權限沒還原時刪不掉：先重設整棵樹的 ACL 再刪，仍失敗才拋出。
-      if (process.platform !== 'win32') throw error;
-      icacls(root, '/reset', '/T', '/C', '/Q');
-      rmSync(root, { recursive: true, force: true });
+      // finally 拋出的錯誤會取代原本的斷言錯誤，所以把它掛在 cause 上，兩次刪除的原因都寫進訊息。
+      const cleanupFailed = error => new Error(`清理暫存目錄 ${root} 失敗：${error === first ? first.message : `${first.message}；重設 ACL 後：${error.message}`}`, { cause: failure });
+      if (process.platform !== 'win32') throw cleanupFailed(first);
+      try {
+        icacls(root, '/reset', '/T', '/C', '/Q');
+        rmSync(root, { recursive: true, force: true });
+      } catch (second) { throw cleanupFailed(second); }
     }
   }
 }
@@ -114,6 +119,8 @@ test('中途例外與清理失敗同時保留；伺服器仍會關閉，舊截�
     } });
   assert.equal(closed, true);
   assert.equal(result.exitCode, 1);
+  assert.equal(result.incomplete, true);
+  assert.match(readReport(root), /狀態：未完成/);
   assert.match(readReport(root), /瀏覽器檢查.*page failed with \/ detail/);
   assert.match(readReport(root), /清理：瀏覽器.*close failed/);
   await assert.rejects(fetch(base));
@@ -157,6 +164,8 @@ test('清理逾時也完成報告與伺服器關閉', () => project(async root =
     browserType: { launch: async () => ({ close: () => new Promise(() => {}) }) },
     browserChecks: context => { base = context.base; } });
   assert.equal(result.exitCode, 1);
+  assert.equal(result.incomplete, true); // 只有清理失敗、檢查本身都通過，仍要標示未完成
+  assert.match(readReport(root), /狀態：未完成/);
   assert.match(readReport(root), /清理：瀏覽器.*資源關閉逾時/);
   await assert.rejects(fetch(base));
 }));
