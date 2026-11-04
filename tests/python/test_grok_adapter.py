@@ -155,8 +155,9 @@ class GrokAdapterTest(unittest.TestCase):
             code, out, err = self.run_main("--dry-run")
         self.assertEqual(code, 0, err)
         self.assertIn("7. 平臺備註（Grok）", out)
-        topology = (ROOT / "examples" / "synthetic-org" / "topology.json").read_text(encoding="utf-8").strip()
-        self.assertIn(topology, out)  # 最後一個輸入檔也完整印出，不再截斷在 1500 字
+        # 送出的是解析後重新序列化的資料（不是原文），整份 topology 都在範圍內，所以內容完整
+        topology = json.loads((ROOT / "examples" / "synthetic-org" / "topology.json").read_text(encoding="utf-8"))
+        self.assertIn(json.dumps(topology, ensure_ascii=False), out)  # 最後一個輸入檔也完整印出，不再截斷在 1500 字
         self.assertIn("output-schema.json", out)  # 第 2 段提示詞
         self.assertIn("https://api.x.ai/v1", err)
 
