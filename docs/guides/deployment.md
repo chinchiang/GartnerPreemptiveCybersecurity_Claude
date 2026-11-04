@@ -65,7 +65,7 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 gh api -X POST repos/chinchiang/GartnerPreemptiveCybersecurity_Claude/rulesets --input .github/rulesets/main.json
 ```
 
-改了設定檔之後，用 `gh api repos/<owner>/<repo>/rulesets` 找到 ruleset 的 id，以 `gh api -X PUT repos/<owner>/<repo>/rulesets/<id> --input .github/rulesets/main.json` 更新。**套用狀態**：2026-11-04 建立設定檔，尚未套用；套用後把這句改成套用日期。
+改了設定檔之後，用 `gh api repos/<owner>/<repo>/rulesets` 找到 ruleset 的 id，以 `gh api -X PUT repos/<owner>/<repo>/rulesets/<id> --input .github/rulesets/main.json` 更新。**套用狀態**：2026-11-04 以上面的 `gh api -X POST` 套用，ruleset id 是 `26537215`。repo 上另有一個手動建立的 ruleset `R1`（id `26534856`），只對 `main` 禁止刪除與強制推送，和這份重疊、不衝突；更新時要 PUT 的是 `26537215`，不是 `R1`。
 
 若偏好「Deploy from a branch」，也可以直接選 `main` 分支根目錄（因為 `data/` 與 `downloads/` 已提交），但建議用 Actions 以確保建置一致。
 
