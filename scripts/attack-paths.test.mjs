@@ -60,17 +60,22 @@ test('缺拓樸（inputs.topology = false）時不產生路徑假設：資料裡
   assert.deepEqual(DEMO.analyze(chain(2), { inputs: { topology: false } }).hypotheses, []);
 });
 
-// 驗證計畫的授權（task-spec.md「對外掃描、主動探測…需 external_scanning_authorized / active_testing_authorized 為 true」）：
-// 入口對外時兩個旗標缺一不可，入口不對外時只看主動測試。chain(2) 的入口 A 對外，internalEntry 把它改成不對外
+// 驗證計畫的授權（scoring-rules.md 第 3 節、core-prompt.md：兩旗標「任一為 false 時，S6 驗證計畫的每一項都必須標示『尚未授權主動測試』」）：
+// 入口對外或不對外都一樣，兩個旗標缺一不可。chain(2) 的入口 A 對外，internalEntry 把它改成不對外
 const withAuth = (data, active, external) => ({ ...data, scope: { ...data.scope,
   authorized_scope: { ...data.scope.authorized_scope, active_testing_authorized: active, external_scanning_authorized: external } } });
 const internalEntry = (data) => ({ ...data, assets: data.assets.map(a => a.asset_id === 'A' ? { ...a, internet_exposed: false } : a) });
 const requiresOf = (data) => DEMO.analyze(data).validation.map(v => v.requires);
 const AUTHORIZED = '已授權主動測試（仍須依書面授權範圍執行）';
 
-test('驗證計畫：入口對外時主動測試與外部掃描兩個授權旗標缺一不可，入口不對外時只看主動測試', () => {
+test('驗證計畫：主動測試與外部掃描兩個授權旗標缺一不可，入口不對外也一樣', () => {
   assert.deepEqual(requiresOf(withAuth(chain(2), true, false)), ['尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT']);
   assert.deepEqual(requiresOf(withAuth(chain(2), true, true)), [AUTHORIZED]);
-  assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), true, false)), [AUTHORIZED]);
   assert.deepEqual(requiresOf(withAuth(chain(2), false, true)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
+  assert.deepEqual(requiresOf(withAuth(chain(2), false, false)), ['尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT']);
+  // 入口不對外：只差外部掃描授權時仍未授權，說明點名缺的旗標；兩個都缺時不提外部掃描（這一項不做外部驗證）
+  assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), true, false)), ['尚未授權主動測試：需 CISO 另行核准（含外部掃描授權）並排除 OT']);
+  assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), true, true)), [AUTHORIZED]);
+  assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), false, true)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
+  assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), false, false)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
 });
