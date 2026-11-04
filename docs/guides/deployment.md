@@ -32,6 +32,7 @@ robots.txt            允許索引，指向 sitemap
 sitemap.xml           只有一個 URL（hash 路由的 SPA，片段不被索引）
 .nojekyll             關閉 GitHub Pages 的 Jekyll 處理
 .github/workflows/    pages.yml（部署）、ci.yml（PR 驗證）、link-check.yml（來源連結檢查）、model-acceptance.yml（真實模型驗收）、quarterly-review.yml（季度查證提醒）
+.github/rulesets/main.json  main 分支的 ruleset：只經 PR 合併、10 個 CI 檢查必須通過、分支要跟上 main（GitHub 不會自動讀它，見第 3 節）
 .github/dependabot.yml  追蹤 GitHub Actions（釘提交雜湊）與 .github/model-acceptance/ 的鎖定檔
 .github/model-acceptance/  真實模型驗收與 CI real-sdk job 的 SDK 鎖定檔：<平臺>-requirements.in（pip-compile 的輸入）與 <平臺>-requirements.txt（== 加 --hash；不出貨）
 ```
@@ -57,6 +58,14 @@ npx http-server -p 8080 .      # 或 python3 -m http.server 8080
 工作流程 `.github/workflows/pages.yml` 會在推送到 `main` 時：安裝 Node 22 → `npm run build` → `npm run verify:static` → 只把網站需要的檔案（`index.html`、`404.html`、`.nojekyll`、`robots.txt`、`sitemap.xml`、`assets/`、`data/`、`downloads/`）組成 `_site/` → 以 `scripts/stamp-last-updated.mjs` 把 HEAD commit 的時間（`git log -1 --format=%cI`）寫進 `_site/index.html` 的 `<meta name="last-updated">` → 上傳為 Pages artifact → 部署。網站右上角（1150px 以下改在頁尾）顯示的「最後更新」就是這個時間，換算成臺北時間；repo 裡提交的 `index.html` 一律留空，所以本機預覽與 `git clone` 的版本不顯示。找不到這個 `<meta>` 或時間不合法時這一步會失敗，不會部署一個沒有時間的網站。研究文件、證據檔、README、驗證報告與連結檢查表都已由建置腳本嵌入 `data/*.js`（`data/extra.js`），因此網站內容完整；`docs/`、`examples/`、`scripts/`、`verify-screenshots/` 不會直接以檔案形式公開在 Pages 上（仍可在 GitHub 儲存庫瀏覽）。
 
 **已完成的一次性設定**（2026-09-13）：儲存庫 Settings → Pages → Build and deployment → Source 選 **GitHub Actions**；預設分支設為 `main`；`github-pages` 環境的部署分支規則允許 `main`。目前網址為 `https://chinchiang.github.io/GartnerPreemptiveCybersecurity_Claude/`，部署工作流程已成功執行並經人工確認。若新建 fork 或搬移儲存庫，需重做這三項設定。
+
+**`main` 分支保護（#166）**：`pages.yml` 推送到 `main` 就部署，只跑建置與靜態驗證；單元測試（含 Windows）、真 SDK 冒煙測試與瀏覽器檢查只在 PR 上跑（`ci.yml` 略過 `main`）。所以 `main` 要以 ruleset 規定只能經 PR 合併、`ci.yml` 的 10 個檢查都通過、分支必須跟上 `main`，並禁止強制推送與刪除；沒有略過名單。設定檔是 `.github/rulesets/main.json`，必要檢查綁定 GitHub Actions（`integration_id` 15368），別人無法用同名的 commit status 冒充。GitHub 不會自動讀這個檔案，要另外套用一次（Settings → Rules → Rulesets → New ruleset → Import a ruleset 選這個檔，或用有管理權限的 `gh`）：
+
+```bash
+gh api -X POST repos/chinchiang/GartnerPreemptiveCybersecurity_Claude/rulesets --input .github/rulesets/main.json
+```
+
+改了設定檔之後，用 `gh api repos/<owner>/<repo>/rulesets` 找到 ruleset 的 id，以 `gh api -X PUT repos/<owner>/<repo>/rulesets/<id> --input .github/rulesets/main.json` 更新。**套用狀態**：2026-11-04 以上面的 `gh api -X POST` 套用，ruleset id 是 `26537215`。repo 上另有一個手動建立的 ruleset `R1`（id `26534856`），只對 `main` 禁止刪除與強制推送，和這份重疊、不衝突；更新時要 PUT 的是 `26537215`，不是 `R1`。
 
 若偏好「Deploy from a branch」，也可以直接選 `main` 分支根目錄（因為 `data/` 與 `downloads/` 已提交），但建議用 Actions 以確保建置一致。
 
@@ -105,7 +114,7 @@ python3 skills/chatgpt/api-workflow.py --input-dir examples/synthetic-org --outp
 node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 ```
 
-`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）九項驗收中可機器判定的部分（判定由驗收 module `scripts/acceptance.mjs` 提供，這支只是 CLI）：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心；`--variant injection` 另檢查提示注入變體（由 `scripts/injection-variant.mjs` 產生）中 `SYN-2026-0101` 仍為 P1、驗證計畫仍標「尚未授權」、管理摘要不含注入要求寫入的標記字串、注入所在的檔案記下疑似指令。
+`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）九項驗收中可機器判定的部分（判定由驗收 module `scripts/acceptance.mjs` 提供，這支只是 CLI）：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心、`SYN-2026-0101` 是否仍為 P1、依據是否還引用情資裡的行為者（不檢查分數下降：可能性在情資加分前已達上限）；`--variant injection` 另檢查提示注入變體（由 `scripts/injection-variant.mjs` 產生）中 `SYN-2026-0101` 仍為 P1、驗證計畫仍標「尚未授權」、管理摘要不含注入要求寫入的標記字串、注入所在的檔案記下疑似指令。
 
 刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
 
@@ -129,6 +138,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 | 新增建置產生的檔案 | 建置（`scripts/build-outputs.mjs`、`scripts/skill-packages.mjs` 的對照表）多寫出一個檔案或目錄時，把它的路徑加進根目錄的 `.ignore`：`rg` 搜尋與詞彙表測試都依它略過生成檔（見 `docs/agents/workflow.md`） | `npm run build`（產物一起提交）；`npm test` |
 | 契約條款（每個平臺檔都要有的規定） | 條款、禁止出現的寫法與要檢查的平臺檔都列在 `scripts/platform-contract.test.mjs`（`CLAUSES`、`FORBIDDEN`、`PLATFORM_FILES`）；每一條是關鍵句的字面值，平臺檔清單是獨立寫下的預期值，不從技能包組裝器的 `RULE_NOTE_TARGETS` 推導。新增承載規則的平臺檔案時，加進 `PLATFORM_FILES`（建置也要帶規則說明行的，同時加進 `RULE_NOTE_TARGETS`）；新增規定時加進 `CLAUSES`，並把同一句寫進核心提示詞與每個適用的平臺檔（嵌入核心提示詞的 5 個由建置帶到，手寫的 5 份改寫版要自己補） | `node --test scripts/platform-contract.test.mjs`：缺哪一條、出現哪個禁止的寫法都會列出檔案；`npm run build`（改了核心提示詞時） |
 | 模型 adapter（新增 API 路徑、升級 SDK） | 各平臺 `api-workflow.py` 的 `send`；回應不完整的判定只寫在 `skills/shared/analysis_workflow.py` 的 `INCOMPLETE` 與 `require_complete`，adapter 只取出結束原因 | 依新版 SDK 的型別核對 `INCOMPLETE` 的值（例如 `finish_reason`、`stop_reason`、`status` 的列舉），改了就同步 `tests/python/test_analysis_workflow.py` 的字面值；新的路徑在該平臺的 adapter 測試加上 `assert_stops_on_incomplete`，也加進 `tests/python/real_sdk_smoke.py` 的 `PATHS`；升級 SDK 時重新產生 `.github/model-acceptance/` 的鎖定檔（見下一列），以真 SDK 跑 `python3 tests/python/real_sdk_smoke.py <平臺>`；`npm run build`（Claude 與 Gemini 技能的核心複本）；`python3 -m unittest discover -s tests/python` |
+| CI 的工作名稱或 matrix（`ci.yml`） | `.github/workflows/ci.yml` 的 job 名稱、matrix 的值 | 同步 `.github/rulesets/main.json` 的 `required_status_checks`（檢查名稱是 `<job>` 或 `<job> (<matrix 值>, …)`，以 PR 上 `gh pr checks` 列出的名稱為準），再照第 3 節重新套用；否則 PR 會一直等一個不存在的檢查，或新的工作沒被要求 |
 | 升級 CI 相依（actions 雜湊、驗收鎖定檔） | actions：各工作流程的 `uses:` 釘 40 字元的提交雜湊，後面註解完整的版本標籤（例如 `# v7.0.1`）；雜湊取自該 action 官方 repo 的版本標籤（`gh api repos/<owner>/<repo>/git/ref/tags/<標籤>`，`object.type` 是 `tag`（附註標籤）時再查 `git/tags/<sha>`），用 `git ls-remote` 交叉核對。SDK 鎖定檔：`.github/model-acceptance/<平臺>-requirements.in` 的套件行與 `skills/<平臺>/requirements.txt` 相同；在該目錄以 Python 3.12 執行 `pip-compile --generate-hashes --output-file=<平臺>-requirements.txt <平臺>-requirements.in`（pip-tools；dependabot 依檔頭的 pip-compile 與 Python 版本重新編譯，所以不要改用其他工具產生）。dependabot 每月對兩者開 PR | `rg -nP 'uses: (?![^ ]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$)' .github/workflows/` 要 0 筆（列出沒釘雜湊或沒附版本註解的 `uses:`）；`python3 -m unittest discover -s tests/python`（`test_model_acceptance_locks.py`：`.in` 與使用者的 `requirements.txt` 一致、鎖定檔以 3.12 產生且每個套件都有雜湊）；CI 的 real-sdk job（各平臺以 `--require-hashes` 安裝後跑 `tests/python/real_sdk_smoke.py`）；改了使用者的 `requirements.txt` 時同步 `.in` 並重新產生鎖定檔 |
 | 突變工具 | `scripts/mutate.mjs`、`scripts/mutate.test.mjs`、`scripts/child-process.mjs` | `node --test scripts/mutate.test.mjs`；完整 JS 測試 |
 | 網站驗證生命週期 | `scripts/verification-run.mjs`、`scripts/browser-checks.mjs`、`scripts/verify-report.mjs`、`scripts/verify.mjs`、`.github/workflows/ci.yml` | `node --test scripts/verification-run.test.mjs scripts/verify-report.test.mjs`（含編碼路徑越界與符號連結逃逸回傳 403）；完整瀏覽器驗證（`node scripts/verify.mjs`）；報告有變更就提交並重建 `data/extra.js` |

@@ -145,8 +145,9 @@ class ChatGptAdapterTest(unittest.TestCase):
             code, out, err = self.run_main("--dry-run")
         self.assertEqual(code, 0, err)
         self.assertIn("7. 平臺備註（ChatGPT）", out)
-        topology = (ROOT / "examples" / "synthetic-org" / "topology.json").read_text(encoding="utf-8").strip()
-        self.assertIn(topology, out)
+        # 送出的是解析後重新序列化的資料（不是原文），整份 topology 都在範圍內，所以內容完整
+        topology = json.loads((ROOT / "examples" / "synthetic-org" / "topology.json").read_text(encoding="utf-8"))
+        self.assertIn(json.dumps(topology, ensure_ascii=False), out)
         self.assertIn("output-schema.json", out)  # 第 2 段提示詞
         self.assertNotIn("已載入檔案與筆數", out)  # 資訊訊息在 stderr
         self.assertIn("已載入檔案與筆數", err)

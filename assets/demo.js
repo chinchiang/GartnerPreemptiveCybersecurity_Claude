@@ -202,15 +202,17 @@
       }
     }
 
-    // S6 安全驗證計畫（僅為提案；執行需授權）。外部驗證同時需要 external_scanning_authorized 與 active_testing_authorized。
+    // S6 安全驗證計畫（僅為提案；執行需授權）。scoring-rules.md 第 3 節與核心提示詞：兩個授權旗標任一為 false，每一項都標
+    // 「尚未授權主動測試」，入口不對外的項目也一樣。缺外部掃描授權時，入口對外的項目，以及只差這個旗標的項目，在說明裡點名它。
+    const authorized = externalOK && activeOK;
     const validation = hypotheses.slice(0, 3).map((h, i) => {
       const external = assets.get(h.entry)?.internet_exposed === true;
       const otTouched = h.nodes.some(n => assets.get(n)?.environment === 'OT-DMZ' || String(assets.get(n)?.type || '').includes('OT'));
-      const authorized = external ? (externalOK && activeOK) : activeOK;
+      const namesExternal = !externalOK && (external || activeOK);
       return {
         id: `V${i + 1}`, hypothesis: `${h.entryName} → ${h.targetName}（${h.hops} 跳）`, hypothesis_id: h.id,
         method: (external ? '授權下的外部驗證（版本確認／安全 PoC）+ 內部 BAS 模擬橫向移動' : '內部桌面演練 + 設定檢視 + 讀取式驗證') + (otTouched ? '（OT 端點只做讀取式驗證）' : ''),
-        requires: authorized ? '已授權主動測試（仍須依書面授權範圍執行）' : `尚未授權主動測試：需 CISO 另行核准${external && !externalOK ? '（含外部掃描授權）' : ''}並排除 OT`,
+        requires: authorized ? '已授權主動測試（仍須依書面授權範圍執行）' : `尚未授權主動測試：需 CISO 另行核准${namesExternal ? '（含外部掃描授權）' : ''}並排除 OT`,
         authorized, scope_exclusions: auth.excluded || [],
         success: '證明路徑不可行，或確認阻斷點（控制）有效'
       };

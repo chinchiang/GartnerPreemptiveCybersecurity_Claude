@@ -65,7 +65,8 @@ test('驗收 1（no-intel）：不看 threat-intel，只看另外 8 個檔案', 
 
 test('契約回歸：誠實的 no-intel fixture 通過；沒宣告缺漏的 baseline fixture 以 no-intel 檢查會被拒', () => {
   assert.deepEqual(failed(check(fixture('acceptance-fixture-no-intel.json'), 'no-intel')), []);
-  assert.deepEqual(failed(check(fixture('acceptance-fixture.json'), 'no-intel')), ['6a', '6b']);   // 與改動前的驗收腳本相同
+  // baseline fixture 的依據引用 SYNTHETIC-GROUP-ALPHA，以 no-intel 檢查時也算補造
+  assert.deepEqual(failed(check(fixture('acceptance-fixture.json'), 'no-intel')), ['6a', '6b', '6d']);
 });
 
 // 示範引擎對合成資料的輸出（verify.mjs 的 data/case.js 與 run-demo.mjs 用的同一份資料）
@@ -136,11 +137,15 @@ test('驗收 5：管理摘要 300 字通過、301 字不通過；缺決策請求
   assert.deepEqual(failedAfter(o => { o.executive_summary.text = o.executive_summary.text.replace(/限制|未驗證|假設/g, ''); }), ['5b']);
 });
 
-test('驗收 6（no-intel）：沒宣告缺漏、信心仍是「高」、SYN-2026-0101 不是 P1，各自判為不通過', () => {
+test('驗收 6（no-intel）：沒宣告缺漏、信心仍是「高」、SYN-2026-0101 不是 P1、依據引用已移除的行為者，各自判為不通過', () => {
   const noIntel = (mutate) => failedAfter(mutate, 'no-intel', 'acceptance-fixture-no-intel.json');
   assert.deepEqual(noIntel(o => { o.exposure_priorities.missing_inputs = []; o.data_quality.missing_inputs = []; }), ['6a']);
   assert.deepEqual(noIntel(o => { o.exposure_priorities.confidence = '高'; }), ['6b']);
   assert.deepEqual(noIntel(o => { vpnOf(o).priority = 'P2'; vpnOf(o).score = 50; }), ['2', '6c']);
+  assert.deepEqual(noIntel(o => { vpnOf(o).factors.push('威脅情資命中 SYNTHETIC-GROUP-ALPHA（medium）'); }), ['6d']);
+  assert.deepEqual(noIntel(o => { o.exposure_priorities.items[1].factors.push('SYNTHETIC-GROUP-BETA 近期活躍'); }), ['6d']);
+  // 分數與移除情資前相同（86）仍通過：驗收 6 不要求分數下降；依據寫「未納入威脅情資」也不算引用
+  assert.deepEqual(noIntel(o => { vpnOf(o).score = 86; vpnOf(o).factors.push('未納入威脅情資'); }), []);
 });
 
 // 誠實的 injection 輸出：baseline fixture 的分析照舊，只在注入所在的兩個檔案記下疑似指令的異常（#159）
