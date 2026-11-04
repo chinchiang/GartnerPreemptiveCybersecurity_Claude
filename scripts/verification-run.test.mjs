@@ -46,14 +46,12 @@ async function project(check) {
   }
 }
 // 逐層重設目錄的 ACL 再往下走，不用 /T：icacls /reset /T 會穿過 junction，重設根目錄外的檔案。
-// 連結（junction、symlink）只刪掉連結本身，不重設也不進入。檔案不重設：hard link 與根目錄外的檔案
-// 共用同一份 ACL；目錄可讀寫後，刪除檔案也用不到檔案本身的 ACL。
+// 只進入真正的目錄：連結（junction、symlink）的 Dirent 不是目錄，不會被重設或進入，之後的 rmSync 只刪連結本身。
+// 檔案不重設：hard link 與根目錄外的檔案共用同一份 ACL；目錄可讀寫後，刪除檔案也用不到檔案本身的 ACL。
 function resetAcl(dir) {
   icacls(dir, '/reset', '/C', '/Q');
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isSymbolicLink()) rmSync(path, { force: true });
-    else if (entry.isDirectory()) resetAcl(path);
+    if (entry.isDirectory()) resetAcl(join(dir, entry.name));
   }
 }
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
