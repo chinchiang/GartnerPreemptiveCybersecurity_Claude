@@ -2,7 +2,7 @@
  * verification-run.mjs — 驗證執行的資源清理、本次產物隔離與網站檔案邊界
  * runVerification：一次驗證的生命週期，verify.mjs 呼叫。持有本機伺服器、瀏覽器與本次產物目錄（scratch/verification-runs/ 底下的 run- 目錄），
  *   檢查敘述只透過 ok 記結果；回傳 { exitCode, results, incomplete, runDir }。有任一項失敗，exitCode 就是 1；
- *   資源初始化、骨架或清理出錯時 incomplete 為真，報告標示「未完成」；完整模式全部通過才更新 verify-screenshots/。
+ *   資源初始化、骨架、清理或 log 本身出錯時 incomplete 為真，報告標示「未完成」；完整模式全部通過才更新 verify-screenshots/。
  * createWebsiteServer：只供本機驗證的網站伺服器與路徑守門，browser-checks.mjs 的獨立骨架也重用。
  * anchorInViewport：目錄錨點是否已捲入可視範圍，由 Playwright 在頁面中執行。STAMPED_AT：?stamped 用的固定時間。
  * 單元測試在 verification-run.test.mjs（瀏覽器換成可控的實作，伺服器用真實 HTTP 請求）。
@@ -63,6 +63,11 @@ export function createWebsiteServer(root, onError = () => {}) {
   });
 }
 
+// 拋出的值不一定是 Error：message 取值或轉字串本身也可能拋錯，這時仍要能記下失敗。
+function describe(error) {
+  try { return String(error?.message || error); } catch { return '（無法取得錯誤訊息）'; }
+}
+
 // 由 Playwright 在頁面中執行；以實際目標位置判定，不依賴動畫耗時。
 export function anchorInViewport({ id, documentId }) {
   const target = document.getElementById(id);
@@ -77,10 +82,18 @@ export function anchorInViewport({ id, documentId }) {
 export async function runVerification({ root, args = [], staticChecks, browserChecks, linkChecks,
   browserType, log = console.log, githubOutput = process.env.GITHUB_OUTPUT, cleanupTimeout = 5000 }) {
   const results = [];
-  let acceptingChecks = true;
+  let acceptingChecks = true, logFailed = false;
+  // log 本身拋錯時改記一筆失敗（只記第一次），結束碼與截圖更新照樣只看 results；報告仍會寫出並標示未完成。
+  const say = message => {
+    try { log(message); } catch (error) {
+      if (logFailed) return;
+      logFailed = true; incomplete = true;
+      results.push({ name: '輸出紀錄', pass: false, detail: describe(error) });
+    }
+  };
   const record = (name, pass, detail = '') => {
     results.push({ name, pass: !!pass, detail: String(detail) });
-    log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
+    say(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
   };
   const ok = (...result) => { if (acceptingChecks) record(...result); };
   const staticOnly = args.includes('--static');
@@ -89,7 +102,7 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
   // 一定記一筆失敗：截圖更新與結束碼只看 results 就會擋下；incomplete 只決定報告的「未完成」狀態列與回傳值。
   const fail = (name, error) => {
     incomplete = true;
-    record(name, false, error?.message || String(error));
+    record(name, false, describe(error));
   };
   const close = async (name, action) => {
     let timer;
@@ -147,16 +160,16 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
   const passed = results.filter(r => r.pass).length;
   const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString(), incomplete });
   let exitCode = passed !== results.length ? 1 : 0;
-  if (staticOnly) log(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
-  else if (browserOnly) log(`\n${passed}/${results.length} 通過（--only 不寫入 verify-report.md）`);
+  if (staticOnly) say(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
+  else if (browserOnly) say(`\n${passed}/${results.length} 通過（--only 不寫入 verify-report.md）`);
   else {
     // 先寫本次產物，再更新維護用報告；任一寫入失敗也回傳失敗。
     for (const file of [runDir && join(runDir, 'verify-report.md'), join(root, 'verify-report.md')].filter(Boolean)) {
       try { writeFileSync(file, report); }
-      catch (error) { exitCode = 1; log(`FAIL  寫入報告 ${file} — ${error.message}`); }
+      catch (error) { exitCode = 1; say(`FAIL  寫入報告 ${file} — ${error.message}`); }
     }
-    log(`\n${passed}/${results.length} 通過 → verify-report.md`);
-    if (runDir) log(`本次產物：${runDir}`);
+    say(`\n${passed}/${results.length} 通過 → verify-report.md`);
+    if (runDir) say(`本次產物：${runDir}`);
   }
   return { exitCode, results, incomplete, runDir };
 }

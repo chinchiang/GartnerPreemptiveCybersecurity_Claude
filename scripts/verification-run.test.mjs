@@ -170,6 +170,31 @@ test('清理逾時也完成報告與伺服器關閉', () => project(async root =
   await assert.rejects(fetch(base));
 }));
 
+test('拋出的錯誤讀不出訊息（message 取值拋錯、沒有 toString）：仍寫出未完成報告並回傳失敗', () => project(async root => {
+  const unreadable = [
+    new Proxy({}, { get() { throw new Error('getter boom'); } }),
+    Object.create(null),
+  ];
+  for (const thrown of unreadable) {
+    const result = await runVerification({ ...options(root), browserChecks: async () => { throw thrown; } });
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.incomplete, true);
+    assert.match(readReport(root), /狀態：未完成/);
+    assert.match(readReport(root), /執行中斷：瀏覽器檢查.*❌/);
+  }
+}));
+
+test('log 本身拋錯：仍寫出未完成報告、關閉伺服器並回傳失敗', () => project(async root => {
+  let base;
+  const result = await runVerification({ ...options(root), log() { throw new Error('log boom'); },
+    browserChecks: async ({ ok, ...context }) => { base = context.base; ok('瀏覽器檢查', true); } });
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.incomplete, true);
+  assert.match(readReport(root), /狀態：未完成/);
+  assert.deepEqual(result.results.filter(r => !r.pass).map(r => r.name), ['輸出紀錄']); // 每一行都拋錯，也只記一筆
+  await assert.rejects(fetch(base));
+}));
+
 test('靜態例外：靜態模式保留報告且不建目錄；完整模式仍產生本次未完成報告', () => project(async root => {
   const config = { ...options(root), staticChecks: () => { throw new Error('static failed'); } };
   const staticResult = await runVerification({ ...config, args: ['--static'] });
