@@ -112,6 +112,7 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
 - **更新 PR 說明**：用 `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<檔>`。`gh pr edit` 在本 repo 會因 Projects classic 的 GraphQL 錯誤而失敗。
 - **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。它只認 PR 說明裡的 `Closes #<n>`，不認 commit 訊息裡的（commit 訊息的 `Closes` 合併後仍會關閉 issue，只是合併前查不到），所以 PR 說明也要寫 `Closes #<n>`。開 PR 或更新說明後要等幾秒再查，馬上查可能還是空的。
+- **分支保護**：`main` 的 ruleset 在 `.github/rulesets/main.json`（套用方式與狀態見部署指南第 3 節）：只能經 PR 合併、`ci.yml` 的 10 個檢查都要通過、分支必須跟上 `main`，沒有略過名單，`gh pr merge --admin` 也不能略過。`mergeStateStatus` 是 `BEHIND` 時，先 `git merge main` 再 push，等 CI 重跑。
 - **合併**：先確認 `gh pr checks <n>` 全綠、`mergeStateStatus` 是 `CLEAN`，再照 repo 的格式合併：
   ```
   gh pr merge <n> --merge --subject "Merge pull request #<n>: <標題>" --body "<標題>" --match-head-commit <完整 40 碼 SHA>
