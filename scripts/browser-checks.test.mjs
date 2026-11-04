@@ -66,6 +66,18 @@ test('only 只跑指定名稱的情境，其他情境的 run 一次都不呼叫'
   assert.deepEqual(rows, [['B1', true, ''], ['無 JS 執行錯誤', true, '']]);
 });
 
+test('外部生命週期提供 session：情境仍清理 context，但不關閉外部瀏覽器', async () => {
+  const fake = fakeBrowser();
+  const rows = [];
+  await runBrowserChecks([{ name: 'A', run: async ({ open, ok }) => {
+    await open('#/', { width: 1280 }); ok('外部情境', true);
+  } }], { root: ROOT, record: (name, pass) => rows.push([name, pass]),
+    session: { browser: await fake.launch(), base: 'http://127.0.0.1:1/', shots: join(ROOT, 'scratch', 'session-shots') } });
+  assert.deepEqual(rows, [['外部情境', true], ['無 JS 執行錯誤', true]]);
+  assert.deepEqual(fake.contexts.map(context => context.closed), [true]);
+  assert.equal(fake.log.some(([operation]) => operation === 'close-browser'), false);
+});
+
 test('每次 open 都開一個新的 context：baseURL 是本機伺服器，寬高對應 viewport（高預設 900），一律 reducedMotion: reduce（截圖才固定），clipboard 對應剪貼簿權限，downloads 對應 acceptDownloads', async () => {
   const fake = fakeBrowser();
   await run([{ name: 'A', run: async ({ open }) => {

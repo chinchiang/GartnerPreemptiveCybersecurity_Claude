@@ -31,7 +31,7 @@
 
 `playwright` 套件是純 JS，兩側共用同一份 `node_modules/`；瀏覽器各自裝在各自的快取。
 
-完整模式會改寫 `verify-report.md` 與 `verify-screenshots/`。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進會隨環境或內容而變的值（例如捲動位置：它取決於字型與版面，本機與 CI 可能不同，上方內容一改也跟著變），否則比對會失敗。
+完整模式每次先將報告與截圖寫入獨立的 `scratch/verification-runs/run-*/`，並更新 `verify-report.md`；全部通過才更新 `verify-screenshots/`。失敗時查終端機印出的本次目錄，CI 也只上傳這個目錄的產物，避免混入舊截圖。情境中斷保留失敗結果並繼續其他獨立情境；資源初始化或骨架執行例外標示未完成，資源關閉錯誤也會列入報告；靜態模式仍只輸出至終端機。截圖的字型與 CI 不同，跑完一律還原：`git checkout -- verify-screenshots/`。報告要和已提交的一致（CI 的 browser job 會比對，只忽略執行時間那一行）：檢查結果沒變就還原；變了就提交，並執行 `node scripts/build-data.mjs`，`data/extra.js` 一起提交（報告嵌入網站附錄）。報告裡不要寫進會隨環境或內容而變的值（例如捲動位置：它取決於字型與版面，本機與 CI 可能不同，上方內容一改也跟著變），否則比對會失敗。
 
 瀏覽器檢查的每個 context 都開 reduced motion（`scripts/browser-checks.mjs` 的 `opener`），網站的 `prefers-reduced-motion` 樣式會關掉 smooth scroll、transition 和 animation，所以同一個 commit 在 CI 上的截圖幾乎每次都位元組相同。偶爾還是會有零星的反鋸齒像素差異：#115 統計了 12 次執行、156 張截圖，有 1 張差 2 個像素，每個色彩通道差 1～2 個色階。要檢查動畫或 smooth scroll 本身的情境，得自己另開 context，不能用 `open`。
 
@@ -94,11 +94,17 @@ for f in scratch/<目錄>/verify-screenshots/*.png; do cmp -s "$f" "verify-scree
 
 確認測試真的守得住：把要改壞的地方寫成一份臨時的 JSON 清單（`[{ "file", "from", "to", "note" }]`），放在 `scratch/`（`.gitignore` 已排除，不會提交；`/tmp` 在 WSL 重開機時會被清空），執行 `node scripts/mutate.mjs <清單> [--test "<測試指令>"] [--timeout <秒>] [--json | --markdown]`。工具會先確認測試在突變前通過、每筆原文恰好一處，逐一改壞、跑測試，最後一定還原；抓到時會列出是哪些 `node:test` 測試失敗（名稱與檔名，`--json` 是每筆的 `failed`），寫突變紀錄時不必再手動套一次突變找出紅的是誰。每次跑測試各自計時，預設 600 秒，可以用 `--timeout` 調整（`0` 表示不限時）：超過時間就結束整個測試行程、還原檔案，這一筆記成「逾時」，再跑下一筆。突變可能讓 handle 一直開著時（例如伺服器沒關），測試指令也可以加上 `--test-force-exit`，讓測試跑完就結束，不必等到逾時。有存活或逾時就以結束碼 1 結束。參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、`--timeout` 不是 0 或正數），或測試在突變前就失敗或逾時，以結束碼 2 結束，一個檔案都不改。PR 說明的突變紀錄用 `--markdown`：輸出總計一行加「突變｜結果｜紅的測試」表格，直接貼上；要另外處理結果時用 `--json`。預測會存活的突變，跑之前先決定怎麼處理（做法見 CODING_STANDARDS §5），要照跑就先取得同意；驗收條件寫「每一筆都要抓到」時，額外加的也算（#138 自己加的一筆預測存活卻照跑，審查才發現跟驗收條件衝突）。
 
-Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活／逾時、紅的測試、`--json`／`--markdown`）與 Linux 相同，逾時與中斷（Ctrl+C）時都用 `taskkill /T` 結束整棵行程樹；中斷（Ctrl+C、kill）時的還原只保證 Linux／macOS。從 WSL 用 `node.exe` 跑時，`cmd.exe` 不接受 UNC 路徑當目前目錄（會改到 `C:\Windows`），而 `node --test` 的參數是 glob，寫成 UNC 路徑也找不到，所以測試指令要先 `pushd` 到 repo 的 Windows 路徑。在 repo 根目錄、WSL 的 bash 裡，`mutate.mjs` 本身也交給 `node.exe` 執行，替換清單與測試檔即可執行：
+Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活／逾時、紅的測試、`--json`／`--markdown`）與 Linux 相同，逾時與中斷（Ctrl+C）時都用 `taskkill /T` 結束整棵行程樹；終端機 SIGINT 與 IPC cancel 支援還原；Windows 外部強制終止（SIGTERM、taskkill）不會執行收尾。從 WSL 用 `node.exe` 跑時，`cmd.exe` 不接受 UNC 路徑當目前目錄（會改到 `C:\Windows`），而 `node --test` 的參數是 glob，寫成 UNC 路徑也找不到，所以測試指令要先 `pushd` 到 repo 的 Windows 路徑。在 repo 根目錄、WSL 的 bash 裡，`mutate.mjs` 本身也交給 `node.exe` 執行，替換清單與測試檔即可執行：
 
 ```bash
 node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) && node.exe --test scripts/x.test.mjs" --markdown
 ```
+
+## 共用內容維護
+
+修改共用內容時，編輯 `skills/shared/` 的母本，再依下一節重建複本與嵌入區塊；這兩類建置產物由建置更新，手寫檔案的其餘部分照常編輯。
+
+規則說明行也由建置更新，即使位於母本中仍以 `skills/shared/input-schema.json` 的 `properties.scope` 為來源。修改授權範圍規則時，依 ADR 0005 更新規則描述能力並重建。複本的提交決策見 ADR 0001。
 
 ## 改了來源就重建，產物一起提交
 

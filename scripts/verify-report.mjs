@@ -5,9 +5,11 @@
  */
 
 // results：[{ name, pass, detail }]，依檢查的順序；mode：報告的「模式」欄（verify.mjs 傳入參數，沒有參數時是 full）；at：ISO 時間字串
-export function renderReport(results, { mode, at }) {
+export function renderReport(results, { mode, at, incomplete = false }) {
   const passed = results.filter(r => r.pass).length;
-  // 說明裡的 | 會切斷 Markdown 表格的欄位，換成 /
-  const rows = results.map(r => `| ${r.name} | ${r.pass ? '✅' : '❌'} | ${r.detail.replace(/\|/g, '/')} |`);
-  return `# 驗證報告\n\n執行時間：${at}\n模式：${mode}\n結果：${passed}/${results.length} 通過\n\n| 檢查 | 結果 | 說明 |\n|---|---|---|\n${rows.join('\n')}\n`;
+  // 所有儲存格的換行改成空白，| 換成 /，避免錯誤訊息破壞 Markdown 表格。
+  const cell = text => String(text).replace(/\r\n?|\n/g, ' ').replace(/\|/g, '/');
+  const rows = results.map(r => `| ${cell(r.name)} | ${r.pass ? '✅' : '❌'} | ${cell(r.detail)} |`);
+  const status = incomplete ? '狀態：未完成（未執行的檢查不列為通過）\n' : '';
+  return `# 驗證報告\n\n執行時間：${at}\n模式：${mode}\n${status}結果：${passed}/${results.length} 通過\n\n| 檢查 | 結果 | 說明 |\n|---|---|---|\n${rows.join('\n')}\n`;
 }

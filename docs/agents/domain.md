@@ -32,3 +32,13 @@
 輸出內容若和既有 ADR 牴觸，要明確標示出來，不要默默推翻：
 
 > _與 ADR-0007 牴觸，但值得重新討論，因為……_
+
+## 概念來源（Concept sources）
+
+### 授權範圍來源
+
+追查授權範圍守門或規則說明行時，先讀 `skills/shared/input-schema.json` 的 `properties.scope`；實作見 `assets/scope-gate.js` 與 `skills/shared/analysis_workflow.py`，規則說明行的寫入見 `scripts/skill-packages.mjs`。設計理由見 ADR 0004 與 ADR 0005。
+
+### 技能包來源
+
+追查技能包組裝器時，先讀 `scripts/skill-packages.mjs`；修改母本、複本、嵌入區塊或規則說明行前，先讀 `docs/agents/workflow.md` 的「共用內容維護」與「改了來源就重建，產物一起提交」。

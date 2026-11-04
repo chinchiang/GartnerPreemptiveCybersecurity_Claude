@@ -15,8 +15,8 @@
  * 結束碼：0 全部抓到；1 有存活或有逾時；2 參數或清單有誤（讀不到、不是 JSON、檔案不存在、原文不是恰好一處、
  * --timeout 不是 0 或正數）或測試在突變前就失敗或逾時，這時一個檔案都不改。
  * Windows 上主流程（抓到／存活／逾時、紅的測試、--json／--markdown）與 Linux 相同，測試指令由 cmd.exe 執行。
- * 中斷（SIGINT／SIGTERM）時先結束整組測試子行程（跟逾時同一個做法），再還原改壞的檔案。還原只保證 Linux／macOS：
- * Windows 上被 kill（SIGTERM、taskkill）會直接結束，訊號處理器不會執行，改壞的檔案不會還原。
+ * 可收尾取消支援終端機 SIGINT、Unix SIGTERM，以及 IPC { type: 'cancel' }；透過 child-process.mjs 結束測試行程樹後還原。
+ * Windows 外部強制終止（SIGTERM、taskkill）會直接結束工具，無法執行收尾。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -114,14 +114,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     running = null;
     return { code, output: stdout, timedOut };
   };
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, () => {
-      if (running) running.kill();
-      if (current) writeFileSync(current.file, current.original);
-      console.error(`\n收到 ${signal}：已還原 ${current ? current.file : '（沒有改動中的檔案）'}`);
-      process.exit(130);
-    });
-  }
+  const cancel = reason => {
+    if (running) running.kill();
+    if (current) writeFileSync(current.file, current.original);
+    console.error(`\n收到 ${reason}：已還原 ${current ? current.file : '（沒有改動中的檔案）'}`);
+    process.exit(130);
+  };
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => cancel(signal));
+  if (process.channel) process.on('message', message => { if (message?.type === 'cancel') cancel('IPC cancel'); });
 
   // 基準：測試在突變之前就必須通過，否則每一種突變都會被誤判成「抓到」；逾時也一樣，一個檔案都還沒改
   const baseline = await runTests();

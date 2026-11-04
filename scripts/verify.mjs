@@ -12,15 +12,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
-import { renderReport } from './verify-report.mjs';
-import { runBrowserChecks, STAMPED_AT } from './browser-checks.mjs';
+import { runVerification, anchorInViewport, STAMPED_AT } from './verification-run.mjs';
+import { runBrowserChecks } from './browser-checks.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const results = [];
-const ok = (name, pass, detail = '') => { results.push({ name, pass, detail }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
 
 // ---------- 靜態檢查 ----------
-function staticChecks() {
+function staticChecks(ok) {
   const ctx = { window: {} }; vm.createContext(ctx);
   for (const f of ['data/manifest.js', 'data/research.js', 'data/guides.js', 'data/skills.js', 'data/case.js', 'data/process.js', 'data/io.js', 'data/platforms.js', 'data/sources.js', 'data/extra.js']) {
     try { vm.runInContext(readFileSync(join(ROOT, f), 'utf8'), ctx); ok(`載入 ${f}`, true); } catch (e) { ok(`載入 ${f}`, false, e.message); }
@@ -98,7 +96,7 @@ const DESK = { width: 1280 };
 // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、窄螢幕改顯示在頁尾
 // （斷點與理由見 assets/styles.css）
 const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
-// browser-checks.mjs 的 STAMPED_AT（2026-10-17T16:30:00+00:00）換成臺北時間的顯示文字；改 STAMPED_AT 時這裡要一起改
+// verification-run.mjs 的 STAMPED_AT（2026-10-17T16:30:00+00:00）換成臺北時間的顯示文字；改 STAMPED_AT 時這裡要一起改
 const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
 // 「時間在頁尾」：量 topbar 與頁尾的時間是否顯示、頁尾的文字（footerStamp），判定只寫在 inFooter 這一份（#88）
 const footerStamp = async pg => ({ top: await shown(pg, '#last-updated'), footer: await shown(pg, '#last-updated-footer'),
@@ -131,13 +129,13 @@ const SCENARIOS = [
     // 目錄錨點（中文 slug 需 decode）與 tab 鍵盤操作
     const tocLink = await page.$('.doc-toc a:nth-child(3)');
     const tocHref = await tocLink.getAttribute('href');
-    await tocLink.click(); await page.waitForTimeout(150);
+    await tocLink.click();
     const anchorId = decodeURIComponent(tocHref.split('#')[2] || '');
-    const anchorEl = anchorId ? await page.$(`[id="${anchorId.replace(/"/g, '')}"]`) : null;
-    // 開了 reduced motion，點下去就直接跳到錨點，同一個環境裡 scrollY 每次都一樣；但它的值取決於版面（字型、錨點上方內容的高度），
-    // 本機與 CI 的字型不同，值可能不一樣，內容一改也跟著變，所以只在失敗時寫進說明，否則已提交的報告會一直過時
+    const anchorReached = await page.waitForFunction(anchorInViewport, { id: anchorId, documentId: '01-definition' }, { timeout: 5000 })
+      .then(() => true, error => { if (error.name === 'TimeoutError') return false; throw error; });
+    // 成功報告不寫入每次不同的捲動位置；逾時仍列為失敗並繼續後續檢查。
     const scrollY = await page.evaluate(() => window.scrollY);
-    ok('目錄錨點：同章且元素存在', page.url().includes('doc=01-definition') && !!anchorEl && scrollY > 0, scrollY > 0 ? anchorId : `${anchorId} scrollY=${scrollY}`);
+    ok('目錄錨點：同章且元素存在', anchorReached, anchorReached ? anchorId : `${anchorId} 未在 5 秒內捲入可視範圍 scrollY=${scrollY}`);
     await page.focus('.tabs [role="tab"][aria-selected="true"]'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150);
     ok('Tabs 方向鍵切換', page.url().includes('doc=02-relations'), page.url().split('#')[1]);
     // skip link 不應觸發「找不到頁面」
@@ -349,13 +347,6 @@ if (only) {
   if (args.includes('--static') || args.includes('--links')) { console.error('--only 不能和 --static、--links 一起用'); process.exit(2); }
   if (!only.length || unknown.length) { console.error(`--only 找不到情境：${unknown.join('、') || '（沒有指定名稱）'}；可用的情境：${names.join('、')}`); process.exit(2); }
 }
-if (!only) staticChecks();
-if (!args.includes('--static')) await runBrowserChecks(SCENARIOS, { root: ROOT, only, record: ok });
-if (args.includes('--links')) await linkChecks();
-const passed = results.filter(r => r.pass).length;
-const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString() });
-// 只有完整模式（含瀏覽器檢查）寫入 verify-report.md；--static 與 --only 只印結果，不改寫已提交的報告
-if (args.includes('--static')) console.log(`\n${passed}/${results.length} 通過（--static 不寫入 verify-report.md）`);
-else if (only) console.log(`\n${passed}/${results.length} 通過（--only 不寫入 verify-report.md）`);
-else { writeFileSync(join(ROOT, 'verify-report.md'), report); console.log(`\n${passed}/${results.length} 通過 → verify-report.md`); }
-process.exit(passed === results.length ? 0 : 1);
+const { exitCode } = await runVerification({ root: ROOT, args, staticChecks, linkChecks,
+  browserChecks: session => runBrowserChecks(SCENARIOS, { root: ROOT, only, record: session.ok, session }) });
+process.exit(exitCode);

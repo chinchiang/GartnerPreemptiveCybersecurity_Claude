@@ -12,7 +12,7 @@ export function parseTimeout(arg) {
 
 // 結束子行程底下的所有行程：Linux／macOS 送 SIGKILL 給整個行程群組；Windows 沒有行程群組，用 taskkill /T 結束整棵行程樹
 function killTree(pid) {
-  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: 5000 });
   else { try { process.kill(-pid, 'SIGKILL'); } catch {} }
 }
 
@@ -22,11 +22,13 @@ export function runWithTimeout({ command, args = [], shell = false, stderr = fal
   // 拿掉 NODE_TEST_CONTEXT：被 node --test 啟動時會繼承它，內層的 node --test 改用子行程模式，測試失敗也以 0 結束
   const { NODE_TEST_CONTEXT, ...env } = process.env;
   // detached 讓子行程自成行程群組，才能整組結束；Windows 沒有行程群組，detached 反而讓 stdout 讀不到
-  const child = spawn(command, args, { shell, stdio: ['ignore', 'pipe', stderr ? 'pipe' : 'ignore'], detached: process.platform !== 'win32', env });
+  const child = spawn(command, args, { shell, stdio: ['ignore', 'pipe', stderr ? 'pipe' : 'ignore'], detached: process.platform !== 'win32', windowsHide: true, env });
   let out = '';
   let err = '';
   let timedOut = false;
   let closed = false;   // close 之後 pid 可能被別的行程重新使用，kill() 就不再送訊號
+  child.stdout.setEncoding('utf8');
+  if (stderr) child.stderr.setEncoding('utf8');
   child.stdout.on('data', chunk => { out += chunk; });
   if (stderr) child.stderr.on('data', chunk => { err += chunk; });
   const timer = timeoutSeconds > 0 && setTimeout(() => { timedOut = true; killTree(child.pid); }, Math.min(timeoutSeconds * 1000, 2 ** 31 - 1));

@@ -136,27 +136,28 @@ test('測試在突變之前就失敗：結束碼 2，不做任何突變（否則
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('跑測試時被中斷（SIGTERM）：檔案仍然還原，測試子行程也結束', { skip: process.platform === 'win32' && 'Windows 上 SIGTERM 不會觸發訊號處理器，中斷時的還原只保證 Linux／macOS' }, async () => {
+test('跑測試時取消（Windows 用 IPC，Unix 用 SIGTERM）：檔案還原且測試子行程停止', async () => {
   const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
   try {
-    // 讀到突變後的 calc.js 就記下自己的 pid、睡 10 秒，留時間送出中斷
+    // 確認測試子行程已啟動並持續等待，再取消；同時檢查其 PID 已消失。
     writeFileSync(join(dir, 'check.js'),
-      "const fs = require('fs');\nconst src = fs.readFileSync(__dirname + '/calc.js', 'utf8');\n" +
-      "if (src.includes('a - b')) { fs.writeFileSync(__dirname + '/check.pid', String(process.pid)); setTimeout(() => process.exit(1), 10000); }\n");
-    const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: 'ignore' });
-    const pidFile = join(dir, 'check.pid');
-    for (let i = 0; i < 100 && !existsSync(pidFile); i++) await new Promise(r => setTimeout(r, 50));
-    assert.ok(existsSync(pidFile), '突變後的測試沒有開始');
-    const pid = Number(readFileSync(pidFile, 'utf8'));
+      "const src = require('fs').readFileSync(__dirname + '/calc.js', 'utf8');\nif (src.includes('a - b')) { require('fs').writeFileSync(__dirname + '/test-pid.txt', String(process.pid)); setInterval(() => {}, 1000); }\n");
+    const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+    const mutated = () => readFileSync(join(dir, 'calc.js'), 'utf8').includes('a - b');
+    for (let i = 0; i < 100 && !(mutated() && existsSync(join(dir, 'test-pid.txt'))); i++) await new Promise(r => setTimeout(r, 50));
+    assert.ok(mutated(), '突變沒有開始');
     const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
-    child.kill('SIGTERM');
+    if (process.platform === 'win32') child.send({ type: 'cancel' });
+    else child.kill('SIGTERM');
     const { code } = await exited;
-    assert.notEqual(code, 0);
+    assert.equal(code, 130);
     assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
-    // 測試子行程（shell 底下的 node check.js）也要結束，不能留著跑完 10 秒；SIGKILL 送達與回收需要一點時間
-    const alive = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
-    for (let i = 0; i < 40 && alive(); i++) await new Promise(r => setTimeout(r, 50));
-    assert.ok(!alive(), `測試子行程 ${pid} 在中斷後還在執行`);
+    const pid = Number(readFileSync(join(dir, 'test-pid.txt'), 'utf8'));
+    for (let i = 0; i < 100; i++) {
+      try { process.kill(pid, 0); } catch { break; }
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -171,6 +172,8 @@ const HANG = { file: 'calc.js', from: '(a, b) =>', to: '(a, b, hang) =>', note: 
 const CAUGHT = { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' };
 // 實作壞掉時測試會卡住：每次執行都設 30 秒的保險，讓它以失敗結束
 const SAFETY = 30000;
+// Windows 的 shell 與 Node 啟動也計入時限；此組使用較寬預算，真正卡住的測試仍須逾時。
+const HANG_TIMEOUT = process.platform === 'win32' ? '3' : '1';
 
 /** 比照 child-process.test.mjs 的 withHangingTree：建專案、寫入 check.js、執行 body；finally 對 check.pids 記下的每個 pid
     送 SIGKILL（已經結束的忽略），再刪目錄。正常時 mutate.mjs 早已結束它們，這段清理只在實作壞掉時才有作用。 */
@@ -188,7 +191,7 @@ async function withHangingCheck(mutations, check, body) {
 }
 
 test('--timeout：測試超過時間就記成逾時、檔案還原，接著跑下一筆；有逾時就以結束碼 1 結束', () => withHangingCheck([HANG, CAUGHT], HANGING_CHECK, dir => {
-  const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1'], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+  const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', HANG_TIMEOUT], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /逾時\s+calc\.js\s+留下計時器$/m);
   assert.match(r.stdout, /抓到\s+calc\.js\s+加法改減法$/m);
@@ -197,7 +200,7 @@ test('--timeout：測試超過時間就記成逾時、檔案還原，接著跑�
 }));
 
 test('--timeout 的逾時在 --json 是 timedOut: true、caught: false，頂層有逾時的總數；--markdown 的結果欄寫「逾時」、紅的測試空白', () => withHangingCheck([HANG, CAUGHT], HANGING_CHECK, dir => {
-  const runWith = format => spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1', format], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+  const runWith = format => spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', HANG_TIMEOUT, format], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
   const json = runWith('--json');
   assert.equal(json.status, 1, json.stdout + json.stderr);
   const parsed = JSON.parse(json.stdout);
@@ -222,7 +225,7 @@ test('--timeout：測試在突變之前就逾時，以結束碼 2 結束、說�
 test('--timeout 逾時之後，測試子行程已經結束，不會殘留（Linux／macOS 結束行程群組，Windows 用 taskkill 結束行程樹）', () =>
   // 讀到突變後的 calc.js 就記下自己的 pid，再留下計時器不結束
   withHangingCheck([HANG], hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')"), async (dir, pids) => {
-    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1'], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', HANG_TIMEOUT], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
     assert.match(r.stdout, /逾時\s+calc\.js\s+留下計時器$/m, r.stdout + r.stderr);
     const [pid] = pids();
     assert.ok(pid, '突變後的測試沒有記下 pid');
@@ -451,4 +454,14 @@ test('markdownTable：| 跳脫、換行（\\r\\n、\\n、單獨的 \\r）換成�
     '| 多一個參數 | 存活 | — |',
     '| 只有 的換行 也換 | 存活 | — |'
   ].join('\n'));
+});
+
+
+for (const reporter of ['spec', 'tap']) test(`實際 ${reporter} 輸出：失敗名稱與檔名可跨平臺讀取`, () => {
+  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b' }], { nodeTest: true });
+  try {
+    const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', `node --test --test-reporter=${reporter} scripts/calc.test.mjs`, '--json'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout).results[0].failed, [{ name: '1 + 2 = 3', file: 'scripts/calc.test.mjs' }]);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
