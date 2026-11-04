@@ -195,6 +195,14 @@ test('log 本身拋錯：仍寫出未完成報告、關閉伺服器並回傳失�
   await assert.rejects(fetch(base));
 }));
 
+test('log 只在報告寫完後的摘要行拋錯：檢查都通過也回傳失敗', () => project(async root => {
+  const result = await runVerification({ ...options(root),
+    log(message) { if (message.includes('通過 → verify-report.md')) throw new Error('summary boom'); },
+    browserChecks: async ({ ok }) => { ok('瀏覽器檢查', true); } });
+  assert.equal(result.exitCode, 1);
+  assert.match(readReport(root), /瀏覽器檢查.*✅/); // 報告在摘要之前就寫好了
+}));
+
 test('靜態例外：靜態模式保留報告且不建目錄；完整模式仍產生本次未完成報告', () => project(async root => {
   const config = { ...options(root), staticChecks: () => { throw new Error('static failed'); } };
   const staticResult = await runVerification({ ...config, args: ['--static'] });

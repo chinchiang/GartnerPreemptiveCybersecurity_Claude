@@ -171,5 +171,7 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
     say(`\n${passed}/${results.length} 通過 → verify-report.md`);
     if (runDir) say(`本次產物：${runDir}`);
   }
+  // 摘要行在報告寫完後才輸出；log 這時才拋錯，報告已無法標示，至少結束碼要回報失敗。
+  if (logFailed) exitCode = 1;
   return { exitCode, results, incomplete, runDir };
 }
