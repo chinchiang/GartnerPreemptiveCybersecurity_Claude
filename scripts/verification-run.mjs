@@ -164,24 +164,27 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
   // 先寫本次產物，再更新維護用報告；任一寫入失敗也回傳失敗。
   const at = new Date().toISOString();
   let reportFailed = false;
-  const writeReports = () => {
-    const report = renderReport(results, { mode: args.join(' ') || 'full', at, incomplete });
+  const writeReports = ({ pending = false } = {}) => {
+    const report = renderReport(results, { mode: args.join(' ') || 'full', at, incomplete: incomplete || pending });
     for (const file of [runDir && join(runDir, 'verify-report.md'), join(root, 'verify-report.md')].filter(Boolean)) {
       try { writeFileSync(file, report); }
       catch (error) { reportFailed = true; say(`FAIL  寫入報告 ${file} — ${error.message}`); }
     }
   };
   if (!staticOnly && !browserOnly) {
-    writeReports();
+    // 全部通過時接著要更新維護用截圖：報告先標示未完成，截圖更新成功才重寫成最終版，
+    // 之後任一步失敗，留下的報告都不會寫成全部完成。
+    const updatesScreenshots = results.every(r => r.pass);
+    writeReports({ pending: updatesScreenshots });
     // 報告都寫成功、而且全部通過，才更新維護用截圖：報告寫不出來時，截圖不能先換成這次的。
     // 失敗執行保留自己的部分截圖。更新截圖失敗時重寫報告，記下那一筆。
-    if (!reportFailed && results.every(r => r.pass)) {
+    if (!reportFailed && updatesScreenshots) {
       try { cpSync(shots, join(root, 'verify-screenshots'), { recursive: true }); }
       catch (error) {
         fail('更新截圖', error);
         say(`更新截圖失敗，修正後：${results.filter(r => r.pass).length}/${results.length} 通過`);
-        writeReports();
       }
+      writeReports();
     }
   }
   const exitCode = reportFailed || results.some(r => !r.pass) ? 1 : 0;

@@ -1,11 +1,11 @@
 // verification-run.test.mjs — 驗證例外收尾、產物隔離、錨點與網站路徑邊界的回歸測試
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, lstatSync, rmSync, symlinkSync, linkSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, lstatSync, rmSync, symlinkSync, linkSync, existsSync, chmodSync } from 'node:fs';
 import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { runVerification, anchorInViewport } from './verification-run.mjs';
 import vm from 'node:vm';
 
@@ -248,6 +248,33 @@ test('寫入維護用報告失敗：檢查都通過也不更新維護用截圖�
   assert.equal(result.exitCode, 1);
   assert.deepEqual(readdirSync(join(root, 'verify-screenshots')), ['old.png']);
   assert.match(readFileSync(join(result.runDir, 'verify-report.md'), 'utf8'), /瀏覽器檢查.*✅/); // 本次產物仍寫出
+}));
+
+test('更新截圖失敗、重寫維護用報告也失敗：維護用報告仍標示未完成，回傳失敗', () => project(async root => {
+  rmSync(join(root, 'verify-screenshots'), { recursive: true });
+  writeFileSync(join(root, 'verify-screenshots'), '不是目錄，複製截圖會失敗');
+  const report = join(root, 'verify-report.md');
+  try {
+    const result = await runVerification({ ...options(root),
+      log: line => { if (line.startsWith('FAIL  更新截圖')) chmodSync(report, 0o444); }, // 唯讀：重寫報告會失敗
+      browserChecks: async ({ ok, shots }) => {
+        ok('瀏覽器檢查', true);
+        writeFileSync(join(shots, 'current.png'), 'current');
+      } });
+    assert.equal(result.exitCode, 1);
+    assert.match(readReport(root), /狀態：未完成/);
+  } finally { chmodSync(report, 0o666); }
+}));
+
+test('寫入本次產物報告失敗：維護用截圖不更新，維護用報告標示未完成，回傳失敗', () => project(async root => {
+  const result = await runVerification({ ...options(root), browserChecks: async ({ ok, shots }) => {
+    ok('瀏覽器檢查', true);
+    writeFileSync(join(shots, 'current.png'), 'current');
+    mkdirSync(join(dirname(shots), 'verify-report.md')); // 是目錄，寫入本次產物報告會失敗
+  } });
+  assert.equal(result.exitCode, 1);
+  assert.deepEqual(readdirSync(join(root, 'verify-screenshots')), ['old.png']);
+  assert.match(readReport(root), /狀態：未完成/);
 }));
 
 test('靜態例外：靜態模式保留報告且不建目錄；完整模式仍產生本次未完成報告', () => project(async root => {
