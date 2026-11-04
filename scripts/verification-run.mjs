@@ -153,7 +153,7 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
     }));
   }
   // 摘要行先輸出：log 在這裡拋錯時，say() 記的失敗還來得及擋下截圖更新並寫進報告。
-  // 摘要的數字是更新截圖之前的；更新截圖失敗時，接著會印出那一筆 FAIL。
+  // 摘要的數字是更新截圖之前的；更新截圖失敗時，接著印出那一筆 FAIL 與修正後的摘要。
   const summary = `${results.filter(r => r.pass).length}/${results.length} 通過`;
   if (staticOnly) say(`\n${summary}（--static 不寫入 verify-report.md）`);
   else if (browserOnly) say(`\n${summary}（--only 不寫入 verify-report.md）`);
@@ -164,7 +164,10 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
   // 只有全部通過才更新維護用截圖；失敗執行保留自己的部分截圖。
   if (!staticOnly && !browserOnly && results.every(r => r.pass)) {
     try { cpSync(shots, join(root, 'verify-screenshots'), { recursive: true }); }
-    catch (error) { fail('更新截圖', error); }
+    catch (error) {
+      fail('更新截圖', error);
+      say(`更新截圖失敗，修正後：${results.filter(r => r.pass).length}/${results.length} 通過`);
+    }
   }
   const passed = results.filter(r => r.pass).length;
   const report = renderReport(results, { mode: args.join(' ') || 'full', at: new Date().toISOString(), incomplete });

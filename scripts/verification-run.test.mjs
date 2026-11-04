@@ -221,6 +221,22 @@ test('log 只在摘要行拋錯：檢查都通過，報告仍標示未完成、�
   }
 }));
 
+test('更新截圖失敗：終端機最後的摘要不寫全部通過，與報告、結束碼一致', () => project(async root => {
+  rmSync(join(root, 'verify-screenshots'), { recursive: true });
+  writeFileSync(join(root, 'verify-screenshots'), '不是目錄，複製截圖會失敗');
+  const lines = [];
+  const result = await runVerification({ ...options(root), log: line => lines.push(line),
+    browserChecks: async ({ ok, shots }) => {
+      ok('瀏覽器檢查', true);
+      writeFileSync(join(shots, 'current.png'), 'current');
+    } });
+  assert.equal(result.exitCode, 1);
+  assert.match(readReport(root), /結果：2\/3 通過/);
+  const summaries = lines.filter(line => /\d+\/\d+ 通過/.test(line));
+  assert.match(summaries.at(-1), /2\/3 通過/);
+  assert.ok(lines.findIndex(line => line.startsWith('FAIL  更新截圖')) < lines.lastIndexOf(summaries.at(-1)));
+}));
+
 test('靜態例外：靜態模式保留報告且不建目錄；完整模式仍產生本次未完成報告', () => project(async root => {
   const config = { ...options(root), staticChecks: () => { throw new Error('static failed'); } };
   const staticResult = await runVerification({ ...config, args: ['--static'] });
