@@ -39,10 +39,21 @@ async function project(check) {
       const cleanupFailed = error => new Error(`清理暫存目錄 ${root} 失敗：${error === first ? first.message : `${first.message}；重設 ACL 後：${error.message}`}`, { cause: failure });
       if (process.platform !== 'win32') throw cleanupFailed(first);
       try {
-        icacls(root, '/reset', '/T', '/C', '/Q');
+        resetAcl(root);
         rmSync(root, { recursive: true, force: true });
       } catch (second) { throw cleanupFailed(second); }
     }
+  }
+}
+// 逐層重設 ACL 再往下走，不用 /T：icacls /reset /T 會穿過 junction，重設根目錄外的檔案。
+// 連結（junction、symlink）只刪掉連結本身，不重設也不進入。
+function resetAcl(dir) {
+  icacls(dir, '/reset', '/C', '/Q');
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isSymbolicLink()) rmSync(path, { force: true });
+    else if (entry.isDirectory()) resetAcl(path);
+    else icacls(path, '/reset', '/C', '/Q');
   }
 }
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
@@ -396,6 +407,28 @@ function denyRead(path) {
   icacls(path, '/deny', `*${sid}:(R)`);
   return () => { try { icacls(path, '/remove:d', `*${sid}`); } catch {} };
 }
+
+test('暫存目錄清理（Windows）：拒絕權限沒還原時重設 ACL 後刪除，不穿過 junction 動到根目錄外的檔案', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, async () => {
+  const outside = mkdtempSync(join(tmpdir(), 'verification-run-outside-'));
+  const target = join(outside, 'outside.txt');
+  writeFileSync(target, 'outside');
+  const acl = () => execFileSync(join(system32(), 'icacls.exe'), [target], { encoding: 'utf8' });
+  try {
+    icacls(target, '/grant', '*S-1-1-0:(R)'); // 明確的 ACE：被 /reset 穿過就會消失
+    const before = acl();
+    let root;
+    await project(async r => {
+      root = r;
+      symlinkSync(outside, join(root, 'escape'), 'junction');
+      denyRead(root); // 刻意不還原：第一次刪除失敗，走重設 ACL 的備援
+    });
+    assert.equal(existsSync(root), false);
+    assert.equal(acl(), before);
+    assert.equal(readFileSync(target, 'utf8'), 'outside');
+  } finally {
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
 
 test('網站無權限檔案（Windows）：拒絕讀取的檔案仍視為伺服器錯誤，中斷驗證並保留原因', { skip: process.platform !== 'win32' && '用 icacls 設定 Windows 拒絕權限' }, () => project(async root => {
   writeFileSync(join(root, 'locked.txt'), 'LOCKED_CONTENT');
