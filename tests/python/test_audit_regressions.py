@@ -51,6 +51,42 @@ class AuditRegressionTest(unittest.TestCase):
                 self.assertEqual((folder / 'fake-output.raw.txt').read_text(encoding='utf-8'), reply)
 
 
+class SentDataIsReserializedTest(unittest.TestCase):
+    """送往模型的是解析後重新序列化的資料，不是原文：原文裡解析時被蓋掉的內容（重複的 JSON 鍵、重複的 CSV 欄位標頭）
+    不能夾帶出去，範圍外的資產也就不會經由原文送出。JS 的 scopedBundle 一向如此；Python 曾在篩選後資料不變時改送原文。"""
+    MARKER = 'ZZ-OUT-OF-SCOPE-MARKER'
+
+    def prompt_after(self, name, edit):
+        schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            for f in (ROOT / 'examples/synthetic-org').iterdir():
+                (folder / f.name).write_bytes(f.read_bytes())
+            path = folder / name
+            path.write_text(edit(path.read_text(encoding='utf-8')), encoding='utf-8')
+            return aw.build_report_prompt(aw.load_inputs(folder, frozenset(), schema))
+
+    def test_duplicate_json_key_does_not_carry_the_overwritten_value(self):
+        # 第一個 edges 指向範圍外資產；解析時被後面的 edges 蓋掉，篩選後的資料與解析結果相同
+        dup = '{\n  "edges": [{ "from": "internet", "to": "%s", "via": "x", "trust": "exposed" }],' % self.MARKER
+        prompt = self.prompt_after('topology.json', lambda text: text.replace('{', dup, 1))
+        self.assertIn('"crown_jewels"', prompt)
+        self.assertNotIn(self.MARKER, prompt)
+
+    def test_duplicate_csv_header_does_not_carry_the_overwritten_column(self):
+        # 第一個 notes 欄只在原文裡；解析時同名的最後一欄勝出
+        def edit(text):
+            header, *rows = text.split('\n')
+            return '\n'.join([header + ',notes'] + [row + ',' + row.split(',')[-1] if row else row for row in rows])
+        def first_notes_marker(text):
+            lines = edit(text).split('\n')
+            lines[1] = lines[1].replace(',員工遠端存取入口,', ',%s,' % self.MARKER, 1)
+            return '\n'.join(lines)
+        prompt = self.prompt_after('assets.csv', first_notes_marker)
+        self.assertIn('vpn-gw-01', prompt)
+        self.assertNotIn(self.MARKER, prompt)
+
+
 class ExcludedAssetsTest(unittest.TestCase):
     """稽核 1（#146）：excluded_assets 排除優先；重疊時列為異常，格式不符時列為必要問題（排除未生效）。"""
 

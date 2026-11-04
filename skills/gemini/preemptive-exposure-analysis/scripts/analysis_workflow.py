@@ -574,8 +574,6 @@ def scoped_files(inputs: Inputs) -> list:
             f["raw"] = buf.getvalue()
         else:
             f["raw"] = json.dumps(data, ensure_ascii=False)
-        if data == source["data"]:
-            f["raw"] = source["raw"]
         f["records"] = count_records(data)
         result.append(f)
     return result
