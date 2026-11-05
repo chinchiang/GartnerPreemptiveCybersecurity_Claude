@@ -1,4 +1,4 @@
-// verification-run.test.mjs — 驗證例外收尾、產物隔離、錨點與網站路徑邊界的回歸測試
+// verification-run.test.mjs — 驗證例外收尾、產物隔離與網站路徑邊界的回歸測試（網站伺服器在 website-server.mjs，經由一次驗證的生命週期測）
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, readdirSync, lstatSync, rmSync, symlinkSync, linkSync, existsSync, chmodSync } from 'node:fs';
@@ -6,24 +6,7 @@ import { get } from 'node:http';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
-import { runVerification, anchorInViewport } from './verification-run.mjs';
-import vm from 'node:vm';
-
-test('目錄錨點：捲動須到達可視範圍，不能只因 scrollY 大於零就通過', () => {
-  const evaluate = ({ y = 0, top = 200, bottom = 240, height = 40, exists = true, hash = '#/methodology?doc=01-definition#target' } = {}) =>
-    vm.runInNewContext(`(${anchorInViewport.toString()})({ id: 'target', documentId: '01-definition' })`, {
-      location: { hash }, window: { scrollY: y, innerHeight: 900 },
-      document: { getElementById: id => id === 'target' && exists ? { getBoundingClientRect: () => ({ top, bottom, height }) } : null,
-        querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 80 }) }) },
-    });
-  assert.equal(evaluate({ y: 1364 }), true);
-  assert.equal(evaluate({ y: 0 }), false);
-  assert.equal(evaluate({ y: 8, top: 1555, bottom: 1595 }), false);
-  assert.equal(evaluate({ y: 1364, top: 20, bottom: 60 }), false);
-  assert.equal(evaluate({ y: 1364, exists: false }), false);
-  assert.equal(evaluate({ y: 1364, height: 0 }), false);
-  assert.equal(evaluate({ y: 1364, hash: '#/methodology?doc=02-relations#target' }), false);
-});
+import { runVerification } from './verification-run.mjs';
 
 async function project(check) {
   const root = mkdtempSync(join(tmpdir(), 'verification-run-'));
@@ -180,6 +163,23 @@ test('清理逾時也完成報告與伺服器關閉', () => project(async root =
   assert.match(readReport(root), /狀態：未完成/);
   assert.match(readReport(root), /清理：瀏覽器.*資源關閉逾時/);
   await assert.rejects(fetch(base));
+}));
+
+test('Playwright 兩處都載入不到：記「執行中斷：啟動瀏覽器」❌、報告標示未完成，不跑任何瀏覽器情境（#180）', () => project(async root => {
+  const tried = [];
+  let browserChecksCalled = false;
+  const result = await runVerification({ ...options(root), browserType: undefined,
+    importModule: async specifier => { tried.push(specifier); throw new Error(`找不到 ${specifier}`); },
+    browserChecks: async () => { browserChecksCalled = true; } });
+  assert.deepEqual(tried, ['playwright', '/opt/node22/lib/node_modules/playwright/index.mjs']);
+  assert.equal(browserChecksCalled, false);
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.incomplete, true);
+  assert.deepEqual(result.results.map(r => [r.name, r.pass, r.detail]), [
+    ['靜態項目', true, ''],
+    ['執行中斷：啟動瀏覽器', false, 'playwright：找不到 playwright；/opt/node22 的備援：找不到 /opt/node22/lib/node_modules/playwright/index.mjs'],
+  ]);
+  assert.match(readReport(root), /狀態：未完成/);
 }));
 
 test('拋出的錯誤讀不出訊息（message 取值拋錯、沒有 toString）：仍寫出未完成報告並回傳失敗', () => project(async root => {

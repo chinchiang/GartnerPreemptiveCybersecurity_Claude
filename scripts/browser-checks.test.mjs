@@ -1,15 +1,20 @@
-// browser-checks.test.mjs — 瀏覽器檢查骨架的單元測試，launch 換成假瀏覽器
-// 瀏覽器檢查骨架（browser-checks.mjs）的單元測試（#100）：unit job 沒有 playwright，launch 換成記憶體裡的假瀏覽器，
+// browser-checks.test.mjs — 瀏覽器檢查骨架的單元測試，session 的瀏覽器換成假瀏覽器
+// 瀏覽器檢查骨架（browser-checks.mjs）的單元測試（#100）：unit job 沒有 playwright，session 的瀏覽器換成記憶體裡的假瀏覽器，
 // 只做骨架會用到的那一小部分（newContext、on、newPage、goto、waitForSelector、screenshot、url、close），並記下呼叫順序。
-// 伺服器照樣用 Node 內建的 http 真的啟動。情境本身怎麼檢查網站，由完整驗證（node scripts/verify.mjs）負責。
+// 伺服器與瀏覽器的啟動、關閉屬於一次驗證的生命週期，在 verification-run.test.mjs；情境本身怎麼檢查網站，由完整驗證（node scripts/verify.mjs）負責。
 // 執行：node --test scripts/browser-checks.test.mjs
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
+import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runBrowserChecks } from './browser-checks.mjs';
+import vm from 'node:vm';
+import { runBrowserChecks, anchorInViewport } from './browser-checks.mjs';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
+// session 的 base 與截圖目錄：骨架不連線（假瀏覽器），截圖目錄由骨架建立
+const BASE = 'http://127.0.0.1:1/';
+const SHOTS = join(mkdtempSync(join(tmpdir(), 'browser-checks-')), 'shots');
+after(() => rmSync(join(SHOTS, '..'), { recursive: true, force: true }));
 
 // 假瀏覽器：log 依序記下 newContext／goto／waitForSelector／screenshot／close；contexts 留著每個 context，測試可以對它觸發事件
 function fakeBrowser() {
@@ -44,9 +49,15 @@ function fakeBrowser() {
 // 跑骨架，回傳 record 收到的每一列 [name, pass, detail]
 async function run(scenarios, { only, fake = fakeBrowser() } = {}) {
   const rows = [];
-  await runBrowserChecks(scenarios, { root: ROOT, only, launch: fake.launch, record: (name, pass, detail = '') => rows.push([name, pass, detail]) });
+  await runBrowserChecks(scenarios, { only, record: (name, pass, detail = '') => rows.push([name, pass, detail]),
+    session: { browser: await fake.launch(), base: BASE, shots: SHOTS } });
   return rows;
 }
+
+test('沒有 session 時直接丟出錯誤：伺服器、瀏覽器與產物目錄只由驗證生命週期（runVerification）持有', async () => {
+  await assert.rejects(runBrowserChecks([{ name: 'A', run: async () => {} }], { record: () => {} }),
+    { message: 'runBrowserChecks 需要 session（{ browser, base, shots }），由 verification-run.mjs 的 runVerification 提供' });
+});
 
 test('情境依陣列順序執行，情境裡的 ok 依序轉給 record，最後一列是「無 JS 執行錯誤」', async () => {
   const rows = await run([
@@ -66,42 +77,26 @@ test('only 只跑指定名稱的情境，其他情境的 run 一次都不呼叫'
   assert.deepEqual(rows, [['B1', true, ''], ['無 JS 執行錯誤', true, '']]);
 });
 
-test('外部生命週期提供 session：情境仍清理 context，但不關閉外部瀏覽器', async () => {
-  const fake = fakeBrowser();
-  const rows = [];
-  await runBrowserChecks([{ name: 'A', run: async ({ open, ok }) => {
-    await open('#/', { width: 1280 }); ok('外部情境', true);
-  } }], { root: ROOT, record: (name, pass) => rows.push([name, pass]),
-    session: { browser: await fake.launch(), base: 'http://127.0.0.1:1/', shots: join(ROOT, 'scratch', 'session-shots') } });
-  assert.deepEqual(rows, [['外部情境', true], ['無 JS 執行錯誤', true]]);
-  assert.deepEqual(fake.contexts.map(context => context.closed), [true]);
-  assert.equal(fake.log.some(([operation]) => operation === 'close-browser'), false);
-});
-
-test('每次 open 都開一個新的 context：baseURL 是本機伺服器，寬高對應 viewport（高預設 900），一律 reducedMotion: reduce（截圖才固定），clipboard 對應剪貼簿權限，downloads 對應 acceptDownloads', async () => {
+test('每次 open 都開一個新的 context：baseURL 是 session 的 base，寬高對應 viewport（高預設 900），一律 reducedMotion: reduce（截圖才固定），clipboard 對應剪貼簿權限，downloads 對應 acceptDownloads', async () => {
   const fake = fakeBrowser();
   await run([{ name: 'A', run: async ({ open }) => {
     await open('#/', { width: 390, height: 844 });
     await open('#/skills', { width: 1280, clipboard: true, downloads: true });
   } }], { fake });
-  const base = fake.log.find(([op]) => op === 'goto')[2].replace('#/', '');
-  assert.match(base, /^http:\/\/127\.0\.0\.1:\d+\/$/);
   assert.deepEqual(fake.contexts.map(c => c.options), [
-    { baseURL: base, viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
-    { baseURL: base, viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true },
+    { baseURL: 'http://127.0.0.1:1/', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
+    { baseURL: 'http://127.0.0.1:1/', viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce', permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true },
   ]);
 });
 
-test('open 先 goto 骨架啟動的本機伺服器加上路徑，等 h1 出現後才把頁面交給情境', async () => {
+test('open 先 goto session 的 base 加上路徑，等 h1 出現後才把頁面交給情境', async () => {
   const fake = fakeBrowser();
   let seenWhenOpened;
   await run([{ name: 'A', run: async ({ open }) => { await open('#/io', { width: 1280 }); seenWhenOpened = fake.log.filter(([op]) => op === 'goto' || op === 'waitForSelector'); } }], { fake });
-  assert.equal(seenWhenOpened.length, 2);
-  assert.match(seenWhenOpened[0][2], /^http:\/\/127\.0\.0\.1:\d+\/#\/io$/);
-  assert.deepEqual(seenWhenOpened.map(([op, , arg]) => op === 'goto' ? op : [op, arg]), ['goto', ['waitForSelector', 'h1']]);
+  assert.deepEqual(seenWhenOpened, [['goto', 0, 'http://127.0.0.1:1/#/io'], ['waitForSelector', 0, 'h1']]);
 });
 
-test('情境正常結束後關掉它開過的所有 context，下一個情境開始前就已關好；全部跑完後關掉瀏覽器', async () => {
+test('情境正常結束後關掉它開過的所有 context，下一個情境開始前就已關好；瀏覽器屬於 session，骨架不關', async () => {
   const fake = fakeBrowser();
   let closedWhenBStarts;
   await run([
@@ -110,7 +105,7 @@ test('情境正常結束後關掉它開過的所有 context，下一個情境開
   ], { fake });
   assert.deepEqual(closedWhenBStarts, [true, true]);
   assert.deepEqual(fake.contexts.map(c => c.closed), [true, true, true]);
-  assert.deepEqual(fake.log.at(-1), ['close-browser']);
+  assert.equal(fake.log.some(([op]) => op === 'close-browser'), false);
 });
 
 test('情境丟出例外：保留已記的列，接著記「情境「A」中斷」（說明是訊息第一行），關掉它開過的 context，繼續跑下一個情境', async () => {
@@ -143,7 +138,7 @@ test('context 層收到的未捕捉例外與 console error 彙總成最後一列
   assert.deepEqual(rows4.at(-1), ['無 JS 執行錯誤', false, '1280px #/x：e1 | 1280px #/x：e2 | 1280px #/x：e3（共 4 則）']);
 });
 
-test('shot 把截圖寫到 <root>/verify-screenshots/<名稱>.png，fullPage 原樣傳下去', async () => {
+test('shot 把截圖寫到 session 的截圖目錄 <shots>/<名稱>.png（目錄由骨架建立），fullPage 原樣傳下去', async () => {
   const fake = fakeBrowser();
   await run([{ name: 'A', run: async ({ open, shot }) => {
     const page = await open('#/', { width: 1280 });
@@ -151,31 +146,24 @@ test('shot 把截圖寫到 <root>/verify-screenshots/<名稱>.png，fullPage 原
     await shot(page, 'case-interactive', { fullPage: true });
   } }], { fake });
   assert.deepEqual(fake.log.filter(([op]) => op === 'screenshot').map(([, , o]) => o), [
-    { path: join(ROOT, 'verify-screenshots', 'home.png') },
-    { path: join(ROOT, 'verify-screenshots', 'case-interactive.png'), fullPage: true },
+    { path: join(SHOTS, 'home.png') },
+    { path: join(SHOTS, 'case-interactive.png'), fullPage: true },
   ]);
+  assert.ok(statSync(SHOTS).isDirectory());
 });
 
-test('本機伺服器：/ 是 repo 的 index.html，?stamped 以固定時間填好最後更新時間，找不到的檔案回 404，content-type 依副檔名', async () => {
-  let got;
-  await run([{ name: 'A', run: async ({ open }) => {
-    const base = (await open('#/', { width: 1280 })).url().replace('#/', '');
-    const plain = await fetch(base), stamped = await fetch(`${base}?stamped`), missing = await fetch(`${base}no-such-file.txt`), css = await fetch(`${base}assets/styles.css`);
-    got = { plain: await plain.text(), stamped: await stamped.text(), missing: missing.status, css: css.headers.get('content-type') };
-  } }]);
-  assert.match(got.plain, /<meta name="last-updated" content="">/);
-  assert.match(got.stamped, /<meta name="last-updated" content="2026-10-17T16:30:00\+00:00">/);
-  assert.equal(got.missing, 404);
-  assert.equal(got.css, 'text/css');
-});
-
-test('骨架本身的錯誤直接中止：launch 丟出例外時 runBrowserChecks 也丟出，本機伺服器照樣關掉', async () => {
-  // 關掉的伺服器要過一會兒才從 getActiveResourcesInfo 消失（Windows 比 Linux 慢），所以輪詢到沒有 TCP 伺服器為止，最多等 1 秒；
-  // 前一支測試的伺服器也先等它消失，計數才不會互相抵銷
-  const servers = () => process.getActiveResourcesInfo().filter(r => r === 'TCPServerWrap').length;
-  const noServerWithin = async (ms) => { for (const end = Date.now() + ms; servers() > 0 && Date.now() < end;) await new Promise(r => setTimeout(r, 10)); return servers() === 0; };
-  assert.ok(await noServerWithin(1000), '測試開始前還有沒關的伺服器');
-  const launch = async () => { throw new Error('瀏覽器啟動失敗'); };
-  await assert.rejects(runBrowserChecks([{ name: 'A', run: async () => {} }], { root: ROOT, launch, record: () => {} }), /瀏覽器啟動失敗/);
-  assert.ok(await noServerWithin(1000), '本機伺服器沒有關掉');
+test('目錄錨點：捲動須到達可視範圍，不能只因 scrollY 大於零就通過', () => {
+  const evaluate = ({ y = 0, top = 200, bottom = 240, height = 40, exists = true, hash = '#/methodology?doc=01-definition#target' } = {}) =>
+    vm.runInNewContext(`(${anchorInViewport.toString()})({ id: 'target', documentId: '01-definition' })`, {
+      location: { hash }, window: { scrollY: y, innerHeight: 900 },
+      document: { getElementById: id => id === 'target' && exists ? { getBoundingClientRect: () => ({ top, bottom, height }) } : null,
+        querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 80 }) }) },
+    });
+  assert.equal(evaluate({ y: 1364 }), true);
+  assert.equal(evaluate({ y: 0 }), false);
+  assert.equal(evaluate({ y: 8, top: 1555, bottom: 1595 }), false);
+  assert.equal(evaluate({ y: 1364, top: 20, bottom: 60 }), false);
+  assert.equal(evaluate({ y: 1364, exists: false }), false);
+  assert.equal(evaluate({ y: 1364, height: 0 }), false);
+  assert.equal(evaluate({ y: 1364, hash: '#/methodology?doc=02-relations#target' }), false);
 });
