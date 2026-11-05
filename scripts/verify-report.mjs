@@ -13,3 +13,10 @@ export function renderReport(results, { mode, at, incomplete = false }) {
   const status = incomplete ? '狀態：未完成（未執行的檢查不列為通過）\n' : '';
   return `# 驗證報告\n\n執行時間：${at}\n模式：${mode}\n${status}結果：${passed}/${results.length} 通過\n\n| 檢查 | 結果 | 說明 |\n|---|---|---|\n${rows.join('\n')}\n`;
 }
+
+/** 兩份報告除了「執行時間：」那一行（renderReport 每次都寫不同的時間），其餘是否逐行相同。
+    CI 比對已提交的報告、full-check.mjs 決定 --browser 之後要不要還原報告，都用這一份判定（#139）。 */
+export function sameReportIgnoringRunTime(a, b) {
+  const withoutRunTime = (text) => text.split('\n').filter(line => !line.startsWith('執行時間：')).join('\n');
+  return withoutRunTime(a) === withoutRunTime(b);
+}

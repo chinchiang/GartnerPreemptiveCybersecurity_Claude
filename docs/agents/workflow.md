@@ -13,10 +13,20 @@
 | 建置 | `node scripts/build-data.mjs` |
 | 選用後端代理 | `node scripts/build-worker.mjs && node --check backend/dist/worker.js` |
 | 靜態驗證 | `node scripts/verify.mjs --static`（只印結果，不寫檔） |
+| 全套檢查 | `node scripts/full-check.mjs --out scratch/<n>/full-1 [--browser] [--node22 <路徑>] [--timeout <秒>]`（在 WSL 的 bash 執行） |
+
+**全套檢查**（PR 的 Evidence 用）：`scripts/full-check.mjs` 依序跑本機 `node`、Node 22、`node.exe`（Windows）三個環境的單元測試、Python 測試、靜態驗證與重建，`--browser` 另外用 `node.exe` 跑完整的瀏覽器檢查（跑完把報告與截圖還原）。摘要寫到 `<前綴>.txt`、每一步的完整輸出寫到 `<前綴>-<步驟>.log`；前綴用掉了會自動換下一個號碼。結束碼 0 全過、1 有失敗（含讀不到摘要、逾時、重建改動了工作樹）、2 參數有誤、3 只有略過。PR 說明的 Evidence 引用摘要檔的內容，並註明那是哪個 commit 跑的（摘要第一行有 HEAD 的 SHA）。只支援 Linux／macOS，在 Windows 那一側執行會以 2 結束。
 
 測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
 
-本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，放在 `scratch/` 底下執行。
+本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，解壓到 `scratch/node22/`（例如 `scratch/node22/node-v22.23.4-linux-x64/bin/node`）。全套檢查沒給 `--node22` 時會自動找那裡，有多個版本取最新的：
+
+```bash
+mkdir -p scratch/node22 && cd scratch/node22
+curl -fsSLO https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt
+f=$(grep -o 'node-v22[^ ]*-linux-x64.tar.xz' SHASUMS256.txt | head -1)
+curl -fsSLO "https://nodejs.org/dist/latest-v22.x/$f" && grep " $f\$" SHASUMS256.txt | sha256sum -c - && tar -xJf "$f"
+```
 
 改到行程、路徑、shell 相關的行為時，Windows 也要跑：CI 的 unit job 另以 `windows-latest` 跑 Node 24。在 WSL 本機可以直接用 Windows 版的 `node.exe`（WSL 的 PATH 上就有）執行 `node.exe --test scripts/*.test.mjs`；repo 是以 `\\wsl.localhost\…` 的 UNC 路徑開啟的，測試的暫存目錄在 Windows 的 `%TEMP%`。
 

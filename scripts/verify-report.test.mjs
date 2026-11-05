@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { renderReport } from './verify-report.mjs';
+import { renderReport, sameReportIgnoringRunTime } from './verify-report.mjs';
 
 const REPORT = fileURLToPath(new URL('../verify-report.md', import.meta.url));
 const VERIFY = fileURLToPath(new URL('./verify.mjs', import.meta.url));
@@ -43,6 +43,19 @@ test('renderReport 渲染整份報告：標題、執行時間、模式、通過�
     '| 無 JS 執行錯誤 | ✅ |  |',
     '',
   ].join('\n'));
+});
+
+test('sameReportIgnoringRunTime：只差「執行時間：」那一行算相同；其他任何一行不同（結果、說明、多一行）都算不同（#139）', () => {
+  const report = (at, line = '| 導覽 | ✅ | 8 個頁面 |', total = '結果：1/1 通過') =>
+    `# 驗證報告\n\n執行時間：${at}\n模式：full\n${total}\n\n| 檢查 | 結果 | 說明 |\n|---|---|---|\n${line}\n`;
+  const a = report('2026-11-05T01:00:00.000Z');
+  assert.equal(sameReportIgnoringRunTime(a, report('2026-11-06T09:30:00.000Z')), true);
+  assert.equal(sameReportIgnoringRunTime(a, report('2026-11-05T01:00:00.000Z', '| 導覽 | ❌ | 8 個頁面 |')), false);
+  assert.equal(sameReportIgnoringRunTime(a, report('2026-11-05T01:00:00.000Z', '| 導覽 | ✅ | 7 個頁面 |')), false);
+  assert.equal(sameReportIgnoringRunTime(a, report('2026-11-05T01:00:00.000Z', '| 導覽 | ✅ | 8 個頁面 |', '結果：0/1 通過')), false);
+  assert.equal(sameReportIgnoringRunTime(a, a + '| 多一行 | ✅ | |\n'), false);
+  // 執行時間那一行只在行首才算：說明欄裡提到「執行時間：」不能被拿掉
+  assert.equal(sameReportIgnoringRunTime(report('T', '| x | ✅ | 執行時間：1 秒 |'), report('T', '| x | ✅ | 執行時間：2 秒 |')), false);
 });
 
 // --only 的參數錯誤在啟動瀏覽器之前就以結束碼 2 結束，unit job 不需要 playwright 也能測（#100）
