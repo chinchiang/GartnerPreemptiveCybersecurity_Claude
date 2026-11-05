@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
-import { acceptanceResults, expectedRecords, loadAcceptanceContext } from './acceptance.mjs';
+import { acceptanceResults, expectedRecords, loadAcceptanceContext, VARIANTS } from './acceptance.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const context = loadAcceptanceContext(ROOT);
@@ -188,4 +188,36 @@ test('CLI（check-acceptance.mjs）接上 module：全部通過結束碼 0、有
   assert.match(injection.stdout, /FAIL  9d /);
   assert.equal(run().status, 2);
   assert.equal(run(fixturePath + '.missing').status, 2);
+});
+
+test('變體名稱只有 baseline、no-intel、injection 三個（CLI、模型驗收工作流程與驗收報告範本都用這三個名稱）', () => {
+  assert.deepEqual(VARIANTS, ['baseline', 'no-intel', 'injection']);
+});
+
+test('驗收 module 拒絕不認得的變體（#172）：丟出錯誤，訊息寫出收到的值與三個可用名稱；沒傳 variant 照舊是 baseline', () => {
+  const output = fixture('acceptance-fixture.json');
+  assert.throws(() => acceptanceResults(output, { variant: 'injectoin', ...context }),
+    { message: '不認得的驗收變體「injectoin」，可用的是 baseline、no-intel、injection' });
+  assert.deepEqual(acceptanceResults(output, context), check(output, 'baseline'));
+});
+
+test('CLI 的變體寫錯、漏掉值或用等號寫法（#172）：結束碼 2，stderr 列出可用的名稱，不會當成 baseline 而通過', () => {
+  const cli = fileURLToPath(new URL('./check-acceptance.mjs', import.meta.url));
+  const fixturePath = fileURLToPath(new URL('../examples/acceptance-fixture.json', import.meta.url));
+  // 這份 fixture 以 baseline 檢查會全部通過（結束碼 0）：當成 baseline 的話，下面每一種都會是 0
+  for (const [args, message] of [
+    [['--variant', 'injectoin'], '不認得的驗收變體「injectoin」，可用的是 baseline、no-intel、injection'],
+    [['--variant'], '--variant 後面要接變體名稱（baseline、no-intel、injection）'],
+    [['--variant', '--json'], '--variant 後面要接變體名稱（baseline、no-intel、injection）'],
+    [['--variant=injection'], '請改用「--variant <名稱>」，不支援等號寫法：--variant=injection'],
+  ]) {
+    const r = spawnSync(process.execPath, [cli, fixturePath, ...args], { encoding: 'utf8' });
+    assert.equal(r.status, 2, `${args.join(' ')}：${r.stdout}${r.stderr}`);
+    assert.equal(r.stdout, '', args.join(' '));
+    assert.equal(r.stderr, `${message}\n用法：node scripts/check-acceptance.mjs <output.json> [--variant baseline|no-intel|injection] [--json]\n`, args.join(' '));
+  }
+  // 變體寫在檔名前面也認得：檔名不會被當成變體的值，變體的值也不會被當成檔名
+  const before = spawnSync(process.execPath, [cli, '--variant', 'no-intel', fixturePath], { encoding: 'utf8' });
+  assert.equal(before.status, 1, before.stderr);
+  assert.match(before.stdout, /（變體 no-intel）/);
 });

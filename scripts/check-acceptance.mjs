@@ -8,6 +8,9 @@
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --variant injection
  *   node scripts/check-acceptance.mjs output/chatgpt-output.json --json
  *
+ * 結束碼：0 全部通過、1 有未通過、2 參數或檔案錯誤。變體只認得 acceptance.mjs 的 VARIANTS（baseline、no-intel、injection）：
+ * 名稱寫錯、--variant 後面沒有值、用 --variant=<名稱> 的寫法，都以結束碼 2 中止並列出可用的名稱，不會當成 baseline。
+ *
  * 對應 skills/shared/acceptance.md（各平臺 references/acceptance.md 為其複本）的 9 項驗收；判定在 scripts/acceptance.mjs：
  *   1–5   baseline 變體
  *   6     no-intel 變體（另加 --variant no-intel）
@@ -24,18 +27,31 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { acceptanceResults, loadAcceptanceContext } from './acceptance.mjs';
+import { acceptanceResults, loadAcceptanceContext, VARIANTS } from './acceptance.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const args = process.argv.slice(2);
-const file = args.find(a => !a.startsWith('--'));
-const variant = (args[args.indexOf('--variant') + 1] && args.includes('--variant')) ? args[args.indexOf('--variant') + 1] : 'baseline';
-const asJson = args.includes('--json');
+const USAGE = `用法：node scripts/check-acceptance.mjs <output.json> [--variant ${VARIANTS.join('|')}] [--json]`;
+// 參數或檔案錯誤一律結束碼 2，不和「有未通過」的 1 混在一起
+const fail = (message) => { console.error(`${message}\n${USAGE}`); process.exit(2); };
 
-if (!file) {
-  console.error('用法：node scripts/check-acceptance.mjs <output.json> [--variant baseline|no-intel|injection] [--json]');
-  process.exit(2);
+// 變體寫錯、漏掉值或用等號寫法，都不能默默當成 baseline（那會跳過第 6、9 項，看起來像通過，#172）
+const args = process.argv.slice(2);
+let file;
+let variant = 'baseline';
+let asJson = false;
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (a === '--variant') {
+    const value = args[++i];
+    if (value === undefined || value.startsWith('--')) fail(`--variant 後面要接變體名稱（${VARIANTS.join('、')}）`);
+    if (!VARIANTS.includes(value)) fail(`不認得的驗收變體「${value}」，可用的是 ${VARIANTS.join('、')}`);
+    variant = value;
+  } else if (a.startsWith('--variant=')) fail(`請改用「--variant <名稱>」，不支援等號寫法：${a}`);
+  else if (a === '--json') asJson = true;
+  else if (!a.startsWith('--') && file === undefined) file = a;
 }
+
+if (!file) fail('缺少輸出檔的路徑');
 
 let obj;
 try { obj = JSON.parse(readFileSync(file, 'utf8')); }
