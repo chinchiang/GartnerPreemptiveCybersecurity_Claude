@@ -172,8 +172,12 @@ const HANG = { file: 'calc.js', from: '(a, b) =>', to: '(a, b, hang) =>', note: 
 const CAUGHT = { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' };
 // 實作壞掉時測試會卡住：每次執行都設 30 秒的保險，讓它以失敗結束
 const SAFETY = 30000;
-// Windows 的 shell 與 Node 啟動也計入時限；此組使用較寬預算，真正卡住的測試仍須逾時。
-const HANG_TIMEOUT = process.platform === 'win32' ? '3' : '1';
+// 逾時測試的 --timeout（秒），4 支共用這一個值。Windows 的 cmd.exe 與 Node 啟動也算在時限內（0.4～0.9 秒，#143），
+// 用較寬的值；Linux／macOS 照舊用 1（逾時測試要等滿時限，值越大越慢）。真正卡住的測試仍要逾時。
+const HANG_TIMEOUT_SECONDS = process.platform === 'win32' ? 3 : 1;
+const HANG_TIMEOUT = String(HANG_TIMEOUT_SECONDS);
+// 「突變之前就逾時」那支要測 --timeout 可以有小數：Linux 1.5、Windows 3.5
+const DECIMAL_HANG_TIMEOUT = String(HANG_TIMEOUT_SECONDS + 0.5);
 
 /** 比照 child-process.test.mjs 的 withHangingTree：建專案、寫入 check.js、執行 body；finally 對 check.pids 記下的每個 pid
     送 SIGKILL（已經結束的忽略），再刪目錄。正常時 mutate.mjs 早已結束它們，這段清理只在實作壞掉時才有作用。 */
@@ -215,9 +219,9 @@ test('--timeout 的逾時在 --json 是 timedOut: true、caught: false，頂層�
 }));
 
 test('--timeout：測試在突變之前就逾時，以結束碼 2 結束、說明逾時的秒數與測試指令，一個檔案都不改', () => withHangingCheck([CAUGHT], hangWhen('true'), dir => {
-  const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', '1.5'], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
+  const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', DECIMAL_HANG_TIMEOUT], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
   assert.equal(r.status, 2, r.stdout + r.stderr);
-  assert.match(r.stderr, /突變之前.*逾時.*1\.5 秒.*node check\.js/);
+  assert.match(r.stderr, new RegExp(`突變之前.*逾時.*${DECIMAL_HANG_TIMEOUT.replace('.', '\\.')} 秒.*node check\\.js`));
   assert.doesNotMatch(r.stdout, /抓到/);
   assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
 }));
