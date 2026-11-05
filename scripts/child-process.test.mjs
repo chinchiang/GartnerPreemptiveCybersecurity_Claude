@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseTimeout, runWithTimeout } from './child-process.mjs';
-import { hangingServerSource, waitUnreachable, stopHanging } from './hanging-process.mjs';
+import { hangingServerSource, startWatchdog, waitUnreachable, stopHanging } from './hanging-process.mjs';
 
 test('parseTimeout：0 或正數（可以有小數）回傳秒數，0 表示不限時', () => {
   assert.equal(parseTimeout('0'), 0);
@@ -27,30 +27,37 @@ test('runWithTimeout：以執行檔＋參數執行，正常結束時回傳結束
 });
 
 // 子行程與它開的孫行程：兩個都在專屬的控制通道監聽、不結束（做法見 hanging-process.mjs）；各自在監聽之後把位址附加到
-// argv[1] 指定的檔案，測試失敗時也找得到、請得動它們結束
-const TREE_SERVER = hangingServerSource({ dirExpr: "require('path').dirname(process.argv[1])", recordFileExpr: 'process.argv[1]' });
-const HANGING_TREE = `require('child_process').spawn(process.execPath, ['-e', ${JSON.stringify(TREE_SERVER)}, process.argv[1]], { stdio: 'ignore' });\n` + TREE_SERVER;
+// argv[1] 指定的檔案，測試失敗時也找得到、請得動它們結束。兩個都連著這個測試行程的看守通道（#197）：
+// 外層工具在測試中途 SIGKILL 這個測試行程時，它們自己結束；測試行程還在時不影響「結束整組行程」的驗證
+const hangingTree = watchdogAddr => {
+  const server = hangingServerSource({ dirExpr: "require('path').dirname(process.argv[1])", recordFileExpr: 'process.argv[1]', watchdogAddr });
+  return `require('child_process').spawn(process.execPath, ['-e', ${JSON.stringify(server)}, process.argv[1]], { stdio: 'ignore' });\n` + server;
+};
 // 逾時那支的 timeoutSeconds：兩個行程都要在時限內開始監聽、寫出位址。Windows 啟動 Node 比較慢（#143），用較寬的值
 const TREE_TIMEOUT_SECONDS = process.platform === 'win32' ? 3 : 1;
 // 實作壞掉時 result 可能永遠不會給出：最多等 30 秒就當成失敗，不讓整個 node --test 卡住。
 // 不是在測速度：Windows 在行程建立的負載下，逾時之後光 taskkill 就要 5～8 秒，10 秒會偶發失敗（#185）
 const within30s = promise => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('30 秒內沒有結果')), 30000).unref())]);
-// 跑 HANGING_TREE，把位址檔的路徑與讀位址的函式交給 body；結束時（不論通過與否）透過通道請兩個行程結束、刪掉暫存目錄。
-// 不對任何 pid 送訊號（#165）：正常時 runWithTimeout 早已結束它們，連不上的略過
+// 開看守通道，把位址檔的路徑、讀位址的函式與卡住行程樹的原始碼交給 body；結束時（不論通過與否）透過通道請兩個行程結束、
+// 關掉看守通道、刪掉暫存目錄。不對任何 pid 送訊號（#165）：正常時 runWithTimeout 早已結束它們，連不上的略過
 async function withHangingTree(body) {
   const dir = mkdtempSync(join(tmpdir(), 'child-process-test-'));
   const addrFile = join(dir, 'addrs');
   const addrs = () => existsSync(addrFile) ? readFileSync(addrFile, 'utf8').split('\n').filter(Boolean) : [];
-  try { await body(addrFile, addrs); }
-  finally {
+  let watchdog;
+  try {
+    watchdog = await startWatchdog(dir);   // 開在 try 裡：開不起來時暫存目錄照樣刪掉
+    await body(addrFile, addrs, hangingTree(watchdog.addr));
+  } finally {
     for (const addr of addrs()) await stopHanging(addr);
+    await watchdog?.close();
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
 test('runWithTimeout：超過 timeoutSeconds 就結束整組行程（子行程與它開的孫行程），timedOut 為真', async () => {
-  await withHangingTree(async (addrFile, addrs) => {
-    const { result } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, addrFile], timeoutSeconds: TREE_TIMEOUT_SECONDS });
+  await withHangingTree(async (addrFile, addrs, tree) => {
+    const { result } = runWithTimeout({ command: process.execPath, args: ['-e', tree, addrFile], timeoutSeconds: TREE_TIMEOUT_SECONDS });
     const r = await within30s(result);
     assert.equal(r.timedOut, true);
     assert.equal(addrs().length, 2, '子行程與孫行程沒有都寫出通道');
@@ -67,8 +74,8 @@ test('runWithTimeout：timeoutSeconds 超過 setTimeout 的上限（2^31−1 毫
 });
 
 test('runWithTimeout：呼叫 kill() 就結束整組行程（子行程與它開的孫行程），給中斷時的訊號處理器用', async () => {
-  await withHangingTree(async (addrFile, addrs) => {
-    const { result, kill } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, addrFile] });
+  await withHangingTree(async (addrFile, addrs, tree) => {
+    const { result, kill } = runWithTimeout({ command: process.execPath, args: ['-e', tree, addrFile] });
     for (let i = 0; i < 100 && addrs().length < 2; i++) await new Promise(r => setTimeout(r, 50));
     assert.equal(addrs().length, 2, '子行程與孫行程沒有都寫出通道');
     kill();

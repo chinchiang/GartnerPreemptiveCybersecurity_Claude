@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { failingTests, markdownTable } from './mutate.mjs';
-import { hangingServerSource, waitUnreachable, stopHanging } from './hanging-process.mjs';
+import { hangingServerSource, startWatchdog, waitUnreachable, stopHanging } from './hanging-process.mjs';
 
 const MUTATE = fileURLToPath(new URL('./mutate.mjs', import.meta.url));
 const CALC = 'module.exports = (a, b) => a + b;\n';
@@ -139,12 +139,14 @@ test('測試在突變之前就失敗：結束碼 2，不做任何突變（否則
 
 // 卡住的測試子行程：check.js 符合 condition 時在專屬的控制通道監聽、把位址記到 check.addrs（一行一個，同一目錄跑兩次都記到），
 // 監聽中的伺服器讓它永遠不結束（做法見 hanging-process.mjs）。清理在測試這一側（#141、#165）：withHangingCheck 的 finally
-// 透過通道請記下的每一個結束，mutate.mjs 沒能結束測試行程時（例如突變）也不會留下；不對任何 pid 送訊號
-const hangWhen = (condition) => "const fs = require('fs');\n" +
-  `if (${condition}) { ${hangingServerSource({ dirExpr: '__dirname', recordFileExpr: "__dirname + '/check.addrs'" })} }\n`;
+// 透過通道請記下的每一個結束，mutate.mjs 沒能結束測試行程時（例如突變）也不會留下；不對任何 pid 送訊號。
+// 卡住時也連著這個測試行程的看守通道（#197）：外層工具在測試中途 SIGKILL 這個測試行程時，它自己結束。
+// 回傳「看守位址 → check.js 原始碼」的函式，由 withHangingCheck 開好看守通道後產生；rest 接在 if 之後（例如 else 分支）
+const hangWhen = (condition, rest = '') => watchdogAddr => "const fs = require('fs');\n" +
+  `if (${condition}) { ${hangingServerSource({ dirExpr: '__dirname', recordFileExpr: "__dirname + '/check.addrs'", watchdogAddr })} }\n` + rest;
 // calc.js 裡有 hang 時卡住；否則照常檢查 calc.js
-const HANGING_CHECK = hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')") +
-  "else process.exit(require('./calc.js')(1, 2) === 3 ? 0 : 1);\n";
+const HANGING_CHECK = hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')",
+  "else process.exit(require('./calc.js')(1, 2) === 3 ? 0 : 1);\n");
 const HANG = { file: 'calc.js', from: '(a, b) =>', to: '(a, b, hang) =>', note: '留下計時器' };
 const CAUGHT = { file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' };
 // 實作壞掉時測試會卡住：每次執行都設 30 秒的保險，讓它以失敗結束
@@ -156,18 +158,21 @@ const HANG_TIMEOUT = String(HANG_TIMEOUT_SECONDS);
 // 「突變之前就逾時」那支要測 --timeout 可以有小數：Linux 1.5、Windows 3.5
 const DECIMAL_HANG_TIMEOUT = String(HANG_TIMEOUT_SECONDS + 0.5);
 
-/** 比照 child-process.test.mjs 的 withHangingTree：建專案、寫入 check.js、執行 body(dir, addrs)；finally 透過 check.addrs 記下的
-    每個通道請它結束（已經結束、連不上的略過），再刪目錄（Unix 的 socket 檔跟著刪）。正常時 mutate.mjs 早已結束它們，
-    這段清理只在實作壞掉時才有作用。 */
+/** 比照 child-process.test.mjs 的 withHangingTree：建專案、開看守通道、寫入 check.js（check 是 hangWhen 回傳的函式）、執行 body(dir, addrs)；
+    finally 透過 check.addrs 記下的每個通道請它結束（已經結束、連不上的略過），關掉看守通道，再刪目錄（Unix 的 socket 檔跟著刪）。
+    正常時 mutate.mjs 早已結束它們，這段清理只在實作壞掉時才有作用。 */
 async function withHangingCheck(mutations, check, body) {
   const dir = project(mutations);
   const addrFile = join(dir, 'check.addrs');
   const addrs = () => existsSync(addrFile) ? readFileSync(addrFile, 'utf8').split('\n').filter(Boolean) : [];
+  let watchdog;
   try {
-    writeFileSync(join(dir, 'check.js'), check);
+    watchdog = await startWatchdog(dir);   // 開在 try 裡：開不起來時專案目錄照樣刪掉
+    writeFileSync(join(dir, 'check.js'), check(watchdog.addr));
     await body(dir, addrs);
   } finally {
     for (const addr of addrs()) await stopHanging(addr);
+    await watchdog?.close();
     rmSync(dir, { recursive: true, force: true });
   }
 }
