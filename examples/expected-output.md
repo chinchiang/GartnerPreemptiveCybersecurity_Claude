@@ -16,7 +16,7 @@
 | threat-intel.json | 3 行為者 | 無 |
 | topology.json | 19 邊 | 無 |
 
-信心：高（無缺漏類別）。
+資料齊備程度：高（無缺漏類別）。
 
 ## 曝險優先序（平衡胃納：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20）
 
@@ -65,7 +65,7 @@
 
 ## 管理摘要（O5；`reporting.mask_identifiers` 未設定 → 預設遮罩；正文 243 字）
 
-> **對象：** CISO、IT 主管、廠務主管｜**日期：** 2026-09-08｜**信心：** 14/14 項高信心｜識別資訊已遮罩
+> **對象：** CISO、IT 主管、廠務主管｜**日期：** 2026-09-08｜**資料齊備程度：** 14/14 項為高｜識別資訊已遮罩
 >
 > 1. 現況：14 項發現，5 項 P1（4 項對外曝露）；最急迫：VPN Gateway（A01）之 VPN appliance pre-auth RCE。
 > 2. 最可能路徑：internet → A01 → A04 → A06（可行性 6.4/10，未驗證），阻斷點為身分與網段控制。
@@ -79,7 +79,7 @@
 | 對外曝露且 P1 的發現數 | 4 | 0（7 天內） |
 | P1/P2 發現總數 | 5 / 3 | 每週下降 |
 | 可達 crown jewel 的攻擊路徑假設數 | 9 | 每條至少一個已驗證阻斷點 |
-| 高信心比例 | 100% | ≥ 80% |
+| 資料齊備程度為高的比例 | 100% | ≥ 80% |
 | 資產清冊完整度（模擬） | 100% | ≥ 95% |
 | 未納入清冊的對外資產 | 1 | 0 |
 
@@ -91,7 +91,7 @@
 | 3 | 路徑 | 含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`，hypothesis |
 | 4 | 驗證計畫 | 每項「尚未授權主動測試」（`node scripts/run-demo.mjs` 驗證計畫段） |
 | 5 | 管理摘要 | 正體中文、正文 ≤ 300 字、含「決策請求」與「限制」（`run-demo.mjs` 管理摘要段） |
-| 6 | 移除 threat-intel.json（`--no-intel`） | 信心「中」；`SYN-2026-0101` 仍 P1；`mail-gw-01` 降 P2；`ad-dc-01` 降 P3；輸出列「未納入威脅情資」 |
+| 6 | 移除 threat-intel.json（`--no-intel`） | 資料齊備程度「中」；`SYN-2026-0101` 仍 P1；`mail-gw-01` 降 P2；`ad-dc-01` 降 P3；輸出列「未納入威脅情資」 |
 | 7 | 移除 scope.json（`--no-scope`） | 拒絕分析並列出必要欄位（exit code 2） |
 
 `node scripts/run-demo.mjs --json` 輸出符合 `skills/shared/output-schema.json` 的完整 JSON（九個必要區塊、`status: hypothesis`、`executive_summary.text` ≤ 300 字）。

@@ -110,7 +110,7 @@ class ValidateInputsTest(unittest.TestCase):
         self.assertEqual(self.line(out, "topology.json"), "[topology.json] crown_jewels=['A06', 'A07'] edges=20 "
                          "指向不存在資產的邊=0 異常=['edges 有 1 筆缺少必填欄位（from, to, via, trust）', "
                          "\"edges 裡有不是物件的項目（'oops'）\"]")
-        self.assertIn("警告：1 項建議檔問題（不阻擋分析，但信心下修）", out)  # 必填欄位的預檢發現是警告（#59）
+        self.assertIn("警告：1 項建議檔問題（不阻擋分析，但資料齊備程度下修）", out)  # 必填欄位的預檢發現是警告（#59）
 
     def test_out_of_scope_asset_uses_core_wording(self):
         self.edit("scope.json", '"A01",', "")
@@ -179,7 +179,7 @@ class ValidateInputsTest(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertEqual(self.line(out, "controls.json"),
                          "[controls.json] 控制項=8 異常=['controls 有 1 筆缺少必填欄位（control_id, name, coverage_assets, gaps, maturity）']")
-        self.assertIn("警告：1 項建議檔問題（不阻擋分析，但信心下修）", out)
+        self.assertIn("警告：1 項建議檔問題（不阻擋分析，但資料齊備程度下修）", out)
 
     def test_every_preflight_finding_is_rendered_and_counted_per_file(self):
         folder = make_problem_inputs(Path(self.tmp.name) / "problems")
@@ -190,14 +190,14 @@ class ValidateInputsTest(unittest.TestCase):
             "[vulnerabilities.csv] 缺少（必要）",
             "[identities.csv] 筆數=8 缺欄位=無 異常=['I01 linked_assets 指向不存在資產 A98', 'I05 linked_assets 指向不存在資產 A02']",
             "[misconfigurations.csv] 筆數=9 缺欄位=['status'] 異常=無",
-            "[misconfigurations.csv] 警告：建議檔缺欄位 ['status']，將依替代規則處理並下修信心",
+            "[misconfigurations.csv] 警告：建議檔缺欄位 ['status']，將依替代規則處理並下修資料齊備程度",
             "[controls.json] 控制項=8 異常=['controls 有 1 筆缺少必填欄位（control_id, name, coverage_assets, gaps, maturity）']",
             "[threat-intel.json] 無法解析：Expecting property name enclosed in double quotes: line 1 column 3 (char 2)"
-            " → 視同缺少（建議），依替代規則處理並下修信心",
+            " → 視同缺少（建議），依替代規則處理並下修資料齊備程度",
             "[topology.json] crown_jewels=None edges=20 指向不存在資產的邊=4 異常=['缺少必填欄位 crown_jewels', "
             "'edges 有 1 筆缺少必填欄位（from, to, via, trust）', \"edges 裡有不是物件的項目（'not-an-edge'）\"]",
             "[exposures.json] 結構不是物件 → 視同缺少（建議）",
-            "警告：5 項建議檔問題（不阻擋分析，但信心下修）",
+            "警告：5 項建議檔問題（不阻擋分析，但資料齊備程度下修）",
             "結果：有 1 個必要問題，請先修正",
         ])
 
@@ -247,7 +247,7 @@ class ValidateInputsTest(unittest.TestCase):
                 self.assertEqual(code, 0, out + err)
                 self.assertIn(expected, out)
                 if warnings:
-                    self.assertIn(f"警告：{warnings} 項建議檔問題（不阻擋分析，但信心下修）", out)
+                    self.assertIn(f"警告：{warnings} 項建議檔問題（不阻擋分析，但資料齊備程度下修）", out)
                 else:
                     self.assertNotIn("項建議檔問題", out)
                 self.assertIn("結果：可以進行分析", out)

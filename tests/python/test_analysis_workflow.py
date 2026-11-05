@@ -314,7 +314,7 @@ def make_problem_inputs(dest: Path) -> Path:
 
 # 改動前的實際輸出（#59）：提示詞的「腳本預檢結果」逐字不變；無法解析、結構不是物件不列在這裡
 PROBLEM_PREFLIGHT_LINES = [
-    "vulnerabilities.csv：缺少必要輸入（I3 弱點與發現）；只能產出曝險面清單並下修信心",
+    "vulnerabilities.csv：缺少必要輸入（I3 弱點與發現）；只能產出曝險面清單並下修資料齊備程度",
     "misconfigurations.csv：缺少必填欄位 status",
     "controls.json：controls 有 1 筆缺少必填欄位（control_id, name, coverage_assets, gaps, maturity）",
     "topology.json：缺少必填欄位 crown_jewels",

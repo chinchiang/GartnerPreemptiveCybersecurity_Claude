@@ -144,7 +144,7 @@ export function acceptanceResults(output, { variant = 'baseline', outputSchema, 
     const declared = JSON.stringify(output.exposure_priorities?.missing_inputs || []) + JSON.stringify(output.data_quality?.missing_inputs || []);
     addResult('6a', '驗收 6：輸出明確標示未納入威脅情資', /情資|threat[- ]?intel/i.test(declared), declared.slice(0, 120));
     const conf = String(output.exposure_priorities?.confidence || '');
-    addResult('6b', '驗收 6：曝險優先序的信心不再是「高」', conf !== '' && !/^高|^high/i.test(conf), `confidence=${conf || '未提供'}`);
+    addResult('6b', '驗收 6：曝險優先序的資料齊備程度不再是「高」', conf !== '' && !/^高|^high/i.test(conf), `confidence=${conf || '未提供'}`);
     addResult('6c', '驗收 6：SYN-2026-0101 仍為 P1', vpnStillP1, vpnDetail);
     // 情資已移除，依據裡還出現它的行為者，就是補造（驗收 6 不要求分數下降：可能性在情資加分前已達上限）
     const actors = (synthetic['threat-intel.json']?.actors || []).map(a => a.name).filter(Boolean);

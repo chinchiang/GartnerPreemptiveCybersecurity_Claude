@@ -2,7 +2,7 @@
 // 示範引擎依示範評分規則的計算行為（見 GLOSSARY.md「示範引擎」「示範評分規則」，issue #61）。
 // 一致性檢查（scoring-rules.test.mjs）只比對文件與規則資料的數值；這裡經由 analyze() 斷言引擎實際算出的結果。
 // - 預期值一律是手算的字面數字，旁邊註明算式；不從 RULES 取係數，否則公式寫錯時測試也會跟著錯。
-// - 依據是 skills/shared/task-spec.md 附錄 A（信心規則在第 5 節）。文件沒寫的細節照引擎現行行為釘住，
+// - 依據是 skills/shared/task-spec.md 附錄 A（資料齊備程度規則在第 5 節）。文件沒寫的細節照引擎現行行為釘住，
 //   測試名稱標明「文件未寫」：多個行為者命中取最高、未標信心以 low 計、未標資料等級以 Internal 計、分數取到小數一位，
 //   以及各權重乘在哪幾項（附錄 A 只寫預設權重 0.8 的兩組；EASM 歸曝露權重、CVSS 近似歸利用權重、
 //   情資乘情資權重、影響權重也乘在 crown jewel 與入口加分上）。
@@ -133,7 +133,7 @@ test('分數＝可能性×影響，取到小數一位（文件未寫）；剛好
   assert.deepEqual(scored(caseWith({ vulnerabilities: [vuln({ epss_sim: 0.37 })] })), [5.8, 'P4']);
 });
 
-test('信心：缺 0 類為高、1–2 類為中、3 類以上為低；清冊完整度 < 80% 為低', () => {
+test('資料齊備程度：缺 0 類為高、1–2 類為中、3 類以上為低；清冊完整度 < 80% 為低', () => {
   const confidenceOf = (params) => findingF1(caseWith(), params).confidence;
   const off = (...names) => ({ inputs: Object.fromEntries(names.map(n => [n, false])) });
   assert.equal(confidenceOf(), '高');

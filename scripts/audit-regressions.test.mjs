@@ -30,7 +30,7 @@ test('所有授權旗標組合：摘要只建議執行已授權且實際存在�
   data.scope.authorized_scope.active_testing_authorized = true;
   assert.equal(demo.analyze(data).summary.decisions.some(d => d.includes('依既有書面授權')), false);
 });
-test('逐筆 EPSS／KEV 缺值採 CVSS 替代並下修信心；0 與 false 是有效值', () => {
+test('逐筆 EPSS／KEV 缺值採 CVSS 替代並下修資料齊備程度；0 與 false 是有效值', () => {
   const data = structuredClone(ctx.window.CASE_DATA);
   for (const v of data.vulnerabilities) { delete v.epss; delete v.epss_sim; delete v.kev; delete v.kev_sim; }
   const missing = demo.analyze(data);

@@ -58,7 +58,12 @@ const ALLOWED = [
   { term: 'pipeline', phrase: 'retrieval pipelines', reason: '證據檔逐字引用外部原文' },
   { term: '主檔', phrase: '建議主檔', reason: 'agentskills 規格的用語，指 SKILL.md 主檔，不是指母本' },
   { term: 'demo engine', phrase: 'demo engine checks', reason: 'CI 步驟名稱慣例用英文' },
-  { term: '範例資料', phrase: '用範例資料', reason: '引述使用者可能說的話，模型要能辨識；同一句要求輸出標明「合成資料」' }
+  { term: '範例資料', phrase: '用範例資料', reason: '引述使用者可能說的話，模型要能辨識；同一句要求輸出標明「合成資料」' },
+  { term: '信心', phrase: '行為者信心', reason: '威脅情資裡行為者的 confidence，是情資來源的可信度，不是資料齊備程度' },
+  { term: '信心', phrase: '未標信心', reason: '同上：行為者沒有標 confidence 時以 low 計' },
+  { term: '信心', phrase: '最高信心', reason: '同上：多個行為者命中時取情資 confidence 最高的' },
+  { term: '信心', phrase: '低信心情資', reason: '同上：confidence 低的威脅情資' },
+  { term: '信心', phrase: '舊稱「信心」', reason: '說明改名前的名稱（#152），讓讀過舊文件或舊輸出的人對得上' }
 ];
 const TEXT_FILE = /\.(md|mjs|js|py|yml|json|html)$/;
 // 不掃描：詞彙表本身（_Avoid_ 詞的定義處），以及這支測試（單元測試的輸入與上面兩份清單本來就寫著 _Avoid_ 詞）

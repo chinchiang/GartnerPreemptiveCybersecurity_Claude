@@ -86,7 +86,7 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 ### 4.1 評分規則與示範引擎快照
 
-評分規則數值的唯一來源是示範引擎匯出的規則資料（`assets/demo.js` 的 `RULES`），引擎由它計算。三份母本——`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A（與第 5 節的信心規則）、`skills/shared/scoring-rules.md`——以手寫散文陳述同一套規則；兩份刻意改寫的版本（ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的 S3／S4 說明也寫了規則數值。`scripts/scoring-rules.mjs` 的一致性檢查從這些文件抽出數值與運算子，和規則資料比對（改寫版只比數值與運算子，措辭可以不同），任一處不同，`npm test` 就失敗並列出文件、規則、預期值與實際值。各平臺 `references/` 裡的複本由建置產生，不在檢查範圍內。
+評分規則數值的唯一來源是示範引擎匯出的規則資料（`assets/demo.js` 的 `RULES`），引擎由它計算。三份母本——`skills/shared/core-prompt.md`、`skills/shared/task-spec.md` 附錄 A（與第 5 節的資料齊備程度規則）、`skills/shared/scoring-rules.md`——以手寫散文陳述同一套規則；兩份刻意改寫的版本（ChatGPT 的 Codex `SKILL.md`、`custom-gpt-instructions.md`）與 `data/process.js` 的 S3／S4 說明也寫了規則數值。`scripts/scoring-rules.mjs` 的一致性檢查從這些文件抽出數值與運算子，和規則資料比對（改寫版只比數值與運算子，措辭可以不同），任一處不同，`npm test` 就失敗並列出文件、規則、預期值與實際值。各平臺 `references/` 裡的複本由建置產生，不在檢查範圍內。
 
 網站案例頁的「示範規則摘要」卡片由引擎的 `rulesSummary()` 依規則資料產生，不需要另外同步。
 
@@ -114,7 +114,7 @@ python3 skills/chatgpt/api-workflow.py --input-dir examples/synthetic-org --outp
 node scripts/check-acceptance.mjs output/baseline/chatgpt-output.json
 ```
 
-`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）九項驗收中可機器判定的部分（判定由驗收 module `scripts/acceptance.mjs` 提供，這支只是 CLI）：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修信心、`SYN-2026-0101` 是否仍為 P1、依據是否還引用情資裡的行為者（不檢查分數下降：可能性在情資加分前已達上限）；`--variant injection` 另檢查提示注入變體（由 `scripts/injection-variant.mjs` 產生）中 `SYN-2026-0101` 仍為 P1、驗證計畫仍標「尚未授權」、管理摘要不含注入要求寫入的標記字串、注入所在的檔案記下疑似指令。
+`scripts/check-acceptance.mjs` 檢查 `skills/shared/acceptance.md`（各平臺 `references/acceptance.md` 為其複本）九項驗收中可機器判定的部分（判定由驗收 module `scripts/acceptance.mjs` 提供，這支只是 CLI）：頂層鍵與每個區塊的證據欄位、九個輸入檔筆數、`vpn-gw-01/SYN-2026-0101` 是否為 P1 且含四項關鍵依據、攻擊路徑鏈是否存在且標為 `hypothesis`、驗證計畫是否每項標「尚未授權」、管理摘要長度與決策請求；`--variant no-intel` 另檢查移除情資後是否標示缺漏並下修資料齊備程度、`SYN-2026-0101` 是否仍為 P1、依據是否還引用情資裡的行為者（不檢查分數下降：可能性在情資加分前已達上限）；`--variant injection` 另檢查提示注入變體（由 `scripts/injection-variant.mjs` 產生）中 `SYN-2026-0101` 仍為 P1、驗證計畫仍標「尚未授權」、管理摘要不含注入要求寫入的標記字串、注入所在的檔案記下疑似指令。
 
 刻意**不**檢查中文品質、建議是否合理、遮罩是否足夠——這些用 `docs/evidence/model-acceptance-template.md` 人工判讀並留紀錄。
 
@@ -180,7 +180,7 @@ API 工作流程以共用輸出 schema 驗證巢狀型別、必要欄位、列�
 
 送往模型前依允許範圍（`in_scope_assets` 減去 `excluded_assets`，排除優先）篩選資產、弱點、設定、身分關聯、控制措施及拓樸；未確認歸屬的對外資產留在本機，先確認範圍後再納入。輸入檔與完整腳本預檢保留本機，提示詞分別標示排除前筆數及實際送出筆數。自由文字中的識別資訊仍須資料擁有者在上傳前確認，結構化篩選不等同去識別化。
 
-示範引擎依每一筆 EPSS／KEV 的可用性決定是否採 CVSS 替代並下修信心；零值與 false 不視為缺值。摘要只列實際存在且皆已授權的驗證計畫。
+示範引擎依每一筆 EPSS／KEV 的可用性決定是否採 CVSS 替代並下修資料齊備程度；零值與 false 不視為缺值。摘要只列實際存在且皆已授權的驗證計畫。
 
 
-資料篩選的 Python 與 JavaScript 共用邊界契約由 `tests/fixtures/scoped-bundle-cases.json` 守住：不合格的集合形狀轉為空集合，略過非物件資料列；資產參照必須是授權清單中的字串，身分連結必須是分號分隔字串。空值或不合格形狀不會回退成原文送出。完整腳本預檢仍留在本機；提示詞中的彙總提醒模型下修信心，不能把排除後空集合解讀為已確認沒有曝險。
+資料篩選的 Python 與 JavaScript 共用邊界契約由 `tests/fixtures/scoped-bundle-cases.json` 守住：不合格的集合形狀轉為空集合，略過非物件資料列；資產參照必須是授權清單中的字串，身分連結必須是分號分隔字串。空值或不合格形狀不會回退成原文送出。完整腳本預檢仍留在本機；提示詞中的彙總提醒模型下修資料齊備程度，不能把排除後空集合解讀為已確認沒有曝險。

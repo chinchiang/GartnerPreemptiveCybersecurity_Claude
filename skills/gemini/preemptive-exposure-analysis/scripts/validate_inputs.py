@@ -77,16 +77,16 @@ def main(folder: str) -> int:
         anomalies = [f.message for f in findings if f.kind not in OWN_FIELD]
         print(f"[{name}] 筆數={len(loaded[name]['data'])} 缺欄位={missing or '無'} 異常={anomalies or '無'}")
         if missing and not required:
-            print(f"[{name}] 警告：建議檔缺欄位 {missing}，將依替代規則處理並下修信心")
+            print(f"[{name}] 警告：建議檔缺欄位 {missing}，將依替代規則處理並下修資料齊備程度")
 
     for name in OPTIONAL_JSON:
         findings = by_file.get(name, [])
         error = _detail(findings, KIND.UNPARSABLE, None)
         if error is not None:
-            print(f"[{name}] 無法解析：{error} → 視同缺少（建議），依替代規則處理並下修信心")
+            print(f"[{name}] 無法解析：{error} → 視同缺少（建議），依替代規則處理並下修資料齊備程度")
             continue
         if name not in loaded:
-            print(f"[{name}] 缺少（建議）→ 依替代規則處理並下修信心")
+            print(f"[{name}] 缺少（建議）→ 依替代規則處理並下修資料齊備程度")
             continue
         if any(f.kind == KIND.NOT_AN_OBJECT for f in findings):
             print(f"[{name}] 結構不是物件 → 視同缺少（建議）")
@@ -112,7 +112,7 @@ def main(folder: str) -> int:
     problems = sum(1 for s in severities.values() if analysis_workflow.PROBLEM in s)
     warnings = sum(1 for s in severities.values() if analysis_workflow.WARNING in s and analysis_workflow.PROBLEM not in s)
     if warnings:
-        print(f"警告：{warnings} 項建議檔問題（不阻擋分析，但信心下修）")
+        print(f"警告：{warnings} 項建議檔問題（不阻擋分析，但資料齊備程度下修）")
     print("結果：" + ("可以進行分析" if problems == 0 else f"有 {problems} 個必要問題，請先修正"))
     return 0 if problems == 0 else 1
 
