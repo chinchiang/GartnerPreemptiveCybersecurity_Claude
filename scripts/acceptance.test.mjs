@@ -123,6 +123,16 @@ test('驗收 3：找不到 vpn-gw-01 → ad-dc-01 → erp-db-01 的鏈，或任�
   assert.deepEqual(failedAfter(o => { o.attack_path_hypotheses.items = []; }), ['3', '3b']);
 });
 
+test('驗收 3：nodes 寫資產 ID（A01 → A04 → A06）也算找到鏈；ID 要整個詞比對', () => {
+  const paths = (o) => o.attack_path_hypotheses.items;
+  const toIds = { 'vpn-gw-01': 'A01', 'ad-dc-01': 'A04', 'erp-db-01': 'A06' };
+  const rename = (map) => (o) => paths(o).forEach(p => { p.nodes = p.nodes.map(n => map[n] ?? n); });
+  assert.deepEqual(failedAfter(rename(toIds)), []);                                                    // Gemini 實測的寫法（#153）
+  assert.deepEqual(failedAfter(rename({ 'vpn-gw-01': 'A01 (VPN Gateway)', 'ad-dc-01': 'A04', 'erp-db-01': 'A06' })), []);
+  assert.deepEqual(failedAfter(rename({ ...toIds, 'ad-dc-01': 'A040' })), ['3']);                     // A040 不是 A04
+  assert.deepEqual(failedAfter(rename({ ...toIds, 'ad-dc-01': 'A05' })), ['3']);                       // 換成別的資產就找不到
+});
+
 test('驗收 4：驗證計畫為空，或任一項沒標「尚未授權」，判為不通過', () => {
   assert.deepEqual(failedAfter(o => { o.validation_plan.items[0].authorization_required = '已授權'; }), ['4']);
   assert.deepEqual(failedAfter(o => { o.validation_plan.items = []; }), ['4']);

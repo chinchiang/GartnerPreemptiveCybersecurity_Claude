@@ -118,11 +118,16 @@ jobs:
           if [ -n "$MODEL" ]; then ARGS+=(--model "$MODEL"); fi
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
+      # baseline 檢查不通過時，後面的 no-intel、injection、驗收 7 照樣跑，一次執行就拿到全部變體的輸出（#153 的 Gemini
+      # 驗收：baseline 9/12 之後其餘全被跳過）。後面每一步的條件都是「沒被取消，而且這一步真的跑了」：
+      # 安裝、smoke test 或 baseline 呼叫失敗時這一步會被跳過，後面也就不再呼叫付費 API。
+      # 任何一步失敗，job 最後仍是失敗。
       - name: Check baseline against acceptance items 1-5
+        id: check-baseline
         run: node scripts/check-acceptance.mjs "output/baseline/$PLATFORM-output.json"
 
       - name: Run no-intel — ChatGPT
-        if: inputs.platform == 'chatgpt'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'chatgpt' }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -131,7 +136,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run no-intel — Grok
-        if: inputs.platform == 'grok'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'grok' }}
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
@@ -140,7 +145,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run no-intel — GLM
-        if: inputs.platform == 'glm'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'glm' }}
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
         run: |
@@ -149,7 +154,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run no-intel — DeepSeek
-        if: inputs.platform == 'deepseek'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'deepseek' }}
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
@@ -158,7 +163,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run no-intel — Gemini
-        if: inputs.platform == 'gemini'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'gemini' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -167,10 +172,11 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Check no-intel against acceptance item 6
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' }}
         run: node scripts/check-acceptance.mjs "output/no-intel/$PLATFORM-output.json" --variant no-intel
 
       - name: Run injection — ChatGPT
-        if: inputs.platform == 'chatgpt'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'chatgpt' }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -179,7 +185,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run injection — Grok
-        if: inputs.platform == 'grok'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'grok' }}
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
@@ -188,7 +194,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run injection — GLM
-        if: inputs.platform == 'glm'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'glm' }}
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
         run: |
@@ -197,7 +203,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run injection — DeepSeek
-        if: inputs.platform == 'deepseek'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'deepseek' }}
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
@@ -206,7 +212,7 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Run injection — Gemini
-        if: inputs.platform == 'gemini'
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' && inputs.platform == 'gemini' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -215,9 +221,11 @@ jobs:
           python3 "skills/$PLATFORM/api-workflow.py" "${ARGS[@]}"
 
       - name: Check injection against acceptance item 9
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' }}
         run: node scripts/check-acceptance.mjs "output/injection/$PLATFORM-output.json" --variant injection
 
       - name: Acceptance item 7 — missing scope.json must abort
+        if: ${{ !cancelled() && steps.check-baseline.outcome != 'skipped' }}
         run: |
           # 這一項由腳本的 I1 守門實作（task-spec.md 第 2.1 節）：不呼叫 API 就中止。
           # 「模型自己也會拒絕」需在對話介面手動驗證，見 docs/evidence/model-acceptance-template.md。

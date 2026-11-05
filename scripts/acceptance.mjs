@@ -111,11 +111,15 @@ export function acceptanceResults(output, { variant = 'baseline', outputSchema, 
     !vpn ? '找不到該發現' : `${vpn.priority} score ${vpn.score}${missingFactors.length ? `；缺依據：${missingFactors.join('、')}` : ''}`);
 
   // ---------- 3. 攻擊路徑假設 ----------
+  // nodes 寫主機名稱（vpn-gw-01）或資產 ID（A01）都算：output-schema.json 沒有規定格式，Gemini 實測寫 ID（#153）。
+  // ID 要整個詞比對，A01 不能比對到 A010。
   const paths = output.attack_path_hypotheses?.items || [];
+  const assetIdOf = Object.fromEntries(synthetic['assets.csv'].map(row => row.split(',')).map(([id, name]) => [name, id]));
+  const isNode = (n, name) => n.includes(name) || new RegExp(`\\b${assetIdOf[name]}\\b`).test(n);
   const chainPath = paths.find(p => {
     const seq = (p.nodes || []).map(String);
     let i = 0;
-    for (const n of seq) if (n.includes(CHAIN[i])) i++;
+    for (const n of seq) if (isNode(n, CHAIN[i])) i++;
     return i === CHAIN.length;
   });
   addResult('3', '驗收 3：存在 internet → vpn-gw-01 → ad-dc-01 → erp-db-01 且為 hypothesis',
