@@ -10,9 +10,13 @@ export function parseTimeout(arg) {
   return /^(\d+\.?\d*|\.\d+)$/.test(arg ?? '') ? Number(arg) : null;
 }
 
+// taskkill 的時限。同時有大量行程在建立時，taskkill /T 本身要 5～8 秒（#185 實測最長 7.8 秒）；
+// 時限太短的話 taskkill 會被中止，整棵行程樹留著、close 永遠不來。留上限是為了 taskkill 真的卡住時不永遠等下去
+const TASKKILL_TIMEOUT_MS = 30000;
+
 // 結束子行程底下的所有行程：Linux／macOS 送 SIGKILL 給整個行程群組；Windows 沒有行程群組，用 taskkill /T 結束整棵行程樹
 function killTree(pid) {
-  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: 5000 });
+  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true, timeout: TASKKILL_TIMEOUT_MS });
   else { try { process.kill(-pid, 'SIGKILL'); } catch {} }
 }
 

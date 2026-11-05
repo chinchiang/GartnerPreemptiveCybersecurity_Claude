@@ -34,8 +34,9 @@ const alive = pid => { try { process.kill(pid, 0); return true; } catch { return
 async function waitUntilDead(pids) {
   for (let i = 0; i < 40 && pids.some(alive); i++) await new Promise(r => setTimeout(r, 50));
 }
-// 實作壞掉時 result 可能永遠不會給出：最多等 10 秒就當成失敗，不讓整個 node --test 卡住
-const within10s = promise => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('10 秒內沒有結果')), 10000).unref())]);
+// 實作壞掉時 result 可能永遠不會給出：最多等 30 秒就當成失敗，不讓整個 node --test 卡住。
+// 不是在測速度：Windows 在行程建立的負載下，逾時之後光 taskkill 就要 5～8 秒，10 秒會偶發失敗（#185）
+const within30s = promise => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('30 秒內沒有結果')), 30000).unref())]);
 // 跑 HANGING_TREE，把 pid 檔的路徑交給 body；結束時（不論通過與否）結束兩個行程、刪掉暫存目錄
 async function withHangingTree(body) {
   const dir = mkdtempSync(join(tmpdir(), 'child-process-test-'));
@@ -51,7 +52,7 @@ async function withHangingTree(body) {
 test('runWithTimeout：超過 timeoutSeconds 就結束整組行程（子行程與它開的孫行程），timedOut 為真', async () => {
   await withHangingTree(async (pidFile, pids) => {
     const { result } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, pidFile], timeoutSeconds: 1 });
-    const r = await within10s(result);
+    const r = await within30s(result);
     assert.equal(r.timedOut, true);
     await waitUntilDead(pids());
     assert.equal(pids().length, 2, '子行程沒有寫出 pid');
@@ -61,7 +62,7 @@ test('runWithTimeout：超過 timeoutSeconds 就結束整組行程（子行程�
 
 test('runWithTimeout：timeoutSeconds 超過 setTimeout 的上限（2^31−1 毫秒）時不會立刻逾時，子行程照常跑完', async () => {
   const { result } = runWithTimeout({ command: process.execPath, args: ['-e', 'setTimeout(() => process.exit(0), 200)'], timeoutSeconds: 3e6 });
-  const r = await within10s(result);
+  const r = await within30s(result);
   assert.equal(r.timedOut, false);
   assert.equal(r.code, 0);
 });
@@ -72,7 +73,7 @@ test('runWithTimeout：呼叫 kill() 就結束整組行程（子行程與它開�
     for (let i = 0; i < 100 && pids().length < 2; i++) await new Promise(r => setTimeout(r, 50));
     assert.equal(pids().length, 2, '子行程沒有寫出 pid');
     kill();
-    await within10s(result);
+    await within30s(result);
     await waitUntilDead(pids());
     for (const pid of pids()) assert.ok(!alive(pid), `行程 ${pid} 在 kill() 之後還在執行`);
   });
@@ -80,7 +81,7 @@ test('runWithTimeout：呼叫 kill() 就結束整組行程（子行程與它開�
 
 test('runWithTimeout：子行程結束（close）之後呼叫 kill() 不送任何訊號（pid 可能已被別的行程重新使用）', async () => {
   const { result, kill } = runWithTimeout({ command: process.execPath, args: ['-e', ''] });
-  await within10s(result);
+  await within30s(result);
   // 換成只記錄呼叫的替身：真的送出的話，送給的可能是重新使用這個 pid 的別的行程群組
   const calls = [];
   const realKill = process.kill;
@@ -93,7 +94,7 @@ test('runWithTimeout：shell 為真時 command 是整串指令，交給 shell �
   const node = `"${process.execPath}"`;
   const command = `${node} -e "process.stdout.write('ok')" && ${node} -e "process.stdout.write('2')"`;
   const { result } = runWithTimeout({ command, shell: true });
-  const r = await within10s(result);
+  const r = await within30s(result);
   assert.equal(r.stdout, 'ok2');
   assert.equal(r.code, 0);
 });
@@ -105,7 +106,7 @@ test('runWithTimeout：子行程看不到 NODE_TEST_CONTEXT（否則內層的 no
   try {
     const script = "process.stdout.write(`${process.env.NODE_TEST_CONTEXT ?? 'none'} ${process.env.CHILD_PROCESS_TEST_MARK}`)";
     const { result } = runWithTimeout({ command: process.execPath, args: ['-e', script] });
-    assert.equal((await within10s(result)).stdout, 'none kept');
+    assert.equal((await within30s(result)).stdout, 'none kept');
   } finally {
     for (const [name, value] of [['NODE_TEST_CONTEXT', saved.context], ['CHILD_PROCESS_TEST_MARK', saved.mark]]) {
       if (value === undefined) delete process.env[name]; else process.env[name] = value;
