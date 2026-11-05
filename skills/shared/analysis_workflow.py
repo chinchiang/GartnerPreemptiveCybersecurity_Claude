@@ -235,14 +235,18 @@ def count_records(data) -> int | None:
     return None
 
 
+# 缺少 scope.json 時中止訊息的開頭（固定的部分，後面接必填欄位）。CI 檢查 API 腳本「缺 scope 應中止」時讀這個常數
+# 比對 stderr（.github/workflows/ci.yml，#170），不另外手寫一份
+MISSING_SCOPE_ABORT = "[中止] 找不到 scope.json（授權範圍與分析參數）。依共用任務規格第 2.1 節，無授權範圍不得分析。"
+
+
 def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inputs:
     """讀入 9 個輸入檔（utf-8-sig，可處理 BOM）。授權範圍缺少或不合格就中止；
     --exclude 的類別與無法解析的檔案都視為未提供，不送進提示詞。"""
     scope_path = input_dir / "scope.json"
     if "scope" in exclude or not scope_path.exists():
         fields = ", ".join(required_scope_fields(input_schema))
-        raise Abort("[中止] 找不到 scope.json（授權範圍與分析參數）。依共用任務規格第 2.1 節，無授權範圍不得分析。"
-                    f"請提供含下列欄位的 scope.json：{fields}")
+        raise Abort(f"{MISSING_SCOPE_ABORT}請提供含下列欄位的 scope.json：{fields}")
     try:
         scope = json.loads(scope_path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
