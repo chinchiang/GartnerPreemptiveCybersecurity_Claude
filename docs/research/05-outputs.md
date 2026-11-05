@@ -41,7 +41,7 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 - **範例（合成）**：`internet → vpn-gw-01 → ad-dc-01 → erp-db-01`，可行性 6.4；邊：VPN 443 → VPN 使用者網段可達 DC → svc-erp-sync 網域管理員憑證；可能阻斷控制：VPN 修補／MFA、特權服務帳號降權、ERP DB 網段隔離。
 - **判斷依據**：拓樸邊 + O1 的入口可能性 + 身分／設定邊數 − 跳數。
 - **可信度考量**：取決於 I10 與 I6 品質；**永遠標示為假設**。
-- **驗證方式**：O4 的授權驗證；驗證後可改為 `validated-feasible` 或 `validated-blocked`。
+- **驗證方式**：O4 的授權驗證；驗證後可改為 `validated-feasible` 或 `validated-blocked`。回填與下一輪沿用是導入時應建立的制度（見第 3 章 3.6「驗證回饋」）。
 - **對應 Gartner 概念**："anticipate attack paths" [G-IR]；AEV 證明可利用性 [G28b]。
 
 ### O3 改善建議
@@ -86,7 +86,7 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 - **判斷依據**：O1–O2 統計 + I2/I4 品質。
 - **可信度考量**：等同輸入新鮮度。
 - **驗證方式**：每週趨勢；與事件資料交叉。
-- **對應 Gartner 概念**：Gartner 建議以「time-to-remediate critical exposures」與「attack surface for high-value assets」對齊業務成果 [G-IR]；本流程目前沒有對應的指標：上面的指標都是當期數值，沒有修補天數之類的時間類指標，也沒有跨期比較（見第 3 章 3.6；方法論缺口見 [#168](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/issues/168)）。
+- **對應 Gartner 概念**：Gartner 建議以「time-to-remediate critical exposures」與「attack surface for high-value assets」對齊業務成果 [G-IR]；本流程維持單次分析，上面的指標都是當期數值，沒有修補天數之類的時間類指標，也沒有跨期比較；成果型指標由導入的組織建立（見第 3 章 3.6「成果型指標」與 [ADR 0008](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/docs/adr/0008-single-analysis-feedback-and-outcome-metrics-are-adoption-practices.md)）。
 
 ## 5.3 輸出的共同限制
 
