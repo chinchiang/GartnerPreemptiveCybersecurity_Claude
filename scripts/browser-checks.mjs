@@ -1,51 +1,23 @@
 /**
- * browser-checks.mjs — 瀏覽器檢查的骨架：本機伺服器、每個情境全新的 context、錯誤彙總
+ * browser-checks.mjs — 瀏覽器檢查的骨架：每個情境全新的 context、錯誤彙總、截圖
  * 瀏覽器檢查的骨架（#100）：verify.mjs 的各個情境透過 open／ok／shot 掛上來。
- * 骨架負責本機伺服器（含 ?stamped）、瀏覽器、每次 open 的新 context、context 層的錯誤監聽、截圖目錄；
- * 若傳入 session，伺服器、瀏覽器與產物目錄由 verification-run.mjs 持有，骨架只管理情境及各自的 context。
+ * 伺服器、瀏覽器與產物目錄由 verification-run.mjs 的 runVerification 持有，以 session 傳入（必填，#180）；
+ * 骨架只管理情境、每次 open 的新 context、context 層的錯誤監聽與截圖目錄。
  * 情境 { name, run } 依陣列順序執行，彼此獨立：每個情境結束（或丟出例外）時，骨架關掉它開過的所有 context。
- * 單元測試在 browser-checks.test.mjs（launch 換成假瀏覽器）；情境本身由完整驗證（node scripts/verify.mjs）負責。
+ * anchorInViewport：目錄錨點是否已捲入可視範圍，由 Playwright 在頁面中執行（放在這裡，測試才能 import：verify.mjs 載入時就會執行驗證）。
+ * 單元測試在 browser-checks.test.mjs（session 的瀏覽器換成假瀏覽器）；情境本身由完整驗證（node scripts/verify.mjs）負責。
  */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { once } from 'node:events';
-import { createWebsiteServer } from './verification-run.mjs';
-
-// 本機伺服器：把 root 底下的檔案原樣送出，回傳 base（http://127.0.0.1:<port>/）與 close（等伺服器真的關好才 resolve）
-async function serve(root) {
-  const server = createWebsiteServer(root).listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  return { base: `http://127.0.0.1:${server.address().port}/`, close: () => new Promise(resolve => server.close(resolve)) };
-}
-
-// 預設的 launch：載入 playwright（找不到時改用 /opt/node22 的全域安裝），啟動 chromium。
-// 兩處都載入不到時記一列「Playwright 可用」FAIL 並回傳 null，骨架就不跑任何情境
-export async function launchChromium(record) {
-  let chromium;
-  try { ({ chromium } = await import('playwright')); } catch { try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (e) { record('Playwright 可用', false, e.message); return null; } }
-  return chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-}
 
 // scenarios：[{ name, run({ open, ok, shot }) }]；only：只跑這些名稱的情境；record(name, pass, detail)：收結果（verify.mjs 傳入自己的 ok）。
-// launch(record)：回傳瀏覽器（要有 newContext、close）；回傳 null 表示瀏覽器無法使用（它自己已記好原因），這時不跑任何情境、
-// 也不記「無 JS 執行錯誤」。丟出例外則視為骨架本身的錯誤，直接中止（伺服器照樣關掉）
-export async function runBrowserChecks(scenarios, { root, only, launch = launchChromium, record, session }) {
-  if (session) return runScenarios(scenarios, { ...session, only, record });
-  const server = await serve(root);
-  try {
-    const browser = await launch(record);
-    if (!browser) return;
-    try {
-      await runScenarios(scenarios, { browser, base: server.base, shots: join(root, 'verify-screenshots'), only, record });
-    } finally {
-      await browser.close();
-    }
-  } finally {
-    await server.close();
-  }
+// session：{ browser, base, shots, isActive }，由 verification-run.mjs 的 runVerification 提供；伺服器、瀏覽器與產物目錄只由它持有與關閉（#180）
+export async function runBrowserChecks(scenarios, { only, record, session }) {
+  if (!session) throw new Error('runBrowserChecks 需要 session（{ browser, base, shots }），由 verification-run.mjs 的 runVerification 提供');
+  return runScenarios(scenarios, { ...session, only, record });
 }
 
-// 接受外部持有的資源時只管理情境與 context；伺服器及瀏覽器由驗證生命週期關閉。
+// 只管理情境與 context；伺服器及瀏覽器由驗證生命週期（runVerification）關閉。
 async function runScenarios(scenarios, { browser, base, shots, only, record, isActive = () => true }) {
   const selected = only ? scenarios.filter(s => only.includes(s.name)) : scenarios;
   const errors = [];
@@ -83,4 +55,13 @@ function opener(browser, base, contexts, errors) {
     await page.waitForSelector('h1');
     return page;
   };
+}
+
+// 由 Playwright 在頁面中執行；以實際目標位置判定，不依賴動畫耗時。
+export function anchorInViewport({ id, documentId }) {
+  const target = document.getElementById(id);
+  if (!target || !location.hash.includes(`doc=${documentId}`) || window.scrollY <= 0) return false;
+  const rect = target.getBoundingClientRect();
+  const headerBottom = document.querySelector('.topbar')?.getBoundingClientRect().bottom || 0;
+  return rect.height > 0 && rect.top >= headerBottom && rect.bottom <= window.innerHeight;
 }

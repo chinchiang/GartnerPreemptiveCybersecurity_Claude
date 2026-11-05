@@ -12,8 +12,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { stampLastUpdated } from './stamp-last-updated.mjs';
-import { runVerification, anchorInViewport, STAMPED_AT } from './verification-run.mjs';
-import { runBrowserChecks } from './browser-checks.mjs';
+import { runVerification } from './verification-run.mjs';
+import { STAMPED_AT } from './website-server.mjs';
+import { runBrowserChecks, anchorInViewport } from './browser-checks.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -96,7 +97,7 @@ const DESK = { width: 1280 };
 // 最後更新時間：沒填（本機、clone、這裡的預設）時 topbar 與頁尾都不顯示；填了時寬螢幕顯示在 topbar、窄螢幕改顯示在頁尾
 // （斷點與理由見 assets/styles.css）
 const shown = (pg, sel) => pg.$eval(sel, n => n.checkVisibility()).catch(() => null);   // null＝元素不存在
-// verification-run.mjs 的 STAMPED_AT（2026-10-17T16:30:00+00:00）換成臺北時間的顯示文字；改 STAMPED_AT 時這裡要一起改
+// website-server.mjs 的 STAMPED_AT（2026-10-17T16:30:00+00:00）換成臺北時間的顯示文字；改 STAMPED_AT 時這裡要一起改
 const LAST_UPDATED_TEXT = '最後更新：2026-10-18 00:30（UTC+8）';
 // 「時間在頁尾」：量 topbar 與頁尾的時間是否顯示、頁尾的文字（footerStamp），判定只寫在 inFooter 這一份（#88）
 const footerStamp = async pg => ({ top: await shown(pg, '#last-updated'), footer: await shown(pg, '#last-updated-footer'),
@@ -348,5 +349,5 @@ if (only) {
   if (!only.length || unknown.length) { console.error(`--only 找不到情境：${unknown.join('、') || '（沒有指定名稱）'}；可用的情境：${names.join('、')}`); process.exit(2); }
 }
 const { exitCode } = await runVerification({ root: ROOT, args, staticChecks, linkChecks,
-  browserChecks: session => runBrowserChecks(SCENARIOS, { root: ROOT, only, record: session.ok, session }) });
+  browserChecks: session => runBrowserChecks(SCENARIOS, { only, record: session.ok, session }) });
 process.exit(exitCode);
