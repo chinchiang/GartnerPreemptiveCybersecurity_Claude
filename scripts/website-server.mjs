@@ -1,7 +1,7 @@
 /**
  * website-server.mjs — 只供本機驗證的網站伺服器與路徑守門
  * createWebsiteServer：把網站根目錄底下的檔案原樣送出（?stamped 的 index.html 以 STAMPED_AT 填好最後更新時間）；
- *   Host、`:`、以 . 開頭的路徑段、頂層 backend/ 與 scratch/、realpath 解析後的越界與無權限目錄都回 403。
+ *   Host、`:`、以 . 開頭的路徑段、頂層 backend/ 與 scratch/、realpath 解析後的越界與無權限目錄都回 403；路徑的 % 編碼壞掉回 400 並通知 onMalformedUrl（#195）。
  *   啟動與釋放由 verification-run.mjs 的 runVerification 持有（#180 從 verification-run.mjs 原樣搬出）。
  * STAMPED_AT：?stamped 用的固定時間。
  * 單元測試在 website-server.test.mjs；路徑守門的回歸測試經過一次驗證的生命週期，在 verification-run.test.mjs。
@@ -29,7 +29,8 @@ function hiddenFromWebsite(root, file) {
 }
 
 // 這裡只建立伺服器，啟動與釋放由呼叫端（verification-run.mjs 的 runVerification）持有。
-export function createWebsiteServer(root, onError = () => {}) {
+// onError：要中斷驗證的伺服器例外（網站檔案讀不到等）；onMalformedUrl(原始網址)：路徑的 % 編碼壞掉、已回 400 的請求
+export function createWebsiteServer(root, onError = () => {}, onMalformedUrl = () => {}) {
   // 用作業系統的 realpath：Windows 會展開 8.3 短檔名（GIT~1 → .git）並還原實際大小寫，根目錄與檔案須用同一種寫法比對。
   const realRoot = realpathSync.native(root);
   const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.zip': 'application/zip', '.md': 'text/markdown', '.csv': 'text/csv' };
@@ -39,7 +40,10 @@ export function createWebsiteServer(root, onError = () => {}) {
       const port = req.socket.localPort;
       const host = String(req.headers.host || '').toLowerCase();
       if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) { res.writeHead(403); res.end(); return; }
-      let p = decodeURIComponent(req.url.split('?')[0]).replace(/\\/g, '/'); if (p === '/') p = '/index.html';
+      // 路徑的 % 編碼壞掉是請求本身的錯：回 400、不碰檔案系統，交給 onMalformedUrl（呼叫端記一列失敗），不中斷驗證（#195）。
+      let p;
+      try { p = decodeURIComponent(req.url.split('?')[0]); } catch { onMalformedUrl(req.url); res.writeHead(400); res.end(); return; }
+      p = p.replace(/\\/g, '/'); if (p === '/') p = '/index.html';
       // 冒號會讓 NTFS 開啟串流（backend::$INDEX_ALLOCATION 就是 backend 目錄本身），網站檔名也用不到，一律拒絕。
       if (!p.startsWith('/') || p.includes(':')) { res.writeHead(403); res.end(); return; }
       const file = resolve(realRoot, '.' + p);

@@ -41,6 +41,8 @@ function resetAcl(dir) {
   }
 }
 const readReport = root => readFileSync(join(root, 'verify-report.md'), 'utf8');
+// root 不受檔案權限限制，chmod 000 的檔案照樣讀得到（lockFile 見下方）
+const unreadableSkip = process.platform !== 'win32' && process.getuid?.() === 0 && '以 root 執行時 chmod 000 擋不住讀取';
 const options = root => ({ root, githubOutput: undefined, log() {}, staticChecks: ok => ok('靜態項目', true),
   browserType: { launch: async () => ({ close: async () => {} }) }, browserChecks: async () => {} });
 
@@ -295,40 +297,66 @@ test('連結檢查例外也收尾並保留失敗原因', () => project(async roo
   assert.match(readReport(root), /連結檢查.*links failed/);
 }));
 
-test('網站檔案讀取例外會停止執行，不再進行連結檢查並關閉資源', () => project(async root => {
+test('網站檔案讀取例外會停止執行，不再進行連結檢查並關閉資源', { skip: unreadableSkip }, () => project(async root => {
   let base, closed = false, linked = false;
-  const result = await runVerification({ ...options(root), args: ['--links'],
-    browserType: { launch: async () => ({ close: async () => { closed = true; } }) },
-    browserChecks: async context => {
-      base = context.base;
-      await fetch(base + '%E0%A4%A'); // decodeURIComponent 會拋錯
-      await new Promise(() => {}); // 若未傳回致命錯誤，這次執行便無法完成。
-    }, linkChecks: () => { linked = true; } });
-  assert.equal(result.exitCode, 1);
-  assert.equal(closed, true);
-  assert.equal(linked, false);
-  assert.match(readReport(root), /提供網站檔案.*URI malformed/);
-  await assert.rejects(fetch(base));
+  const restore = lockFile(join(root, 'locked.txt'));
+  try {
+    const result = await runVerification({ ...options(root), args: ['--links'],
+      browserType: { launch: async () => ({ close: async () => { closed = true; } }) },
+      browserChecks: async context => {
+        base = context.base;
+        await fetch(base + 'locked.txt'); // 讀不到檔案：伺服器例外（#195 之前用 % 編碼壞掉的網址觸發）
+        await new Promise(() => {}); // 若未傳回致命錯誤，這次執行便無法完成。
+      }, linkChecks: () => { linked = true; } });
+    assert.equal(result.exitCode, 1);
+    assert.equal(closed, true);
+    assert.equal(linked, false);
+    assert.match(readReport(root), process.platform === 'win32' ? /執行中斷：瀏覽器檢查.*提供網站檔案：EPERM/ : /執行中斷：瀏覽器檢查.*提供網站檔案：EACCES/);
+    await assert.rejects(fetch(base));
+  } finally { restore(); }
 }));
 
-test('網站例外後晚到的檢查結果不再列入報告或結果陣列', () => project(async root => {
+test('網站例外後晚到的檢查結果不再列入報告或結果陣列', { skip: unreadableSkip }, () => project(async root => {
   let release, completed;
   const waiting = new Promise(resolve => { release = resolve; });
-  const result = await runVerification({ ...options(root), browserChecks: context => {
-    completed = (async () => {
-      await fetch(context.base + '%E0%A4%A').catch(() => {});
-      await waiting;
-      context.ok('晚到的結果', true);
-    })();
-    return completed;
+  const restore = lockFile(join(root, 'locked.txt'));
+  try {
+    const result = await runVerification({ ...options(root), browserChecks: context => {
+      completed = (async () => {
+        await fetch(context.base + 'locked.txt').catch(() => {});
+        await waiting;
+        context.ok('晚到的結果', true);
+      })();
+      return completed;
+    } });
+    const count = result.results.length;
+    const report = readReport(root);
+    release(); await completed;
+    assert.equal(result.exitCode, 1);
+    assert.match(report, /執行中斷：瀏覽器檢查/);
+    assert.equal(result.results.length, count);
+    assert.doesNotMatch(report, /晚到的結果/);
+    assert.equal(readReport(root), report);
+  } finally { restore(); }
+}));
+
+test('瀏覽器檢查期間請求了 % 編碼壞掉的網址：每個不同的路徑記一列（查詢字串不同不另記）「網站請求的網址編碼正確」❌（detail 是原始網址），驗證不中斷、報告不標未完成、維護用截圖不更新（#195）', () => project(async root => {
+  const result = await runVerification({ ...options(root), browserChecks: async ({ base, ok }) => {
+    const port = new URL(base).port, host = `127.0.0.1:${port}`;
+    for (const path of ['/%E0%A4%A', '/%E0%A4%A', '/%E0%A4%A?v=2', '/docs/100%.md']) assert.equal((await requestServer(base, path, { host })).status, 400);
+    ok('之後的檢查', true);
   } });
-  const count = result.results.length;
-  const report = readReport(root);
-  release(); await completed;
+  assert.deepEqual(result.results.map(r => [r.name, r.pass, r.detail]), [
+    ['靜態項目', true, ''],
+    ['網站請求的網址編碼正確', false, '/%E0%A4%A'],
+    ['網站請求的網址編碼正確', false, '/docs/100%.md'],
+    ['之後的檢查', true, ''],
+  ]);
+  assert.equal(result.incomplete, false);
   assert.equal(result.exitCode, 1);
-  assert.equal(result.results.length, count);
-  assert.doesNotMatch(report, /晚到的結果/);
-  assert.equal(readReport(root), report);
+  assert.doesNotMatch(readReport(root), /狀態：未完成|執行中斷/);
+  assert.deepEqual(readdirSync(join(root, 'verify-screenshots')), ['old.png']);
+  assert.equal(readFileSync(join(root, 'verify-screenshots', 'old.png'), 'utf8'), 'old image');
 }));
 
 // 對本機驗證伺服器送原始請求；headers 可覆寫 Host，模擬 DNS rebinding 帶來的外部網域。
@@ -456,6 +484,13 @@ function currentUserSid() {
   return match[1];
 }
 
+// 建一個讀不到的檔案，回傳還原權限的函式：Windows 用 icacls 拒絕讀取，Linux／macOS 用 chmod 000（readFileSync 丟出 EACCES）
+function lockFile(path) {
+  writeFileSync(path, 'LOCKED_CONTENT');
+  if (process.platform === 'win32') return denyRead(path);
+  chmodSync(path, 0o000);
+  return () => { try { chmodSync(path, 0o644); } catch {} };
+}
 // 以 SID 拒絕目前使用者讀取（不靠帳號名稱解析）；回傳的還原函式不拋錯，避免蓋掉原本的斷言錯誤，
 // 還原失敗留下的拒絕權限由 project() 清理時重設。
 function denyRead(path) {

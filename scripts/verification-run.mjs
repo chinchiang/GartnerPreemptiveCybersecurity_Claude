@@ -68,7 +68,16 @@ export async function runVerification({ root, args = [], staticChecks, browserCh
       let rejectServing;
       const servingFailure = new Promise((_, reject) => { rejectServing = reject; });
       servingFailure.catch(() => {}); // 啟動瀏覽器期間也可能失敗，避免未處理的拒絕。
-      server = createWebsiteServer(root, rejectServing);
+      // 網站請求了 % 編碼壞掉的網址（伺服器已回 400）：每個不同的路徑記一列失敗，不中斷驗證（#195）。
+      // 以路徑（? 之前）去重，查詢字串不同不另記；說明是第一次看到的原始網址。經過 ok，中斷之後才到的請求不記
+      const malformedPaths = new Set();
+      const onMalformedUrl = url => {
+        const path = url.split('?')[0];
+        if (malformedPaths.has(path)) return;
+        malformedPaths.add(path);
+        ok('網站請求的網址編碼正確', false, url);
+      };
+      server = createWebsiteServer(root, rejectServing, onMalformedUrl);
       await new Promise((resolve, reject) => {
         server.once('error', reject);
         server.listen(0, '127.0.0.1', resolve);
