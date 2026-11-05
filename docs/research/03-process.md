@@ -7,7 +7,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 ## 3.1 設計原則（本專案推論）
 
 1. **骨架來自 CTEM**：S1 對應 scoping、S2 對應 discovery、S3–S4 對應 prioritization、S6 對應 validation、S5／S7 對應 mobilization [G8]。
-2. **先制型的加速點**：依 Gartner 對 PEM 的定義 [G-IR]，加速的是「持續攻擊面列舉、高準確度驗證、自動化與引導式緩解」三處；本流程對應 S2、S6、S5。
+2. **先制型的加速點**：Gartner 對 PEM 的定義 [G-IR] 是加速曝險管理的 "one or more aspects… such as" 持續攻擊面列舉、高準確度驗證、自動化與引導式緩解——這幾處是舉例，不是封閉的清單。本流程與這幾處相關的是 S2（彙整 EASM 等工具提供的攻擊面資料，本身不做列舉）、S6、S5（引導式緩解）；其中 S6 只產出驗證**計畫**，不是 Gartner 說的高準確度驗證本身，驗證要由人員以合規工具執行。
 3. **語言模型的邊界**：模型負責資料整合、規則化推理、假設生成與文件撰寫；不執行掃描、不驗證、不變更。每一步都標出人工決策點。
 4. **迴圈而非直線**：S8 的指標回饋到 S1／S2，對應 CTEM「continuous」的精神。這是流程設計：本專案的技能與示範引擎每次只做一次分析，跨期追蹤要由導入的組織另行建立（見 3.6）。
 
@@ -34,7 +34,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：範圍摘要（併入 O5 與 JSON `meta`）。
 - **限制**：模型無法判斷授權是否真實有效；只能檢查欄位存在。
 - **人工決策點**：授權人（例如 CISO）確認範圍與排除項。
-- **依據**：CTEM scoping 強調「understanding what is important to business counterparts」[G8]。
+- **依據**：CTEM scoping 強調「understanding what is important to business counterparts」[G8]，這是 scoping 的方向；本流程把業務重要性放在 I2 的 `business_criticality`（S3 用它計算影響），S1 只做授權確認。
 
 ### S2 資料匯集（Discovery）
 
@@ -44,12 +44,12 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：資料品質報告（JSON `data_quality`）；其中的清冊完整度估計與未納入清冊的對外資產數直接成為 O6 的兩項指標。
 - **限制**：模型只能看見被提供的資料；「未知的未知」需靠 EASM 等工具。
 - **人工決策點**：資料擁有者決定是否補資料或在缺漏下繼續。
-- **依據**：CTEM discovery [G8]；Gartner 對 PEA 的描述「continuously discover and map attack surfaces and prioritize findings by enriching them with deep business context」[G32]。
+- **依據**：CTEM discovery [G8]；Gartner 對 preemptive exposure assessment 的描述「continuously discover and map attack surfaces and prioritize findings by enriching them with deep business context」[G32]。
 
 ### S3 曝險評分（Prioritization）
 
 - **目的**：把「嚴重度」轉為「在這個組織裡被利用的可能性 × 業務影響」。
-- **輸入**：I2（重要性、資料等級、對外曝露）、I3（CVSS、公開利用、EPSS、KEV）、I4（EASM 議題）、I6（身分弱點）、I7（設定偏差）、I8（既有控制與缺口）、I9（情資命中）。
+- **輸入**：I2（重要性、資料等級、對外曝露）、I3（CVSS）、I5（公開利用、EPSS、KEV：放在 vulnerabilities 的欄位裡）、I4（EASM 議題）、I6（身分弱點）、I7（設定偏差）、I8（既有控制與缺口）、I9（情資命中）。
 - **處理**：示範規則見 skills/shared/task-spec.md 附錄 A：可能性 = 對外曝露 + EASM 議題 + 公開利用 + EPSS/KEV + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中；影響 = 業務重要性 + 資料等級 + crown jewel + 可達 crown jewel 之入口（blast radius）；每項列 `factors[]`；依風險胃納分 P1–P4；信心水準依缺漏類別數與清冊完整度下修。
 - **輸出**：O1。
 - **限制**：示範規則是線性加權，不是機率模型；EPSS 本身不含企業脈絡。組織應以自己的風險模型取代。
@@ -104,7 +104,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：O6。
 - **限制**：指標只反映輸入資料的品質，而且只是單次分析的數值；跨期比較、結案證據與趨勢不在本專案的實作範圍（見 3.6）。
 - **人工決策點**：每週檢視；重大變更時回到 S1。
-- **依據**：Gartner 建議以「reducing time-to-remediate critical exposures or decreasing the attack surface for high-value assets」對齊業務成果 [G-IR]。
+- **依據**：Gartner 建議以「reducing time-to-remediate critical exposures or decreasing the attack surface for high-value assets」對齊業務成果 [G-IR]；本流程目前沒有對應的指標：O6 只有當期的數值，沒有修補天數之類的時間類指標，也沒有跨期比較（見 3.6；方法論缺口見 [#168](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/issues/168)）。
 
 ## 3.4 角色與職責（本專案推論；參考 [U1] 的 RACI 觀點）
 

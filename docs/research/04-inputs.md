@@ -4,22 +4,22 @@ order: 4
 summary: 逐項說明每個輸入的用途與必要性、資料來源與格式、更新頻率、品質要求、敏感程度與缺漏替代方案。
 ---
 
-> 本章為本專案推論。分類依據：Gartner 對 discovery 與 prioritization 的描述 [G8]、ASCA 的「asset context, vulnerability data and threat intelligence」[G-IR]、PEA 的「deep business context」[G32]。網站「Inputs／Outputs 對照」頁提供可篩選版本。
+> 本章為本專案推論。分類依據：Gartner 對 discovery 與 prioritization 的描述 [G8]、ASCA 的「asset context, vulnerability data and threat intelligence」[G-IR]、preemptive exposure assessment 的「deep business context」[G32]。網站「Inputs／Outputs 對照」頁提供可篩選版本。
 
 ## 4.1 總表
 
 | 編號 | 輸入 | 必要性 | 對應步驟 | 敏感度 |
 |---|---|---|---|---|
 | I1 | 授權範圍與分析參數 | 必要 | S1、S6、S7 | 中 |
-| I2 | 資產清冊 + 業務重要性 | 必要 | S2、S3、S4、S8 | 高 |
+| I2 | 資產清冊 + 業務重要性 | 必要 | S2、S3、S8 | 高 |
 | I3 | 弱點與發現 | 必要 | S2、S3、S5 | 高 |
 | I4 | 外部曝險（EASM） | 建議 | S2、S3、S8 | 高 |
-| I5 | 利用可能性訊號（EPSS／KEV／公開利用） | 建議 | S3 | 低（公開資料）|
-| I6 | 身分與權限 | 建議 | S3、S4 | 極高 |
-| I7 | 設定基準偏差 | 選用 | S3、S5 | 高 |
-| I8 | 既有控制措施 | 建議 | S3、S4、S5 | 高 |
-| I9 | 威脅情資 | 建議 | S3、S8 | 中 |
-| I10 | 網路拓樸／信任關係 | 建議 | S4、S6 | 極高 |
+| I5 | 利用可能性訊號（EPSS／KEV／公開利用） | 建議 | S2、S3 | 低（公開資料）|
+| I6 | 身分與權限 | 建議 | S2、S3、S4 | 極高 |
+| I7 | 設定基準偏差 | 選用 | S2、S3、S5 | 高 |
+| I8 | 既有控制措施 | 建議 | S2、S3、S4、S5 | 高 |
+| I9 | 威脅情資 | 建議 | S2、S3 | 中 |
+| I10 | 網路拓樸／信任關係 | 建議 | S2、S4、S6 | 極高 |
 
 ## 4.2 逐項說明
 
