@@ -55,7 +55,7 @@ Third-party counts ("32 adopters as of March 2026", "40+ by mid-2026") are UNVER
 
 - **Custom Instructions — PARTIALLY VERIFIED.** Official article `help.openai.com/en/articles/8096356-chatgpt-custom-instructions` exists (search-surfaced). Snippets: "custom instructions allow you to share anything you'd like ChatGPT to consider in its response"; fields "What would you like ChatGPT to know about you?" and "How would you like ChatGPT to respond?". Character limits reported as 1,500 (Free/Go) vs 5,000 (paid) — UNVERIFIED (third-party).
 - **Projects — UNVERIFIED for limits.** Third-party sources report per-project file caps (5 Free / 25 Go-Plus / 40 Pro-Business-Enterprise) and "no published character limit exists for project instructions". Official article could not be fetched.
-- **Custom GPTs — PARTIALLY VERIFIED.** Official articles `help.openai.com/en/articles/8554397-creating-a-gpt` and `8555545-file-uploads-faq` exist. Search snippets attributed to the FAQ: "hard limit of 512MB per file", "capped at 2M tokens per file", "Up to 20 files per GPT". Not fetched.
+- **Custom GPTs — PARTIALLY VERIFIED.** Official articles `help.openai.com/en/articles/8554397-creating-and-editing-gpts` (URL updated 2026-11-05, #177; the article was renamed from "Creating a GPT") and `8555545-file-uploads-faq` exist. Search snippets attributed to the FAQ: "hard limit of 512MB per file", "capped at 2M tokens per file", "Up to 20 files per GPT". Not fetched.
 - **Workspace agents vs Custom GPTs — PARTIALLY VERIFIED.** Search snippet from official Enterprise/Business release notes: "Custom GPTs are lighter, builder-first helpers, while workspace agents are shared, persistent, and schedulable".
 - **Codex — VERIFIED (official GitHub `openai/codex`):** "We recommend signing into your ChatGPT account to use Codex as part of your Plus, Pro, Business, Edu, or Enterprise plan." Docs live at `developers.openai.com/codex`; the repo's `docs/skills.md` says only: "For information about skills, refer to this documentation (https://developers.openai.com/codex/skills)." PARTIALLY VERIFIED (help-center snippet): "Codex is included across ChatGPT plans, including Free and Go."
 
@@ -324,7 +324,7 @@ Ship a standard Agent Skill folder for Antigravity and Gemini CLI (installed int
 | Codex "Build skills" | https://developers.openai.com/codex/skills | n/a | 2026-09-09 | PARTIAL; snippets (.agents/skills, $HOME/.agents/skills); blocked |
 | OpenAI API "Skills" guide | https://developers.openai.com/api/docs/guides/tools-skills | n/a | 2026-09-09 | PARTIAL; title only |
 | ChatGPT Custom Instructions | https://help.openai.com/en/articles/8096356-chatgpt-custom-instructions | n/a | 2026-09-09 | PARTIAL; blocked |
-| Creating a GPT | https://help.openai.com/en/articles/8554397-creating-a-gpt | n/a | 2026-09-09 | PARTIAL; blocked |
+| Creating and editing GPTs (formerly "Creating a GPT"; URL updated 2026-11-05, #177) | https://help.openai.com/en/articles/8554397-creating-and-editing-gpts | n/a | 2026-09-09 | PARTIAL; blocked |
 | File Uploads FAQ | https://help.openai.com/en/articles/8555545-file-uploads-faq | n/a | 2026-09-09 | PARTIAL; 512 MB / 2M tokens / 20 files per GPT (snippets) |
 | Using Codex with your ChatGPT plan | https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan | n/a | 2026-09-09 | PARTIAL; snippet |
 | Introducing GPT-5.5 | https://openai.com/index/introducing-gpt-5-5/ | n/a | 2026-09-09 | PARTIAL; blocked |

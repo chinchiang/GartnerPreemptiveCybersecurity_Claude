@@ -6,7 +6,9 @@ platform: chatgpt
 
 # Custom GPT 設定內容
 
-> 用途：在 ChatGPT 建立一個可分享的 Custom GPT。以下每一節對應 GPT 建立畫面的一個欄位；欄位名稱以官方介面為準（依 https://help.openai.com/en/articles/8554397-creating-a-gpt ，PARTIALLY VERIFIED）。Instructions 欄位的字數上限未經官方頁面查證，若貼入後被截斷，請先保留第 0–2 節與第 5–6 節，把第 3 節評分公式改由 Knowledge 內的 `task-spec.md` 承載。
+> **預定退場**：OpenAI 說明中心寫 Custom GPT 預定在 2026-12-11 退場（FedRAMP 與核准延後的企業版工作區是 2027-02-11；實際日期以帳號或工作區收到的通知為準），個人帳號（Free、Go、Plus、Pro）已經不能新建 GPT。本檔只給已經建好的 GPT 在退場前使用，退場後拿掉；新的設定請用 `project-instructions.md`（來源見 `docs/guides/chatgpt.md` 第 1 節）。
+>
+> 用途：在 ChatGPT 建立一個可分享的 Custom GPT。以下每一節對應 GPT 建立畫面的一個欄位；欄位名稱以官方介面為準（依 https://help.openai.com/en/articles/8554397-creating-and-editing-gpts ，PARTIALLY VERIFIED）。Instructions 欄位的字數上限未經官方頁面查證，若貼入後被截斷，請先保留第 0–2 節與第 5–6 節，把第 3 節評分公式改由 Knowledge 內的 `task-spec.md` 承載。
 
 ## 建議名稱
 

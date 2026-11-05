@@ -32,7 +32,7 @@ backend/                          選用的模型 API 代理範例（預設不�
 | 平臺 | 最快路徑 |
 |---|---|
 | Claude | 把 `skills/claude/preemptive-exposure-analysis/` 放進 `.claude/skills/`，在 Claude Code 輸入 `/preemptive-exposure-analysis examples/synthetic-org` |
-| ChatGPT | Custom GPT 貼入 `skills/chatgpt/custom-gpt-instructions.md`；或 Codex 使用 `skills/chatgpt/preemptive-exposure-analysis/` |
+| ChatGPT | Project 貼入 `skills/chatgpt/project-instructions.md`（建議；Custom GPT 預定 2026-12-11 退場，個人帳號已不能新建，`custom-gpt-instructions.md` 只給已經建好的 GPT）；或 Codex 使用 `skills/chatgpt/preemptive-exposure-analysis/` |
 | Grok | `skills/grok/system-prompt.md` 貼入對話，或 `python3 skills/grok/api-workflow.py --dry-run` |
 | GLM | Claude Code + GLM 後端使用 `skills/glm/preemptive-exposure-analysis/`；或 `python3 skills/glm/api-workflow.py --dry-run` |
 | DeepSeek | `python3 skills/deepseek/api-workflow.py --dry-run`（版本無關）；或 `skills/deepseek/preemptive-exposure-analysis/` |
