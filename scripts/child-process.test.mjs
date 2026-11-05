@@ -6,6 +6,7 @@ import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseTimeout, runWithTimeout } from './child-process.mjs';
+import { hangingServerSource, waitUnreachable, stopHanging } from './hanging-process.mjs';
 
 test('parseTimeout：0 或正數（可以有小數）回傳秒數，0 表示不限時', () => {
   assert.equal(parseTimeout('0'), 0);
@@ -25,38 +26,36 @@ test('runWithTimeout：以執行檔＋參數執行，正常結束時回傳結束
   assert.deepEqual(await result, { code: 3, stdout: 'out', stderr: 'err', timedOut: false });
 });
 
-// 子行程與它開的孫行程：兩個都留下計時器不結束；子行程把兩個 pid 寫進 argv[1] 指定的檔案，測試失敗時也找得到、清得掉
-const HANGING_TREE = "const { spawn } = require('child_process');\n" +
-  "const g = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });\n" +
-  "require('fs').writeFileSync(process.argv[1], JSON.stringify([process.pid, g.pid]));\nsetInterval(() => {}, 1000);\n";
-const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
-// SIGKILL 送達與回收需要一點時間：最多等 2 秒
-async function waitUntilDead(pids) {
-  for (let i = 0; i < 40 && pids.some(alive); i++) await new Promise(r => setTimeout(r, 50));
-}
+// 子行程與它開的孫行程：兩個都在專屬的控制通道監聽、不結束（做法見 hanging-process.mjs）；各自在監聽之後把位址附加到
+// argv[1] 指定的檔案，測試失敗時也找得到、請得動它們結束
+const TREE_SERVER = hangingServerSource({ dirExpr: "require('path').dirname(process.argv[1])", recordFileExpr: 'process.argv[1]' });
+const HANGING_TREE = `require('child_process').spawn(process.execPath, ['-e', ${JSON.stringify(TREE_SERVER)}, process.argv[1]], { stdio: 'ignore' });\n` + TREE_SERVER;
+// 逾時那支的 timeoutSeconds：兩個行程都要在時限內開始監聽、寫出位址。Windows 啟動 Node 比較慢（#143），用較寬的值
+const TREE_TIMEOUT_SECONDS = process.platform === 'win32' ? 3 : 1;
 // 實作壞掉時 result 可能永遠不會給出：最多等 30 秒就當成失敗，不讓整個 node --test 卡住。
 // 不是在測速度：Windows 在行程建立的負載下，逾時之後光 taskkill 就要 5～8 秒，10 秒會偶發失敗（#185）
 const within30s = promise => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('30 秒內沒有結果')), 30000).unref())]);
-// 跑 HANGING_TREE，把 pid 檔的路徑交給 body；結束時（不論通過與否）結束兩個行程、刪掉暫存目錄
+// 跑 HANGING_TREE，把位址檔的路徑與讀位址的函式交給 body；結束時（不論通過與否）透過通道請兩個行程結束、刪掉暫存目錄。
+// 不對任何 pid 送訊號（#165）：正常時 runWithTimeout 早已結束它們，連不上的略過
 async function withHangingTree(body) {
   const dir = mkdtempSync(join(tmpdir(), 'child-process-test-'));
-  const pidFile = join(dir, 'pids.json');
-  const pids = () => existsSync(pidFile) ? JSON.parse(readFileSync(pidFile, 'utf8')) : [];
-  try { await body(pidFile, pids); }
+  const addrFile = join(dir, 'addrs');
+  const addrs = () => existsSync(addrFile) ? readFileSync(addrFile, 'utf8').split('\n').filter(Boolean) : [];
+  try { await body(addrFile, addrs); }
   finally {
-    for (const pid of pids()) { try { process.kill(pid, 'SIGKILL'); } catch {} }
+    for (const addr of addrs()) await stopHanging(addr);
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
 test('runWithTimeout：超過 timeoutSeconds 就結束整組行程（子行程與它開的孫行程），timedOut 為真', async () => {
-  await withHangingTree(async (pidFile, pids) => {
-    const { result } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, pidFile], timeoutSeconds: 1 });
+  await withHangingTree(async (addrFile, addrs) => {
+    const { result } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, addrFile], timeoutSeconds: TREE_TIMEOUT_SECONDS });
     const r = await within30s(result);
     assert.equal(r.timedOut, true);
-    await waitUntilDead(pids());
-    assert.equal(pids().length, 2, '子行程沒有寫出 pid');
-    for (const pid of pids()) assert.ok(!alive(pid), `行程 ${pid} 在逾時之後還在執行`);
+    assert.equal(addrs().length, 2, '子行程與孫行程沒有都寫出通道');
+    // 結束與回收需要一點時間：每個最多等 2 秒
+    for (const addr of addrs()) assert.ok(await waitUnreachable(addr, 2000), `行程（通道 ${addr}）在逾時之後還在執行`);
   });
 });
 
@@ -68,14 +67,13 @@ test('runWithTimeout：timeoutSeconds 超過 setTimeout 的上限（2^31−1 毫
 });
 
 test('runWithTimeout：呼叫 kill() 就結束整組行程（子行程與它開的孫行程），給中斷時的訊號處理器用', async () => {
-  await withHangingTree(async (pidFile, pids) => {
-    const { result, kill } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, pidFile] });
-    for (let i = 0; i < 100 && pids().length < 2; i++) await new Promise(r => setTimeout(r, 50));
-    assert.equal(pids().length, 2, '子行程沒有寫出 pid');
+  await withHangingTree(async (addrFile, addrs) => {
+    const { result, kill } = runWithTimeout({ command: process.execPath, args: ['-e', HANGING_TREE, addrFile] });
+    for (let i = 0; i < 100 && addrs().length < 2; i++) await new Promise(r => setTimeout(r, 50));
+    assert.equal(addrs().length, 2, '子行程與孫行程沒有都寫出通道');
     kill();
     await within30s(result);
-    await waitUntilDead(pids());
-    for (const pid of pids()) assert.ok(!alive(pid), `行程 ${pid} 在 kill() 之後還在執行`);
+    for (const addr of addrs()) assert.ok(await waitUnreachable(addr, 2000), `行程（通道 ${addr}）在 kill() 之後還在執行`);
   });
 });
 
