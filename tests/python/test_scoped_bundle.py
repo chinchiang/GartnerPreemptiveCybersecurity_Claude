@@ -33,8 +33,13 @@ class ScopedBundleTest(unittest.TestCase):
             self.assertNotIn('EXCLUDED_SURPLUS', prompt)
 
     def test_shared_cases_through_scoped_files(self):
+        schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))
         for c in CASES:
+            if c.get('only') == 'js':
+                continue  # 不認得的頂層鍵：Python 只讀 9 個已知的輸入檔，讀不到這種輸入（等價的檢查見 test_only_known_categories_are_read）
             with self.subTest(c['name']):
+                self.assertEqual(aw.excluded_assets_problems(c['bundle']['scope']['authorized_scope'], schema),
+                                 c.get('excludedAssetsProblems', []))
                 source = copy.deepcopy(c['bundle'])
                 files = []
                 for category, data in source.items():
@@ -47,6 +52,12 @@ class ScopedBundleTest(unittest.TestCase):
                 result = {'scope': inputs.scope, **{f['category']: f['data'] for f in aw.scoped_files(inputs)}}
                 self.assertEqual(result, c['expected'])
                 self.assertEqual(source, c['bundle'])
+    def test_only_known_categories_are_read(self):
+        """JS 的 scopedBundle 丟掉不認得的頂層鍵（共用案例 only: js）；Python 的對等保證是只讀輸入 schema 頂層定義的類別（#164）。"""
+        schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))
+        self.assertEqual({category for _, category, _, _ in aw.INPUT_FILES}, set(schema['properties']))
+        self.assertTrue(any(c.get('only') == 'js' for c in CASES), '共用案例要有不認得頂層鍵的案例')
+
     def test_load_and_prompt_handle_review_regressions(self):
         schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))
         for filename, data in [('exposures.json', [{'asset_id': 'A02', 'hostname': 'EXCLUDED_SENTINEL'}]),

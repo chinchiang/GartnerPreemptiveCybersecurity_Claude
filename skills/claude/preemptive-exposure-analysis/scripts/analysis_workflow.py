@@ -475,9 +475,8 @@ def _file_status_findings(inputs: Inputs, input_schema: dict) -> list:
     loaded = {f["name"]: f for f in inputs.files}
     findings = []
     authorized = inputs.scope.get("authorized_scope") if isinstance(inputs.scope.get("authorized_scope"), dict) else {}
-    value = authorized.get("excluded_assets")
-    # 排除清單寫錯格式時排除不會生效：這是必要問題，不能默默放行而讓使用者以為已經排除
-    if "excluded_assets" in authorized and not (isinstance(value, list) and all(isinstance(v, str) and re.search(NON_BLANK_PATTERN, v) for v in value)):
+    # 排除清單寫錯格式時排除不會生效：這是必要問題，不能默默放行而讓使用者以為已經排除（格式由 schema 判定，#164）
+    if excluded_assets_problems(authorized, input_schema):
         findings.append(PreflightFinding("scope.json", PreflightKind.INVALID_EXCLUDED_ASSETS, PROBLEM,
                                          "excluded_assets 須為非空白字串的陣列；格式不符的項目不會被排除"))
     for name, category, _, _ in INPUT_FILES:
@@ -512,6 +511,18 @@ def extract_core_prompt(md: str) -> str:
 def build_system_prompt(core_prompt_md: str, platform_note: str) -> str:
     core = extract_core_prompt(core_prompt_md)
     return f"{core}\n\n{platform_note}" if platform_note else core
+
+
+def excluded_assets_problems(authorized, input_schema: dict) -> list:
+    """排除清單的格式問題：authorized_scope 有 excluded_assets 時，依 input-schema.json 的定義檢查（None 也算有、也不合格）；
+    沒有這個鍵就是合格。回傳不合格的欄位路徑（空清單＝合格）。與 JS 的 excludedAssetsProblems 相同，兩邊由
+    tests/fixtures/scoped-bundle-cases.json 的 excludedAssetsProblems 守住一致（#164）。授權範圍守門只看必填欄位，不含這一項（ADR 0004）。"""
+    if not isinstance(authorized, dict) or "excluded_assets" not in authorized:
+        return []
+    path = "authorized_scope.excluded_assets"
+    node = input_schema["properties"]["scope"]["properties"]["authorized_scope"]["properties"]["excluded_assets"]
+    _assert_supported(node, path)
+    return _check(authorized["excluded_assets"], node, path)
 
 
 def excluded_asset_ids(authorized: dict) -> set:
