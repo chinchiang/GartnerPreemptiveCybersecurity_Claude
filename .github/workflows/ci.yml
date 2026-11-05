@@ -98,9 +98,20 @@ jobs:
             rm -rf "$d"
           done
       - name: Demo engine and scripts refuse without scope (--no-scope, --exclude scope)
+        # 只看「不是 0」的話，程式崩潰（結束碼 1）也會被當成拒絕（#170）：示範引擎要正好是 2；
+        # API 腳本授權範圍中止的結束碼本來就是 1，跟崩潰分不出來，所以另外比對 stderr 有共用核心的中止訊息（MISSING_SCOPE_ABORT）
         run: |
-          node scripts/run-demo.mjs --no-scope && { echo '缺 scope 應拒絕'; exit 1; } || echo '缺 scope 已拒絕（exit 2）'
-          for p in chatgpt grok glm deepseek gemini; do python3 skills/$p/api-workflow.py --dry-run --exclude scope >/dev/null 2>&1 && { echo "$p 缺 scope 未中止"; exit 1; } || true; done
+          code=0; out=$(node scripts/run-demo.mjs --no-scope 2>&1) || code=$?
+          [ "$code" -eq 2 ] || { echo "::error::示範引擎缺 scope 應以結束碼 2 拒絕，實際是 $code"; echo "$out"; exit 1; }
+          echo '示範引擎：缺 scope 已拒絕（exit 2）'
+          abort=$(python3 -c "import sys; sys.path.insert(0, 'skills/shared'); import analysis_workflow; print(analysis_workflow.MISSING_SCOPE_ABORT)")
+          for p in chatgpt grok glm deepseek gemini; do
+            code=0; err=$(python3 skills/$p/api-workflow.py --dry-run --exclude scope 2>&1 >/dev/null) || code=$?
+            if [ "$code" -ne 1 ] || ! printf '%s\n' "$err" | grep -qF -- "$abort"; then
+              echo "::error::$p 缺 scope 應以結束碼 1 中止並印出授權範圍守門的訊息；實際結束碼 $code，stderr："; echo "$err"; exit 1
+            fi
+            echo "$p：缺 scope 已中止（exit 1）"
+          done
       - name: Backend worker builds with embedded prompt (syntax only, no deploy)
         run: node scripts/build-worker.mjs && node --check backend/dist/worker.js
 
