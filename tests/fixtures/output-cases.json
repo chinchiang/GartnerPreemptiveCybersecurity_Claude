@@ -90,5 +90,43 @@
     ],
     "value": [],
     "valid": false
+  },
+  {
+    "name": "缺分級門檻",
+    "path": [
+      "exposure_priorities",
+      "thresholds"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.exposure_priorities.thresholds 必填"
+    ]
+  },
+  {
+    "name": "分級門檻缺 P2",
+    "path": [
+      "exposure_priorities",
+      "thresholds",
+      "P2"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.exposure_priorities.thresholds.P2 必填"
+    ]
+  },
+  {
+    "name": "分級門檻 P1 是字串",
+    "path": [
+      "exposure_priorities",
+      "thresholds",
+      "P1"
+    ],
+    "value": "60",
+    "valid": false,
+    "problems": [
+      "$.exposure_priorities.thresholds.P1 型別不合格"
+    ]
   }
 ]

@@ -43,10 +43,10 @@
     },
     "exposure_priorities": {
       "allOf": [{ "$ref": "#/$defs/block" }],
-      "required": ["items"],
+      "required": ["items", "thresholds"],
       "properties": {
         "items": { "type": "array", "items": { "type": "object", "required": ["finding_id", "asset_id", "asset_name", "vuln_id", "priority", "score", "likelihood", "impact", "factors", "confidence"], "properties": { "finding_id": { "type": "string" }, "asset_id": { "type": "string" }, "asset_name": { "type": "string" }, "vuln_id": { "type": "string" }, "title": { "type": "string" }, "priority": { "$ref": "#/$defs/priority" }, "score": { "type": "number", "minimum": 0, "maximum": 100 }, "likelihood": { "type": "number", "minimum": 0, "maximum": 10 }, "impact": { "type": "number", "minimum": 0, "maximum": 10 }, "factors": { "type": "array", "items": { "type": "string" } }, "missing": { "type": "array", "items": { "type": "string" } }, "confidence": { "$ref": "#/$defs/confidence" } } } },
-        "thresholds": { "type": "object" }
+        "thresholds": { "type": "object", "description": "本次分級用的分數門檻：分數 ≥ P1 為 P1、≥ P2 為 P2、≥ P3 為 P3，其餘為 P4（依 scoring-rules.md 的風險胃納）。", "required": ["P1", "P2", "P3"], "properties": { "P1": { "type": "number" }, "P2": { "type": "number" }, "P3": { "type": "number" } } }
       }
     },
     "attack_path_hypotheses": {

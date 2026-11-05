@@ -42,7 +42,8 @@ export function outputConsistencyProblems(output) {
   const block = (key) => (isObject(output[key]) ? output[key] : {});
   const indexed = (key) => (Array.isArray(block(key).items) ? block(key).items.map((item, i) => [i, item]).filter(([, item]) => isObject(item)) : []);
 
-  // 1. 分數與分級：有完整門檻就逐項比對；沒有門檻就檢查分級越高、分數不得越低
+  // 1. 分數與分級：依門檻逐項比對。門檻是輸出 schema 的必填（P1、P2、P3 三個數字，#163），缺少或格式不對由 outputProblems 回報，
+  //    這裡略過；不退回只比大小順序（抓不到整體偏移，例如 72 分與 65 分都標成 P2）
   const findings = indexed('exposure_priorities');
   const scored = findings.filter(([, f]) => f.priority in RANK && isNumber(f.score));
   const th = isObject(block('exposure_priorities').thresholds) ? block('exposure_priorities').thresholds : {};
@@ -51,12 +52,6 @@ export function outputConsistencyProblems(output) {
     for (const [i, f] of scored) {
       const expected = f.score >= th.P1 ? 'P1' : f.score >= th.P2 ? 'P2' : f.score >= th.P3 ? 'P3' : 'P4';
       if (expected !== f.priority) problems.push(`$.exposure_priorities.items[${i}] 分數 ${f.score} 依門檻應為 ${expected}，卻標為 ${f.priority}`);
-    }
-  } else {
-    for (const [i, high] of scored) for (const [j, low] of scored) {
-      if (RANK[high.priority] < RANK[low.priority] && high.score < low.score) {
-        problems.push(`$.exposure_priorities.items[${i}] ${high.priority} 的分數 ${high.score} 低於 items[${j}] ${low.priority} 的分數 ${low.score}`);
-      }
     }
   }
   // 2. 參照完整性：改善建議指向的發現必須存在
