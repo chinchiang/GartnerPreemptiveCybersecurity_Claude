@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { failingTests, markdownTable } from './mutate.mjs';
+import { hangingServerSource, waitUnreachable, stopHanging } from './hanging-process.mjs';
 
 const MUTATE = fileURLToPath(new URL('./mutate.mjs', import.meta.url));
 const CALC = 'module.exports = (a, b) => a + b;\n';
@@ -136,35 +137,11 @@ test('測試在突變之前就失敗：結束碼 2，不做任何突變（否則
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('跑測試時取消（Windows 用 IPC，Unix 用 SIGTERM）：檔案還原且測試子行程停止', async () => {
-  const dir = project([{ file: 'calc.js', from: 'a + b', to: 'a - b', note: '加法改減法' }]);
-  try {
-    // 確認測試子行程已啟動並持續等待，再取消；同時檢查其 PID 已消失。
-    writeFileSync(join(dir, 'check.js'),
-      "const src = require('fs').readFileSync(__dirname + '/calc.js', 'utf8');\nif (src.includes('a - b')) { require('fs').writeFileSync(__dirname + '/test-pid.txt', String(process.pid)); setInterval(() => {}, 1000); }\n");
-    const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
-    const mutated = () => readFileSync(join(dir, 'calc.js'), 'utf8').includes('a - b');
-    for (let i = 0; i < 100 && !(mutated() && existsSync(join(dir, 'test-pid.txt'))); i++) await new Promise(r => setTimeout(r, 50));
-    assert.ok(mutated(), '突變沒有開始');
-    const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
-    if (process.platform === 'win32') child.send({ type: 'cancel' });
-    else child.kill('SIGTERM');
-    const { code } = await exited;
-    assert.equal(code, 130);
-    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
-    const pid = Number(readFileSync(join(dir, 'test-pid.txt'), 'utf8'));
-    for (let i = 0; i < 100; i++) {
-      try { process.kill(pid, 0); } catch { break; }
-      await new Promise(resolve => setTimeout(resolve, 20));
-    }
-    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
-  } finally { rmSync(dir, { recursive: true, force: true }); }
-});
-
-// 逾時用：check.js 進入「留下計時器」時先把自己的 pid 記到 check.pids（一行一個，同一目錄跑兩次都記到），再留下 setInterval 永遠不結束。
-// 清理在測試這一側（#141）：withHangingCheck 的 finally 一律結束記下的 pid，mutate.mjs 沒能結束測試行程時（例如突變）也不會留下
+// 卡住的測試子行程：check.js 符合 condition 時在專屬的控制通道監聽、把位址記到 check.addrs（一行一個，同一目錄跑兩次都記到），
+// 監聽中的伺服器讓它永遠不結束（做法見 hanging-process.mjs）。清理在測試這一側（#141、#165）：withHangingCheck 的 finally
+// 透過通道請記下的每一個結束，mutate.mjs 沒能結束測試行程時（例如突變）也不會留下；不對任何 pid 送訊號
 const hangWhen = (condition) => "const fs = require('fs');\n" +
-  `if (${condition}) { fs.appendFileSync(__dirname + '/check.pids', process.pid + '\\n'); setInterval(() => {}, 1000); }\n`;
+  `if (${condition}) { ${hangingServerSource({ dirExpr: '__dirname', recordFileExpr: "__dirname + '/check.addrs'" })} }\n`;
 // calc.js 裡有 hang 時卡住；否則照常檢查 calc.js
 const HANGING_CHECK = hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')") +
   "else process.exit(require('./calc.js')(1, 2) === 3 ? 0 : 1);\n";
@@ -179,20 +156,39 @@ const HANG_TIMEOUT = String(HANG_TIMEOUT_SECONDS);
 // 「突變之前就逾時」那支要測 --timeout 可以有小數：Linux 1.5、Windows 3.5
 const DECIMAL_HANG_TIMEOUT = String(HANG_TIMEOUT_SECONDS + 0.5);
 
-/** 比照 child-process.test.mjs 的 withHangingTree：建專案、寫入 check.js、執行 body；finally 對 check.pids 記下的每個 pid
-    送 SIGKILL（已經結束的忽略），再刪目錄。正常時 mutate.mjs 早已結束它們，這段清理只在實作壞掉時才有作用。 */
+/** 比照 child-process.test.mjs 的 withHangingTree：建專案、寫入 check.js、執行 body(dir, addrs)；finally 透過 check.addrs 記下的
+    每個通道請它結束（已經結束、連不上的略過），再刪目錄（Unix 的 socket 檔跟著刪）。正常時 mutate.mjs 早已結束它們，
+    這段清理只在實作壞掉時才有作用。 */
 async function withHangingCheck(mutations, check, body) {
   const dir = project(mutations);
-  const pidFile = join(dir, 'check.pids');
-  const pids = () => existsSync(pidFile) ? readFileSync(pidFile, 'utf8').split('\n').filter(Boolean).map(Number) : [];
+  const addrFile = join(dir, 'check.addrs');
+  const addrs = () => existsSync(addrFile) ? readFileSync(addrFile, 'utf8').split('\n').filter(Boolean) : [];
   try {
     writeFileSync(join(dir, 'check.js'), check);
-    await body(dir, pids);
+    await body(dir, addrs);
   } finally {
-    for (const pid of pids()) { try { process.kill(pid, 'SIGKILL'); } catch {} }
+    for (const addr of addrs()) await stopHanging(addr);
     rmSync(dir, { recursive: true, force: true });
   }
 }
+
+test('跑測試時取消（Windows 用 IPC，Unix 用 SIGTERM）：檔案還原且測試子行程停止', () =>
+  // 突變後的測試卡住、通道監聽之後才取消；取消之後它的通道要連不上
+  withHangingCheck([CAUGHT], hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('a - b')"), async (dir, addrs) => {
+    const child = spawn(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js'], { cwd: dir, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+    const mutated = () => readFileSync(join(dir, 'calc.js'), 'utf8').includes('a - b');
+    for (let i = 0; i < 100 && !(mutated() && addrs().length); i++) await new Promise(r => setTimeout(r, 50));
+    assert.ok(mutated(), '突變沒有開始');
+    const [addr] = addrs();
+    assert.ok(addr, '突變後的測試沒有記下通道');
+    const exited = new Promise(resolve => child.on('exit', (code, signal) => resolve({ code, signal })));
+    if (process.platform === 'win32') child.send({ type: 'cancel' });
+    else child.kill('SIGTERM');
+    const { code } = await exited;
+    assert.equal(code, 130);
+    assert.equal(readFileSync(join(dir, 'calc.js'), 'utf8'), CALC);
+    assert.ok(await waitUnreachable(addr, 2000), `測試子行程（通道 ${addr}）在取消之後還在執行`);
+  }));
 
 test('--timeout：測試超過時間就記成逾時、檔案還原，接著跑下一筆；有逾時就以結束碼 1 結束', () => withHangingCheck([HANG, CAUGHT], HANGING_CHECK, dir => {
   const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', HANG_TIMEOUT], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
@@ -227,15 +223,13 @@ test('--timeout：測試在突變之前就逾時，以結束碼 2 結束、說�
 }));
 
 test('--timeout 逾時之後，測試子行程已經結束，不會殘留（Linux／macOS 結束行程群組，Windows 用 taskkill 結束行程樹）', () =>
-  // 讀到突變後的 calc.js 就記下自己的 pid，再留下計時器不結束
-  withHangingCheck([HANG], hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')"), async (dir, pids) => {
+  // 讀到突變後的 calc.js 就在通道監聽、記下位址，不結束；逾時之後它的通道要連不上
+  withHangingCheck([HANG], hangWhen("fs.readFileSync(__dirname + '/calc.js', 'utf8').includes('hang')"), async (dir, addrs) => {
     const r = spawnSync(process.execPath, [MUTATE, 'mutations.json', '--test', 'node check.js', '--timeout', HANG_TIMEOUT], { cwd: dir, encoding: 'utf8', timeout: SAFETY });
     assert.match(r.stdout, /逾時\s+calc\.js\s+留下計時器$/m, r.stdout + r.stderr);
-    const [pid] = pids();
-    assert.ok(pid, '突變後的測試沒有記下 pid');
-    const alive = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
-    for (let i = 0; i < 40 && alive(); i++) await new Promise(res => setTimeout(res, 50));
-    assert.ok(!alive(), `測試子行程 ${pid} 在逾時之後還在執行`);
+    const [addr] = addrs();
+    assert.ok(addr, '突變後的測試沒有記下通道');
+    assert.ok(await waitUnreachable(addr, 2000), `測試子行程（通道 ${addr}）在逾時之後還在執行`);
   }));
 
 test('--json：輸出可解析的紀錄（給 PR 說明用），結束碼照舊', () => {
