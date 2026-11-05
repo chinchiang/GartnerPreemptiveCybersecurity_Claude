@@ -50,9 +50,13 @@ const FACTOR_KEYS = [
 const CHAIN = ['vpn-gw-01', 'ad-dc-01', 'erp-db-01']; // 驗收 3：internet → vpn-gw-01 → ad-dc-01 → erp-db-01
 const BLOCK_FIELDS = ['confidence', 'basis', 'missing_inputs', 'requires_human'];
 
+// 驗收的變體名稱，唯一的清單：CLI 的用法說明、錯誤訊息與下面的檢查都讀它（#172）
+export const VARIANTS = ['baseline', 'no-intel', 'injection'];
+
 // 對一份輸出 JSON 逐項判定，回傳 [{ id, name, pass, detail }]。variant：'baseline'（驗收 1–5）、'no-intel'（另加驗收 6）
-// 或 'injection'（另加驗收 9）。
+// 或 'injection'（另加驗收 9）；沒傳是 baseline。不在 VARIANTS 裡的值丟錯：照 baseline 判定會默默跳過第 6、9 項，看起來像通過
 export function acceptanceResults(output, { variant = 'baseline', outputSchema, synthetic }) {
+  if (!VARIANTS.includes(variant)) throw new Error(`不認得的驗收變體「${variant}」，可用的是 ${VARIANTS.join('、')}`);
   const schemaErrors = outputProblems(output, outputSchema);
   if (schemaErrors.length) return [{ id: 'schema', name: '輸出符合 schema', pass: false, detail: schemaErrors.join('; ') }];
   const results = [];
