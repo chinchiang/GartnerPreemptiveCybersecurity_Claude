@@ -6,7 +6,7 @@ platform: chatgpt
 
 ## 1. 用途、適用情境及能力限制
 
-**用途**：在 OpenAI 的三種承載層上執行「先制型曝險分析」：ChatGPT 應用（Custom GPT／Projects）、Codex（Agent Skills 開放標準）、OpenAI API（Responses API）。
+**用途**：在 OpenAI 的三種承載層上執行「先制型曝險分析」：ChatGPT 應用（Projects；Custom GPT 預定退場，見下方說明）、Codex（Agent Skills 開放標準）、OpenAI API（Responses API）。
 
 **模型與承載應用**（查證日期 2026-09-09，來源見 `docs/evidence/ai-platform-skills-evidence.md`；模型 2026-10-21 更新，來源見 `docs/evidence/openai-gpt-6-models-evidence.md`）：
 
@@ -15,19 +15,22 @@ platform: chatgpt
 | 模型：GPT-6 家族（官方模型頁建議不確定時從 `gpt-6-astra` 開始；在意成本可改 `gpt-6.1-sol`） | 已查證（developers.openai.com，2026-10-21）；ChatGPT 選單顯示名稱待驗證 |
 | ChatGPT Custom Instructions／Projects／Custom GPTs 存在 | 部分查證（官方說明頁存在，沙箱內無法開啟） |
 | Custom GPT Knowledge：每個 GPT 20 個檔案、單檔 512 MB／2M tokens | 部分查證（搜尋摘要） |
+| Custom GPT 預定 2026-12-11 退場（FedRAMP 與核准延後的企業版工作區 2027-02-11）；個人帳號（Free、Go、Plus、Pro）已不能新建 GPT | 已查證（OpenAI 說明中心 20001519 與 8554397 的 Internet Archive 快照，約 2026-10-29 與 2026-09-29 更新；help.openai.com 直接連線回 403）；實際日期以帳號或工作區收到的通知為準 |
 | Projects 檔案數與指令字數上限 | 待驗證 |
 | Codex 支援 Agent Skills（`.agents/skills`、`$HOME/.agents/skills`） | 標準與 `openai/skills`→`openai/plugins` 已查證；路徑部分查證 |
 | Responses API `client.responses.create` | 已查證（SDK README） |
 
-**能力限制**：ChatGPT 聊天應用沒有證據能直接載入 SKILL.md，因此以「貼入指令 + 上傳 Knowledge」承載；Custom GPT 的 Actions 預設不啟用；模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
+**能力限制**：ChatGPT 聊天應用沒有證據能直接載入 SKILL.md，因此以「貼入指令 + 附加檔案」承載（Project 是 Project 檔案，已經有的 Custom GPT 是 Knowledge）；Custom GPT 的 Actions 預設不啟用；模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
+
+> **Custom GPT 預定退場**：OpenAI 說明中心寫 Custom GPT 預定在 **2026-12-11** 退場，FedRAMP 與核准延後的企業版工作區是 **2027-02-11**；實際日期以你的帳號或工作區收到的通知為準。個人帳號（Free、Go、Plus、Pro）已經不能新建或發布 GPT；已經建好的 GPT 在退場前仍可使用。**建議改用 Project**（第 7 節 A1）。來源：[Custom GPT retirement and migration FAQ](https://help.openai.com/en/articles/20001519-custom-gpt-retirement-and-migration-faq)（[快照](https://web.archive.org/web/20261030064901/https://help.openai.com/en/articles/20001519-custom-gpt-retirement-and-migration-faq)）、[Creating and editing GPTs](https://help.openai.com/en/articles/8554397-creating-and-editing-gpts)（[快照](https://web.archive.org/web/20260930022450/https://help.openai.com/en/articles/8554397-creating-and-editing-gpts)）。
 
 ## 2. 完整檔案清單與取得方式
 
 | 檔案 | 用途 |
 |---|---|
 | `skills/chatgpt/README.md` | 平臺說明與查證狀態 |
-| `skills/chatgpt/custom-gpt-instructions.md` | Custom GPT 的 Instructions 全文、名稱、描述、開場提示、Knowledge 清單 |
-| `skills/chatgpt/project-instructions.md` | ChatGPT Projects 的短版指令與附檔方式 |
+| `skills/chatgpt/custom-gpt-instructions.md` | Custom GPT 的 Instructions 全文、名稱、描述、開場提示、Knowledge 清單（Custom GPT 預定 2026-12-11 退場，見第 1 節；退場後拿掉） |
+| `skills/chatgpt/project-instructions.md` | ChatGPT Projects 的短版指令與附檔方式（建議做法） |
 | `skills/chatgpt/preemptive-exposure-analysis/SKILL.md` | Agent Skills 標準格式的 Codex skill |
 | `skills/chatgpt/api-workflow.py`、`requirements.txt` | Responses API 腳本（含 `--dry-run`）；流程由 `skills/shared/analysis_workflow.py`（分析工作流程核心）負責，本檔只是 ChatGPT 的模型 adapter |
 | `skills/shared/*` | 共用規格、核心提示詞、輸入／輸出 schema |
@@ -39,7 +42,7 @@ platform: chatgpt
 
 同共用規格：`scope.json`（必要）、`assets.csv`（必要）、`vulnerabilities.csv`（必要）；`exposures.json`、`identities.csv`、`misconfigurations.csv`、`controls.json`、`threat-intel.json`、`topology.json`（建議）。欄位定義見 `skills/shared/input-schema.json`。
 
-在 ChatGPT 中：把檔案拖入對話或加入 Project／GPT Knowledge。在 Codex 中：給資料夾路徑。在 API 中：腳本自動讀取 `examples/synthetic-org/` 或 `--input-dir`。
+在 ChatGPT 中：把檔案拖入對話或加入 Project 檔案（已經有的 Custom GPT 則加入 Knowledge）。在 Codex 中：給資料夾路徑。在 API 中：腳本自動讀取 `examples/synthetic-org/` 或 `--input-dir`。
 
 ## 4. 執行步驟、證據要求及缺少資料時的處理方式
 
@@ -76,7 +79,7 @@ V1：授權下外部版本確認 + 內部 BAS；**尚未授權主動測試**。
 
 | 承載方式 | 需要 | 資料流向 |
 |---|---|---|
-| Custom GPT／Project | ChatGPT 帳號（Custom GPT 建立需付費方案，方案名稱以官方為準） | 資料上傳至 OpenAI（依帳戶資料政策） |
+| Project／Custom GPT | ChatGPT 帳號（個人帳號已不能新建 Custom GPT，見第 1 節；方案名稱以官方為準） | 資料上傳至 OpenAI（依帳戶資料政策） |
 | Codex | Codex CLI／IDE 擴充／桌面版；本機檔案讀寫 | 檔案內容送至 OpenAI API |
 | API | `OPENAI_API_KEY`（環境變數）、`pip install -r skills/chatgpt/requirements.txt` | 資料送至 OpenAI API |
 
@@ -86,19 +89,21 @@ V1：授權下外部版本確認 + 內部 BAS；**尚未授權主動測試**。
 
 ### A. 聊天應用
 
-**A1. Custom GPT**
+**A1. Project（建議）**
+
+1. 新增 Project → 指令欄貼入 `project-instructions.md` 的指令。
+2. 把 9 個資料檔加入 Project 檔案。
+3. 在 Project 內新對話：「請對已附加的檔案進行先制型曝險分析，逐步輸出 S1–S8。」
+
+**A2. Custom GPT（預定 2026-12-11 退場）**
+
+> 只適用於已經建好的 GPT，或仍然可以建立 GPT 的工作區。個人帳號（Free、Go、Plus、Pro）已經不能新建；退場日與來源見第 1 節。新的設定請用 A1 Project。
 
 1. ChatGPT → 探索 GPT → 建立（介面名稱以官方為準）。
 2. 在「Instructions」貼入 `custom-gpt-instructions.md` 的指令區塊；名稱、描述、開場提示依同檔建議。
 3. 在「Knowledge」上傳：`skills/shared/task-spec.md`、`input-schema.json`、`output-schema.json`，以及（示範用）`examples/synthetic-org/` 9 檔。
 4. 「Capabilities」：關閉瀏覽與程式碼執行以外的功能；**不要**新增 Actions。
 5. 儲存為「只有我」或「有連結的人」；企業請依政策。
-
-**A2. Project**
-
-1. 新增 Project → 指令欄貼入 `project-instructions.md` 的指令。
-2. 把 9 個資料檔加入 Project 檔案。
-3. 在 Project 內新對話：「請對已附加的檔案進行先制型曝險分析，逐步輸出 S1–S8。」
 
 ### B. 開發者
 
@@ -133,16 +138,16 @@ python3 skills/chatgpt/api-workflow.py
 
 ## 8. 使用範例、預期結果及常見問題
 
-**範例**：在 Custom GPT 中上傳 9 檔並輸入「請進行先制型曝險分析」；預期先看到範圍與資料品質摘要，再逐步輸出八章與 JSON。
+**範例**：在 Project 中加入 9 檔並輸入「請進行先制型曝險分析」；預期先看到範圍與資料品質摘要，再逐步輸出八章與 JSON。
 
 **FAQ**
 
-1. *GPT 沒有讀 Knowledge 就開始分析？* 在訊息中明確要求「先讀取 Knowledge 內的 task-spec.md 與資料檔並回報筆數」。
+1. *沒有讀附加的檔案就開始分析？* 在訊息中明確要求「先讀取 task-spec.md 與資料檔並回報筆數」（Project 是 Project 檔案，已經有的 Custom GPT 是 Knowledge）。
 2. *輸出 JSON 不合 schema？* 追問「請只輸出符合 output-schema.json 的 JSON 物件」；API 腳本已採兩段式呼叫。
 3. *Codex 找不到 skill？* 確認目錄為 `.agents/skills/<name>/SKILL.md` 且 `name` 為 `preemptive-exposure-analysis`；重啟 Codex。
 4. *可以讓 GPT 上網查 CVE 嗎？* 本 skill 明確禁止補造與上網查證；所有外部知識需標示「模型知識，需查證」。
 5. *數值與網站示範不同？* 示範頁為確定性規則；模型推理可能有小差異，但分級與主要依據應一致。
-6. *Custom GPT 可分享給全公司嗎？* 可，但 Knowledge 內若含真實資料，分享範圍等於資料分享範圍；示範請只放合成資料。
+6. *Custom GPT 可分享給全公司嗎？* 已經建好的 GPT 在退場前（預定 2026-12-11）仍依原本的設定分享；新的設定請用 Project。不論哪一種，Knowledge 或 Project 檔案內若含真實資料，分享範圍等於資料分享範圍；示範請只放合成資料。
 
 ## 9. 簡單、可重現的驗收方式
 

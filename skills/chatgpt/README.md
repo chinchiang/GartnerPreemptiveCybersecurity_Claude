@@ -12,7 +12,7 @@ role: readme
 | 層 | 名稱 | 說明 | 查證狀態（依 `docs/evidence/ai-platform-skills-evidence.md`，2026-09-09；模型依 `docs/evidence/openai-gpt-6-models-evidence.md`，2026-10-21） |
 |---|---|---|---|
 | 模型 | GPT-6 家族 | 官方模型頁建議不確定時從 `gpt-6-astra` 開始（腳本預設）；在意成本可改 `gpt-6.1-sol` | VERIFIED（developers.openai.com/api/docs/models）；ChatGPT 選單內的模型顯示名稱 UNVERIFIED |
-| 應用 | **ChatGPT app** | Custom Instructions（全域偏好）、Projects（指令 + 檔案的工作容器）、Custom GPTs（可分享的「指令 + Knowledge + Actions」包） | PARTIALLY VERIFIED（官方說明頁存在但無法抓取）；字數／檔案數上限 UNVERIFIED |
+| 應用 | **ChatGPT app** | Custom Instructions（全域偏好）、Projects（指令 + 檔案的工作容器）、Custom GPTs（可分享的「指令 + Knowledge + Actions」包；預定 2026-12-11 退場，見第 2 節） | PARTIALLY VERIFIED（官方說明頁存在但無法抓取）；字數／檔案數上限 UNVERIFIED |
 | 應用 | **Codex**（CLI／IDE／桌面／雲端） | 支援 Agent Skills 開放標準；從 `.agents/skills`（repo 層）與 `$HOME/.agents/skills`（使用者層）讀取 `SKILL.md`；`$skill-name` 叫用 | Agent Skills 標準與 `openai/skills`、`openai/plugins` repo：VERIFIED；路徑細節：PARTIALLY VERIFIED |
 | 應用 | **OpenAI API（Responses API）** | `client.responses.create(model=..., input=...)`，官方 SDK 建議優先於 Chat Completions | VERIFIED（SDK README） |
 
@@ -20,10 +20,12 @@ role: readme
 
 ## 2. 哪個情境用哪個檔案
 
+> **Custom GPT 預定退場**：OpenAI 說明中心寫 Custom GPT 預定在 2026-12-11 退場，FedRAMP 與核准延後的企業版工作區是 2027-02-11；實際日期以帳號或工作區收到的通知為準。個人帳號（Free、Go、Plus、Pro）已經不能新建 GPT，已經建好的在退場前仍可使用。在 ChatGPT 裡建議改用 Project（`project-instructions.md`）。來源見 `docs/guides/chatgpt.md` 第 1 節。
+
 | 你的情境 | 使用檔案 | 做法摘要 |
 |---|---|---|
-| 想給團隊一個可分享、固定行為的「分析助理」 | `custom-gpt-instructions.md` | 建立 Custom GPT，貼入 Instructions，上傳 Knowledge 檔案，Actions 保持停用 |
-| 自己在 ChatGPT 裡反覆做分析，且要附上組織的檔案 | `project-instructions.md` | 建立 Project，貼入較短指令，把輸入檔加入專案 |
+| 在 ChatGPT 裡反覆做分析，且要附上組織的檔案（**建議**） | `project-instructions.md` | 建立 Project，貼入較短指令，把輸入檔加入專案 |
+| 已經建好 Custom GPT，退場前繼續使用（預定 2026-12-11 退場） | `custom-gpt-instructions.md` | 在既有的 Custom GPT 貼入 Instructions，上傳 Knowledge 檔案，Actions 保持停用；個人帳號已不能新建 |
 | 在終端機／IDE 內以 Codex 針對資料夾內的 CSV/JSON 產生報告 | `preemptive-exposure-analysis/SKILL.md` | 複製到 `.agents/skills/preemptive-exposure-analysis/`，以 `$preemptive-exposure-analysis` 叫用 |
 | 要自動化、可重現、可納入排程或 CI | `api-workflow.py` + `requirements.txt` | 設定 `OPENAI_API_KEY`，執行腳本；`--dry-run` 可離線檢查提示詞 |
 
@@ -53,8 +55,8 @@ role: readme
 ```
 skills/chatgpt/
 ├── README.md                     本檔
-├── custom-gpt-instructions.md    Custom GPT 的 Instructions 全文 + 名稱／描述／開場提示／Knowledge 清單
-├── project-instructions.md       ChatGPT Projects 的短版指令與附檔方式
+├── custom-gpt-instructions.md    Custom GPT 的 Instructions 全文 + 名稱／描述／開場提示／Knowledge 清單（預定 2026-12-11 退場，退場後拿掉）
+├── project-instructions.md       ChatGPT Projects 的短版指令與附檔方式（建議做法）
 ├── preemptive-exposure-analysis/
 │   └── SKILL.md                  Agent Skills 標準格式的 Codex skill
 ├── api-workflow.py               ChatGPT 的模型 adapter：Responses API 兩段式呼叫（含 --dry-run）；流程由 ../shared/analysis_workflow.py 負責

@@ -182,7 +182,7 @@
       <div class="card"><ol>
         <li>${TAG.fact} Gartner 將 preemptive cybersecurity 描述為在攻擊發生<strong>之前</strong>就預測、阻斷或轉移攻擊者的能力組合，並以 2030 年的市場預測凸顯其重要性。細節與原文引用見 <a href="#/methodology">方法論導覽</a>。</li>
         <li>${TAG.infer} 本專案將其轉化為「授權範圍 → 資料匯集 → 曝險優先序 → 攻擊路徑假設 → 改善與驗證計畫 → 人工審查 → 追蹤」的可執行流程，並明確標示語言模型的能力邊界。</li>
-        <li>${TAG.rec} 六個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md），Gemini 在 Antigravity 與 Gemini CLI 也支援；ChatGPT 以 Custom GPT／Projects／Codex skills 承載；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
+        <li>${TAG.rec} 六個平臺各有不同的自訂機制：Claude 有原生 Agent Skills（SKILL.md），Gemini 在 Antigravity 與 Gemini CLI 也支援；ChatGPT 以 Projects／Codex skills 承載（Custom GPT 預定 2026-12-11 退場）；Grok、GLM、DeepSeek 主要以系統提示詞與 API 工作流程實作。細節見 <a href="#/platforms">平臺比較</a>。</li>
       </ol></div>
       <p class="small">內容指紋：<code>${esc(D.manifest.contentHash || '未知')}</code>（由 <code>scripts/build-data.mjs</code> 依 <code>docs/</code>、<code>skills/</code>、<code>examples/</code> 的內容計算，同一份來源永遠得到同一個值；最後更新時間是內容最後一次合併進 <code>main</code> 的時間，部署時寫入，顯示在右上角（窄螢幕在頁尾））。所有內容以儲存庫為單一來源。</p>`;
   }
