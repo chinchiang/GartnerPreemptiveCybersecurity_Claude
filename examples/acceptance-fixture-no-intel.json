@@ -77,6 +77,11 @@
       "threat-intel.json"
     ],
     "requires_human": false,
+    "thresholds": {
+      "P1": 60,
+      "P2": 40,
+      "P3": 20
+    },
     "items": [
       {
         "finding_id": "F-001",

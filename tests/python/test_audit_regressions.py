@@ -20,11 +20,39 @@ class AuditRegressionTest(unittest.TestCase):
             node = output
             for key in case['path'][:-1]:
                 node = node[key]
-            if case['path']:
+            if case.get('delete'):  # delete：刪掉 path 指的鍵；problems：有寫就逐字比對（#163）
+                del node[case['path'][-1]]
+            elif case['path']:
                 node[case['path'][-1]] = case['value']
             else:
                 output = case['value']
             self.assertEqual(not aw.output_problems(output, schema), case['valid'], case['name'])
+            if 'problems' in case:
+                self.assertEqual(aw.output_problems(output, schema), case['problems'], case['name'])
+
+    def test_missing_thresholds_are_left_to_the_format_check(self):
+        """分級門檻缺少時：格式驗證回報必填，一致性檢查略過，不退回只比大小順序（#163；與 JS 的同名測試相同）。"""
+        schema = json.loads((ROOT / 'skills/shared/output-schema.json').read_text(encoding='utf-8'))
+        output = json.loads((ROOT / 'examples/acceptance-fixture.json').read_text(encoding='utf-8'))
+        del output['exposure_priorities']['thresholds']
+        output['exposure_priorities']['items'][1].update(priority='P2', score=90)
+        self.assertEqual(aw.output_problems(output, schema), ['$.exposure_priorities.thresholds 必填'])
+        self.assertEqual(aw.output_consistency_problems(output), [])
+
+    def test_api_script_exits_4_on_malformed_thresholds(self):
+        """API 腳本存檔時（save_outputs）門檻缺少或格式不對就以結束碼 4 結束，保留原始回應（#163）。"""
+        schema = json.loads((ROOT / 'skills/shared/output-schema.json').read_text(encoding='utf-8'))
+        fixture = json.loads((ROOT / 'examples/acceptance-fixture.json').read_text(encoding='utf-8'))
+        for name, change in [('缺 thresholds', lambda ep: ep.pop('thresholds')), ('缺 P2', lambda ep: ep['thresholds'].pop('P2')),
+                             ('P1 是字串', lambda ep: ep['thresholds'].__setitem__('P1', '60'))]:
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                output = json.loads(json.dumps(fixture))
+                change(output['exposure_priorities'])
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(aw.save_outputs(Path(tmp), 'fake', '報告', json.dumps(output, ensure_ascii=False), schema), 4)
+                self.assertFalse((Path(tmp) / 'fake-output.json').exists())
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(aw.save_outputs(Path(tmp), 'fake', '報告', json.dumps(fixture, ensure_ascii=False), schema), 0)
 
     def test_scope_filter_and_prompt_do_not_leak_excluded_records(self):
         schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))

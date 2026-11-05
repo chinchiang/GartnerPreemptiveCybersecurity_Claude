@@ -79,6 +79,11 @@
     "basis": "資產、弱點、曝險、身分、設定、控制、情資、拓樸八類資料齊備",
     "missing_inputs": [],
     "requires_human": false,
+    "thresholds": {
+      "P1": 60,
+      "P2": 40,
+      "P3": 20
+    },
     "items": [
       {
         "finding_id": "F-001",

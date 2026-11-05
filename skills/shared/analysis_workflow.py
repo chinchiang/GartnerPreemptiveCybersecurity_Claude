@@ -815,7 +815,8 @@ def output_consistency_problems(data) -> list:
         items = block(key).get("items")
         return [(i, item) for i, item in enumerate(items) if isinstance(item, dict)] if isinstance(items, list) else []
 
-    # 1. 分數與分級：有完整門檻就逐項比對；沒有門檻就檢查分級越高、分數不得越低
+    # 1. 分數與分級：依門檻逐項比對。門檻是輸出 schema 的必填（P1、P2、P3 三個數字，#163），缺少或格式不對由 output_problems 回報，
+    #    這裡略過；不退回只比大小順序（抓不到整體偏移，例如 72 分與 65 分都標成 P2）
     findings = indexed("exposure_priorities")
     scored = [(i, f) for i, f in findings if isinstance(f.get("priority"), str) and f["priority"] in _RANK and _is_number(f.get("score"))]
     th = block("exposure_priorities").get("thresholds")
@@ -828,12 +829,6 @@ def output_consistency_problems(data) -> list:
             expected = "P1" if s >= th["P1"] else "P2" if s >= th["P2"] else "P3" if s >= th["P3"] else "P4"
             if expected != f["priority"]:
                 problems.append(f"$.exposure_priorities.items[{i}] 分數 {_fmt(s)} 依門檻應為 {expected}，卻標為 {f['priority']}")
-    else:
-        for i, high in scored:
-            for j, low in scored:
-                if _RANK[high["priority"]] < _RANK[low["priority"]] and high["score"] < low["score"]:
-                    problems.append(f"$.exposure_priorities.items[{i}] {high['priority']} 的分數 {_fmt(high['score'])} "
-                                    f"低於 items[{j}] {low['priority']} 的分數 {_fmt(low['score'])}")
     # 2. 參照完整性：改善建議指向的發現必須存在
     ids = {f.get("finding_id") for _, f in findings}
     for i, r in indexed("remediation"):

@@ -39,13 +39,25 @@ test('逐筆 EPSS／KEV 缺值採 CVSS 替代並下修信心；0 與 false 是�
   assert.ok(demo.analyze(data).findings.every(f => f.confidence === '高'));
 });
 
+test('分級門檻缺少時：格式驗證回報必填，一致性檢查略過，不退回只比大小順序（#163）', async () => {
+  const { outputConsistencyProblems } = await import('./output-schema.mjs');
+  // 以前的退回路徑會報「P1 的分數 86 低於 P2 的分數 90」；現在缺門檻由格式驗證擋下
+  const o = fixture();
+  delete o.exposure_priorities.thresholds;
+  Object.assign(o.exposure_priorities.items[1], { priority: 'P2', score: 90 });
+  assert.deepEqual(outputProblems(o, context.outputSchema), ['$.exposure_priorities.thresholds 必填']);
+  assert.deepEqual(outputConsistencyProblems(o), []);
+});
+
 test('共用輸出案例在 JS 與 Python 使用同一份規格', () => {
   const cases = JSON.parse(readFileSync(new URL('../tests/fixtures/output-cases.json', import.meta.url)));
   for (const c of cases) {
     let output = fixture(), node = output;
     for (const key of c.path.slice(0, -1)) node = node[key];
-    if (c.path.length) node[c.path.at(-1)] = c.value; else output = c.value;
+    // delete：刪掉 path 指的鍵；problems：有寫就逐字比對（#163）
+    if (c.delete) delete node[c.path.at(-1)]; else if (c.path.length) node[c.path.at(-1)] = c.value; else output = c.value;
     assert.equal(outputProblems(output, context.outputSchema).length === 0, c.valid, c.name);
+    if (c.problems) assert.deepEqual(outputProblems(output, context.outputSchema), c.problems, c.name);
   }
 });
 test('後端的資料篩選排除範圍外資產、身分、控制與路徑，且不改動原始資料', () => {

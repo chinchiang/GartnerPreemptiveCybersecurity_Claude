@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/skills/shared/input-schema.json",
   "title": "Preemptive Exposure Analysis — Input Bundle",
-  "description": "六平臺共用的輸入格式。scope 與 assets 為必要；其餘為建議。所有內容皆須在授權範圍內。",
+  "description": "六平臺共用的輸入格式。scope 是唯一的必填：未提供 scope，或 scope 的必填欄位缺少或不合格，就拒絕分析，列出缺少或不合格的欄位。assets 與 vulnerabilities 是必要輸入，但缺少時不拒絕：直接降級為只產出曝險面清單，並在資料品質與限制寫明缺少哪一類。其餘為建議輸入。所有內容皆須在授權範圍內。",
   "type": "object",
-  "required": ["scope", "assets"],
+  "required": ["scope"],
   "properties": {
     "scope": {
       "type": "object",

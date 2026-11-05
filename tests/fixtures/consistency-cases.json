@@ -2,7 +2,7 @@
   "$comment": "輸出內容一致性的跨語言共用案例（#148）：以 examples/acceptance-fixture.json 為基準套用 changes，每例都符合 output-schema.json，problems 是 outputConsistencyProblems（JS）與 output_consistency_problems（Python）應逐字回傳的結果。",
   "cases": [
     {
-      "name": "合格基準（無門檻）",
+      "name": "合格基準",
       "changes": [],
       "problems": []
     },
@@ -73,13 +73,33 @@
       ]
     },
     {
-      "name": "無門檻時分級較高、分數卻較低",
+      "name": "門檻 P1 ≥ 60，72 分與 65 分都標成 P2（整體偏移，順序沒有矛盾）",
       "changes": [
         [
           [
             "exposure_priorities",
+            "thresholds"
+          ],
+          {
+            "P1": 60,
+            "P2": 40,
+            "P3": 20
+          }
+        ],
+        [
+          [
+            "exposure_priorities",
             "items",
-            1,
+            0,
+            "score"
+          ],
+          72
+        ],
+        [
+          [
+            "exposure_priorities",
+            "items",
+            0,
             "priority"
           ],
           "P2"
@@ -91,11 +111,21 @@
             1,
             "score"
           ],
-          90
+          65
+        ],
+        [
+          [
+            "exposure_priorities",
+            "items",
+            1,
+            "priority"
+          ],
+          "P2"
         ]
       ],
       "problems": [
-        "$.exposure_priorities.items[0] P1 的分數 86 低於 items[1] P2 的分數 90"
+        "$.exposure_priorities.items[0] 分數 72 依門檻應為 P1，卻標為 P2",
+        "$.exposure_priorities.items[1] 分數 65 依門檻應為 P1，卻標為 P2"
       ]
     },
     {
