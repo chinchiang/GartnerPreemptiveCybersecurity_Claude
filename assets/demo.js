@@ -151,7 +151,7 @@
       if (entryNodes.has(v.asset_id)) { impact += I.entry * P.weights.impact; f.factors.push('可達 crown jewel 之入口（blast radius）'); }
       f.impact = clamp(impact, ...I.range);
       f.score = round1(f.likelihood * f.impact); // 0-100
-      // 信心：缺 0 類 → 高；缺 RULES.confidence.lowMissing 類以上或清冊完整度 < inventoryThreshold% → 低；其餘 → 中
+      // 資料齊備程度：缺 0 類 → 高；缺 RULES.confidence.lowMissing 類以上或清冊完整度 < inventoryThreshold% → 低；其餘 → 中
       f.confidence = (f.missing.length >= RULES.confidence.lowMissing || inventoryLow) ? '低' : f.missing.length === 0 ? '高' : '中';
       if (inventoryLow) f.missing.push(`資產清冊完整度 ${P.inventoryCompleteness}% < ${RULES.confidence.inventoryThreshold}%`);
       return f;
@@ -225,7 +225,7 @@
       { name: '對外曝露且 P1 的發現數', value: exposedP1, target: '0（7 天內）' },
       { name: 'P1/P2 發現總數', value: `${p1} / ${p2}`, target: '每週下降' },
       { name: '可達 crown jewel 的攻擊路徑假設數', value: hypotheses.length, target: '每條路徑至少一個已驗證阻斷點' },
-      { name: '平均信心水準', value: findings.length ? (findings.filter(f => f.confidence === '高').length / findings.length * 100).toFixed(0) + '% 為高信心' : '-', target: '≥ 80%' },
+      { name: '資料齊備程度為高的比例', value: findings.length ? (findings.filter(f => f.confidence === '高').length / findings.length * 100).toFixed(0) + '% 為高' : '-', target: '≥ 80%' },
       { name: '資產清冊完整度（模擬）', value: `${P.inventoryCompleteness}%`, target: '≥ 95%' },
       { name: '未納入清冊的對外資產', value: P.inputs.exposures ? data.exposures.exposures.filter(e => !e.asset_id).length : '未知', target: '0' }
     ];
@@ -250,10 +250,10 @@
       validation.length && validation.every(v => v.authorized) ? `依既有書面授權執行驗證計畫 ${validation.map(v => v.id).join('、')}` : '決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）',
       ...(missingSummary.length ? ['補齊缺漏資料後重跑分析'] : [])
     ];
-    // 摘要正文限 300 字（含標點）；對象、日期、信心放在 header，不計入
+    // 摘要正文限 300 字（含標點）；對象、日期、資料齊備程度放在 header，不計入
     const shortTitle = (t) => String(t).replace(/\s*\(synthetic\)\s*/i, '').slice(0, 40);
     const limitNote = missingSummary.length ? missingSummary.map(m => m.replace(/（.*?）/g, '')).join('；').slice(0, 80) : '無重大資料缺漏';
-    const summaryHeader = `**對象：** ${scope.reporting.audience.join('、')}｜**日期：** ${scope.analysis_date}｜**信心：** ${findings.filter(f => f.confidence === '高').length}/${findings.length} 項高信心${maskIds ? '｜識別資訊已遮罩' : ''}`;
+    const summaryHeader = `**對象：** ${scope.reporting.audience.join('、')}｜**日期：** ${scope.analysis_date}｜**資料齊備程度：** ${findings.filter(f => f.confidence === '高').length}/${findings.length} 項為高${maskIds ? '｜識別資訊已遮罩' : ''}`;
     // 超過上限時逐級精簡（#149），不截斷整段：決策請求與「所有路徑為假設」每一級都保留，完整缺漏清單在 data_quality。
     // 0 完整版；1 最急迫只寫資產；2 路徑只寫入口與目標；3 限制只寫缺漏項數；4 路徑改指向攻擊路徑假設章節
     const SUMMARY_MAX = 300;
@@ -328,7 +328,7 @@
       `可能性 = 對外曝露 ${likelihood.exposed} + EASM 議題 ${likelihood.easmIssues} + 公開利用程式 ${likelihood.exploitPublic} + EPSS×${likelihood.epss} + KEV ${likelihood.kev} + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 ${likelihood.intel.high}／${likelihood.intel.medium}／${likelihood.intel.low}）（各乘權重，上限 ${likelihood.range[1]}）；缺 EPSS/KEV 時以 CVSS/10×${likelihood.cvssFallback} 近似`,
       `影響 = 業務重要性×${impact.criticality} + 資料等級（Restricted ${dataWeight.Restricted}／Confidential ${dataWeight.Confidential}／Internal ${dataWeight.Internal}／Public ${dataWeight.Public}）+${impact.crownJewel} 若為 crown jewel +${impact.entry} 若為可達 crown jewel 的入口（上限 ${impact.range[1]}）`,
       `分數 = 可能性 × 影響（${likelihood.range[0] * impact.range[0]}–${likelihood.range[1] * impact.range[1]}）；平衡胃納 P1 ≥ ${thresholds.balanced[0]}、P2 ≥ ${thresholds.balanced[1]}、P3 ≥ ${thresholds.balanced[2]}（嚴格 ${thresholds.strict.join('/')}；寬鬆 ${thresholds.tolerant.join('/')}）。`,
-      `信心：缺 0 類 → 高；缺 1–${confidence.lowMissing - 1} 類 → 中；缺 ${confidence.lowMissing} 類以上或清冊完整度 < ${confidence.inventoryThreshold}% → 低。攻擊路徑可行性 = 入口可能性×${feasibility.entry} + 最弱節點×${feasibility.weakest} + 身分／設定邊×${feasibility.trustEdge} − (跳數−1)×${feasibility.perHop}；無任何發現的節點取 ${feasibility.unknownNode}。`
+      `資料齊備程度：缺 0 類 → 高；缺 1–${confidence.lowMissing - 1} 類 → 中；缺 ${confidence.lowMissing} 類以上或清冊完整度 < ${confidence.inventoryThreshold}% → 低（只反映輸入是否齊全，不代表已經驗證）。攻擊路徑可行性 = 入口可能性×${feasibility.entry} + 最弱節點×${feasibility.weakest} + 身分／設定邊×${feasibility.trustEdge} − (跳數−1)×${feasibility.perHop}；無任何發現的節點取 ${feasibility.unknownNode}。`
     ];
   }
 

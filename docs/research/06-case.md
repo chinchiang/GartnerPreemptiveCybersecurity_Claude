@@ -30,7 +30,7 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 ## 6.3 S1–S2：範圍與資料品質
 
 - 範圍內 12 項；無範圍外資產。
-- 資料品質：所有必填欄位齊全；異常 1 項（EASM 未知資產）。信心：**高**（無缺漏類別）。
+- 資料品質：所有必填欄位齊全；異常 1 項（EASM 未知資產）。資料齊備程度：**高**（無缺漏類別）。
 - 人工決策：CISO 確認範圍；資料擁有者確認 EASM 未知資產是否為遺漏的測試主機（下一步納入清冊）。
 
 ## 6.4 S3：曝險優先序（平衡胃納）
@@ -112,11 +112,11 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 | 對外曝露且 P1 | 4 | 0（7 天內） |
 | P1/P2 | 5/3 | 每週下降 |
 | 可達 crown jewel 的路徑假設 | 9 | 每條至少一個已驗證阻斷點 |
-| 高信心比例 | 100% | ≥ 80% |
+| 資料齊備程度為高的比例 | 100% | ≥ 80% |
 | 清冊完整度 | 100%（示範引擎的模擬參數；EASM 發現 1 未知，實際低於 100%） | ≥ 95% |
 | 未納入清冊的對外資產 | 1 | 0 |
 
-清冊完整度的 100% 不是從資料算出來的：它是示範引擎的模擬參數（`inventoryCompleteness`，預設 100；`node scripts/run-demo.mjs --inventory 70` 可以看完整度不足時信心怎麼下修），實務上則是組織自報的值。EASM 發現 1 個未納入清冊的對外資產（`old-test.northwind-synthetic.example`），表示這個值高估了：清冊與 EASM 的差集是完整度估計的依據（第 2 章 2.4）。
+清冊完整度的 100% 不是從資料算出來的：它是示範引擎的模擬參數（`inventoryCompleteness`，預設 100；`node scripts/run-demo.mjs --inventory 70` 可以看完整度不足時資料齊備程度怎麼下修），實務上則是組織自報的值。EASM 發現 1 個未納入清冊的對外資產（`old-test.northwind-synthetic.example`），表示這個值高估了：清冊與 EASM 的差集是完整度估計的依據（第 2 章 2.4）。
 
 時間軸：T+2 天業務確認排序與授權決策；T+7 天 P1 修補後重跑；T+14 天驗證結果回填 O2 狀態；每週檢視。
 
@@ -124,9 +124,9 @@ summary: 從輸入資料一路展示分析、輸出、人工審查與後續追�
 
 | 移除 | 影響 |
 |---|---|
-| threat-intel.json（`--no-intel`） | `SYN-2026-0101` 仍為 P1（可能性已達上限）；`mes-srv-01` 降為 62.5、`mail-gw-01` 降為 P2、`ad-dc-01` 降為 P3；路徑 1 可行性 6.4 → 6.0；所有發現信心「中」，缺漏列出「威脅情資」 |
-| identities.csv（`--no-identities`） | `ad-dc-01`、`erp-db-01` 降為 P3、`s3-backup-bucket` 降為 P2；路徑 1 可行性 6.4 → 5.9；信心「中」。skill 執行時另應把路徑中的 identity 邊標「未知」（引擎不標示，這是提示詞規則） |
-| topology.json（`--no-topology`） | 無攻擊路徑假設、無「入口」影響加分：`vpn-gw-01` 降為 66.0，`web-portal-01`、`s3-backup-bucket`、`mail-gw-01` 降為 P2；驗證計畫為空；拓樸計為缺一類，信心「中」；O5 註明「未提供拓樸」 |
-| controls.json（`--no-controls`） | `web-portal-01` 升至 84.1、`ad-dc-01` 升為 P1（無 EDR／WAF 降分）；`erp-app-01`、`jump-host-01` 不再是 0 分；補償控制缺口為空；信心「中」 |
-| 清冊完整度 70%（`--inventory 70`） | 後 4 項資產（jump-host、backup bucket、CI、HR SaaS）消失；路徑假設減為 5；未知資產指標不變；所有發現信心「低」（清冊 < 80%），缺漏列出「資產清冊完整度 70% < 80%」 |
+| threat-intel.json（`--no-intel`） | `SYN-2026-0101` 仍為 P1（可能性已達上限）；`mes-srv-01` 降為 62.5、`mail-gw-01` 降為 P2、`ad-dc-01` 降為 P3；路徑 1 可行性 6.4 → 6.0；所有發現資料齊備程度「中」，缺漏列出「威脅情資」 |
+| identities.csv（`--no-identities`） | `ad-dc-01`、`erp-db-01` 降為 P3、`s3-backup-bucket` 降為 P2；路徑 1 可行性 6.4 → 5.9；資料齊備程度「中」。skill 執行時另應把路徑中的 identity 邊標「未知」（引擎不標示，這是提示詞規則） |
+| topology.json（`--no-topology`） | 無攻擊路徑假設、無「入口」影響加分：`vpn-gw-01` 降為 66.0，`web-portal-01`、`s3-backup-bucket`、`mail-gw-01` 降為 P2；驗證計畫為空；拓樸計為缺一類，資料齊備程度「中」；O5 註明「未提供拓樸」 |
+| controls.json（`--no-controls`） | `web-portal-01` 升至 84.1、`ad-dc-01` 升為 P1（無 EDR／WAF 降分）；`erp-app-01`、`jump-host-01` 不再是 0 分；補償控制缺口為空；資料齊備程度「中」 |
+| 清冊完整度 70%（`--inventory 70`） | 後 4 項資產（jump-host、backup bucket、CI、HR SaaS）消失；路徑假設減為 5；未知資產指標不變；所有發現資料齊備程度「低」（清冊 < 80%），缺漏列出「資產清冊完整度 70% < 80%」 |
 | scope.json | **拒絕分析** |

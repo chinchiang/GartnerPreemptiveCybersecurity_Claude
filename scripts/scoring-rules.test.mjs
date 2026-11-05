@@ -12,7 +12,7 @@ const DEMO = require('../assets/demo.js');
 
 const deepFrozen = (o) => Object.isFrozen(o) && Object.values(o).every(v => typeof v !== 'object' || v === null || deepFrozen(v));
 
-test('示範引擎匯出唯讀的規則資料，涵蓋可能性、身分弱點、影響、門檻、路徑可行性、信心與預設權重', () => {
+test('示範引擎匯出唯讀的規則資料，涵蓋可能性、身分弱點、影響、門檻、路徑可行性、資料齊備程度與預設權重', () => {
   const R = DEMO.RULES;
   assert.ok(R, '示範引擎沒有匯出 RULES');
   assert.deepEqual(Object.keys(R).sort(), ['confidence', 'feasibility', 'identityIssue', 'impact', 'likelihood', 'thresholds', 'weights']);
@@ -37,7 +37,7 @@ test('網站規則卡的文字由引擎依規則資料產生：預設規則與�
     '可能性 = 對外曝露 3 + EASM 議題 0.5 + 公開利用程式 2 + EPSS×3 + KEV 3 + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 2／1.5／1）（各乘權重，上限 10）；缺 EPSS/KEV 時以 CVSS/10×1.5 近似',
     '影響 = 業務重要性×1.4 + 資料等級（Restricted 3／Confidential 2／Internal 1／Public 0）+2 若為 crown jewel +2 若為可達 crown jewel 的入口（上限 10）',
     '分數 = 可能性 × 影響（0–100）；平衡胃納 P1 ≥ 60、P2 ≥ 40、P3 ≥ 20（嚴格 50/30/15；寬鬆 70/50/25）。',
-    '信心：缺 0 類 → 高；缺 1–2 類 → 中；缺 3 類以上或清冊完整度 < 80% → 低。攻擊路徑可行性 = 入口可能性×0.5 + 最弱節點×0.3 + 身分／設定邊×1 − (跳數−1)×0.6；無任何發現的節點取 3。'
+    '資料齊備程度：缺 0 類 → 高；缺 1–2 類 → 中；缺 3 類以上或清冊完整度 < 80% → 低（只反映輸入是否齊全，不代表已經驗證）。攻擊路徑可行性 = 入口可能性×0.5 + 最弱節點×0.3 + 身分／設定邊×1 − (跳數−1)×0.6；無任何發現的節點取 3。'
   ]);
 });
 
@@ -53,7 +53,7 @@ test('規則卡的數字全部取自規則資料：卡片用到的每個欄位�
     '可能性 = 對外曝露 11 + EASM 議題 12 + 公開利用程式 13 + EPSS×14 + KEV 15 + 身分弱點 + 設定偏差 + 控制缺口 − 既有控制 + 情資命中（依行為者信心 17／18／19）（各乘權重，上限 20）；缺 EPSS/KEV 時以 CVSS/10×16 近似',
     '影響 = 業務重要性×21 + 資料等級（Restricted 22／Confidential 23／Internal 24／Public 25）+26 若為 crown jewel +27 若為可達 crown jewel 的入口（上限 28）',
     '分數 = 可能性 × 影響（2–560）；平衡胃納 P1 ≥ 31、P2 ≥ 32、P3 ≥ 33（嚴格 34/35/36；寬鬆 37/38/39）。',
-    '信心：缺 0 類 → 高；缺 1–45 類 → 中；缺 46 類以上或清冊完整度 < 47% → 低。攻擊路徑可行性 = 入口可能性×41 + 最弱節點×42 + 身分／設定邊×43 − (跳數−1)×44；無任何發現的節點取 45。'
+    '資料齊備程度：缺 0 類 → 高；缺 1–45 類 → 中；缺 46 類以上或清冊完整度 < 47% → 低（只反映輸入是否齊全，不代表已經驗證）。攻擊路徑可行性 = 入口可能性×41 + 最弱節點×42 + 身分／設定邊×43 − (跳數−1)×44；無任何發現的節點取 45。'
   ]);
 });
 
@@ -84,12 +84,12 @@ test('核心提示詞的係數被改掉時，回報文件、規則、預期值�
   assert.ok(drift[0].actual.includes(0.7) && !drift[0].actual.includes(0.75));
 });
 
-test('共用任務規格附錄 A 與信心規則的數值被改掉時，各自回報', () => {
+test('共用任務規格附錄 A 與資料齊備程度規則的數值被改掉時，各自回報', () => {
   const T = 'skills/shared/task-spec.md';
   const cases = [
     ['tolerant → 70/50/25', 'tolerant → 70/55/25', '分數門檻'],
     ['完全無發現的節點取 3（未知）', '完全無發現的節點取 2（未知）', '無發現節點取值'],
-    ['或資產清冊完整度 < 80% → 低（topology', '或資產清冊完整度 < 70% → 低（topology', '信心'],
+    ['或資產清冊完整度 < 80% → 低（topology', '或資產清冊完整度 < 70% → 低（topology', '資料齊備程度'],
     ['− min(2, controls·0.6)·0.8', '− min(2, controls·0.5)·0.8', '可能性']
   ];
   for (const [old, replacement, rule] of cases) {
@@ -119,8 +119,8 @@ test('找不到就失敗：定位文字被改掉或重複、文件沒有提供�
   assert.deepEqual(summary(renamed), [`${C}｜路徑可行性與無發現節點取值`]);
   assert.match(renamed[0].reason, /出現 0 次/);
 
-  const duplicated = scoringRuleDrift(withEdit(repoDocs(), C, '4. 信心水準\n', '4. 信心水準\n缺 0 類建議輸入（重複）\n'));
-  assert.deepEqual(summary(duplicated), [`${C}｜信心`]);
+  const duplicated = scoringRuleDrift(withEdit(repoDocs(), C, '4. 資料齊備程度\n', '4. 資料齊備程度\n缺 0 類建議輸入（重複）\n'));
+  assert.deepEqual(summary(duplicated), [`${C}｜資料齊備程度`]);
   assert.match(duplicated[0].reason, /出現 2 次/);
 
   const missing = scoringRuleDrift(repoDocs().filter(d => d.path !== C));
@@ -131,10 +131,10 @@ test('找不到就失敗：定位文字被改掉或重複、文件沒有提供�
   assert.deepEqual(summary(noRule), ['skills/shared/scoring-rules.md｜最大跳數', 'data/process.js｜S4：最大跳數']);
   assert.match(noRule[0].reason, /規則資料缺少/);
   const noSection = scoringRuleDrift(repoDocs(), { ...DEMO.RULES, confidence: undefined });
-  assert.deepEqual(summary(noSection), [`${C}｜信心`, 'skills/shared/task-spec.md｜信心', 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md｜信心', 'skills/chatgpt/custom-gpt-instructions.md｜信心']);
+  assert.deepEqual(summary(noSection), [`${C}｜資料齊備程度`, 'skills/shared/task-spec.md｜資料齊備程度', 'skills/chatgpt/preemptive-exposure-analysis/SKILL.md｜資料齊備程度', 'skills/chatgpt/custom-gpt-instructions.md｜資料齊備程度']);
 });
 
-test('文件少了最後一個數字（例如漏寫一個信心等級）也算漂移', () => {
+test('文件少了最後一個數字（例如漏寫一個資料齊備程度等級）也算漂移', () => {
   const S = 'skills/shared/scoring-rules.md';
   const drift = scoringRuleDrift(withEdit(repoDocs(), S, '／+1.5（medium）／+1（low）', '／+1.5（medium）'));
   assert.deepEqual(summary(drift), [`${S}｜可能性：威脅情資`]);
@@ -220,13 +220,13 @@ test('改寫版與網站流程文字也受檢查：Codex SKILL.md、Custom GPT �
     [X, '− (跳數−1)·0.6', '+ (跳數−1)·0.6', '路徑可行性'],
     [X, '（無任何發現的節點取 3', '（無任何發現的節點取 2', '無發現節點取值'],
     [X, '`last_login_days` > 90', '`last_login_days` > 60', '身分弱點定義'],
-    [X, '缺 3 類以上或資產清冊完整度 < 80%', '缺 3 類以上或資產清冊完整度 < 70%', '信心'],
+    [X, '缺 3 類以上或資產清冊完整度 < 80%', '缺 3 類以上或資產清冊完整度 < 70%', '資料齊備程度'],
     [G, 'low 1）, 0, 10)', 'low 0.5）, 0, 10)', '可能性'],
     [G, '或 last_login_days > 90）', '或 last_login_days > 30）', 'CVSS 近似與身分弱點定義'],
     [G, 'Internal 1, Public 0}', 'Internal 1, Public 1}', '影響'],
     [G, '寬鬆：70／50／25', '寬鬆：70／50／30', '分數門檻'],
     [G, '無任何發現的節點可能性取 3', '無任何發現的節點可能性取 4', '路徑可行性與無發現節點取值'],
-    [G, '缺 1–2 類 → 中', '缺 1–3 類 → 中', '信心'],
+    [G, '缺 1–2 類 → 中', '缺 1–3 類 → 中', '資料齊備程度'],
     [P, '分數 0–100', '分數 0–10', 'S3：分數範圍'],
     [P, '最多 5 跳', '最多 6 跳', 'S4：最大跳數'],
     [P, '最弱節點×0.3', '最弱節點×0.4', 'S4：路徑可行性'],

@@ -137,7 +137,7 @@ test('驗收 5：管理摘要 300 字通過、301 字不通過；缺決策請求
   assert.deepEqual(failedAfter(o => { o.executive_summary.text = o.executive_summary.text.replace(/限制|未驗證|假設/g, ''); }), ['5b']);
 });
 
-test('驗收 6（no-intel）：沒宣告缺漏、信心仍是「高」、SYN-2026-0101 不是 P1、依據引用已移除的行為者，各自判為不通過', () => {
+test('驗收 6（no-intel）：沒宣告缺漏、資料齊備程度仍是「高」、SYN-2026-0101 不是 P1、依據引用已移除的行為者，各自判為不通過', () => {
   const noIntel = (mutate) => failedAfter(mutate, 'no-intel', 'acceptance-fixture-no-intel.json');
   assert.deepEqual(noIntel(o => { o.exposure_priorities.missing_inputs = []; o.data_quality.missing_inputs = []; }), ['6a']);
   assert.deepEqual(noIntel(o => { o.exposure_priorities.confidence = '高'; }), ['6b']);

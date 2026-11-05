@@ -6,7 +6,7 @@
   "type": "object",
   "required": ["meta", "data_quality", "exposure_priorities", "attack_path_hypotheses", "remediation", "validation_plan", "executive_summary", "metrics", "human_review_points"],
   "$defs": {
-    "confidence": { "type": "string", "enum": ["高", "中", "低"] },
+    "confidence": { "type": "string", "enum": ["高", "中", "低"], "description": "資料齊備程度：只反映建議輸入是否齊全、資產清冊是否完整，不代表內容已經驗證、資料是新的或來源可信；「高」不等於已獲證實（舊稱「信心」，#152）。" },
     "priority": { "type": "string", "enum": ["P1", "P2", "P3", "P4"] },
     "block": {
       "type": "object",

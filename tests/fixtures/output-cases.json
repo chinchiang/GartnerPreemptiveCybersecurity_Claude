@@ -33,7 +33,7 @@
     "valid": false
   },
   {
-    "name": "不合法信心",
+    "name": "不合法的資料齊備程度",
     "path": [
       "exposure_priorities",
       "confidence"

@@ -277,7 +277,7 @@
             <dt>結構</dt><dd>${md(i.structure)}</dd>
             <dt>範例</dt><dd>${md(i.example)}</dd>
             <dt>對應輸入與判斷依據</dt><dd>${md(i.dependsOn)}</dd>
-            <dt>信心水準</dt><dd>${md(i.confidence)}</dd>
+            <dt>資料齊備程度</dt><dd>${md(i.confidence)}</dd>
             <dt>驗證方式</dt><dd>${md(i.validation)}</dd>`}
             <dt>使用對象</dt><dd>${(i.audience || []).map(a => `<span class="pill">${esc(a)}</span>`).join('')}</dd>
             ${i.sources_refs ? `<dt>依據</dt><dd>${srcLinks(i.sources_refs)}</dd>` : ''}
@@ -409,9 +409,9 @@
     function draw() {
       const R = window.DEMO.analyze(data, params); last = R;
       $('#case-output').innerHTML = `
-        ${R.missingSummary.length ? `<div class="callout warn"><strong>資料缺漏影響：</strong>${R.missingSummary.map(esc).join('；')}。信心水準已相應下修，輸出應視為「初步」。</div>` : '<div class="callout ok">所有輸入類別皆提供；仍須人工審查與授權驗證。</div>'}
+        ${R.missingSummary.length ? `<div class="callout warn"><strong>資料缺漏影響：</strong>${R.missingSummary.map(esc).join('；')}。資料齊備程度已相應下修，輸出應視為「初步」。</div>` : '<div class="callout ok">所有輸入類別皆提供；仍須人工審查與授權驗證。</div>'}
         <div class="card"><h2 class="card-h">2. 曝險優先序（輸出 O1）</h2>
-        <div class="table-wrap"><table><thead><tr><th>優先序</th><th>資產</th><th>發現</th><th>分數</th><th>可能性</th><th>影響</th><th>信心</th><th>判斷依據</th></tr></thead>
+        <div class="table-wrap"><table><thead><tr><th>優先序</th><th>資產</th><th>發現</th><th>分數</th><th>可能性</th><th>影響</th><th>資料齊備程度</th><th>判斷依據</th></tr></thead>
         <tbody>${R.findings.map(f => `<tr><td><span class="score ${f.priority}">${f.priority}</span></td><td>${esc(f.asset.name)}<br><span class="small">${esc(f.asset.type)}${f.asset.internet_exposed ? ' · 對外' : ''}</span></td><td>${esc(f.title)}<br><span class="small">${esc(f.vuln_id)} · CVSS ${f.cvss_base}</span></td><td><strong>${f.score}</strong><div class="bar" aria-hidden="true"><span style="width:${f.score}%"></span></div></td><td>${f.likelihood.toFixed(1)}</td><td>${f.impact.toFixed(1)}</td><td>${f.confidence}${f.missing.length ? `<br><span class="small">缺：${f.missing.map(esc).join('、')}</span>` : ''}</td><td class="small">${f.factors.map(esc).join('；')}</td></tr>`).join('')}</tbody></table></div>
         <p class="small">門檻（分數）：P1 ≥ ${R.thresholds[0]}、P2 ≥ ${R.thresholds[1]}、P3 ≥ ${R.thresholds[2]}（風險胃納：${{ strict: '嚴格', balanced: '平衡', tolerant: '寬鬆' }[R.params.riskAppetite]}）</p></div>
         <div class="card"><h2 class="card-h">3. 攻擊路徑假設（輸出 O2）</h2>
@@ -428,7 +428,7 @@
         <h3>後續追蹤（示範時間軸）</h3><div class="timeline">${[['T+0', '產出初版優先序與假設；提交人工審查'], ['T+2 天', '系統擁有者確認 P1 排序；CISO 決定是否授權外部驗證'], ['T+7 天', '對外曝露 P1 完成修補或緩解；重新執行分析比較差異'], ['T+14 天', '完成授權驗證；更新攻擊路徑狀態（已阻斷／仍可行）'], ['每週', '追蹤指標更新；範圍與資料品質再確認']].map(([t, d]) => `<div class="ev"><strong>${t}</strong> ${d}</div>`).join('')}</div></div>`;
     }
     function reportMd(R) {
-      return `# 先制型曝險分析報告（合成示範）\n\n## 管理摘要\n\n${R.summary.header}\n\n${R.summary.text}\n\n## 曝險優先序\n\n| 優先序 | 資產 | 發現 | 分數 | 信心 | 依據 |\n|---|---|---|---|---|---|\n${R.findings.map(f => `| ${f.priority} | ${f.asset.name} | ${f.title} (${f.vuln_id}) | ${f.score} | ${f.confidence} | ${f.factors.join('；')} |`).join('\n')}\n\n## 攻擊路徑假設（status: hypothesis，未驗證）\n\n${R.hypotheses.map((h) => `${h.id}. internet → ${h.nodes.map(A).join(' → ')}（可行性 ${h.feasibility}/10）`).join('\n')}\n\n## 改善建議\n\n${R.recs.map(r => `- [${r.priority}] ${r.asset}：${r.action}（負責：${r.owner}；核准：${r.approval}）`).join('\n')}\n\n## 安全驗證計畫（提案）\n\n${R.validation.map(v => `- ${v.id} ${v.hypothesis}：${v.method}；${v.requires}`).join('\n')}\n\n## 人工審查點\n\n${R.reviewPoints.map(p => `- ${p.stage}（${p.who}）：${p.what}`).join('\n')}\n\n## 追蹤指標\n\n${R.metrics.map(m => `- ${m.name}：${m.value}（目標 ${m.target}）`).join('\n')}\n\n> 所有資料為合成；評分規則為本專案示範用簡化規則，非 Gartner 公式；語言模型或引擎皆未驗證實際曝險。`;
+      return `# 先制型曝險分析報告（合成示範）\n\n## 管理摘要\n\n${R.summary.header}\n\n${R.summary.text}\n\n## 曝險優先序\n\n| 優先序 | 資產 | 發現 | 分數 | 資料齊備程度 | 依據 |\n|---|---|---|---|---|---|\n${R.findings.map(f => `| ${f.priority} | ${f.asset.name} | ${f.title} (${f.vuln_id}) | ${f.score} | ${f.confidence} | ${f.factors.join('；')} |`).join('\n')}\n\n## 攻擊路徑假設（status: hypothesis，未驗證）\n\n${R.hypotheses.map((h) => `${h.id}. internet → ${h.nodes.map(A).join(' → ')}（可行性 ${h.feasibility}/10）`).join('\n')}\n\n## 改善建議\n\n${R.recs.map(r => `- [${r.priority}] ${r.asset}：${r.action}（負責：${r.owner}；核准：${r.approval}）`).join('\n')}\n\n## 安全驗證計畫（提案）\n\n${R.validation.map(v => `- ${v.id} ${v.hypothesis}：${v.method}；${v.requires}`).join('\n')}\n\n## 人工審查點\n\n${R.reviewPoints.map(p => `- ${p.stage}（${p.who}）：${p.what}`).join('\n')}\n\n## 追蹤指標\n\n${R.metrics.map(m => `- ${m.name}：${m.value}（目標 ${m.target}）`).join('\n')}\n\n> 所有資料為合成；評分規則為本專案示範用簡化規則，非 Gartner 公式；語言模型或引擎皆未驗證實際曝險。`;
     }
     const setParamsFromUI = () => {
       $$('[data-input]', el).forEach(c => { params.inputs[c.dataset.input] = c.checked; });
