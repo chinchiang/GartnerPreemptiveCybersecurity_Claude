@@ -6,6 +6,10 @@
 
 ### 技能與發布
 
+**先制型曝險分析**：
+英文：Preemptive Exposure Analysis，簡稱 PEA。本專案的任務與技能：依使用者提供、授權範圍內的資料，產出曝險優先序、攻擊路徑假設、改善建議與驗證計畫（見 `skills/shared/task-spec.md`）。它和 Gartner 的 preemptive exposure assessment（[G32]，曝險管理的一類產品能力，也縮寫為 PEA）是不同的東西，只是縮寫相同；提到 Gartner 的那一類時寫全名，不要單寫「PEA」。
+_Avoid_: 先制型曝險評估
+
 **平臺**：
 英文：Platform。技能要在上面執行的 AI 產品：Claude、ChatGPT、Grok、GLM、DeepSeek、Gemini。文件裡「曝險管理平臺」「PTI 平臺」這類指資安產品的「…平臺」只是一般用語，不屬於此詞條。
 _Avoid_: 供應商、模型、後端

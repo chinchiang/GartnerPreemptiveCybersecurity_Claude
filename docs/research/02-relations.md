@@ -53,7 +53,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **其他來源**：Morphisec 部落格引述 Gartner 對 PEM 的描述 "is not a new technology category; rather, it represents progressive techniques for executing exposure management activities" [V8]（廠商轉載，非授權 reprint，未在 Gartner 頁面確認）。
 
-**本專案推論**：CTEM 是「流程」，先制型資安是「目標狀態與技術方向」。把 CTEM 的五階段加速到「攻擊者行動之前」，並加入預測、欺敵、自動化變動，就是 Gartner 所謂 proactive → preemptive。本專案的八步流程因此以 CTEM 五階段為骨架（S1 對應 scoping、S2 對應 discovery、S3–S4 對應 prioritization、S6 對應 validation、S5/S7 對應 mobilization），再加上情資與追蹤。
+**本專案推論**：CTEM 是「流程」，先制型資安是「目標狀態與技術方向」。把 CTEM 的五階段加速到「攻擊者行動之前」，並加入預測、欺敵、自動化變動，可以視為 Gartner 所說 proactive → preemptive 的一種具體化（本專案推論，不是 Gartner 的定義）。本專案的八步流程因此以 CTEM 五階段為骨架（S1 對應 scoping、S2 對應 discovery、S3–S4 對應 prioritization、S6 對應 validation、S5/S7 對應 mobilization），再加上情資與追蹤。
 
 ## 2.3 威脅情資（Threat Intelligence）
 
@@ -68,7 +68,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **本專案推論**：在沒有 PTI 平臺的組織，情資最務實的用法是「加權」：把已知遭利用、產業內活躍行為者的 TTP 與弱點對映到自己的曝險，提升優先序。本專案示範規則中的「情資命中」加權（依行為者信心 high 2／medium 1.5／low 1）即為此設計；它不是預測，只是加權。
 
-**與本流程的具體對應**：I9 威脅情資只要求 `actors[].exploits_vuln_ids`、`ttps` 與 `confidence` 三個欄位，正是 [G18] 三個成敗因子中「資料品質」的最低要求；`confidence` 決定加權幅度，避免低信心情資推高優先序。缺 I9 時流程不做加權並把信心下修一級，對應 [G12] 把 PTI 描述為「預警系統」——沒有預警，結論只能更保守。情資也回饋到 S8：`trending_weakness_classes` 可作為下次檢視時擴大 discovery 範圍的依據。
+**與本流程的具體對應（本專案推論）**：I9 威脅情資只要求 `actors[].exploits_vuln_ids`、`ttps` 與 `confidence` 三個欄位。[G18] 談的是廠商 AI 型 PTI 的成敗因子（演算法準確度、訓練資料的質與量、整合商），並沒有定義本專案的輸入欄位；本專案只借用其中「資料品質」的方向，把這三個欄位當作情資能被加權使用的最低要求。`confidence` 決定加權幅度，避免低信心情資推高優先序。缺 I9 時流程不做加權並把信心下修一級，呼應 [G12] 把 PTI 描述為「預警系統」——沒有預警，結論只能更保守。設計上，情資也可以回饋到 S8（例如以 `trending_weakness_classes` 作為下次檢視時擴大 discovery 範圍的依據），但目前未實作：沒有程式使用這個欄位，S8 的輸入也不含 I9。
 
 ## 2.4 攻擊面管理（Attack Surface Management）
 
@@ -83,7 +83,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **本專案推論**：外部攻擊面管理（EASM）輸出對應本流程的 S2 discovery，也是「未納入清冊的對外資產」這個指標的來源。
 
-**與本流程的具體對應**：本流程刻意把 EASM 與 CAASM 的角色分開——EASM（I4）回答「從外面看得到什麼」，包括 `asset_id: null` 的未知資產；資產清冊／CAASM（I2）回答「我們自己知道有什麼」。兩者的差集就是 S8「未納入清冊的對外資產」指標，也是 S2 資料品質報告中「資產清冊完整度估計」的依據。I4 的 `issues[]`（例如過期 TLS、匿名列出）在 S3 只加 0.5 分，因為 EASM 議題是「訊號」而非已確認的可利用弱點；把它與 I3 的弱點區分開，避免同一問題被重複計分。
+**與本流程的具體對應（本專案推論）**：本流程刻意把 EASM 與 CAASM 的角色分開——EASM（I4）回答「從外面看得到什麼」，包括 `asset_id: null` 的未知資產；資產清冊／CAASM（I2）回答「我們自己知道有什麼」。兩者的差集就是 S8「未納入清冊的對外資產」指標，也是 S2 資料品質報告中「資產清冊完整度估計」的依據。I4 的 `issues[]`（例如過期 TLS、匿名列出）在 S3 只加 0.5 分，因為 EASM 議題是「訊號」而非已確認的可利用弱點；把它與 I3 的弱點區分開，避免同一問題被重複計分。
 
 ## 2.5 曝險管理（Exposure Management）
 
@@ -116,7 +116,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **本專案推論**：語言模型**不能**執行驗證；它只能產生「驗證計畫」（S6），並要求授權旗標與人工核准。
 
-**與本流程的具體對應**：S6 的四種方法選項（授權下的外部版本確認、內部 BAS、桌面演練、讀取式驗證）對應 AEV 定義中「performing attack scenarios and modeling or measuring the outcome」的兩端 [G28b]——前兩者是「執行情境」，後兩者是「建模／量測」。I1 的兩個授權旗標決定哪一端可用：`external_scanning_authorized` 與 `active_testing_authorized` 任一為 false，S6 每項都標「尚未授權主動測試」，只剩桌面演練與讀取式驗證。Impact Radar 對 AAE（autonomous adversarial emulation）的描述提醒，在製造、醫療與關鍵基礎設施等低容錯環境採用受限 [G-IR]，因此本流程對 OT 資產一律排除主動測試。驗證結果回填 O2 的 `status`（validated-feasible／validated-blocked），這是路徑假設唯一能離開 `hypothesis` 狀態的途徑。
+**與本流程的具體對應（本專案推論）**：S6 的四種方法選項（授權下的外部版本確認、內部 BAS、桌面演練、讀取式驗證）對應 AEV 定義中「performing attack scenarios and modeling or measuring the outcome」的兩端 [G28b]——前兩者是「執行情境」，後兩者是「建模／量測」。I1 的兩個授權旗標決定哪一端可用：`external_scanning_authorized` 與 `active_testing_authorized` 任一為 false，S6 每項都標「尚未授權主動測試」，只剩桌面演練與讀取式驗證。Impact Radar 對 AAE（autonomous adversarial emulation）的描述提醒，在製造、醫療與關鍵基礎設施等低容錯環境採用受限 [G-IR]，因此本流程對 OT 資產一律排除主動測試。驗證結果回填 O2 的 `status`（validated-feasible／validated-blocked），這是路徑假設唯一能離開 `hypothesis` 狀態的途徑。
 
 ## 2.8 欺敵技術（Deception）
 
@@ -131,7 +131,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **本專案推論**：在流程中，欺敵不是分析步驟而是「改善建議」的一種選項：當路徑假設的阻斷成本高（例如 OT 無法修補），可建議在路徑節點部署誘餌帳號／憑證（honey accounts/tokens）作為補償控制，並列入 S8 指標。
 
-**與本流程的具體對應**：合成案例的 `controls.json` 把 "Deception (honey accounts/tokens)" 列為成熟度 none 的控制，因此 S3 對 ad-dc-01、erp-db-01、file-srv-01 各加一項「控制缺口」，S5 對無修補的 OT 主機建議部署誘餌憑證作為補償控制。這與 Gartner 把欺敵評為「質量低」並不矛盾：本流程只把它當成本低、可局部部署的選項，不假設組織已有欺敵平臺；是否採用仍是 S5 人工決策點（變更委員會／OT 負責人）的判斷。
+**與本流程的具體對應（本專案推論）**：合成案例的 `controls.json` 把 "Deception (honey accounts/tokens)" 列為成熟度 none 的控制，因此 S3 對 ad-dc-01、erp-db-01、file-srv-01 各加一項「控制缺口」，S5 對無修補的 OT 主機建議部署誘餌憑證作為補償控制。這與 Gartner 把欺敵評為「質量低」並不矛盾：本流程只把它當成本低、可局部部署的選項，不假設組織已有欺敵平臺；是否採用仍是 S5 人工決策點（變更委員會／OT 負責人）的判斷。
 
 ## 2.9 對照表：關聯的證據等級
 
@@ -139,7 +139,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 |---|---|---|---|
 | CTEM ↔ 先制型 | proactive → preemptive 需加速 preattack cycle [G16]；五支柱之首 [G27] | Cymulate、Picus 等 | 八步流程以 CTEM 為骨架 |
 | 威脅情資 | PTI 為命名能力 [G1][G12]；PTI 定義與擴充 EAP／AEV／ASCA [G-IR] | Dropzone 摘要 [V9] | 情資作為加權因子（依 confidence） |
-| 攻擊面管理 | EAP／PEA 定義 [G29][G32]；attack surface enumeration 為 PEM 面向 [G-IR] | —（EASM 市場定義待驗證） | EASM 與清冊差集 → 未知資產指標 |
+| 攻擊面管理 | EAP／preemptive exposure assessment 定義 [G29][G32]；attack surface enumeration 為 PEM 面向 [G-IR] | —（EASM 市場定義待驗證） | EASM 與清冊差集 → 未知資產指標 |
 | 曝險管理 | 曝險管理的未來是先制型 [G21][G22][G32] | Morphisec [V8]、Picus 對 G24 的引用 | 時間窗口指標 |
 | 攻擊路徑分析 | Impact Radar："anticipate attack paths" [G-IR]（網頁摘錄中未見） | XM Cyber、AI 生成報告 [U1][U2] 的 choke point 方法 | 路徑假設（S4） |
 | 安全控制評估（ASCA）| Impact Radar：結合資產脈絡、弱點與情資可「preemptively address and prioritize mitigation of deficiencies prior to breach」[G-IR] | — | 設定偏差與控制覆蓋因子（S3） |
