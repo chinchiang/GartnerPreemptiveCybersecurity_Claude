@@ -1068,7 +1068,7 @@
     }
   },
   {
-    "name": "排除清單不是陣列，視同空的",
+    "name": "排除清單不是陣列：篩選視同空的，格式不合格",
     "bundle": {
       "scope": {
         "authorized_scope": {
@@ -1196,6 +1196,270 @@
           }
         ]
       }
+    },
+    "excludedAssetsProblems": [
+      "authorized_scope.excluded_assets"
+    ]
+  },
+  {
+    "name": "排除清單是空陣列：合格，什麼都不排除",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": []
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": []
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    }
+  },
+  {
+    "name": "排除清單排除 A01：合格，A01 不送出",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A02"
+        }
+      ]
+    }
+  },
+  {
+    "name": "排除清單含空白字串：格式不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            " "
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            " "
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "excludedAssetsProblems": [
+      "authorized_scope.excluded_assets"
+    ]
+  },
+  {
+    "name": "排除清單含非字串：格式不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            1
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": [
+            1
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "excludedAssetsProblems": [
+      "authorized_scope.excluded_assets"
+    ]
+  },
+  {
+    "name": "排除清單是 null：格式不合格",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": null
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "A02"
+          ],
+          "excluded_assets": null
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "A02"
+        }
+      ]
+    },
+    "excludedAssetsProblems": [
+      "authorized_scope.excluded_assets"
+    ]
+  },
+  {
+    "name": "不認得的頂層鍵：不送往模型",
+    "only": "js",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "raw_inventory": [
+        {
+          "asset_id": "OUT-OF-SCOPE-99",
+          "hostname": "unknown.example"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ]
     }
   }
 ]
