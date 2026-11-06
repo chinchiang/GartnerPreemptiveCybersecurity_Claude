@@ -167,12 +167,12 @@ def response_schema() -> dict:
             return node
         if "$ref" in node:   # 只有 #/$defs/<名稱> 一種寫法
             return resolve(root["$defs"][node["$ref"].rsplit("/", 1)[-1]])
+        # properties 底下的鍵是欄位名稱、不是關鍵字，逐一解析它的值
+        own = {key: {name: resolve(sub) for name, sub in value.items()} if key == "properties" else resolve(value)
+               for key, value in node.items() if key in SUPPORTED_SCHEMA_KEYWORDS}
         merged = {}
-        for part in [resolve(p) for p in node.get("allOf", [])] + [node]:
+        for part in [resolve(p) for p in node.get("allOf", [])] + [own]:
             for key, value in part.items():
-                if key not in SUPPORTED_SCHEMA_KEYWORDS:
-                    continue
-                value = value if part is not node else resolve(value) if key != "properties" else {k: resolve(v) for k, v in value.items()}
                 if key == "properties":
                     merged[key] = {**merged.get(key, {}), **value}
                 elif key == "required":

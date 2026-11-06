@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "bb8640811d27",
+ "contentHash": "621a90925ec4",
  "research": [
   {
    "id": "00-method",
@@ -234,7 +234,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/api-workflow.py",
    "platform": "gemini",
-   "bytes": 13487
+   "bytes": 13549
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/SKILL.md",
