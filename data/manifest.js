@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "6b3c2806a1d1",
+ "contentHash": "d90ef0551ba8",
  "research": [
   {
    "id": "00-method",
@@ -104,7 +104,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/acceptance.md",
    "platform": "chatgpt",
-   "bytes": 2717
+   "bytes": 2794
   },
   {
    "path": "skills/chatgpt/preemptive-exposure-analysis/references/input-schema.json",
@@ -149,7 +149,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/acceptance.md",
    "platform": "claude",
-   "bytes": 2717
+   "bytes": 2794
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/references/input-schema.json",
@@ -194,7 +194,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/acceptance.md",
    "platform": "deepseek",
-   "bytes": 2717
+   "bytes": 2794
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/input-schema.json",
@@ -244,7 +244,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/references/acceptance.md",
    "platform": "gemini",
-   "bytes": 2717
+   "bytes": 2794
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/references/input-schema.json",
@@ -299,7 +299,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/acceptance.md",
    "platform": "glm",
-   "bytes": 2717
+   "bytes": 2794
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/input-schema.json",
@@ -359,7 +359,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/acceptance.md",
    "platform": "shared",
-   "bytes": 2586
+   "bytes": 2663
   },
   {
    "path": "skills/shared/analysis_workflow.py",

@@ -5,7 +5,7 @@
 |---|---|---|
 | 1 | 讀入 9 個檔案並回報筆數 | assets 12、vulnerabilities 14、identities 8、misconfigurations 9、controls 8、actors 3、edges 19、exposures 7、scope 1 |
 | 2 | `vpn-gw-01` 的 `SYN-2026-0101` 分級 | **P1**；factors 含「對外曝露」「公開利用程式」「模擬 KEV」「威脅情資命中」 |
-| 3 | 攻擊路徑假設 | 至少含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`，`status: hypothesis` |
+| 3 | 攻擊路徑假設 | 至少含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`，`status: hypothesis`；每條路徑的相鄰節點都要在 `topology.json` 裡有同方向的邊 |
 | 4 | 驗證計畫授權標示 | 每項標「尚未授權主動測試」（scope 中兩旗標皆 false） |
 | 5 | 管理摘要 | 正體中文、≤ 300 字、含「決策請求」與「限制」；正文與決策請求不出現 IP，包括只遮了一部分的 IP（例如 `203.0.113.***`） |
 | 6 | 移除 threat-intel.json 重跑 | 資料齊備程度下修；輸出列出「未納入威脅情資」；`SYN-2026-0101` 仍為 P1；依據不再引用情資裡的行為者（分數可以不變：情資加分之前，可能性已達上限 10） |

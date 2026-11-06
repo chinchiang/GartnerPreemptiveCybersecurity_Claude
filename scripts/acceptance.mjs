@@ -129,6 +129,19 @@ export function acceptanceResults(output, { variant = 'baseline', outputSchema, 
     chainPath ? `${chainPath.id} feasibility ${chainPath.feasibility} status ${chainPath.status}` : `${paths.length} 條路徑中找不到該鏈`);
   addResult('3b', '所有攻擊路徑的 status 均為 hypothesis', paths.length > 0 && paths.every(p => p.status === 'hypothesis'),
     paths.filter(p => p.status !== 'hypothesis').map(p => p.id).join(',') || `${paths.length} 條`);
+  // 相鄰節點要在輸入拓樸裡有同方向的邊（#220）：edges 是自由文字（E-01、「A01 -> A04 (…)」），所以比對 nodes 與拓樸，不比對 edges。
+  // 節點對應資產沿用上面的 isNode（名稱或整詞的 ID）；internet 是拓樸裡的起點
+  const assetOfNode = (n) => /\binternet\b/i.test(n) ? 'internet' : assetIdOf[Object.keys(assetIdOf).find(name => isNode(n, name))];
+  const topologyEdges = new Set((synthetic['topology.json']?.edges || []).map(e => `${e.from}→${e.to}`));
+  const brokenHops = paths.flatMap(p => {
+    const seq = (p.nodes || []).map(String);
+    return seq.slice(1).flatMap((to, i) => {
+      const [a, b] = [assetOfNode(seq[i]), assetOfNode(to)];
+      return a && b && topologyEdges.has(`${a}→${b}`) ? [] : [`${p.id} ${seq[i]} → ${to}`];
+    });
+  });
+  addResult('3c', '所有攻擊路徑的相鄰節點都對得上拓樸的邊', brokenHops.length === 0,
+    brokenHops.length ? `拓樸裡沒有：${brokenHops.join('；')}` : `${paths.length} 條`);
 
   // ---------- 4. 驗證計畫的授權標示 ----------
   const plan = output.validation_plan?.items || [];
