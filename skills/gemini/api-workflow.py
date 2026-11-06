@@ -23,6 +23,12 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
     「不帶 schema 的 JSON 模式」（帶 schema 被拒絕時的退路）與「延續對話時是否保留 system_instruction」文件沒寫
     （待驗證，所以兩段都帶）。
   - 模型 ID 預設 gemini-3.8-flash（官方建議新專案使用）；旗艦推理模型是 gemini-4-argon。
+    gemini-3.8-flash 的輸出上限是 65,536 token（模型頁，2026-11-06 查證）。
+  - 思考（thinking 文件，2026-11-06 查證）：思考 token 計入 max_output_tokens；gemini-3.8-flash 預設 medium，
+    可設 low／medium／high，不能關閉，minimal 會回錯誤。--max-tokens 預設 32768（含思考）；JSON 段的
+    generation_config.thinking_level 設 low，報告段維持模型預設。每段呼叫後在 stderr 印出用量
+    （Interaction.usage 的 total_output_tokens 與 total_thought_tokens），被截斷時也先印再中止（#214）。
+    改用其他模型時，若它不支援 low，JSON 段會被拒絕。
     Gemini 4 與 3.6 以上的模型忽略自訂的 temperature，所以兩條路徑都不設。
   - --compat：OpenAI 相容端點官方標示 beta；json_object 是否支援，文件沒寫（待驗證）。結構化輸出文件只示範
     client.beta.chat.completions.parse（Pydantic），直接送 json_schema 是否可以沒寫（待驗證），所以 --compat 不帶 schema。
@@ -67,6 +73,10 @@ JSON_MIME = {"type": "text", "mime_type": "application/json"}   # 只要求 JSON
 SUPPORTED_SCHEMA_KEYWORDS = {"type", "properties", "required", "additionalProperties", "items", "prefixItems",
                              "minItems", "maxItems", "enum", "format", "minimum", "maximum", "title", "description", "anyOf"}
 COMPAT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"   # OpenAI 相容端點（官方標示 beta）
+# 上限含思考 token。gemini-3.8-flash 的輸出上限是 65,536（模型頁，2026-11-06 查證）；16000 曾讓 no-intel 的 JSON 段被截斷（#214）。
+# 這只是上限，沒用到的部分不計費
+DEFAULT_MAX_TOKENS = 32768
+JSON_STAGE_THINKING_LEVEL = "low"
 
 
 class GeminiAdapter:
@@ -87,7 +97,8 @@ class GeminiAdapter:
 
     def add_arguments(self, parser):
         parser.add_argument("--compat", action="store_true", help="改用 OpenAI 相容端點（官方標示 beta）")
-        parser.add_argument("--max-tokens", type=int, default=16000, help="每段回應的最大輸出 token")
+        parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS,
+                            help="每段回應的最大輸出 token（含思考 token）")
         parser.add_argument("--no-json-mode", action="store_true",
                             help="第 2 段不使用 JSON 模式（response_format），改以提示詞要求純 JSON")
 
@@ -114,13 +125,19 @@ class GeminiAdapter:
             return reply.choices[0].message.content or ""
         # 第 1 段送報告的提示詞；第 2 段只送最後一則 user 訊息，以 previous_interaction_id 延續第 1 段。
         # system_instruction 兩段都帶：延續對話時會不會保留它，官方文件沒寫（待驗證）
+        # 思考 token 計入 max_output_tokens（thinking 文件，2026-11-06 查證）：JSON 段只是把報告轉成 JSON，思考等級設 low，
+        # 把上限留給輸出；報告段維持模型預設（gemini-3.8-flash 是 medium，不能關閉，也不支援 minimal）
+        generation_config = {"max_output_tokens": args.max_tokens}
+        if stage != "report":
+            generation_config["thinking_level"] = JSON_STAGE_THINKING_LEVEL
         kwargs = dict(model=args.model, system_instruction=messages[0]["content"], input=messages[-1]["content"],
-                      generation_config={"max_output_tokens": args.max_tokens})
+                      generation_config=generation_config)
         if stage != "report":
             kwargs["previous_interaction_id"] = self._previous_id
         if json_mode:
             kwargs["response_format"] = {**JSON_MIME, "schema": response_schema()}
         interaction = _create_with_schema_fallback(self._genai_client().interactions.create, kwargs, json_mode)
+        _print_usage(interaction, stage, args)   # 先印用量再檢查是否完整：被截斷的那一段最需要知道思考用掉多少
         analysis_workflow.require_complete("interactions", getattr(interaction, "status", None), stage, args)
         if stage == "report":
             self._previous_id = interaction.id
@@ -153,6 +170,19 @@ def _api_key() -> str:
     if not api_key:
         raise analysis_workflow.Abort("[錯誤] 未設定環境變數 GEMINI_API_KEY（請勿寫入程式碼或提交到 git）。")
     return api_key
+
+
+def _print_usage(interaction, stage, args) -> None:
+    """印出這一段的用量（Interaction.usage 的 total_output_tokens、total_thought_tokens）；沒有用量就不印。
+    兩個欄位在 SDK 都是選填，缺一個時只印有的。"""
+    usage = getattr(interaction, "usage", None)
+    output, thought = getattr(usage, "total_output_tokens", None), getattr(usage, "total_thought_tokens", None)
+    if output is None and thought is None:
+        return
+    shown = f"輸出 {output} token" if output is not None else "輸出 token 數未提供"
+    if thought is not None:
+        shown += f"（其中思考 {thought}）"
+    print(f"[資訊] {analysis_workflow.STAGE_NAMES[stage]}用量：{shown}／上限 {args.max_tokens}", file=sys.stderr)
 
 
 def response_schema() -> dict:

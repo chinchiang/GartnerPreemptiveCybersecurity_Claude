@@ -63,7 +63,8 @@ class GeminiAdapterTest(unittest.TestCase):
         self.assertEqual(set(report_call), {"model", "system_instruction", "input", "generation_config"})
         self.assertEqual(report_call["model"], "gemini-3.8-flash")
         self.assertIn("7. 平臺備註（Gemini）", report_call["system_instruction"])
-        self.assertEqual(report_call["generation_config"], {"max_output_tokens": 16000})
+        # #214：思考 token 計入 max_output_tokens；預設上限 32768（gemini-3.8-flash 的輸出上限是 65536），報告段維持模型預設的思考等級
+        self.assertEqual(report_call["generation_config"], {"max_output_tokens": 32768})
         self.assertNotIn("output-schema.json", report_call["input"])
         # 第 2 段：延續第 1 段（previous_interaction_id 是它回傳的 id），input 只有 JSON 提示詞；system_instruction 再帶一次
         self.assertEqual(json_call["previous_interaction_id"], "interaction-1")
@@ -71,9 +72,36 @@ class GeminiAdapterTest(unittest.TestCase):
         self.assertNotIn("# 報告", json_call["input"])
         self.assertIn("Gemini API（google-genai）/ gemini-3.8-flash /", json_call["input"])  # generated_by
         self.assertEqual(json_call["system_instruction"], report_call["system_instruction"])
+        # JSON 段只是把報告轉成 JSON，思考等級設 low，把上限留給輸出（gemini-3.8-flash 不支援 minimal）
+        self.assertEqual(json_call["generation_config"], {"max_output_tokens": 32768, "thinking_level": "low"})
         self.assertEqual({k: v for k, v in json_call["response_format"].items() if k != "schema"}, JSON_MIME)
         self.assertEqual((self.out / "gemini-report.md").read_text(encoding="utf-8"), "# 報告")
         self.assertTrue((self.out / "gemini-output.json").exists())
+
+    def test_each_stage_prints_its_token_usage_against_the_limit(self):
+        # #214：no-intel 的 JSON 段被截斷時沒有用量可查；之後每段都印出輸出與思考 token，跟上限比對
+        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT], usage=[
+            {"total_output_tokens": 9000, "total_thought_tokens": 2500}, {"total_output_tokens": 14000, "total_thought_tokens": 600}])
+        code, out, err = self.run_main("--max-tokens", "20000", modules=modules)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c["generation_config"]["max_output_tokens"] for c in record["calls"]], [20000, 20000])
+        self.assertIn("[資訊] 第 1 段（Markdown 報告）用量：輸出 9000 token（其中思考 2500）／上限 20000", err)
+        self.assertIn("[資訊] 第 2 段（JSON）用量：輸出 14000 token（其中思考 600）／上限 20000", err)
+
+    def test_truncated_stage_still_prints_its_usage_before_stopping(self):
+        # 被截斷的那一段最需要用量：思考 token 是否吃掉了上限，要在中止之前印出來
+        modules, record = fake_google_genai(["# 報告", ("{", "incomplete")], usage=[
+            {"total_output_tokens": 9000, "total_thought_tokens": 2500}, {"total_output_tokens": 32768, "total_thought_tokens": 21000}])
+        code, out, err = self.run_main(modules=modules)
+        self.assertEqual(code, 1)
+        self.assertIn("[資訊] 第 2 段（JSON）用量：輸出 32768 token（其中思考 21000）／上限 32768", err)
+        self.assertLess(err.index("第 2 段（JSON）用量"), err.index("回覆不完整"))
+
+    def test_missing_usage_prints_nothing_and_does_not_fail(self):
+        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT])   # 回應的 usage 是 None
+        code, out, err = self.run_main(modules=modules)
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("用量", err)
 
     def test_json_stage_constrains_output_with_the_schema_in_gemini_supported_keywords(self):
         # #205：只要求 JSON、不帶 schema 時，模型曾把 human_review_points 寫成 schema 本身的樣子（{"type":"array","items":[…]}）。
@@ -152,7 +180,7 @@ class GeminiAdapterTest(unittest.TestCase):
         self.assertEqual(record["clients"], [{"api_key": "test-key", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"}])
         report_call, json_call = record["calls"]
         self.assertEqual(set(report_call), {"model", "messages", "max_tokens"})   # 第 1 段不要求 JSON、不設 temperature
-        self.assertEqual((report_call["model"], report_call["max_tokens"]), ("gemini-3.8-flash", 16000))
+        self.assertEqual((report_call["model"], report_call["max_tokens"]), ("gemini-3.8-flash", 32768))
         self.assertEqual([m["role"] for m in report_call["messages"]], ["system", "user"])
         self.assertIn("7. 平臺備註（Gemini）", report_call["messages"][0]["content"])
         self.assertEqual([m["role"] for m in json_call["messages"]], ["system", "user", "assistant", "user"])
