@@ -131,11 +131,12 @@ def fake_xai_sdk(replies):
     return {"xai_sdk": types.SimpleNamespace(Client=Client, chat=chat), "xai_sdk.chat": chat}, record
 
 
-def fake_google_genai(replies, reject_response_format=False, reject_schema=False):
+def fake_google_genai(replies, reject_response_format=False, reject_schema=False, usage=None):
     """回傳 ({"google": ..., "google.genai": ...}, 呼叫紀錄)。client.interactions.create 記下參數，依序回傳 replies
     （回應帶 id＝interaction-1、interaction-2…、output_text 與 status）；每一項也可以寫成 (內容, status)，只寫內容時
     status 是 "completed"（正常結束；Interaction 沒有原因欄位）。reject_response_format=True 時，帶 response_format 的呼叫會丟出例外；
     reject_schema=True 時，只有 response_format 帶 schema 的呼叫會丟出例外（模擬 schema 超出端點的限制）。
+    usage 是每次回應的用量（dict 的清單，依序對應 replies），沒給時 usage 是 None，跟真的 Interaction 沒有用量時一樣。
     google 也要放進 sys.modules：from google import genai 會先找 google 這個 package。"""
     record = {"clients": [], "calls": []}
 
@@ -147,7 +148,8 @@ def fake_google_genai(replies, reject_response_format=False, reject_schema=False
             if reject_schema and "schema" in kwargs.get("response_format", {}):
                 raise RuntimeError("400 INVALID_ARGUMENT: schema too complex")
             text, status = _with_finish(replies.pop(0), "completed")
-            return types.SimpleNamespace(id=f"interaction-{len(record['calls'])}", output_text=text, status=status)
+            used = types.SimpleNamespace(**usage.pop(0)) if usage else None
+            return types.SimpleNamespace(id=f"interaction-{len(record['calls'])}", output_text=text, status=status, usage=used)
 
     class Client:
         def __init__(self, api_key=None):
