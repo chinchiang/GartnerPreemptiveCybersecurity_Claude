@@ -269,7 +269,8 @@
     });
     if ('exposures' in data) {
       data.exposures = object(data.exposures) ? data.exposures : {};
-      data.exposures.exposures = rows(data.exposures.exposures).filter(e => inScope(e.asset_id));
+      // 未納入清冊的對外資產（asset_id 是 null 或沒有這個欄位）照常送出；與 Python 的 is_unlisted_exposure 是同一條規則（ADR 0009）
+      data.exposures.exposures = rows(data.exposures.exposures).filter(e => inScope(e.asset_id) || e.asset_id == null);
     }
     if ('controls' in data) {
       data.controls = object(data.controls) ? data.controls : {};

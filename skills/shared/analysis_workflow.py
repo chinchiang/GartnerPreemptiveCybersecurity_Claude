@@ -488,11 +488,17 @@ def _file_status_findings(inputs: Inputs, input_schema: dict) -> list:
     return findings
 
 
+def is_unlisted_exposure(row: dict) -> bool:
+    """未納入清冊的對外資產：asset_id 是 null 或沒有這個欄位（輸入 schema 允許 null）。
+    空字串不算：它是字串，照一般資產的範圍規則處理。JS 的 scopedBundle 以共用案例守住同一條規則（ADR 0009）。"""
+    return row.get("asset_id") is None
+
+
 def unlisted_hosts(exposures) -> list:
-    """exposures.json 裡沒有對應 asset_id 的對外資產（未納入清冊），回傳其 hostname。"""
+    """exposures.json 裡未納入清冊的對外資產（is_unlisted_exposure），回傳其 hostname。"""
     if not isinstance(exposures, dict) or not isinstance(exposures.get("exposures"), list):
         return []
-    return [e.get("hostname") for e in exposures["exposures"] if isinstance(e, dict) and not e.get("asset_id")]
+    return [e.get("hostname") for e in exposures["exposures"] if isinstance(e, dict) and is_unlisted_exposure(e)]
 
 
 # ---------------------------------------------------------------------------
@@ -565,7 +571,8 @@ def scoped_files(inputs: Inputs) -> list:
             data = identities
         elif category == "exposures":
             data = data if isinstance(data, dict) else {}
-            data["exposures"] = [row for row in rows(data.get("exposures")) if in_scope(row.get("asset_id"))]
+            # 未納入清冊的對外資產照常送出，模型才能把它列進資料品質與指標（#206，ADR 0009）
+            data["exposures"] = [row for row in rows(data.get("exposures")) if in_scope(row.get("asset_id")) or is_unlisted_exposure(row)]
         elif category == "controls":
             data = data if isinstance(data, dict) else {}
             controls = []
@@ -607,7 +614,8 @@ def build_report_prompt(inputs: Inputs) -> str:
             continue
         key = (finding.file, finding.kind, finding.severity)
         counts[key] = counts.get(key, 0) + 1
-    lines = ["範圍外資料與未確認歸屬的對外資產已於送出前排除；原始腳本預檢請在本機檢視。"]
+    lines = ["範圍外資料已於送出前排除；未納入清冊的對外資產（asset_id 為 null）照常送出，"
+             "請在資料品質列為異常，並計入「未納入清冊的對外資產數」指標。原始腳本預檢請在本機檢視。"]
     lines += [f"{name}：{kind} ×{count}（{severity}）" for (name, kind, severity), count in counts.items()]
     if lines:
         parts += ["【腳本預檢結果】以下是腳本對輸入的機械檢查，請寫進資料品質章節並據以下修資料齊備程度："]
