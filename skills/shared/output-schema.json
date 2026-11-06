@@ -74,7 +74,7 @@
     "executive_summary": {
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["text"],
-      "properties": { "audience": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string", "maxLength": 300, "description": "正文 ≤ 300 字（含標點；對象／日期列另放 audience 與 meta）" }, "decisions_requested": { "type": "array", "items": { "type": "string" } } }
+      "properties": { "audience": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string", "maxLength": 300, "description": "正文 ≤ 300 字（含標點；對象／日期列另放 audience 與 meta）。正文本身要寫出限制與「所有路徑為假設」；帳號、IP、主機名稱整段遮罩，不保留網段、前綴或部分字元" }, "decisions_requested": { "type": "array", "items": { "type": "string" } } }
     },
     "metrics": {
       "allOf": [{ "$ref": "#/$defs/block" }],
