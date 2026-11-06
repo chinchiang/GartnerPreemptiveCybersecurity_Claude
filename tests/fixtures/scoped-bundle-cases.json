@@ -274,7 +274,83 @@
       "exposures": {
         "exposures": [
           {
+            "asset_id": null
+          },
+          {
             "asset_id": "A01"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "未納入清冊的對外資產照常送出（#206）：asset_id 為 null 或沒有這個欄位才算；空字串與範圍外資產照舊排除",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": [
+          {
+            "asset_id": null,
+            "hostname": "old-test.example",
+            "ip": "203.0.113.50",
+            "ports": [
+              80
+            ],
+            "issues": [
+              "legacy-tls"
+            ]
+          },
+          {
+            "hostname": "no-id.example"
+          },
+          {
+            "asset_id": "",
+            "hostname": "EXCLUDED_SENTINEL"
+          },
+          {
+            "asset_id": "A02",
+            "hostname": "EXCLUDED_SENTINEL"
+          },
+          {
+            "asset_id": "A01",
+            "hostname": "vpn.example"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "exposures": {
+        "exposures": [
+          {
+            "asset_id": null,
+            "hostname": "old-test.example",
+            "ip": "203.0.113.50",
+            "ports": [
+              80
+            ],
+            "issues": [
+              "legacy-tls"
+            ]
+          },
+          {
+            "hostname": "no-id.example"
+          },
+          {
+            "asset_id": "A01",
+            "hostname": "vpn.example"
           }
         ]
       }

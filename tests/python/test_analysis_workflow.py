@@ -345,7 +345,9 @@ class PreflightRenderingTest(unittest.TestCase):
     def test_report_prompt_preflight_section_hides_identifiers(self):
         prompt = aw.build_report_prompt(aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA))
         section = prompt[prompt.index("【腳本預檢結果】"):].split("\n\n")[0].splitlines()
-        self.assertIn("範圍外資料與未確認歸屬的對外資產已於送出前排除", section[1])
+        self.assertIn("範圍外資料已於送出前排除", section[1])
+        self.assertIn("未納入清冊的對外資產（asset_id 為 null）照常送出", section[1])   # #206：不再說它已被排除
+        self.assertNotIn("未確認歸屬", prompt)
         self.assertTrue(any("dangling_reference" in line for line in section))
         self.assertFalse(any("A97" in line or "A02" in line for line in section))
 
@@ -478,7 +480,10 @@ class PromptTest(unittest.TestCase):
         self.assertIn("【本次未提供的輸入】", p)
         self.assertIn("threat-intel.json", p)
         self.assertIn("【腳本預檢結果】", p)
-        self.assertNotIn("old-test.northwind-synthetic.example", p)
+        # #206：未納入清冊的對外資產照常送出，送出筆數與排除前一致，驗收第 1 項的 7 筆才有可能回報
+        self.assertIn("old-test.northwind-synthetic.example", p)
+        self.assertIn("exposures.json：7", p)
+        self.assertRegex(p, r"### exposures\.json — [^\n]*（腳本預先計算筆數：7）")
 
     def test_report_prompt_omits_local_path_step_list_and_disclaimer(self):
         p = self.report_prompt

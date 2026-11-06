@@ -60,8 +60,9 @@ class AuditRegressionTest(unittest.TestCase):
         inputs.scope['authorized_scope']['in_scope_assets'] = ['A01']
         prompt = aw.build_report_prompt(inputs)
         self.assertIn('vpn-gw-01', prompt)
-        for text in ['ad-dc-01', 'erp-db-01', 'old-test.northwind-synthetic.example', 'A02,']:
+        for text in ['ad-dc-01', 'erp-db-01', 'A02,']:
             self.assertNotIn(text, prompt)
+        self.assertIn('old-test.northwind-synthetic.example', prompt)   # 未納入清冊的對外資產不屬於任何資產，照常送出（#206）
         filtered = {f['category']: f['data'] for f in aw.scoped_files(inputs)}
         self.assertEqual([a['asset_id'] for a in filtered['assets']], ['A01'])
         self.assertEqual(filtered['topology']['crown_jewels'], [])
