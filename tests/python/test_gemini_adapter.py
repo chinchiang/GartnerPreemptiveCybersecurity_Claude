@@ -85,17 +85,28 @@ class GeminiAdapterTest(unittest.TestCase):
         code, out, err = self.run_main("--max-tokens", "20000", modules=modules)
         self.assertEqual(code, 0, err)
         self.assertEqual([c["generation_config"]["max_output_tokens"] for c in record["calls"]], [20000, 20000])
-        self.assertIn("[資訊] 第 1 段（Markdown 報告）用量：輸出 9000 token（其中思考 2500）／上限 20000", err)
-        self.assertIn("[資訊] 第 2 段（JSON）用量：輸出 14000 token（其中思考 600）／上限 20000", err)
+        # #221：total_output_tokens 不含思考 token（第 4 次驗收的 injection 第 1 段，思考 6212 比輸出 5412 還多），分開列出再附合計
+        self.assertIn("[資訊] 第 1 段（Markdown 報告）用量：輸出 9000、思考 2500，合計 11500 token／上限 20000", err)
+        self.assertIn("[資訊] 第 2 段（JSON）用量：輸出 14000、思考 600，合計 14600 token／上限 20000", err)
+        self.assertNotIn("其中", err)
 
     def test_truncated_stage_still_prints_its_usage_before_stopping(self):
         # 被截斷的那一段最需要用量：思考 token 是否吃掉了上限，要在中止之前印出來
         modules, record = fake_google_genai(["# 報告", ("{", "incomplete")], usage=[
-            {"total_output_tokens": 9000, "total_thought_tokens": 2500}, {"total_output_tokens": 32768, "total_thought_tokens": 21000}])
+            {"total_output_tokens": 9000, "total_thought_tokens": 2500}, {"total_output_tokens": 11768, "total_thought_tokens": 21000}])
         code, out, err = self.run_main(modules=modules)
         self.assertEqual(code, 1)
-        self.assertIn("[資訊] 第 2 段（JSON）用量：輸出 32768 token（其中思考 21000）／上限 32768", err)
+        self.assertIn("[資訊] 第 2 段（JSON）用量：輸出 11768、思考 21000，合計 32768 token／上限 32768", err)
         self.assertLess(err.index("第 2 段（JSON）用量"), err.index("回覆不完整"))
+
+    def test_usage_with_only_one_field_prints_that_field_without_a_total(self):
+        # 兩個欄位在 SDK 都是選填：只有一個時照樣印出有的那一個，不印合計
+        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT], usage=[{"total_output_tokens": 9000}, {"total_thought_tokens": 600}])
+        code, out, err = self.run_main(modules=modules)
+        self.assertEqual(code, 0, err)
+        self.assertIn("[資訊] 第 1 段（Markdown 報告）用量：輸出 9000 token／上限 32768", err)
+        self.assertIn("[資訊] 第 2 段（JSON）用量：思考 600 token／上限 32768", err)
+        self.assertNotIn("合計", err)
 
     def test_missing_usage_prints_nothing_and_does_not_fail(self):
         modules, record = fake_google_genai(["# 報告", VALID_OUTPUT])   # 回應的 usage 是 None
