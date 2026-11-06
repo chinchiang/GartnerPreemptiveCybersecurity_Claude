@@ -128,5 +128,114 @@
     "problems": [
       "$.exposure_priorities.thresholds.P1 型別不合格"
     ]
+  },
+  {
+    "name": "資料品質的檔案缺 name（#213）",
+    "path": [
+      "data_quality",
+      "files",
+      0,
+      "name"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.data_quality.files[0].name 必填"
+    ]
+  },
+  {
+    "name": "資料品質的檔案缺 records（#213）",
+    "path": [
+      "data_quality",
+      "files",
+      0,
+      "records"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.data_quality.files[0].records 必填"
+    ]
+  },
+  {
+    "name": "資料品質的檔案缺 missing_fields（#213）",
+    "path": [
+      "data_quality",
+      "files",
+      0,
+      "missing_fields"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.data_quality.files[0].missing_fields 必填"
+    ]
+  },
+  {
+    "name": "資料品質的檔案缺 anomalies（#213）",
+    "path": [
+      "data_quality",
+      "files",
+      0,
+      "anomalies"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.data_quality.files[0].anomalies 必填"
+    ]
+  },
+  {
+    "name": "資料品質的檔案 anomalies 是空陣列：合格（#213）",
+    "path": [
+      "data_quality",
+      "files",
+      0,
+      "anomalies"
+    ],
+    "value": [],
+    "valid": true
+  },
+  {
+    "name": "攻擊路徑缺 blocking_controls（O2，#213）",
+    "path": [
+      "attack_path_hypotheses",
+      "items",
+      0,
+      "blocking_controls"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.attack_path_hypotheses.items[0].blocking_controls 必填"
+    ]
+  },
+  {
+    "name": "驗證計畫缺 scope_exclusions（O4，#213）",
+    "path": [
+      "validation_plan",
+      "items",
+      0,
+      "scope_exclusions"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.validation_plan.items[0].scope_exclusions 必填"
+    ]
+  },
+  {
+    "name": "追蹤指標缺 next_review（O6，#213）",
+    "path": [
+      "metrics",
+      "items",
+      0,
+      "next_review"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.metrics.items[0].next_review 必填"
+    ]
   }
 ]

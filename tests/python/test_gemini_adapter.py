@@ -102,6 +102,10 @@ class GeminiAdapterTest(unittest.TestCase):
         self.assertEqual(quality["properties"]["confidence"]["enum"], ["高", "中", "低"])
         self.assertTrue({"confidence", "basis", "missing_inputs", "requires_human", "files"} <= set(quality["required"]))
         self.assertEqual(schema["properties"]["human_review_points"]["type"], "array")
+        # #213：結構化輸出會省略選填欄位；每次都要回報的欄位必須以 required 送出，Gemini 才會寫出空陣列而不是整欄省略
+        self.assertEqual(quality["properties"]["files"]["items"]["required"], ["name", "records", "missing_fields", "anomalies"])
+        self.assertIn("blocking_controls", schema["properties"]["attack_path_hypotheses"]["properties"]["items"]["items"]["required"])
+        self.assertNotIn("evidence", schema["properties"]["attack_path_hypotheses"]["properties"]["items"]["items"]["required"])
         self.assertEqual(schema["properties"]["exposure_priorities"]["properties"]["items"]["items"]["properties"]["priority"]["enum"],
                          ["P1", "P2", "P3", "P4"])
 

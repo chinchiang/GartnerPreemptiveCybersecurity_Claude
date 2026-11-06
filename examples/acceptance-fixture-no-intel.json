@@ -142,7 +142,11 @@
           "E-12"
         ],
         "feasibility": 6.4,
-        "status": "hypothesis"
+        "status": "hypothesis",
+        "blocking_controls": [
+          "網段隔離（VPN 使用者網段到 DC）",
+          "MFA／特權管理（svc-erp-sync）"
+        ]
       },
       {
         "id": "H-2",
@@ -162,7 +166,11 @@
           "E-12"
         ],
         "feasibility": 6.1,
-        "status": "hypothesis"
+        "status": "hypothesis",
+        "blocking_controls": [
+          "網段隔離（VPN 使用者網段到 DC）",
+          "MFA／特權管理（svc-erp-sync）"
+        ]
       }
     ]
   },
@@ -246,12 +254,14 @@
       {
         "name": "P1 發現數",
         "value": 5,
-        "target": "≤ 3"
+        "target": "≤ 3",
+        "next_review": "每週"
       },
       {
         "name": "未納入清冊的對外資產",
         "value": 1,
-        "target": "0"
+        "target": "0",
+        "next_review": "每週"
       },
       {
         "name": "攻擊路徑假設數",

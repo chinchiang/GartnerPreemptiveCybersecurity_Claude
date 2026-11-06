@@ -36,7 +36,7 @@
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["files"],
       "properties": {
-        "files": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "records": { "type": "integer" }, "missing_fields": { "type": "array", "items": { "type": "string" } }, "anomalies": { "type": "array", "items": { "type": "string" } } } } },
+        "files": { "type": "array", "items": { "type": "object", "required": ["name", "records", "missing_fields", "anomalies"], "description": "每個檔案都要回報；沒有缺欄位或異常時寫空陣列。", "properties": { "name": { "type": "string" }, "records": { "type": "integer" }, "missing_fields": { "type": "array", "items": { "type": "string" } }, "anomalies": { "type": "array", "items": { "type": "string" } } } } },
         "out_of_scope_excluded": { "type": "array", "items": { "type": "string" } },
         "inventory_completeness_estimate": { "type": ["number", "null"] }
       }
@@ -53,7 +53,7 @@
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["items"],
       "properties": {
-        "items": { "type": "array", "items": { "type": "object", "required": ["id", "entry", "target", "nodes", "edges", "feasibility", "status"], "properties": { "id": { "type": "string" }, "entry": { "type": "string" }, "target": { "type": "string" }, "nodes": { "type": "array", "items": { "type": "string" } }, "edges": { "type": "array", "items": { "type": "string" } }, "feasibility": { "type": "number", "minimum": 0, "maximum": 10 }, "blocking_controls": { "type": "array", "items": { "type": "string" } }, "status": { "type": "string", "enum": ["hypothesis", "validated-feasible", "validated-blocked"] }, "evidence": { "type": "object", "description": "status 不是 hypothesis 時必填：已授權驗證的證據。", "properties": { "authorization_reference": { "type": "string" }, "performed_at": { "type": "string" }, "result": { "type": "string" } } } } } }
+        "items": { "type": "array", "items": { "type": "object", "required": ["id", "entry", "target", "nodes", "edges", "feasibility", "blocking_controls", "status"], "properties": { "id": { "type": "string" }, "entry": { "type": "string" }, "target": { "type": "string" }, "nodes": { "type": "array", "items": { "type": "string" } }, "edges": { "type": "array", "items": { "type": "string" } }, "feasibility": { "type": "number", "minimum": 0, "maximum": 10 }, "blocking_controls": { "type": "array", "items": { "type": "string" } }, "status": { "type": "string", "enum": ["hypothesis", "validated-feasible", "validated-blocked"] }, "evidence": { "type": "object", "description": "status 不是 hypothesis 時必填：已授權驗證的證據。", "properties": { "authorization_reference": { "type": "string" }, "performed_at": { "type": "string" }, "result": { "type": "string" } } } } } }
       }
     },
     "remediation": {
@@ -68,7 +68,7 @@
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["items"],
       "properties": {
-        "items": { "type": "array", "items": { "type": "object", "required": ["id", "hypothesis", "method", "authorization_required", "success_criteria"], "properties": { "id": { "type": "string" }, "hypothesis": { "type": "string" }, "method": { "type": "string" }, "authorization_required": { "type": "string" }, "scope_exclusions": { "type": "array", "items": { "type": "string" } }, "success_criteria": { "type": "string" } } } }
+        "items": { "type": "array", "items": { "type": "object", "required": ["id", "hypothesis", "method", "authorization_required", "scope_exclusions", "success_criteria"], "properties": { "id": { "type": "string" }, "hypothesis": { "type": "string" }, "method": { "type": "string" }, "authorization_required": { "type": "string" }, "scope_exclusions": { "type": "array", "items": { "type": "string" } }, "success_criteria": { "type": "string" } } } }
       }
     },
     "executive_summary": {
@@ -79,7 +79,7 @@
     "metrics": {
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["items"],
-      "properties": { "items": { "type": "array", "minItems": 6, "items": { "type": "object", "required": ["name", "value", "target"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
+      "properties": { "items": { "type": "array", "minItems": 6, "items": { "type": "object", "required": ["name", "value", "target", "next_review"], "properties": { "name": { "type": "string" }, "value": {}, "target": { "type": "string" }, "next_review": { "type": "string" } } } } }
     },
     "human_review_points": {
       "type": "array",
