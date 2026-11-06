@@ -11,17 +11,21 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
 
 兩段式呼叫
   第 1 段：產出人可讀的 Markdown 報告（正體中文）。
-  第 2 段：原生路徑以 previous_interaction_id 延續第 1 段，只送 JSON 的提示詞，response_format 只要求 JSON
-          （不帶 schema）；--compat 送完整的對話，response_format={"type": "json_object"}。
-          端點拒絕 JSON 模式時，改以提示詞要求純 JSON 重試一次；也可加 --no-json-mode 直接關閉。
+  第 2 段：原生路徑以 previous_interaction_id 延續第 1 段，只送 JSON 的提示詞，response_format 帶上 output-schema.json
+          （轉成 structured-output 支援的關鍵字，見 response_schema）；--compat 送完整的對話，response_format={"type": "json_object"}。
+          原生路徑帶 schema 被拒絕時，先改用不帶 schema 的 JSON 模式重試一次；JSON 模式被拒絕時，改以提示詞要求純 JSON
+          重試一次；也可加 --no-json-mode 直接關閉。
 
 查證狀態（2026-10-22，詳見 skills/gemini/README.md）
   - client.interactions.create 的 model／input／system_instruction／generation_config／previous_interaction_id
     與 response_format 依 ai.google.dev 的 text-generation、structured-output 文件撰寫（已查證）；
-    「不帶 schema 的 JSON 模式」與「延續對話時是否保留 system_instruction」文件沒寫（待驗證，所以兩段都帶）。
+    structured-output 的支援關鍵字清單 2026-11-06 查證（allOf 沒有列出；minLength／maxLength 被伺服器忽略）。
+    「不帶 schema 的 JSON 模式」（帶 schema 被拒絕時的退路）與「延續對話時是否保留 system_instruction」文件沒寫
+    （待驗證，所以兩段都帶）。
   - 模型 ID 預設 gemini-3.8-flash（官方建議新專案使用）；旗艦推理模型是 gemini-4-argon。
     Gemini 4 與 3.6 以上的模型忽略自訂的 temperature，所以兩條路徑都不設。
-  - --compat：OpenAI 相容端點官方標示 beta；json_object 是否支援，文件沒寫（待驗證）。
+  - --compat：OpenAI 相容端點官方標示 beta；json_object 是否支援，文件沒寫（待驗證）。結構化輸出文件只示範
+    client.beta.chat.completions.parse（Pydantic），直接送 json_schema 是否可以沒寫（待驗證），所以 --compat 不帶 schema。
 
 環境變數（勿寫入程式碼、勿提交到 git）
   GEMINI_API_KEY          必要（--dry-run 時不需要）。只認這一個並明確傳給 client，不讓 SDK 改讀 GOOGLE_API_KEY
@@ -48,6 +52,7 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -56,7 +61,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
 import analysis_workflow  # noqa: E402
 
-JSON_MIME = {"type": "text", "mime_type": "application/json"}   # 只要求 JSON，不帶 schema
+JSON_MIME = {"type": "text", "mime_type": "application/json"}   # 只要求 JSON，不帶 schema（帶 schema 被拒絕時的退路）
+# structured-output 文件列出的支援關鍵字（2026-11-06 查證）；allOf 沒有列出，$schema、$id 不是約束，
+# minLength／maxLength 等「不在受限解碼時強制、被伺服器忽略」：這些都不送，輸出照舊由核心以 output-schema.json 驗證
+SUPPORTED_SCHEMA_KEYWORDS = {"type", "properties", "required", "additionalProperties", "items", "prefixItems",
+                             "minItems", "maxItems", "enum", "format", "minimum", "maximum", "title", "description", "anyOf"}
 COMPAT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"   # OpenAI 相容端點（官方標示 beta）
 
 
@@ -110,8 +119,8 @@ class GeminiAdapter:
         if stage != "report":
             kwargs["previous_interaction_id"] = self._previous_id
         if json_mode:
-            kwargs["response_format"] = JSON_MIME
-        interaction = _create_with_json_fallback(self._genai_client().interactions.create, kwargs, json_mode)
+            kwargs["response_format"] = {**JSON_MIME, "schema": response_schema()}
+        interaction = _create_with_schema_fallback(self._genai_client().interactions.create, kwargs, json_mode)
         analysis_workflow.require_complete("interactions", getattr(interaction, "status", None), stage, args)
         if stage == "report":
             self._previous_id = interaction.id
@@ -144,6 +153,48 @@ def _api_key() -> str:
     if not api_key:
         raise analysis_workflow.Abort("[錯誤] 未設定環境變數 GEMINI_API_KEY（請勿寫入程式碼或提交到 git）。")
     return api_key
+
+
+def response_schema() -> dict:
+    """output-schema.json 轉成 structured-output 接受的形式：$ref 就地展開，allOf 合併成單一物件
+    （properties 與 required 取聯集），其餘只留 SUPPORTED_SCHEMA_KEYWORDS。"""
+    root = json.loads((analysis_workflow.SHARED_DIR / "output-schema.json").read_text(encoding="utf-8-sig"))
+
+    def resolve(node):
+        if isinstance(node, list):
+            return [resolve(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        if "$ref" in node:   # 只有 #/$defs/<名稱> 一種寫法
+            return resolve(root["$defs"][node["$ref"].rsplit("/", 1)[-1]])
+        # properties 底下的鍵是欄位名稱、不是關鍵字，逐一解析它的值
+        own = {key: {name: resolve(sub) for name, sub in value.items()} if key == "properties" else resolve(value)
+               for key, value in node.items() if key in SUPPORTED_SCHEMA_KEYWORDS}
+        merged = {}
+        for part in [resolve(p) for p in node.get("allOf", [])] + [own]:
+            for key, value in part.items():
+                if key == "properties":
+                    merged[key] = {**merged.get(key, {}), **value}
+                elif key == "required":
+                    merged[key] = merged.get(key, []) + [name for name in value if name not in merged.get(key, [])]
+                else:
+                    merged[key] = value
+        return merged
+
+    return resolve(root)
+
+
+def _create_with_schema_fallback(create, kwargs, json_mode):
+    """原生路徑：先帶 schema；端點拒絕時（文件：太大或巢狀太深的 schema 會被拒絕，400 INVALID_ARGUMENT）
+    印出警告，改用不帶 schema 的 JSON 模式重試一次，再被拒絕就照 _create_with_json_fallback 拿掉 response_format。"""
+    if not json_mode:
+        return create(**kwargs)
+    try:
+        return create(**kwargs)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[警告] 帶 schema 的 JSON 模式被端點拒絕（{type(exc).__name__}: {exc}）；改用不帶 schema 的 JSON 模式重試一次。", file=sys.stderr)
+        kwargs["response_format"] = JSON_MIME
+        return _create_with_json_fallback(create, kwargs, json_mode)
 
 
 def _create_with_json_fallback(create, kwargs, json_mode):

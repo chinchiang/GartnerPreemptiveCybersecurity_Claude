@@ -71,18 +71,65 @@ class GeminiAdapterTest(unittest.TestCase):
         self.assertNotIn("# 報告", json_call["input"])
         self.assertIn("Gemini API（google-genai）/ gemini-3.8-flash /", json_call["input"])  # generated_by
         self.assertEqual(json_call["system_instruction"], report_call["system_instruction"])
-        self.assertEqual(json_call["response_format"], JSON_MIME)
+        self.assertEqual({k: v for k, v in json_call["response_format"].items() if k != "schema"}, JSON_MIME)
         self.assertEqual((self.out / "gemini-report.md").read_text(encoding="utf-8"), "# 報告")
         self.assertTrue((self.out / "gemini-output.json").exists())
 
-    def test_rejected_json_mode_is_retried_once_without_response_format(self):
-        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT], reject_response_format=True)
+    def test_json_stage_constrains_output_with_the_schema_in_gemini_supported_keywords(self):
+        # #205：只要求 JSON、不帶 schema 時，模型曾把 human_review_points 寫成 schema 本身的樣子（{"type":"array","items":[…]}）。
+        # structured-output 文件列出的支援關鍵字裡沒有 allOf；$schema、$id、minLength、maxLength 不支援或被忽略，一律不送
+        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT])
+        code, out, err = self.run_main(modules=modules)
+        self.assertEqual(code, 0, err)
+        schema = record["calls"][1]["response_format"]["schema"]
+        keys = set()
+
+        def walk(node, parent=None):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if parent != "properties":
+                        keys.add(key)
+                    walk(value, key)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value, parent)
+        walk(schema)
+        self.assertEqual(keys & {"$ref", "$defs", "allOf", "$schema", "$id", "minLength", "maxLength"}, set())
+        self.assertEqual(schema["required"], ["meta", "data_quality", "exposure_priorities", "attack_path_hypotheses",
+                                              "remediation", "validation_plan", "executive_summary", "metrics", "human_review_points"])
+        # 區塊的共用欄位（原本以 allOf + $ref 引用 $defs/block）展開到每個區塊，與區塊自己的欄位合併
+        quality = schema["properties"]["data_quality"]
+        self.assertEqual(quality["properties"]["confidence"]["enum"], ["高", "中", "低"])
+        self.assertTrue({"confidence", "basis", "missing_inputs", "requires_human", "files"} <= set(quality["required"]))
+        self.assertEqual(schema["properties"]["human_review_points"]["type"], "array")
+        self.assertEqual(schema["properties"]["exposure_priorities"]["properties"]["items"]["items"]["properties"]["priority"]["enum"],
+                         ["P1", "P2", "P3", "P4"])
+
+    def test_rejected_schema_falls_back_once_to_json_mode_without_schema(self):
+        # 文件寫「Very large or deeply nested schemas may be rejected」（400 INVALID_ARGUMENT）：退回只要求 JSON，不放棄 JSON 模式
+        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT], reject_schema=True)
         code, out, err = self.run_main(modules=modules)
         self.assertEqual(code, 0, err)
         self.assertEqual(len(record["calls"]), 3)
         rejected, retried = record["calls"][1:]
-        self.assertEqual(rejected["response_format"], JSON_MIME)
-        self.assertEqual({**retried, "response_format": JSON_MIME}, rejected)   # 只拿掉 response_format，其餘參數照舊
+        self.assertIn("schema", rejected["response_format"])
+        self.assertEqual(retried["response_format"], JSON_MIME)
+        self.assertEqual({**retried, "response_format": rejected["response_format"]}, rejected)   # 只拿掉 schema，其餘參數照舊
+        self.assertIn("[警告] 帶 schema 的 JSON 模式被端點拒絕", err)
+        self.assertNotIn("[警告] JSON 模式被端點拒絕", err)
+        self.assertTrue((self.out / "gemini-output.json").exists())
+
+    def test_rejected_json_mode_falls_back_to_schema_less_json_then_no_response_format(self):
+        modules, record = fake_google_genai(["# 報告", VALID_OUTPUT], reject_response_format=True)
+        code, out, err = self.run_main(modules=modules)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(record["calls"]), 4)
+        with_schema, without_schema, plain = record["calls"][1:]
+        self.assertIn("schema", with_schema["response_format"])
+        self.assertEqual(without_schema["response_format"], JSON_MIME)
+        self.assertNotIn("response_format", plain)
+        self.assertEqual({**plain, "response_format": JSON_MIME}, without_schema)   # 只拿掉 response_format，其餘參數照舊
+        self.assertIn("[警告] 帶 schema 的 JSON 模式被端點拒絕", err)
         self.assertIn("[警告] JSON 模式被端點拒絕", err)
         self.assertTrue((self.out / "gemini-output.json").exists())
 

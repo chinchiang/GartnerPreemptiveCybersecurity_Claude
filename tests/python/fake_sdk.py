@@ -3,6 +3,7 @@
 不連網、不需金鑰與 SDK。平臺腳本檔名含連字號（api-workflow.py），所以用 importlib 從路徑載入。
 """
 import contextlib
+import copy
 import importlib.abc
 import importlib.util
 import shutil
@@ -130,18 +131,21 @@ def fake_xai_sdk(replies):
     return {"xai_sdk": types.SimpleNamespace(Client=Client, chat=chat), "xai_sdk.chat": chat}, record
 
 
-def fake_google_genai(replies, reject_response_format=False):
+def fake_google_genai(replies, reject_response_format=False, reject_schema=False):
     """回傳 ({"google": ..., "google.genai": ...}, 呼叫紀錄)。client.interactions.create 記下參數，依序回傳 replies
     （回應帶 id＝interaction-1、interaction-2…、output_text 與 status）；每一項也可以寫成 (內容, status)，只寫內容時
-    status 是 "completed"（正常結束；Interaction 沒有原因欄位）。reject_response_format=True 時，帶 response_format 的呼叫會丟出例外。
+    status 是 "completed"（正常結束；Interaction 沒有原因欄位）。reject_response_format=True 時，帶 response_format 的呼叫會丟出例外；
+    reject_schema=True 時，只有 response_format 帶 schema 的呼叫會丟出例外（模擬 schema 超出端點的限制）。
     google 也要放進 sys.modules：from google import genai 會先找 google 這個 package。"""
     record = {"clients": [], "calls": []}
 
     class Interactions:
         def create(self, **kwargs):
-            record["calls"].append(kwargs)
+            record["calls"].append(copy.deepcopy(kwargs))
             if reject_response_format and "response_format" in kwargs:
                 raise RuntimeError("response_format is not supported")
+            if reject_schema and "schema" in kwargs.get("response_format", {}):
+                raise RuntimeError("400 INVALID_ARGUMENT: schema too complex")
             text, status = _with_finish(replies.pop(0), "completed")
             return types.SimpleNamespace(id=f"interaction-{len(record['calls'])}", output_text=text, status=status)
 

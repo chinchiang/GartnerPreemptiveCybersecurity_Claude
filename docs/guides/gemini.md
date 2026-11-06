@@ -16,7 +16,7 @@ platform: gemini
 | Gemini CLI 支援 Agent Skills（工作區 `.gemini/skills/` 或 `.agents/skills/`） | 已查證 |
 | 免費方案與 Google One 使用者的 Gemini CLI，2026-06-18 起由 Antigravity CLI 取代 | 已查證 |
 | 模型：新專案建議 `gemini-3.8-flash`；旗艦推理模型 `gemini-4-argon` | 已查證 |
-| google-genai SDK 的 Interactions API、`previous_interaction_id`、JSON 輸出的 `response_format` | 已查證 |
+| google-genai SDK 的 Interactions API、`previous_interaction_id`、JSON 輸出的 `response_format` 與它支援的 schema 關鍵字 | 已查證 |
 | 不帶 schema 的 JSON 模式、延續對話時是否保留 `system_instruction` | 待驗證 |
 | OpenAI 相容端點（beta）的 `json_object` | 待驗證 |
 | Gemini 應用（gemini.google.com）、Gemini API 的 Skills | 待驗證（沒找到官方文件） |
@@ -96,7 +96,7 @@ python3 skills/gemini/api-workflow.py --compat   # 改走 OpenAI 相容端點（
 
 **FAQ**
 
-1. *JSON 模式被拒絕？* 不帶 schema 的 `response_format` 是否支援還待驗證。腳本會捕捉例外、印出警告，並改以提示詞要求純 JSON 重試一次；仍解析失敗時存原始回應。也可一開始就加 `--no-json-mode`。
+1. *JSON 模式被拒絕？* 腳本第 2 段的 `response_format` 帶上輸出 schema；被拒絕時（例如 schema 超出端點的限制）印出警告，改用不帶 schema 的 JSON 模式重試一次（它是否支援還待驗證），再被拒絕就改以提示詞要求純 JSON 重試一次；仍解析失敗時存原始回應。也可一開始就加 `--no-json-mode`。
 2. *已經設了 `GOOGLE_API_KEY`，為什麼還說沒有金鑰？* 腳本只認 `GEMINI_API_KEY` 並明確傳給 client，避免 SDK 改用另一把金鑰。
 3. *Gemini CLI 不能用了？* 免費方案與 Google One 使用者已改用 Antigravity CLI；技能資料夾相同，照 A 節安裝。
 4. *可以用 `gemini-4-argon`？* 可，改 `GEMINI_MODEL`；重跑驗收確認分級一致。Gemini 4 與 3.6 以上的模型忽略自訂的 temperature，腳本本來就不設。
