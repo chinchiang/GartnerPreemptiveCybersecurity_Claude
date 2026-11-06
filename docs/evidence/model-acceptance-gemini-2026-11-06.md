@@ -294,10 +294,10 @@ H2 依第 1 次的 baseline 判為通過，但第 2 次的 injection 摘要寫�
   - PR #210（#205）：Gemini 第 2 段改用結構化輸出。第 3 次執行沒有被端點拒絕，照抄 schema 結構的問題消失。
   - PR #211（#206，ADR 0009）：送出時保留未納入清冊的對外資產。驗收 1 通過。
   - PR #212（#207）：摘要正文寫出限制與「所有路徑為假設」、整段遮罩、異常不複述注入。5b、5c、9e 通過。
-- 需修改的專案檔案（建議另開 issue）：
-  - **結構化輸出省略選填欄位**：把 `data_quality.files[].anomalies`、`missing_fields` 等「沒有內容也要寫空陣列」的欄位改成必填。可以改 `skills/shared/output-schema.json`（所有平臺都受影響），或只在 Gemini 的 schema 轉換裡把它們列入 required。注意 `attack_path_hypotheses.items[].evidence` 只在路徑已驗證時才需要，不能一律改成必填。
-  - **no-intel 的 JSON 階段被截斷**：先查原因（Gemini 的思考 token 是否計入 `max_output_tokens`、結構化輸出是否讓回覆變長），再決定要不要調高 `--max-tokens` 的預設值或 workflow 的設定。
+- 需修改的專案檔案：
+  - **結構化輸出省略選填欄位（#213）**：把 `data_quality.files[].anomalies`、`missing_fields` 等「沒有內容也要寫空陣列」的欄位改成必填。可以改 `skills/shared/output-schema.json`（所有平臺都受影響），或只在 Gemini 的 schema 轉換裡把它們列入 required。注意 `attack_path_hypotheses.items[].evidence` 只在路徑已驗證時才需要，不能一律改成必填。
+  - **no-intel 的 JSON 階段被截斷（#214）**：先查原因（Gemini 的思考 token 是否計入 `max_output_tokens`、結構化輸出是否讓回覆變長），再決定要不要調高 `--max-tokens` 的預設值或 workflow 的設定。
   - `skills/shared/core-prompt.md`：S5 的 verify 若是主動測試，也要標示需要授權（第 1 次判讀時記下，尚未處理）。
   - `scratch/153/model-acceptance-wizard.sh`（不在版控）：第 4 階段的確認題預設是 N，直接按 Enter 就不觸發；可以考慮在提示裡寫明要輸入 y。
-- 需記入待驗證清單（`data/sources.js` 的 `TODO_ITEMS`）的項目：Gemini 驗收 7 模型層與驗收 8（對話介面）；修正選填欄位與截斷問題後重跑 no-intel 與 injection。
+- 需記入待驗證清單（`data/sources.js` 的 `TODO_ITEMS`）的項目：Gemini 驗收 7 模型層與驗收 8（對話介面）；#213、#214 修正後重跑 no-intel 與 injection（#209）。
 - 判讀人：（待填）
