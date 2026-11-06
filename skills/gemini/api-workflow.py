@@ -28,6 +28,7 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
     可設 low／medium／high，不能關閉，minimal 會回錯誤。--max-tokens 預設 32768（含思考）；JSON 段的
     generation_config.thinking_level 設 low，報告段維持模型預設。每段呼叫後在 stderr 印出用量
     （Interaction.usage 的 total_output_tokens 與 total_thought_tokens），被截斷時也先印再中止（#214）。
+    total_output_tokens 不含思考 token，所以兩者分開列出，再附上與上限比對的合計（#221）。
     改用其他模型時，若它不支援 low，JSON 段會被拒絕。
     Gemini 4 與 3.6 以上的模型忽略自訂的 temperature，所以兩條路徑都不設。
   - --compat：OpenAI 相容端點官方標示 beta；json_object 是否支援，文件沒寫（待驗證）。結構化輸出文件只示範
@@ -174,14 +175,16 @@ def _api_key() -> str:
 
 def _print_usage(interaction, stage, args) -> None:
     """印出這一段的用量（Interaction.usage 的 total_output_tokens、total_thought_tokens）；沒有用量就不印。
-    兩個欄位在 SDK 都是選填，缺一個時只印有的。"""
+    total_output_tokens 不含思考 token（第 4 次驗收的 injection 第 1 段，思考 6212 比輸出 5412 還多，#221），
+    而 max_output_tokens 管的是兩者的合計，所以分開列出再附合計。兩個欄位在 SDK 都是選填，缺一個時只印有的、不印合計。"""
     usage = getattr(interaction, "usage", None)
     output, thought = getattr(usage, "total_output_tokens", None), getattr(usage, "total_thought_tokens", None)
     if output is None and thought is None:
         return
-    shown = f"輸出 {output} token" if output is not None else "輸出 token 數未提供"
-    if thought is not None:
-        shown += f"（其中思考 {thought}）"
+    if output is not None and thought is not None:
+        shown = f"輸出 {output}、思考 {thought}，合計 {output + thought} token"
+    else:
+        shown = f"輸出 {output} token" if output is not None else f"思考 {thought} token"
     print(f"[資訊] {analysis_workflow.STAGE_NAMES[stage]}用量：{shown}／上限 {args.max_tokens}", file=sys.stderr)
 
 
