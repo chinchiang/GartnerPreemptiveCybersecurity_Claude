@@ -12,6 +12,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import os
 import re
 import sys
@@ -897,6 +898,207 @@ def load_scoring_rules(path: Path | None = None) -> dict:
     data = json.loads(path.read_text(encoding="utf-8-sig"))
     data.pop("_note", None)
     return data
+
+
+# ---------------------------------------------------------------------------
+# 曝險評分（ADR 0010、#228）：示範引擎 assets/demo.js 的 analyze() 的 S3 部分，同一條規則的第二份實作。
+# 兩份由 tests/fixtures/scoring-cases.json 的共用案例守住一致；運算順序照抄示範引擎，浮點數的結果才會逐位元相同。
+# ---------------------------------------------------------------------------
+
+_UNDEFINED = object()   # JS 的 undefined：欄位不存在（跟 JSON 的 null 不同）
+_CSV_NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
+# 示範引擎 P.inputs 的開關，對應到哪一類輸入；epss 沒有獨立的檔案，逐筆看弱點有沒有 EPSS／KEV
+_INPUT_FLAGS = {"threatIntel": "threat_intel", "identities": "identities", "controls": "controls",
+                "misconfig": "misconfigurations", "topology": "topology", "exposures": "exposures"}
+
+
+def round1(value: float) -> float:
+    """示範引擎的 round1：Math.round(v×10)/10，.x5 一律往上（Python 的 round 是銀行家捨入）。"""
+    return math.floor(value * 10 + 0.5) / 10
+
+
+def js_number(value) -> str:
+    """數字照 JS 樣板字串的寫法：整數值不帶小數點（1.0 → 1），其餘用最短的十進位表示（跟 JS 一樣）。"""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return repr(value) if isinstance(value, float) else str(value)
+
+
+def _js_num(value) -> float:
+    """JS 的 Number(v)：欄位不存在是 NaN、null 是 0、布林是 0／1、數字照舊、字串照數字解析（解析不了是 NaN）。"""
+    if value is _UNDEFINED:
+        return math.nan
+    if value is None:
+        return 0.0
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if text == "":
+        return 0.0
+    try:
+        return float(text)
+    except ValueError:
+        return math.nan
+
+
+def _is_js_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _csv_value(text: str):
+    """建置的 parseCSV 對合成資料的轉換規則：true／false 轉布林，整數與小數轉數字，其餘照原字串。"""
+    if text == "true":
+        return True
+    if text == "false":
+        return False
+    if text != "" and _CSV_NUMBER.match(text):
+        return float(text) if "." in text else int(text)
+    return text
+
+
+def scoring_bundle(inputs: Inputs) -> tuple[dict, dict]:
+    """把授權範圍篩選後的輸入（scoped_files）轉成示範引擎 analyze() 讀的資料形狀，CSV 的值照 parseCSV 的規則轉型別。
+    回傳 (資料, 開關)：開關對應示範引擎的 P.inputs，沒提供的那類輸入是 False。"""
+    data = {"scope": inputs.scope}
+    for f in scoped_files(inputs):
+        value = f["data"]
+        if f["name"].endswith(".csv"):
+            value = [{k: _csv_value(v) if isinstance(v, str) else v for k, v in row.items()} for row in value]
+        data["threatIntel" if f["category"] == "threat_intel" else f["category"]] = value
+    present = {f["category"] for f in inputs.files}
+    flags = {flag: category in present for flag, category in _INPUT_FLAGS.items()}
+    flags["epss"] = True
+    return data, flags
+
+
+def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = None, risk_appetite: str = "balanced") -> list:
+    """示範引擎 analyze() 的 S3 曝險評分：回傳每項發現的 likelihood、impact、score、priority、factors，依分數由高到低。
+    data 是示範引擎的資料形狀（scoring_bundle 的結果，已經篩選過授權範圍）；inputs 是開關，沒寫的視為 True。
+    入口加分要先找出攻擊路徑（從 internet 到 crown jewel 的 DFS），所以這裡也照示範引擎找一次，只用來判斷入口。"""
+    rules = rules if rules is not None else load_scoring_rules()
+    on = {"threatIntel": True, "identities": True, "controls": True, "misconfig": True, "epss": True, "topology": True, "exposures": True,
+          **(inputs or {})}
+    L, I, F, W = rules["likelihood"], rules["impact"], rules["feasibility"], rules["weights"]
+    th = rules["thresholds"].get(risk_appetite) or rules["thresholds"]["balanced"]
+    clamp = lambda v, rng: max(rng[0], min(rng[1], v))   # noqa: E731
+
+    assets_list = data.get("assets") or []
+    assets = {a.get("asset_id"): a for a in assets_list}
+    visible = [a.get("asset_id") for a in assets_list]   # 清冊完整度固定 100%：全部看得到
+    controls = (data.get("controls") or {}).get("controls") or []
+    controls_of = lambda i: [c.get("name") for c in controls if i in (c.get("coverage_assets") or [])] if on["controls"] else []  # noqa: E731
+    gaps_of = lambda i: [c.get("name") for c in controls if i in (c.get("gaps") or [])] if on["controls"] else []  # noqa: E731
+
+    def identity_issues(asset_id):
+        if not on["identities"]:
+            return []
+        stale = rules["identityIssue"]["staleLoginDays"]
+        return [i for i in data.get("identities") or []
+                if asset_id in str(i.get("linked_assets", "undefined")).split(";")
+                and (i.get("mfa_enabled", _UNDEFINED) is False or i.get("mfa_enabled") == "partial"
+                     or _js_num(i.get("last_login_days", _UNDEFINED)) > stale)]
+
+    def intel_hits(vuln_id):
+        if not on["threatIntel"]:
+            return []
+        return [a for a in (data.get("threatIntel") or {}).get("actors") or [] if vuln_id in (a.get("exploits_vuln_ids") or [])]
+
+    def misconfigs(asset_id):
+        return [m for m in data.get("misconfigurations") or [] if m.get("asset_id") == asset_id and m.get("status") == "fail"] if on["misconfig"] else []
+
+    def exposure_of(asset_id):
+        if not on["exposures"]:
+            return None
+        return next((e for e in (data.get("exposures") or {}).get("exposures") or [] if e.get("asset_id") == asset_id), None)
+
+    crown_jewels = (data.get("topology") or {}).get("crown_jewels") or []   # 示範引擎不看 topology 開關，照樣讀
+    entry_nodes = set()
+    if on["topology"]:
+        edges = [e for e in (data.get("topology") or {}).get("edges") or []
+                 if (e.get("from") == "internet" or e.get("from") in visible) and e.get("to") in visible]
+        by_from = {}
+        for e in edges:
+            by_from.setdefault(e.get("from"), []).append(e)
+
+        def dfs(node, trail, seen):
+            if len(trail) >= F["maxHops"]:
+                return
+            for e in by_from.get(node, []):
+                if e.get("to") in seen:
+                    continue
+                path = trail + [e]
+                if e.get("to") in crown_jewels:
+                    entry_nodes.add(path[0].get("to"))
+                else:
+                    dfs(e.get("to"), path, seen | {e.get("to")})
+        dfs("internet", [], {"internet"})
+
+    findings = []
+    for v in data.get("vulnerabilities") or []:
+        if v.get("asset_id") not in visible:
+            continue
+        a, factors, likelihood = assets[v.get("asset_id")], [], 0
+        if a.get("internet_exposed") is True:
+            likelihood += L["exposed"] * W["exposure"]
+            factors.append("對外曝露")
+        ex = exposure_of(v.get("asset_id"))
+        if ex and ex.get("issues"):
+            likelihood += L["easmIssues"] * W["exposure"]
+            factors.append(f"EASM 議題：{'、'.join(ex['issues'])}")
+        # 合成資料的 epss_sim／kev_sim 視同 epss／kev（JS 的 ?? 只跳過 undefined 與 null）
+        raw_epss = v.get("epss") if v.get("epss") is not None else v.get("epss_sim")
+        raw_kev = v.get("kev") if v.get("kev") is not None else v.get("kev_sim")
+        epss = _js_num(raw_epss if raw_epss is not None else 0)
+        if v.get("exploit_public") is True:
+            likelihood += L["exploitPublic"] * W["exploit"]
+            factors.append("公開利用程式")
+        if on["epss"] and _is_js_number(raw_epss) and math.isfinite(epss) and 0 <= epss <= 1 and isinstance(raw_kev, bool):
+            likelihood += L["epss"] * epss * W["exploit"]
+            if epss >= 0.5:
+                factors.append(f"模擬 EPSS {js_number(epss)}")
+            if raw_kev is True:
+                likelihood += L["kev"] * W["exploit"]
+                factors.append("模擬 KEV（已知遭利用）")
+        else:
+            likelihood += (_js_num(v.get("cvss_base", _UNDEFINED)) / 10) * L["cvssFallback"] * W["exploit"]
+        ids = identity_issues(v.get("asset_id"))
+        if ids:
+            likelihood += min(L["identity"]["cap"], len(ids)) * W["identity"]
+            factors.append(f"身分弱點 ×{len(ids)}")
+        mc = misconfigs(v.get("asset_id"))
+        if mc:
+            likelihood += min(L["misconfig"]["cap"], len(mc) * L["misconfig"]["perItem"]) * W["control"]
+            factors.append(f"設定偏差 ×{len(mc)}")
+        ctl, gaps = controls_of(v.get("asset_id")), gaps_of(v.get("asset_id"))
+        if ctl:
+            likelihood -= min(L["controls"]["cap"], len(ctl) * L["controls"]["perItem"]) * W["control"]
+            factors.append(f"既有控制：{'、'.join(map(str, ctl))}")
+        if gaps:
+            likelihood += min(L["gaps"]["cap"], len(gaps) * L["gaps"]["perItem"]) * W["control"]
+            factors.append(f"控制缺口：{'、'.join(map(str, gaps))}")
+        hits = intel_hits(v.get("vuln_id"))
+        if hits:
+            likelihood += max(L["intel"].get(h.get("confidence"), L["intel"]["low"]) for h in hits) * W["intel"]
+            names = "、".join(f"{h.get('name')}（{h.get('confidence')}）" for h in hits)
+            factors.append(f"威脅情資命中：{names}")
+        likelihood = clamp(likelihood, L["range"])
+        data_weight = I["dataWeight"].get(a.get("data_classification"), I["dataWeight"]["Internal"])
+        impact = (_js_num(a.get("business_criticality", _UNDEFINED)) * I["criticality"] + data_weight) * W["impact"]
+        if v.get("asset_id") in crown_jewels:
+            impact += I["crownJewel"] * W["impact"]
+            factors.append("crown jewel")
+        if v.get("asset_id") in entry_nodes:
+            impact += I["entry"] * W["impact"]
+            factors.append("可達 crown jewel 之入口（blast radius）")
+        impact = clamp(impact, I["range"])
+        score = round1(likelihood * impact)
+        priority = "P1" if score >= th[0] else "P2" if score >= th[1] else "P3" if score >= th[2] else "P4"
+        findings.append({"finding_id": v.get("finding_id"), "asset_id": v.get("asset_id"), "asset_name": a.get("name"),
+                         "vuln_id": v.get("vuln_id"), "title": v.get("title"), "likelihood": likelihood, "impact": impact,
+                         "score": score, "priority": priority, "factors": factors})
+    return sorted(findings, key=lambda f: -f["score"])   # sorted 是穩定排序，同分照原順序，跟 JS 的 sort 一樣
 
 
 def _read_shared(name: str) -> str:
