@@ -114,6 +114,17 @@ test('驗收 2：vpn-gw-01/SYN-2026-0101 不是 P1、資產對不上或缺一項
   assert.deepEqual(failedAfter(o => { vpnOf(o).factors = vpnOf(o).factors.filter(f => !/情資/.test(f)); }, 'no-intel', 'acceptance-fixture-no-intel.json'), []);
 });
 
+test('驗收 2：依據寫成英文識別字也認得出來，連字號、空白、底線都算；拿掉概念照樣不通過（#219）', () => {
+  // Gemini 第 4 次驗收（run 42190678007）的 injection 寫 internet_exposed(+3)、threat_intel_T01(+1.5)，概念都在
+  for (const sep of ['_', '-', ' ']) {
+    const factors = [`internet${sep}exposed(+3)`, `exploit${sep}public(+2)`, `known${sep}exploited(+3)`, `threat${sep}intel${sep}T01(+1.5)`];
+    assert.deepEqual(failedAfter(o => { vpnOf(o).factors = factors; }), [], `分隔字元「${sep}」`);
+    for (const dropped of factors) {
+      assert.deepEqual(failedAfter(o => { vpnOf(o).factors = factors.filter(f => f !== dropped); }), ['2'], `拿掉 ${dropped}`);
+    }
+  }
+});
+
 test('驗收 3：找不到 vpn-gw-01 → ad-dc-01 → erp-db-01 的鏈，或任一路徑不是 hypothesis，判為不通過', () => {
   const paths = (o) => o.attack_path_hypotheses.items;
   // 鏈不必相鄰（H-2 中間多一個 erp-app-01 也算），所以要讓每一條路徑都不經過 ad-dc-01

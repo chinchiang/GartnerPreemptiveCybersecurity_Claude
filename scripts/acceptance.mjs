@@ -41,11 +41,13 @@ export function expectedRecords(synthetic) {
 }
 
 // 驗收 2 的依據用寬鬆關鍵字比對：模型的用字會有差異，但概念必須出現。
+// 英文的兩個字之間接受連字號、空白或底線：模型可能寫成識別字（internet_exposed、threat_intel_T01，#219）
 const FACTOR_KEYS = [
-  { label: '對外曝露', re: /對外|外部曝[露险]|internet[- ]?exposed/i },
-  { label: '公開利用程式', re: /利用程式|exploit|PoC/i },
-  { label: 'KEV', re: /KEV|已知遭利用|known exploited/i },
-  { label: '威脅情資', re: /情資|threat intel|SYNTHETIC-GROUP-ALPHA/i }
+  { label: '對外曝露', re: /對外|外部曝[露险]|internet[-_ ]?exposed/i },
+  // exploited 是 KEV 的「已知遭利用」（known exploited），不是公開利用程式，不能代替這一項
+  { label: '公開利用程式', re: /利用程式|exploit(?!ed)|PoC/i },
+  { label: 'KEV', re: /KEV|已知遭利用|known[-_ ]?exploited/i },
+  { label: '威脅情資', re: /情資|threat[-_ ]?intel|SYNTHETIC-GROUP-ALPHA/i }
 ];
 const CHAIN = ['vpn-gw-01', 'ad-dc-01', 'erp-db-01']; // 驗收 3：internet → vpn-gw-01 → ad-dc-01 → erp-db-01
 const BLOCK_FIELDS = ['confidence', 'basis', 'missing_inputs', 'requires_human'];
