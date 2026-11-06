@@ -170,6 +170,8 @@ test('驗收 3c：相鄰節點在拓樸裡沒有同方向的邊、或對應不�
   // 名稱、ID、名稱加說明混寫都能比對；沒寫 internet 起點也可以（只比對列出的相鄰節點）
   assert.deepEqual(failedAfter(o => { pathAt(o, 1).nodes = ['Internet', 'A01 (VPN Gateway)', 'ad-dc-01', 'A08', 'mes-srv-01']; }), []);
   assert.deepEqual(failedAfter(o => { pathAt(o, 1).nodes = ['A10', 'erp-db-01']; }), []);
+  // 說明文字裡有 internet 的資產節點，要對應到資產，不能當成拓樸的起點（審查時發現）
+  assert.deepEqual(failedAfter(o => { pathAt(o, 1).nodes = ['internet', 'Internet-facing VPN gateway (vpn-gw-01)', 'ad-dc-01']; }), []);
 });
 
 test('驗收 4：驗證計畫為空，或任一項沒標「尚未授權」，判為不通過', () => {

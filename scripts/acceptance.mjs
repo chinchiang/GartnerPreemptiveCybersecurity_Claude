@@ -130,8 +130,9 @@ export function acceptanceResults(output, { variant = 'baseline', outputSchema, 
   addResult('3b', '所有攻擊路徑的 status 均為 hypothesis', paths.length > 0 && paths.every(p => p.status === 'hypothesis'),
     paths.filter(p => p.status !== 'hypothesis').map(p => p.id).join(',') || `${paths.length} 條`);
   // 相鄰節點要在輸入拓樸裡有同方向的邊（#220）：edges 是自由文字（E-01、「A01 -> A04 (…)」），所以比對 nodes 與拓樸，不比對 edges。
-  // 節點對應資產沿用上面的 isNode（名稱或整詞的 ID）；internet 是拓樸裡的起點
-  const assetOfNode = (n) => /\binternet\b/i.test(n) ? 'internet' : assetIdOf[Object.keys(assetIdOf).find(name => isNode(n, name))];
+  // 節點對應資產沿用上面的 isNode（名稱或整詞的 ID）；internet 是拓樸裡的起點。先比對資產：
+  // 「Internet-facing VPN gateway (vpn-gw-01)」是 vpn-gw-01，不是起點；完全對不到資產時才看是不是 internet
+  const assetOfNode = (n) => assetIdOf[Object.keys(assetIdOf).find(name => isNode(n, name))] ?? (/\binternet\b/i.test(n) ? 'internet' : undefined);
   const topologyEdges = new Set((synthetic['topology.json']?.edges || []).map(e => `${e.from}→${e.to}`));
   const brokenHops = paths.flatMap(p => {
     const seq = (p.nodes || []).map(String);
