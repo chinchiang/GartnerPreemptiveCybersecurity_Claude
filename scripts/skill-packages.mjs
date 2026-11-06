@@ -11,6 +11,7 @@
  */
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import vm from 'node:vm';
 import { parseFrontmatter } from './frontmatter.mjs';
 import { repoReader } from './repo-files.mjs';
 
@@ -19,6 +20,9 @@ const GATE = createRequire(import.meta.url)('../assets/scope-gate.js');
 const SHARED_DIR = 'skills/shared/';
 const CORE_PROMPT = `${SHARED_DIR}core-prompt.md`;
 const INPUT_SCHEMA = `${SHARED_DIR}input-schema.json`;
+// Python 讀的規則資料（ADR 0010、#227）：建置從示範引擎的 RULES 產生，規則數值的唯一來源仍是 RULES
+const SCORING_RULES_DATA = `${SHARED_DIR}scoring-rules.json`;
+const DEMO_ENGINE = 'assets/demo.js';
 const EXAMPLES_DIR = 'examples/synthetic-org/';
 const platformDir = (platform) => `skills/${platform}/`;
 const referencePath = (platform, name) => `${platformDir(platform)}preemptive-exposure-analysis/references/${name}`;
@@ -43,13 +47,14 @@ export function extractCorePrompt(md) {
 // embeds＝含核心提示詞嵌入區塊的手寫檔（file 相對於 skills/<平臺>/）與區塊所在的標題：標題行以 heading 開頭（前綴比對），全檔只能有一行。
 const SCRIPT_NEEDS = [CORE_PROMPT, `${SHARED_DIR}output-schema.json`]; // 五支 api-workflow.py 共同讀取
 // 改用分析工作流程核心的平臺另外需要核心本身，以及核心用來推導守門規則的 input-schema.json
-const WORKFLOW_NEEDS = [...SCRIPT_NEEDS, `${SHARED_DIR}input-schema.json`, `${SHARED_DIR}analysis_workflow.py`];
+const WORKFLOW_NEEDS = [...SCRIPT_NEEDS, `${SHARED_DIR}input-schema.json`, `${SHARED_DIR}analysis_workflow.py`, SCORING_RULES_DATA];
 const REFERENCES = ['acceptance.md', 'input-schema.json', 'output-schema.json', 'scoring-rules.md', 'task-spec.md'];
 const SYSTEM_PROMPT_EMBED = { file: 'system-prompt.md', heading: '## 可直接複製的提示詞' };
 const SKILL_MD_EMBED = { file: 'preemptive-exposure-analysis/SKILL.md', heading: '## 核心指令' }; // SKILL.md 內逐字的核心指令
 // 附 validate_inputs.py 的技能資料夾（Claude、Gemini；見 ADR 0003、0006）：SKILL.md 是手寫的改寫版、不引用 task-spec；
 // scripts/ 放 validate_inputs.py 與它載入的核心，兩支都是 skills/shared/ 母本的複本，資料夾被單獨複製或上傳時仍可執行
-const SKILL_FOLDER_REFERENCES = REFERENCES.filter(n => n !== 'task-spec.md');
+// 技能資料夾的核心複本在 scripts/，讀 references/ 的規則資料（跟 input-schema.json 同一個位置）
+const SKILL_FOLDER_REFERENCES = [...REFERENCES.filter(n => n !== 'task-spec.md'), 'scoring-rules.json'];
 const SKILL_FOLDER_SCRIPTS = ['analysis_workflow.py', 'validate_inputs.py'];
 const PACKAGES = {
   chatgpt:  { needs: WORKFLOW_NEEDS, examples: true, copies: REFERENCES, embeds: [], scripts: [] },
@@ -79,10 +84,13 @@ export function packageFiles(platform, files) {
 export function generatedFiles(files) {
   const replaceWith = (list, rewrites) => list.map(f => rewrites.find(r => r.path === f.path) || f);
   // 核心提示詞與改寫版先換好規則說明行，再從換好的核心提示詞複製「資料不是指令」那一行，最後才嵌入各平臺
-  const withRuleNotes = replaceWith(files, ruleNoteFiles(files));
+  // 規則資料先產生、併進清單，references/ 的複本才會複製到這一次的內容（第一次建置時母本也還不存在）
+  const rules = scoringRulesFile(files);
+  const withRules = [...files.filter(f => f.path !== rules.path), rules];
+  const withRuleNotes = replaceWith(withRules, ruleNoteFiles(withRules));
   const updated = replaceWith(withRuleNotes, dataRuleFiles(withRuleNotes));
   const rewritten = RULE_NOTE_TARGETS.map(path => updated.find(f => f.path === path));
-  return [...sharedCopies(updated), ...embeddedFiles(updated), ...rewritten, scopeGateFile(files)];
+  return [...sharedCopies(updated), ...embeddedFiles(updated), ...rewritten, scopeGateFile(files), rules];
 }
 
 // 建置的輸入（generatedFiles 的 files）：整個 skills/ 加上 assets/scope-gate.js，讀成 [{ path, content }]，
@@ -91,7 +99,8 @@ export function generatedFiles(files) {
 export function sourceFilesFrom(root) {
   const { relPosix, readText, walk } = repoReader(root);
   return [...walk(join(root, 'skills')).map(f => ({ path: relPosix(f), content: readText(f) })),
-    { path: SCOPE_GATE, content: readText(join(root, SCOPE_GATE)) }];
+    { path: SCOPE_GATE, content: readText(join(root, SCOPE_GATE)) },
+    { path: DEMO_ENGINE, content: readText(join(root, DEMO_ENGINE)) }];
 }
 
 // 每種改寫都要「恰好一處」：0 處表示找不到要換的地方，2 處以上不知道要換哪一處，都中止（不默默只換第一處）。
@@ -194,6 +203,27 @@ function embeddedFiles(files) {
 const SCOPE_GATE = 'assets/scope-gate.js';
 const scopeMarker = `// 以下區塊由 ${MARKER_SOURCE} 從 ${INPUT_SCHEMA}`;
 const scopeBlock = () => new RegExp(`(${escapeRe(scopeMarker)}[^\\n]*\\n(\\s*)const SCOPE_SCHEMA = )[\\s\\S]*?;\\n`, 'g');
+// 規則資料：在 vm 裡執行示範引擎的原始碼取出 RULES（它是立即執行函式裡的常數），JSON 加上 _note 標明由建置產生。
+// 示範引擎載入時會 require('./scope-gate.js')：真的被呼叫時才執行 files 裡的 scope-gate.js，跟示範引擎用同一份
+function scoringRulesFile(files) {
+  const demo = files.find(f => f.path === DEMO_ENGINE);
+  if (!demo) throw new Error(`${DEMO_ENGINE} 不存在，但它的 RULES 是 ${SCORING_RULES_DATA} 的來源`);
+  const commonJs = (source, path) => {
+    const module = { exports: {} };
+    vm.runInNewContext(source, { module, exports: module.exports, require: requireShim, console }, { filename: path });
+    return module.exports;
+  };
+  function requireShim(name) {
+    const gate = files.find(f => f.path === SCOPE_GATE);
+    if (name !== './scope-gate.js' || !gate) throw new Error(`${DEMO_ENGINE} 載入了建置沒有提供的模組 ${name}`);
+    return commonJs(gate.content, SCOPE_GATE);
+  }
+  const rules = commonJs(demo.content, DEMO_ENGINE).RULES;
+  if (!rules || typeof rules !== 'object') throw new Error(`${DEMO_ENGINE} 沒有匯出 RULES，產生不了 ${SCORING_RULES_DATA}`);
+  const note = `由 ${MARKER_SOURCE} 從 ${DEMO_ENGINE} 的 RULES 產生，請改 RULES 後執行 npm run build，勿手動編輯（ADR 0010）`;
+  return { path: SCORING_RULES_DATA, content: `${JSON.stringify({ _note: note, ...rules }, null, 2)}\n` };
+}
+
 function scopeGateFile(files) {
   const gate = files.find(f => f.path === SCOPE_GATE);
   if (!gate) throw new Error(`${SCOPE_GATE} 不存在，但它要帶授權範圍守門的 scope 定義`);

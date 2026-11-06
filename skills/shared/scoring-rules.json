@@ -1,0 +1,94 @@
+{
+  "_note": "由 scripts/build-data.mjs 從 assets/demo.js 的 RULES 產生，請改 RULES 後執行 npm run build，勿手動編輯（ADR 0010）",
+  "likelihood": {
+    "exposed": 3,
+    "easmIssues": 0.5,
+    "exploitPublic": 2,
+    "epss": 3,
+    "kev": 3,
+    "cvssFallback": 1.5,
+    "identity": {
+      "cap": 2
+    },
+    "misconfig": {
+      "cap": 1.5,
+      "perItem": 0.75
+    },
+    "controls": {
+      "cap": 2,
+      "perItem": 0.6
+    },
+    "gaps": {
+      "cap": 1.5,
+      "perItem": 0.4
+    },
+    "intel": {
+      "high": 2,
+      "medium": 1.5,
+      "low": 1
+    },
+    "range": [
+      0,
+      10
+    ]
+  },
+  "identityIssue": {
+    "staleLoginDays": 90
+  },
+  "impact": {
+    "criticality": 1.4,
+    "dataWeight": {
+      "Restricted": 3,
+      "Confidential": 2,
+      "Internal": 1,
+      "Public": 0
+    },
+    "crownJewel": 2,
+    "entry": 2,
+    "range": [
+      0,
+      10
+    ]
+  },
+  "thresholds": {
+    "strict": [
+      50,
+      30,
+      15
+    ],
+    "balanced": [
+      60,
+      40,
+      20
+    ],
+    "tolerant": [
+      70,
+      50,
+      25
+    ]
+  },
+  "feasibility": {
+    "entry": 0.5,
+    "weakest": 0.3,
+    "trustEdge": 1,
+    "perHop": 0.6,
+    "unknownNode": 3,
+    "maxHops": 5,
+    "range": [
+      0,
+      10
+    ]
+  },
+  "confidence": {
+    "lowMissing": 3,
+    "inventoryThreshold": 80
+  },
+  "weights": {
+    "exposure": 1,
+    "exploit": 1,
+    "identity": 0.8,
+    "control": 0.8,
+    "intel": 1,
+    "impact": 1
+  }
+}

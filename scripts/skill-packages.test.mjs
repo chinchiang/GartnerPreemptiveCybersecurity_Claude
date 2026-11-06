@@ -53,6 +53,7 @@ const repo = [
   'skills/shared/core-prompt.md',
   'skills/shared/input-schema.json',
   'skills/shared/output-schema.json',
+  'skills/shared/scoring-rules.json',
   'skills/shared/task-spec.md',
   'skills/shared/validate_inputs.py'
 ].map(path => ({ path, content: `內容：${path}` }));
@@ -67,7 +68,8 @@ test('平臺技能包含自己的檔案、腳本依賴的母本與合成資料�
     'skills/shared/analysis_workflow.py',
     'skills/shared/core-prompt.md',
     'skills/shared/input-schema.json',
-    'skills/shared/output-schema.json'
+    'skills/shared/output-schema.json',
+    'skills/shared/scoring-rules.json'
   ]);
   assert.equal(packageFiles('grok', repo).find(f => f.path === 'skills/shared/core-prompt.md').content, '內容：skills/shared/core-prompt.md');
 });
@@ -92,7 +94,8 @@ test('Gemini 技能包：技能資料夾（單獨安裝用）加上 api-workflow
     'skills/shared/analysis_workflow.py',
     'skills/shared/core-prompt.md',
     'skills/shared/input-schema.json',
-    'skills/shared/output-schema.json'
+    'skills/shared/output-schema.json',
+    'skills/shared/scoring-rules.json'
   ]);
 });
 
@@ -108,6 +111,7 @@ test('Claude 技能包不帶母本但附合成資料；shared 只放母本本身
     'skills/shared/core-prompt.md',
     'skills/shared/input-schema.json',
     'skills/shared/output-schema.json',
+    'skills/shared/scoring-rules.json',
     'skills/shared/task-spec.md',
     'skills/shared/validate_inputs.py'
   ]);
@@ -151,9 +155,12 @@ const rewriteMd = (path) => `# ${path}\n\n## 安全與授權邊界\n\n- 未提�
 // 授權範圍守門的 JS 解讀（assets/scope-gate.js）：手寫的程式＋scope 定義的嵌入區塊（見 docs/adr/0004）
 const SCOPE_MARKER = '  // 以下區塊由 scripts/build-data.mjs 從 skills/shared/input-schema.json 的 properties.scope 產生，請改母本後執行 npm run build，勿手動編輯';
 const gateJs = (block) => `(function () {\n${SCOPE_MARKER}\n  const SCOPE_SCHEMA = ${block};\n  const api = { scopeSchema: () => SCOPE_SCHEMA };\n})();\n`;
-// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md、改寫版、scope-gate.js）
+const FAKE_RULES = { thresholds: { balanced: [60, 40, 20] }, likelihood: { exposed: 3 } };
+const demoJs = (rules) => `(function () {\n  const RULES = Object.freeze(${JSON.stringify(rules)});\n  const api = { RULES };\n  if (typeof module !== 'undefined' && module.exports) module.exports = api;\n})();\n`;
+// generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md、改寫版、scope-gate.js）＋示範引擎
 const sources = [
   ...masters,
+  { path: 'assets/demo.js', content: demoJs(FAKE_RULES) },
   { path: 'assets/scope-gate.js', content: gateJs('{ "舊的": "scope 定義" }') },
   { path: 'skills/shared/core-prompt.md', content: `---\ntitle: 核心提示詞\n---\n\n\`\`\`text\n你是先制型曝險分析助理。\n${OLD_RULE_LINE}\n${DATA_LINE}\n\`\`\`\n` },
   ...RULE_NOTE_REWRITES.map(path => ({ path, content: rewriteMd(path) })),
@@ -232,6 +239,7 @@ test('建置產物的路徑集合（只比對路徑，內容由 build-outputs.te
     'skills/claude/preemptive-exposure-analysis/references/acceptance.md',
     'skills/claude/preemptive-exposure-analysis/references/input-schema.json',
     'skills/claude/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/claude/preemptive-exposure-analysis/references/scoring-rules.json',
     'skills/claude/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py',
     'skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py',
@@ -246,6 +254,7 @@ test('建置產物的路徑集合（只比對路徑，內容由 build-outputs.te
     'skills/gemini/preemptive-exposure-analysis/references/acceptance.md',
     'skills/gemini/preemptive-exposure-analysis/references/input-schema.json',
     'skills/gemini/preemptive-exposure-analysis/references/output-schema.json',
+    'skills/gemini/preemptive-exposure-analysis/references/scoring-rules.json',
     'skills/gemini/preemptive-exposure-analysis/references/scoring-rules.md',
     'skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py',
     'skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py',
@@ -257,8 +266,31 @@ test('建置產物的路徑集合（只比對路徑，內容由 build-outputs.te
     'skills/glm/preemptive-exposure-analysis/references/task-spec.md',
     'skills/glm/system-prompt.md',
     'skills/grok/system-prompt.md',
-    'skills/shared/core-prompt.md'
+    'skills/shared/core-prompt.md',
+    'skills/shared/scoring-rules.json'
   ]);
+});
+
+test('規則資料（#227）：從示範引擎的 RULES 產生，Python 讀得到；Claude 與 Gemini 的 references/ 各有一份相同的複本', () => {
+  const out = generatedFiles(sources);
+  const data = JSON.parse(copyAt(out, 'skills/shared/scoring-rules.json').content);
+  const { _note, ...rules } = data;
+  assert.deepEqual(rules, FAKE_RULES);
+  assert.match(_note, /assets\/demo\.js/);
+  assert.match(_note, /勿手動編輯/);
+  for (const p of ['claude', 'gemini']) {
+    assert.equal(copyAt(out, `skills/${p}/preemptive-exposure-analysis/references/scoring-rules.json`).content,
+      copyAt(out, 'skills/shared/scoring-rules.json').content, p);
+  }
+  // 規則改了，產物跟著變（不是讀到上一次提交的內容）
+  const changed = sources.map(f => f.path === 'assets/demo.js' ? { ...f, content: demoJs({ thresholds: { balanced: [50, 30, 15] } }) } : f);
+  assert.deepEqual(JSON.parse(copyAt(generatedFiles(changed), 'skills/shared/scoring-rules.json').content).thresholds, { balanced: [50, 30, 15] });
+});
+
+test('規則資料：沒有示範引擎、或示範引擎沒有匯出 RULES，建置中止並指出 assets/demo.js', () => {
+  assert.throws(() => generatedFiles(sources.filter(f => f.path !== 'assets/demo.js')), { message: /assets\/demo\.js.*不存在/ });
+  const noRules = sources.map(f => f.path === 'assets/demo.js' ? { ...f, content: "module.exports = { analyze() {} };\n" } : f);
+  assert.throws(() => generatedFiles(noRules), { message: /assets\/demo\.js.*RULES/ });
 });
 
 const CORE_MARKER = '<!-- 以下區塊由 scripts/build-data.mjs 從 skills/shared/core-prompt.md 產生，請改母本後執行 npm run build，勿手動編輯 -->';
