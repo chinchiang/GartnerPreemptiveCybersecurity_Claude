@@ -31,7 +31,9 @@ const SKILLS = [
     .map(path => [path, `# 改寫版\n\n${RULE_LEAD}舊的。\n${DATA_LEAD}舊的。\n`]),
   ...['grok', 'glm', 'deepseek'].map(p => [`skills/${p}/system-prompt.md`, textBlock('## 可直接複製的提示詞')]),
   ...['glm', 'deepseek'].map(p => [`skills/${p}/preemptive-exposure-analysis/SKILL.md`, textBlock('## 核心指令')]),
-  ['assets/scope-gate.js', `(function () {\n${SCOPE_MARKER}\n  const SCOPE_SCHEMA = {};\n})();\n`]
+  ['assets/scope-gate.js', `(function () {\n${SCOPE_MARKER}\n  const SCOPE_SCHEMA = {};\n})();\n`],
+  // 規則資料的來源（#227）：組裝器只要能從它取出 RULES
+  ['assets/demo.js', 'module.exports = { RULES: { thresholds: { balanced: [60, 40, 20] } } };\n']
 ];
 const EXAMPLES = [
   ...['assets', 'vulnerabilities', 'identities', 'misconfigurations'].map(n => [`examples/synthetic-org/${n}.csv`, 'id\nA\n']),
@@ -99,12 +101,13 @@ test('回傳全部建置產物：data/ 六支、downloads/ 九支（skills/ 第�
     'downloads/skills-gemini.zip', 'downloads/skills-glm.zip', 'downloads/skills-grok.zip', 'downloads/skills-shared.zip',
     'downloads/synthetic-example-data.zip'
   ]);
-  // 技能包組裝器的產物：39 支（2026-10-31 #160 實際執行的數量：0e62333 的 38 支加上 Project 短版的規則說明行；只看組裝器的對照表，不看內容），含 skills/ 以外的 scope-gate.js
+  // 技能包組裝器的產物：42 支（#160 的 39 支，加上 #227 的規則資料與 Claude、Gemini references/ 的兩份複本；只看組裝器的對照表，不看內容），含 skills/ 以外的 scope-gate.js
   const inPlace = paths.filter(p => p.startsWith('skills/') || p === 'assets/scope-gate.js');
-  assert.equal(inPlace.length, 39);
+  assert.equal(inPlace.length, 42);
+  assert.ok(inPlace.includes('skills/shared/scoring-rules.json'));
   assert.ok(inPlace.includes('assets/scope-gate.js'));
   assert.ok(inPlace.includes('skills/claude/preemptive-exposure-analysis/references/acceptance.md'));
-  assert.equal(paths.length, 55);
+  assert.equal(paths.length, 58);
 });
 
 // ---------- 合成案例資料（data/case.js） ----------
@@ -147,7 +150,8 @@ const SOURCE_TREE = {
   'docs/research/r.md': '研究\r\n', 'docs/guides/deployment.md': '指南\n', 'docs/evidence/e.md': '證據\n',
   'examples/synthetic-org/assets.csv': 'id\n', 'examples/expected-output.md': '預期輸出\n',
   'README.md': 'README\n', 'backend/README.md': '後端\n', 'verify-report.md': '報告\n', 'link-check.md': '連結\n',
-  'skills/shared/core-prompt.md': '核心\n', 'assets/scope-gate.js': '// 守門\n', 'scripts/a.mjs': '// a.mjs — 甲\n'
+  'skills/shared/core-prompt.md': '核心\n', 'assets/scope-gate.js': '// 守門\n', 'scripts/a.mjs': '// a.mjs — 甲\n',
+  'assets/demo.js': '// 示範引擎\n'
 };
 
 test('inputFilesFrom 只讀建置的來源：data/、downloads/、scratch/ 與其他沒列的檔案都不讀；路徑相對於 repo、用 /，換行正規化成 LF', () => {
@@ -157,7 +161,7 @@ test('inputFilesFrom 只讀建置的來源：data/、downloads/、scratch/ 與�
   };
   const files = withTree({ ...SOURCE_TREE, ...noise }, inputFilesFrom);
   assert.deepEqual(files.map(f => f.path).sort(), [
-    'README.md', 'assets/scope-gate.js', 'backend/README.md', 'docs/evidence/e.md', 'docs/guides/deployment.md', 'docs/research/r.md',
+    'README.md', 'assets/demo.js', 'assets/scope-gate.js', 'backend/README.md', 'docs/evidence/e.md', 'docs/guides/deployment.md', 'docs/research/r.md',
     'examples/expected-output.md', 'examples/synthetic-org/assets.csv', 'link-check.md', 'scripts/a.mjs', 'skills/shared/core-prompt.md',
     'verify-report.md'
   ]);

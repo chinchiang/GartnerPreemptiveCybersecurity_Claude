@@ -90,6 +90,8 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 網站案例頁的「示範規則摘要」卡片由引擎的 `rulesSummary()` 依規則資料產生，不需要另外同步。
 
+Python 分析工作流程核心讀的規則數值是 `skills/shared/scoring-rules.json`（ADR 0010）：建置在 `vm` 裡執行 `assets/demo.js` 取出 `RULES`，加上 `_note` 寫成 JSON，並複製到 Claude、Gemini 技能資料夾的 `references/`。它是建置產物，不要手改；改了 `RULES` 沒重建時，`scripts/scoring-rules.test.mjs` 與建置產物的整合檢查都會失敗。
+
 `examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出（規則資料套用在合成資料上的結果），`npm test`（`scripts/demo-output.test.mjs`）會逐位元組比對。
 
 規則**刻意**變更時：
@@ -97,6 +99,7 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 1. 改 `assets/demo.js` 的 `RULES`。
 2. 依 `npm test` 列出的漂移改母本、改寫版與流程資料（網站規則卡由規則資料產生，不必改）。
 3. `npm test` 只剩 `demo-output.test.mjs` 的快照那一支失敗時（評分規則一致性檢查與手算預期值都已通過），執行 `npm run snapshot` 更新快照，再跑一次 `npm test` 確認全部通過，並在 PR 說明變更理由。
+4. 執行 `npm run build`，重新產生 Python 讀的 `skills/shared/scoring-rules.json` 與它的複本，一起提交。
 
 ### 4.2 來源連結檢查在哪裡跑
 

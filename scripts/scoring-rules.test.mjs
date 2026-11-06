@@ -26,6 +26,11 @@ test('示範引擎匯出唯讀的規則資料，涵蓋可能性、身分弱點�
   assert.deepEqual(R.confidence, { lowMissing: 3, inventoryThreshold: 80 });
 });
 
+test('已提交的 Python 規則資料（skills/shared/scoring-rules.json）跟示範引擎的 RULES 逐項相同（#227）', () => {
+  const { _note, ...rules } = JSON.parse(readFileSync(new URL('../skills/shared/scoring-rules.json', import.meta.url), 'utf8'));
+  assert.deepEqual(rules, JSON.parse(JSON.stringify(DEMO.RULES)));
+});
+
 test('示範頁的預設權重取自規則資料，但是可調整的複製品', () => {
   assert.deepEqual(DEMO.DEFAULTS.weights, DEMO.RULES.weights);
   assert.ok(!Object.isFrozen(DEMO.DEFAULTS.weights), '網站會讓使用者調整 DEFAULTS 的權重，它不能被凍結');

@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "62d8585f916a",
+ "contentHash": "06a7f7833801",
  "research": [
   {
    "id": "00-method",
@@ -162,6 +162,11 @@ window.BUILD_MANIFEST = {
    "bytes": 8060
   },
   {
+   "path": "skills/claude/preemptive-exposure-analysis/references/scoring-rules.json",
+   "platform": "claude",
+   "bytes": 1484
+  },
+  {
    "path": "skills/claude/preemptive-exposure-analysis/references/scoring-rules.md",
    "platform": "claude",
    "bytes": 4350
@@ -169,7 +174,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 55910
+   "bytes": 56664
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -257,6 +262,11 @@ window.BUILD_MANIFEST = {
    "bytes": 8060
   },
   {
+   "path": "skills/gemini/preemptive-exposure-analysis/references/scoring-rules.json",
+   "platform": "gemini",
+   "bytes": 1484
+  },
+  {
    "path": "skills/gemini/preemptive-exposure-analysis/references/scoring-rules.md",
    "platform": "gemini",
    "bytes": 4350
@@ -264,7 +274,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "gemini",
-   "bytes": 55910
+   "bytes": 56664
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -364,7 +374,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 55779
+   "bytes": 56533
   },
   {
    "path": "skills/shared/core-prompt.md",
@@ -380,6 +390,11 @@ window.BUILD_MANIFEST = {
    "path": "skills/shared/output-schema.json",
    "platform": "shared",
    "bytes": 8060
+  },
+  {
+   "path": "skills/shared/scoring-rules.json",
+   "platform": "shared",
+   "bytes": 1484
   },
   {
    "path": "skills/shared/scoring-rules.md",

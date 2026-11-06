@@ -889,6 +889,17 @@ def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, o
 # 主程式
 # ---------------------------------------------------------------------------
 
+def load_scoring_rules(path: Path | None = None) -> dict:
+    """示範規則的數值（ADR 0010、#227）：建置從示範引擎 assets/demo.js 的 RULES 產生 scoring-rules.json，這裡只讀、不另寫一份。
+    預設讀 skills/shared/ 的那一份；技能資料夾的核心複本在 scripts/ 底下，由呼叫端傳入 references/ 的路徑。回傳時拿掉 _note。"""
+    path = Path(path) if path is not None else SHARED_DIR / "scoring-rules.json"
+    if not path.exists():
+        raise Abort(f"[錯誤] 找不到規則資料：{path}（由建置從 assets/demo.js 的 RULES 產生；在 repo 根目錄執行 npm run build）")
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    data.pop("_note", None)
+    return data
+
+
 def _read_shared(name: str) -> str:
     path = SHARED_DIR / name
     if not path.exists():

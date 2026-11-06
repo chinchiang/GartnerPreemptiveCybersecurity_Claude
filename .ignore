@@ -10,3 +10,4 @@ downloads/
 skills/*/preemptive-exposure-analysis/references/
 skills/claude/preemptive-exposure-analysis/scripts/
 skills/gemini/preemptive-exposure-analysis/scripts/
+skills/shared/scoring-rules.json
