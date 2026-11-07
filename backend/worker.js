@@ -9,6 +9,8 @@
 // 授權範圍守門：規則只來自 schema，由 assets/scope-gate.js 判定（與網站示範引擎共用，見 docs/adr/0004）；
 // 部署用的 dist/worker.js 由 scripts/build-worker.mjs 把它內嵌，仍是單一檔案
 import GATE from '../assets/scope-gate.js';
+// 示範引擎：算分數表（ADR 0010、#230），跟 API 腳本附在提示詞裡的「腳本預先計算的曝險分數」相同；dist/worker.js 也由 build-worker.mjs 內嵌
+import DEMO from '../assets/demo.js';
 
 const CORE_PROMPT = `（部署時以 build 步驟把 skills/shared/core-prompt.md 的提示詞區塊貼入此處）`;
 // 已知的供應商：預設端點（不帶尾端斜線，下面接 /chat/completions 或 /v1/messages）與 OpenAI 相容端點的輸出上限參數。
@@ -87,7 +89,11 @@ export default {
     // 排除清單格式不合格時，排除不會生效；代理沒有警告管道，照常送出會讓使用者以為已經排除的資產（例如 OT）被送往模型，所以拒絕（#164）
     const excludedProblems = GATE.excludedAssetsProblems(body.bundle.scope.authorized_scope);
     if (excludedProblems.length) return new Response(`excluded_assets 格式不合格（${GATE.excludedAssetsRuleNote()}）；格式不符時排除不會生效，為避免把要排除的資產送往模型，不送出`, { status: 400, headers: cors });
-    const user = `請依系統指令進行先制型曝險分析。輸入：\n\`\`\`json\n${JSON.stringify(GATE.scopedBundle(body.bundle))}\n\`\`\``;
+    const scoped = GATE.scopedBundle(body.bundle);
+    // 分數表只根據篩選後的資料計算；缺資產清冊或弱點、或算不出可信的分數時不附，照常送出（代理沒有警告管道）
+    let table = null;
+    try { table = DEMO.scoreTable(scoped); } catch { table = null; }
+    const user = `請依系統指令進行先制型曝險分析。輸入：\n\`\`\`json\n${JSON.stringify(scoped)}\n\`\`\`` + (table ? `\n\n${DEMO.scoreTableSection(table)}` : '');
     const { provider, base, outputParam, maxOutput, timeoutMs } = config;
     const [url, init] = provider === 'anthropic'
       ? [`${base}/v1/messages`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': env.PROVIDER_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: env.MODEL, max_tokens: maxOutput, system: CORE_PROMPT, messages: [{ role: 'user', content: user }] }) }]
