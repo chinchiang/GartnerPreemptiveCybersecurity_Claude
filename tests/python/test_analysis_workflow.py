@@ -209,6 +209,7 @@ class PreflightFindingMessagesTest(unittest.TestCase):
                     if f.file == name and f.kind == "malformed_field"]
 
         actor = {"actor_id": "X", "name": "GROUP-A", "ttps": [], "exploits_vuln_ids": ["V1"]}
+        control = {"control_id": "K01", "name": "EDR", "coverage_assets": ["A01"], "gaps": []}
         cases = [
             ("actors 不是陣列", "threat-intel.json", {"actors": "GROUP-A"}, ["actors 不是陣列，評分不計情資命中"]),
             # 明確寫成 null 也警告，跟 exploits_vuln_ids、issues 是 null 時一致（#237 審查）
@@ -228,6 +229,14 @@ class PreflightFindingMessagesTest(unittest.TestCase):
             ("exposures 裡有不是物件的項目", "exposures.json",
              {"exposures": [None, {"asset_id": "A01", "hostname": "vpn.example", "issues": ["old-tls"]}, "web"]},
              ["exposures 第 1 筆不是物件，評分不計這一筆", "exposures 第 3 筆不是物件，評分不計這一筆"]),
+            # #243：controls、edges 不是陣列，control 的 coverage_assets、gaps 不是陣列，評分都當成不存在
+            ("controls 不是陣列", "controls.json", {"controls": "EDR"}, ["controls 不是陣列，評分不計既有控制與控制缺口"]),
+            ("control 的 coverage_assets、gaps 不是陣列", "controls.json",
+             {"controls": [control, {**control, "control_id": "K02", "name": "MFA", "coverage_assets": "A01,A02"},
+                           {**control, "control_id": "K03", "name": "SIEM", "gaps": "A03"}]},
+             ["controls 第 2 筆（MFA）的 coverage_assets 不是陣列，評分不計這一欄", "controls 第 3 筆（SIEM）的 gaps 不是陣列，評分不計這一欄"]),
+            ("edges 不是陣列", "topology.json", {"crown_jewels": ["A06"], "edges": "internet->A01"}, ["edges 不是陣列，評分不計攻擊路徑"]),
+            ("crown_jewels 不是陣列", "topology.json", {"crown_jewels": "A06", "edges": []}, ["crown_jewels 不是陣列，評分不計 crown jewel 與攻擊路徑"]),
         ]
         for name, file, value, messages in cases:
             with self.subTest(name):
@@ -239,7 +248,11 @@ class PreflightFindingMessagesTest(unittest.TestCase):
                 ("缺 exploits_vuln_ids", "threat-intel.json", {"actors": [{k: v for k, v in actor.items() if k != "exploits_vuln_ids"}]}),
                 ("缺 actors", "threat-intel.json", {"sector": "製造"}),
                 ("缺 issues", "exposures.json", {"exposures": [{"asset_id": "A01", "hostname": "vpn.example"}]}),
-                ("缺 exposures", "exposures.json", {"as_of": "2026-09-01"})):
+                ("缺 exposures", "exposures.json", {"as_of": "2026-09-01"}),
+                ("缺 controls", "controls.json", {"as_of": "2026-09-01"}),
+                ("control 缺 gaps", "controls.json", {"controls": [{"control_id": "K01", "name": "EDR", "coverage_assets": ["A01"]}]}),
+                ("缺 edges", "topology.json", {"crown_jewels": ["A06"]}),
+                ("缺 crown_jewels", "topology.json", {"edges": []})):
             with self.subTest(name):
                 self.fresh()
                 write(file, value)
