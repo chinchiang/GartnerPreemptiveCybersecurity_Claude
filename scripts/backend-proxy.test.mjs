@@ -4,9 +4,11 @@ import { test, describe, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import vm from 'node:vm';
 import worker from '../backend/worker.js';
 
 const gate = createRequire(import.meta.url)('../assets/scope-gate.js');
+const DEMO = createRequire(import.meta.url)('../assets/demo.js');
 
 const scope = JSON.parse(readFileSync(new URL('../examples/synthetic-org/scope.json', import.meta.url), 'utf8'));
 const ORIGIN = 'https://allowed.example';
@@ -21,7 +23,10 @@ const request = (body, headers = {}, method = 'POST') => new Request('https://wo
 });
 const send = (req, env = ENV) => worker.fetch(req, env);
 // 上游收到的提示詞裡、```json 區塊的內容（OpenAI 相容路徑是 messages[1]，Anthropic 路徑是 messages[0]）
-const sentJson = ([, init]) => JSON.parse(init.body).messages.at(-1).content.match(/```json\n([\s\S]*)\n```/)[1];
+// 第一個 ```json 區塊是資料；有分數表時後面還有第二個區塊（#230），所以用非貪婪比對
+const sentText = ([, init]) => JSON.parse(init.body).messages.at(-1).content;
+const sentJson = (call) => sentText(call).match(/```json\n([\s\S]*?)\n```/)[1];
+const sentTable = (call) => { const m = sentText(call).match(/【腳本預先計算的曝險分數】[^\n]*\n```json\n([\s\S]*?)\n```/); return m && JSON.parse(m[1]); };
 // 剛好 bytes 位元組、內容合法的請求：scope 合格，多出來的長度放在頂層的 padding 字串
 const sized = (bytes) => {
   const head = JSON.stringify({ bundle: { scope }, padding: '' }).slice(0, -2);
@@ -91,6 +96,57 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     const sent = JSON.parse(sentJson(upstream[0]));
     assert.equal(sent.threat_intel.actors[0].recent_activity.length, 450000);
     assert.deepEqual(sent, gate.scopedBundle(bundle));
+  });
+
+  // #230：網站「AI 分析」經代理送出時，也附上示範引擎依授權範圍篩選後的資料算好的分數表，跟 API 腳本相同
+  const SYNTHETIC = (() => {
+    const ctx = { window: {} };
+    vm.runInNewContext(readFileSync(new URL('../data/case.js', import.meta.url), 'utf8'), ctx);
+    const { threatIntel, ...rest } = ctx.window.CASE_DATA;
+    return { ...rest, threat_intel: threatIntel };
+  })();
+
+  // 預期值取自共用分數表案例（手算，CODING_STANDARDS §2），不由被測的 scoreTable 推算
+  const TABLE_CASES = JSON.parse(readFileSync(new URL('../tests/fixtures/score-table-cases.json', import.meta.url), 'utf8'));
+
+  test('分數表：送出時附上分數表，區塊跟共用案例的字面值逐字相同（#230）', async () => {
+    const r = await send(request(JSON.stringify({ bundle: TABLE_CASES.cases[0].bundle })));
+    assert.equal(r.status, 200);
+    assert.deepEqual(sentTable(upstream[0]), TABLE_CASES.cases[0].expected);
+    assert.ok(sentText(upstream[0]).endsWith(`\n\n${TABLE_CASES.section}`), '區塊格式跟 API 腳本相同');
+    assert.deepEqual(JSON.parse(sentJson(upstream[0])), gate.scopedBundle(TABLE_CASES.cases[0].bundle), '第一個區塊仍是篩選後的資料');
+  });
+
+  test('分數表：合成資料的 F001 是 P1／86（示範快照 examples/demo-snapshot.txt，#230）', async () => {
+    const r = await send(request(JSON.stringify({ bundle: SYNTHETIC })));
+    assert.equal(r.status, 200);
+    const top = sentTable(upstream[0]).findings[0];
+    assert.deepEqual([top.finding_id, top.priority, top.score, top.likelihood, top.impact], ['F001', 'P1', 86, 10, 8.6]);
+  });
+
+  test('分數表：只根據授權範圍篩選後的資料計算，範圍外的資產與弱點不進分數表（#230）', async () => {
+    const bundle = { ...SYNTHETIC, assets: [...SYNTHETIC.assets, { ...SYNTHETIC.assets[0], asset_id: 'A99', name: 'outside' }],
+      vulnerabilities: [...SYNTHETIC.vulnerabilities, { ...SYNTHETIC.vulnerabilities[0], finding_id: 'F099', asset_id: 'A99' }] };
+    const r = await send(request(JSON.stringify({ bundle })));
+    assert.equal(r.status, 200);
+    const ids = sentTable(upstream[0]).findings.map(f => f.finding_id);
+    assert.equal(ids.length, 14);
+    assert.ok(!ids.includes('F099'), 'A99 不在 in_scope_assets，F099 不能出現在分數表');
+  });
+
+  test('分數表：缺弱點時不附分數表，資料照常送出（#230）', async () => {
+    const { vulnerabilities, ...bundle } = SYNTHETIC;
+    const r = await send(request(JSON.stringify({ bundle })));
+    assert.equal(r.status, 200);
+    assert.equal(sentTable(upstream[0]), null);
+    assert.ok(!sentText(upstream[0]).includes('【腳本預先計算的曝險分數】'));
+  });
+
+  test('分數表：算不出可信的分數（business_criticality 不是數字）時不附分數表，不擋送出（#230）', async () => {
+    const bundle = { ...SYNTHETIC, assets: SYNTHETIC.assets.map(a => a.asset_id === 'A01' ? { ...a, business_criticality: 'high' } : a) };
+    const r = await send(request(JSON.stringify({ bundle })));
+    assert.equal(r.status, 200);
+    assert.equal(sentTable(upstream[0]), null);
   });
 
   // 參數名稱依各供應商的官方文件（OpenAI、xAI：max_completion_tokens；GLM、DeepSeek、Anthropic：max_tokens）；

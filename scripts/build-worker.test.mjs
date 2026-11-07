@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { extractCorePrompt } from './skill-packages.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -63,4 +63,39 @@ test("模板有 2 行 import GATE from '../assets/scope-gate.js'; 時中止", ()
   assert.equal(r.status, 1);
   assert.equal(r.stderr, `${r.label} 內必須恰好有一行 ${line}，找到 2 行\n`);
   assert.equal(r.built, null);
+});
+
+test("模板沒有 import DEMO from '../assets/demo.js'; 時中止（#230）", () => {
+  const r = build(TEMPLATE.replace("import DEMO from '../assets/demo.js';", ''));
+  assert.equal(r.status, 1);
+  assert.equal(r.stderr, `${r.label} 內必須恰好有一行 import DEMO from '../assets/demo.js';，找到 0 行\n`);
+  assert.equal(r.built, null);
+});
+
+test('產物內嵌示範引擎（#230）：沒有任何 import，載入建置出的檔案送一次合成資料，上游收到的訊息附上分數表', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pea-build-worker-'));
+  const realFetch = globalThis.fetch;
+  try {
+    const out = join(dir, 'dist.mjs');
+    const r = spawnSync(process.execPath, [SCRIPT, out], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const built = readFileSync(out, 'utf8');
+    assert.doesNotMatch(built, /^import /m, '部署的是單一檔案，不能留 import');
+    const { default: worker } = await import(pathToFileURL(out).href);
+    // 預期值取自共用分數表案例（手算，CODING_STANDARDS §2），不由被測的 scoreTable 推算
+    const cases = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/score-table-cases.json'), 'utf8'));
+    const { bundle, expected } = cases.cases[0];
+    const sent = [];
+    globalThis.fetch = async (url, init) => { sent.push(init); return new Response('{}', { status: 200 }); };
+    const env = { ALLOWED_ORIGIN: 'https://allowed.example', PROVIDER: 'openai', MODEL: 'm', PROVIDER_API_KEY: 'k' };
+    const res = await worker.fetch(new Request('https://worker.example/api/analyze', { method: 'POST',
+      headers: { 'content-type': 'application/json', origin: env.ALLOWED_ORIGIN, 'cf-connecting-ip': '203.0.113.9' }, body: JSON.stringify({ bundle }) }), env);
+    assert.equal(res.status, 200);
+    const content = JSON.parse(sent[0].body).messages.at(-1).content;
+    const table = JSON.parse(content.split('【腳本預先計算的曝險分數】')[1].split('```json\n')[1].split('\n```')[0]);
+    assert.deepEqual(table, expected);
+  } finally {
+    globalThis.fetch = realFetch;
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

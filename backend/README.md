@@ -14,16 +14,17 @@
 2. 代理只允許固定的 system prompt（讀自 `skills/shared/core-prompt.md`），不讓前端覆蓋第 0 節。
 3. 速率限制與來源限制（`ALLOWED_ORIGIN`）；請求體大小上限 512 KB，以實際讀到的位元組計算（不只看 `content-length`），超過就停止讀取並回 413；送往模型的 JSON 一律完整，不截斷。
 4. 授權範圍守門：`bundle.scope` 缺少或必填欄位不合格就回 400 並列出缺少的欄位，不送往模型供應商；規則只來自 `skills/shared/input-schema.json` 的 scope 定義，由與網站示範引擎共用的 `assets/scope-gate.js` 判定（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）。`authorized_scope` 有 `excluded_assets` 而且不符合 schema 的定義（例如寫成字串）時也回 400，訊息寫明它的規則：格式不符時排除不會生效，照常送出會把要排除的資產送往模型（見 `docs/adr/0007-excluded-assets-take-precedence.md`）。送往模型的資料只保留輸入 schema 頂層定義的類別，不認得的鍵一律丟掉。
-5. 不記錄請求內容。上游 2xx 的回應照原樣轉發；上游回非 2xx 或連線失敗時回 502，只附上游的狀態碼數字，不轉發上游的回應內容與例外訊息（可能含帳號或金鑰的資訊）；超過 `UPSTREAM_TIMEOUT_MS` 就中止並回 504。
-6. 每次呼叫都帶輸出上限（`MAX_OUTPUT_TOKENS`，預設 8000）：`openai`、`xai` 用 `max_completion_tokens`，`anthropic`、`glm`、`deepseek`、`gemini` 與 `BASE_URL` 指定的其他端點用 `max_tokens`（`gemini` 的 OpenAI 相容端點官方未說明參數名稱，待驗證）。OpenAI 的 `max_completion_tokens` 包含推理 token，推理模型可能在產生可見輸出前就用完上限，需要時調高。
-7. 設定不完整或不合格時拒絕，不放行：`ALLOWED_ORIGIN`、`MODEL`、`PROVIDER_API_KEY` 任一沒設定（或是空字串）、`PROVIDER` 不是已知的供應商又沒有 `BASE_URL`、`MAX_OUTPUT_TOKENS` 或 `UPSTREAM_TIMEOUT_MS` 有設定卻不是正整數（`UPSTREAM_TIMEOUT_MS` 另外不得超過計時器的上限 2147483647）時，所有請求（含 CORS 的 `OPTIONS` 請求）都回 500 並說明是哪個設定，不呼叫上游。這兩個選用的數值沒設定或是空字串時，用預設值。
-8. 使用者上傳的資料會送往模型供應商：部署前確認資料處理協議，示範只用合成資料。
+5. 附上分數表：用示範引擎（`assets/demo.js` 的 `scoreTable`）依授權範圍篩選後的資料算出每項發現的分數，以「腳本預先計算的曝險分數」區塊附在送出的訊息裡，模型照用、不重新計算（跟 API 腳本相同，見 `docs/adr/0010-api-path-precomputes-exposure-scores.md`）。缺資產清冊或弱點、或算不出可信的分數時不附表，照常送出。
+6. 不記錄請求內容。上游 2xx 的回應照原樣轉發；上游回非 2xx 或連線失敗時回 502，只附上游的狀態碼數字，不轉發上游的回應內容與例外訊息（可能含帳號或金鑰的資訊）；超過 `UPSTREAM_TIMEOUT_MS` 就中止並回 504。
+7. 每次呼叫都帶輸出上限（`MAX_OUTPUT_TOKENS`，預設 8000）：`openai`、`xai` 用 `max_completion_tokens`，`anthropic`、`glm`、`deepseek`、`gemini` 與 `BASE_URL` 指定的其他端點用 `max_tokens`（`gemini` 的 OpenAI 相容端點官方未說明參數名稱，待驗證）。OpenAI 的 `max_completion_tokens` 包含推理 token，推理模型可能在產生可見輸出前就用完上限，需要時調高。
+8. 設定不完整或不合格時拒絕，不放行：`ALLOWED_ORIGIN`、`MODEL`、`PROVIDER_API_KEY` 任一沒設定（或是空字串）、`PROVIDER` 不是已知的供應商又沒有 `BASE_URL`、`MAX_OUTPUT_TOKENS` 或 `UPSTREAM_TIMEOUT_MS` 有設定卻不是正整數（`UPSTREAM_TIMEOUT_MS` 另外不得超過計時器的上限 2147483647）時，所有請求（含 CORS 的 `OPTIONS` 請求）都回 500 並說明是哪個設定，不呼叫上游。這兩個選用的數值沒設定或是空字串時，用預設值。
+9. 使用者上傳的資料會送往模型供應商：部署前確認資料處理協議，示範只用合成資料。
 
 ## 檔案
 
-- `worker.js`：Cloudflare Worker **模板**，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek|gemini`（皆為 OpenAI 相容或 Anthropic 相容端點；`gemini` 走 Gemini API 的 OpenAI 相容端點，官方標示 beta）。其中 `CORE_PROMPT` 是佔位字串、授權範圍守門以相對路徑 import `../assets/scope-gate.js`，部署前必須先建置。
+- `worker.js`：Cloudflare Worker **模板**，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek|gemini`（皆為 OpenAI 相容或 Anthropic 相容端點；`gemini` 走 Gemini API 的 OpenAI 相容端點，官方標示 beta）。其中 `CORE_PROMPT` 是佔位字串、授權範圍守門與示範引擎以相對路徑 import `../assets/scope-gate.js`、`../assets/demo.js`，部署前必須先建置。
 - `package.json`：只宣告 `"type": "module"`，讓 Node 以 ES module 載入 `worker.js`（`scripts/scope-cases.test.mjs` 的守門測試）；根目錄的 `package.json` 不能這樣宣告，因為測試以 `require` 載入 `assets/demo.js`。
-- `../scripts/build-worker.mjs`：把 `skills/shared/core-prompt.md` 的提示詞區塊嵌入模板，並內嵌模板 import 的 `assets/scope-gate.js`，輸出單一檔案 `backend/dist/worker.js`（已列入 `.gitignore`）。
+- `../scripts/build-worker.mjs`：把 `skills/shared/core-prompt.md` 的提示詞區塊嵌入模板，並內嵌模板 import 的 `assets/scope-gate.js` 與 `assets/demo.js`，輸出單一檔案 `backend/dist/worker.js`（已列入 `.gitignore`）。
 - `.env.example`：需要設定的變數清單（**不要**建立含真實值的 `.env` 並提交）。
 
 ## 部署（Cloudflare Workers）

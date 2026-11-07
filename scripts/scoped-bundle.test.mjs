@@ -37,7 +37,8 @@ test('後端實際送出的每份 bundle 都符合共用案例，不傳出不合
       let sent;
       globalThis.fetch = async (url, options) => {
         const content = JSON.parse(options.body).messages[1].content;
-        sent = JSON.parse(content.match(/```json\n([\s\S]*)\n```/)[1]);
+        // 第一個 ```json 區塊是資料；有分數表時後面還有第二個區塊（#230），所以用非貪婪比對
+        sent = JSON.parse(content.match(/```json\n([\s\S]*?)\n```/)[1]);
         return new Response('{}');
       };
       const response = await worker.fetch(new Request('https://test.invalid/api/analyze', {
