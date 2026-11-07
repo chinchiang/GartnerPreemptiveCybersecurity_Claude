@@ -1,0 +1,19 @@
+{
+  "_note": "檔案筆數的共用案例（#238）：示範引擎 assets/demo.js 的 recordCount（toSchema 的 data_quality.files 用它）與 Python 分析工作流程核心的 count_records（API 腳本提示詞的筆數用它）都要算出 expected。data 是檔案的內容；物件包著清單的檔案，依檔名決定看哪個清單鍵；清單不存在、不是陣列，或檔案頂層不是物件時都算 0。預期值是手數的。",
+  "cases": [
+    { "name": "threat-intel.json：actors 是陣列", "file": "threat-intel.json", "data": { "actors": [ { "name": "A" }, { "name": "B" } ] }, "expected": 2 },
+    { "name": "threat-intel.json：actors 是字串（不是字串長度）", "file": "threat-intel.json", "data": { "actors": "GROUP-A" }, "expected": 0 },
+    { "name": "threat-intel.json：actors 是數字", "file": "threat-intel.json", "data": { "actors": 3 }, "expected": 0 },
+    { "name": "exposures.json：exposures 是字串", "file": "exposures.json", "data": { "exposures": "abc" }, "expected": 0 },
+    { "name": "exposures.json：exposures 是陣列（含 null 也照算筆數）", "file": "exposures.json", "data": { "exposures": [ null, { "asset_id": "A01" } ] }, "expected": 2 },
+    { "name": "controls.json：controls 是物件", "file": "controls.json", "data": { "controls": { "EDR": {} } }, "expected": 0 },
+    { "name": "controls.json：controls 是陣列", "file": "controls.json", "data": { "controls": [ { "name": "EDR" }, { "name": "MFA" } ] }, "expected": 2 },
+    { "name": "topology.json：edges 是字串", "file": "topology.json", "data": { "crown_jewels": ["A02"], "edges": "A01->A02" }, "expected": 0 },
+    { "name": "topology.json：edges 是陣列", "file": "topology.json", "data": { "crown_jewels": ["A02"], "edges": [ { "from": "internet", "to": "A01" } ] }, "expected": 1 },
+    { "name": "threat-intel.json：沒有 actors 鍵（審查）", "file": "threat-intel.json", "data": { "sector": "製造" }, "expected": 0 },
+    { "name": "exposures.json：頂層是陣列（不是物件，審查）", "file": "exposures.json", "data": [ { "asset_id": "A01" }, { "asset_id": "A02" } ], "expected": 0 },
+    { "name": "topology.json：依檔名取 edges，不看其他清單鍵（審查）", "file": "topology.json", "data": { "exposures": "x", "edges": [ { "from": "internet", "to": "A01" } ] }, "expected": 1 },
+    { "name": "threat-intel.json：依檔名取 actors，不看其他清單鍵（審查）", "file": "threat-intel.json", "data": { "controls": "n/a", "actors": [ { "name": "A" }, { "name": "B" } ] }, "expected": 2 },
+    { "name": "assets.csv：清單照算", "file": "assets.csv", "data": [ { "asset_id": "A01" }, { "asset_id": "A02" }, { "asset_id": "A03" } ], "expected": 3 }
+  ]
+}

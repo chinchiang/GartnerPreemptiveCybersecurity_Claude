@@ -222,6 +222,12 @@ class PreflightFindingMessagesTest(unittest.TestCase):
                             {"asset_id": "A03", "hostname": "app.example", "issues": "old-tls"}]},
              ["exposures 第 1 筆（vpn.example）的 issues 不是字串陣列，評分不計 EASM 議題",
               "exposures 第 3 筆（app.example）的 issues 不是字串陣列，評分不計 EASM 議題"]),
+            # #238：exposures 整個不是陣列、清單裡有不是物件的項目，評分都當成不存在
+            ("exposures 不是陣列", "exposures.json", {"exposures": "abc"}, ["exposures 不是陣列，評分不計 EASM 議題"]),
+            ("exposures 是 null", "exposures.json", {"exposures": None}, ["exposures 不是陣列，評分不計 EASM 議題"]),
+            ("exposures 裡有不是物件的項目", "exposures.json",
+             {"exposures": [None, {"asset_id": "A01", "hostname": "vpn.example", "issues": ["old-tls"]}, "web"]},
+             ["exposures 第 1 筆不是物件，評分不計這一筆", "exposures 第 3 筆不是物件，評分不計這一筆"]),
         ]
         for name, file, value, messages in cases:
             with self.subTest(name):
@@ -232,7 +238,8 @@ class PreflightFindingMessagesTest(unittest.TestCase):
         for name, file, value in (
                 ("缺 exploits_vuln_ids", "threat-intel.json", {"actors": [{k: v for k, v in actor.items() if k != "exploits_vuln_ids"}]}),
                 ("缺 actors", "threat-intel.json", {"sector": "製造"}),
-                ("缺 issues", "exposures.json", {"exposures": [{"asset_id": "A01", "hostname": "vpn.example"}]})):
+                ("缺 issues", "exposures.json", {"exposures": [{"asset_id": "A01", "hostname": "vpn.example"}]}),
+                ("缺 exposures", "exposures.json", {"as_of": "2026-09-01"})):
             with self.subTest(name):
                 self.fresh()
                 write(file, value)
@@ -797,6 +804,18 @@ class WorkflowRunTest(unittest.TestCase):
                 self.assertIn("【腳本預先計算的曝險分數】", out)
                 self.assertNotIn("無法預先計算曝險分數", err)
                 self.assertIn(f"{file}：malformed_field ×1（警告）", out)
+
+    def test_report_prompt_counts_a_non_list_actors_as_zero(self):
+        # #238：actors 不是陣列時 threat-intel.json 算 0 筆（不是「無法判定」而印成 1），跟示範引擎的 toSchema 一致
+        with tempfile.TemporaryDirectory() as tmp:
+            inputs = Path(tmp) / "inputs"
+            shutil.copytree(ROOT / "examples" / "synthetic-org", inputs)
+            (inputs / "threat-intel.json").write_text(json.dumps({"actors": "GROUP-A"}), encoding="utf-8")
+            code, out, err = self.run_main(FakeAdapter([]), "--dry-run", "--input-dir", str(inputs))
+        self.assertEqual(code, 0, err)
+        self.assertIn("；threat-intel.json：0；", out)
+        self.assertRegex(out, r"### threat-intel\.json — [^\n]*（腳本預先計算筆數：0）")
+        self.assertIn("  - threat-intel.json: 0 筆", err)
 
     def test_output_not_matching_precomputed_scores_exits_4_and_keeps_raw_reply(self):
         # #229：priority 或 score 跟腳本算的不一致、或 finding_id 不在分數表裡，都判不合格；分級本身仍與門檻自洽

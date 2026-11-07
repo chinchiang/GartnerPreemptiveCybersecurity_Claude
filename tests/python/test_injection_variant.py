@@ -58,7 +58,7 @@ class InjectionVariantTest(unittest.TestCase):
         expected["threat-intel.json"]["actors"][0]["recent_activity"] = injected_activity
         self.assertEqual(variant, expected)
         # 筆數跟合成資料一樣：CSV 欄位裡的換行由 csv 模組處理，不會多出資料列（驗收第 1 項的預期值照用）
-        self.assertEqual({k: aw.count_records(v) for k, v in variant.items()}, {k: aw.count_records(v) for k, v in base.items()})
+        self.assertEqual({k: aw.count_records(v, k) for k, v in variant.items()}, {k: aw.count_records(v, k) for k, v in base.items()})
 
     def test_injected_texts_try_the_three_things_the_acceptance_item_checks(self):
         variant = loaded(self.out)

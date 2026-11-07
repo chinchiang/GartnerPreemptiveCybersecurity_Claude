@@ -226,15 +226,18 @@ def _parse(name: str, raw: str):
     return json.loads(raw), None
 
 
-def count_records(data) -> int | None:
-    """預先計算筆數（供資料品質與驗收第 1 項）；單一物件、無法判定時回傳 None。"""
-    if isinstance(data, list):
-        return len(data)
-    if isinstance(data, dict):
-        for key in ("exposures", "controls", "actors", "edges"):
-            if isinstance(data.get(key), list):
-                return len(data[key])
-    return None
+# 物件包著清單的檔案，筆數看哪個鍵（示範引擎的 RECORD_LIST_KEY 是同一張表）
+RECORD_LIST_KEYS = {"exposures.json": "exposures", "controls.json": "controls", "threat-intel.json": "actors", "topology.json": "edges"}
+
+
+def count_records(data, name: str) -> int | None:
+    """預先計算筆數（供資料品質與驗收第 1 項）；單一物件（scope.json）回傳 None。
+    物件包著清單的檔案依檔名取清單鍵：清單不存在、不是陣列，或檔案頂層不是物件時都算 0，不是字串長度（#238）。
+    示範引擎的 recordCount 照同一條規則，由共用案例 tests/fixtures/record-count-cases.json 守住。"""
+    if name in RECORD_LIST_KEYS:
+        rows = data.get(RECORD_LIST_KEYS[name]) if isinstance(data, dict) else None
+        return len(rows) if isinstance(rows, list) else 0
+    return len(data) if isinstance(data, list) else None
 
 
 # 缺少 scope.json 時中止訊息的開頭（固定的部分，後面接必填欄位）。CI 檢查 API 腳本「缺 scope 應中止」時讀這個常數
@@ -274,7 +277,7 @@ def load_inputs(input_dir: Path, exclude: frozenset, input_schema: dict) -> Inpu
             inputs.unparsable[name] = str(exc)
             continue
         inputs.files.append({"name": name, "category": category, "label": label, "raw": raw, "data": data,
-                             "columns": columns, "records": count_records(data)})
+                             "columns": columns, "records": count_records(data, name)})
     inputs.findings = script_preflight(inputs, input_schema)
     return inputs
 
@@ -441,8 +444,12 @@ def _shape_findings(loaded: dict) -> list:
             warn("threat-intel.json", f"actors 第 {n} 筆（{a.get('name')}）的 exploits_vuln_ids 不是陣列，評分不計這一筆")
     exposures = loaded.get("exposures.json", {}).get("data")
     rows = exposures.get("exposures") if isinstance(exposures, dict) else None
+    if isinstance(exposures, dict) and "exposures" in exposures and not isinstance(rows, list):
+        warn("exposures.json", "exposures 不是陣列，評分不計 EASM 議題")   # #238：示範引擎當成沒有任何曝險資料
     for n, e in enumerate(rows if isinstance(rows, list) else [], 1):
-        if isinstance(e, dict) and "issues" in e and not _is_string_list(e["issues"]):
+        if not isinstance(e, dict):
+            warn("exposures.json", f"exposures 第 {n} 筆不是物件，評分不計這一筆")
+        elif "issues" in e and not _is_string_list(e["issues"]):
             warn("exposures.json", f"exposures 第 {n} 筆（{e.get('hostname')}）的 issues 不是字串陣列，評分不計 EASM 議題")
     return findings
 
@@ -540,11 +547,16 @@ def is_unlisted_exposure(row: dict) -> bool:
     return row.get("asset_id") is None
 
 
+def exposure_rows(exposures) -> list:
+    """exposures.json 的清單裡是物件的那些項目；檔案不是物件、exposures 不是陣列時是空的（#238）。
+    評分（score_findings）與未納入清冊的對外資產（unlisted_hosts）共用；腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
+    rows = exposures.get("exposures") if isinstance(exposures, dict) else None
+    return [e for e in rows if isinstance(e, dict)] if isinstance(rows, list) else []
+
+
 def unlisted_hosts(exposures) -> list:
     """exposures.json 裡未納入清冊的對外資產（is_unlisted_exposure），回傳其 hostname。"""
-    if not isinstance(exposures, dict) or not isinstance(exposures.get("exposures"), list):
-        return []
-    return [e.get("hostname") for e in exposures["exposures"] if isinstance(e, dict) and is_unlisted_exposure(e)]
+    return [e.get("hostname") for e in exposure_rows(exposures) if is_unlisted_exposure(e)]
 
 
 # ---------------------------------------------------------------------------
@@ -641,7 +653,7 @@ def scoped_files(inputs: Inputs) -> list:
             f["raw"] = buf.getvalue()
         else:
             f["raw"] = json.dumps(data, ensure_ascii=False)
-        f["records"] = count_records(data)
+        f["records"] = count_records(data, f["name"])
         result.append(f)
     return result
 
@@ -1088,7 +1100,7 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     def exposure_of(asset_id):
         if not on["exposures"]:
             return None
-        return next((e for e in (data.get("exposures") or {}).get("exposures") or [] if e.get("asset_id") == asset_id), None)
+        return next((e for e in exposure_rows(data.get("exposures")) if e.get("asset_id") == asset_id), None)
 
     crown_jewels = (data.get("topology") or {}).get("crown_jewels") or []   # 示範引擎不看 topology 開關，照樣讀
     entry_nodes = set()
