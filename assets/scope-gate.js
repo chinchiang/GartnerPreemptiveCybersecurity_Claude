@@ -254,11 +254,19 @@
   // 輸入的類別：input-schema.json 頂層 properties 的鍵（測試比對兩者相同）。送往模型的資料只含這些鍵，不認得的一律丟掉（#164）
   const INPUT_CATEGORIES = ['scope', 'assets', 'vulnerabilities', 'exposures', 'identities', 'misconfigurations', 'controls', 'threat_intel', 'topology'];
 
+  /** 一般物件（不是 null、不是陣列）：scopedBundle 篩選資料列與 isUnlistedExposure 共用 */
+  const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+  /** 未納入清冊的對外資產：EASM 清單裡 asset_id 是 null 或沒有這個欄位的物件；空字串是字串，照範圍規則處理（ADR 0009）。
+   *  scopedBundle 與示範引擎（assets/demo.js）共用這個判定；Python 的 is_unlisted_exposure 是同一條規則，由 tests/fixtures/scoped-bundle-cases.json 守住。 */
+  function isUnlistedExposure(row) {
+    return object(row) && row.asset_id == null;
+  }
+
   /** 送往模型前依授權清單排除資產與結構化關聯；只保留已知的輸入類別。不修改原始資料。 */
   function scopedBundle(bundle) {
     const data = Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(bundle))).filter(([key]) => INPUT_CATEGORIES.includes(key)));
     const allowed = allowedAssets(data.scope.authorized_scope);
-    const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
     const rows = v => Array.isArray(v) ? v.filter(object) : [];
     const inScope = v => typeof v === 'string' && allowed.has(v);
     const refs = v => Array.isArray(v) ? v.filter(inScope) : [];
@@ -269,8 +277,8 @@
     });
     if ('exposures' in data) {
       data.exposures = object(data.exposures) ? data.exposures : {};
-      // 未納入清冊的對外資產（asset_id 是 null 或沒有這個欄位）照常送出；與 Python 的 is_unlisted_exposure 是同一條規則（ADR 0009）
-      data.exposures.exposures = rows(data.exposures.exposures).filter(e => inScope(e.asset_id) || e.asset_id == null);
+      // 未納入清冊的對外資產照常送出（ADR 0009）
+      data.exposures.exposures = rows(data.exposures.exposures).filter(e => inScope(e.asset_id) || isUnlistedExposure(e));
     }
     if ('controls' in data) {
       data.controls = object(data.controls) ? data.controls : {};
@@ -284,7 +292,7 @@
     return data;
   }
 
-  const api = { scopedBundle, allowedAssets, excludedAssets, excludedAssetsProblems, excludedAssetsRuleNote, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst, INPUT_CATEGORIES };
+  const api = { scopedBundle, isUnlistedExposure, allowedAssets, excludedAssets, excludedAssetsProblems, excludedAssetsRuleNote, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst, INPUT_CATEGORIES };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

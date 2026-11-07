@@ -542,7 +542,8 @@ def _file_status_findings(inputs: Inputs, input_schema: dict) -> list:
 
 def is_unlisted_exposure(row: dict) -> bool:
     """未納入清冊的對外資產：asset_id 是 null 或沒有這個欄位（輸入 schema 允許 null）。
-    空字串不算：它是字串，照一般資產的範圍規則處理。JS 的 scopedBundle 以共用案例守住同一條規則（ADR 0009）。"""
+    空字串不算：它是字串，照一般資產的範圍規則處理。JS 是授權範圍守門匯出的 isUnlistedExposure（assets/scope-gate.js），
+    scopedBundle 與示範引擎共用；兩邊由共用案例 tests/fixtures/scoped-bundle-cases.json 守住同一條規則（ADR 0009、#241）。"""
     return row.get("asset_id") is None
 
 

@@ -32,8 +32,15 @@ test('toSchema：exposures 是字串時 exposures.json 寫 0 筆、沒有未納�
   assert.equal(unlistedMetric(schema), 0);
 });
 
-test('exposures 清單裡的 null 不算成未納入清冊的對外資產：指標與資料品質的異常都只算合成資料原本那一筆', () => {
-  const schema = schemaOf({ ...CASE, exposures: { ...CASE.exposures, exposures: [null, ...CASE.exposures.exposures] } });
+test('exposures 清單裡的 null 與陣列不算成未納入清冊的對外資產（#238、#241）：指標與資料品質的異常都只算合成資料原本那一筆', () => {
+  const schema = schemaOf({ ...CASE, exposures: { ...CASE.exposures, exposures: [null, [], ...CASE.exposures.exposures] } });
+  assert.equal(unlistedMetric(schema), 1);
+  assert.deepEqual(fileOf(schema, 'exposures.json').anomalies, ['old-test.northwind-synthetic.example（asset_id null）未納入清冊']);
+});
+
+test('asset_id 是空字串的項目不算未納入清冊的對外資產，跟 Python 與授權範圍守門一致（#241、ADR 0009）', () => {
+  const blank = { asset_id: '', hostname: 'blank.example', issues: ['outdated-cms'] };
+  const schema = schemaOf({ ...CASE, exposures: { ...CASE.exposures, exposures: [blank, ...CASE.exposures.exposures] } });
   assert.equal(unlistedMetric(schema), 1);
   assert.deepEqual(fileOf(schema, 'exposures.json').anomalies, ['old-test.northwind-synthetic.example（asset_id null）未納入清冊']);
 });
