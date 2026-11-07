@@ -29,9 +29,6 @@
     weights: { exposure: 1.0, exploit: 1.0, identity: 0.8, control: 0.8, intel: 1.0, impact: 1.0 }
   });
   const L = RULES.likelihood, I = RULES.impact, F = RULES.feasibility;
-  // 未納入清冊的對外資產：EASM 清單裡 asset_id 是空的物件；不是物件的項目（例如 null）不算（#238，Python 的 unlisted_hosts 也只看物件）。
-  // 注意：這裡的「空」含空字串，Python 的 is_unlisted_exposure 與授權範圍守門只認 null 或缺欄位（ADR 0009），兩者不一致，另案處理
-  const isUnlistedExposure = (e) => e !== null && typeof e === 'object' && !e.asset_id;
   // 檔案筆數（data_quality.files）：物件包著清單的檔案，清單存在但不是陣列時算 0，不是字串長度（#238）。
   // Python 核心的 count_records 照同一條規則，由共用案例 tests/fixtures/record-count-cases.json 守住
   const RECORD_LIST_KEY = { 'exposures.json': 'exposures', 'controls.json': 'controls', 'threat-intel.json': 'actors', 'topology.json': 'edges' };
@@ -246,7 +243,7 @@
       { name: '可達 crown jewel 的攻擊路徑假設數', value: hypotheses.length, target: '每條路徑至少一個已驗證阻斷點' },
       { name: '資料齊備程度為高的比例', value: findings.length ? (findings.filter(f => f.confidence === '高').length / findings.length * 100).toFixed(0) + '% 為高' : '-', target: '≥ 80%' },
       { name: '資產清冊完整度（模擬）', value: `${P.inventoryCompleteness}%`, target: '≥ 95%' },
-      { name: '未納入清冊的對外資產', value: P.inputs.exposures ? exposureRows(data).filter(isUnlistedExposure).length : '未知', target: '0' }
+      { name: '未納入清冊的對外資產', value: P.inputs.exposures ? exposureRows(data).filter(GATE.isUnlistedExposure).length : '未知', target: '0' }
     ];
     const reviewPoints = [
       { stage: '範圍確認', who: 'CISO / 系統擁有者', what: '確認授權範圍、排除項與是否允許任何主動測試' },
@@ -309,7 +306,7 @@
         data_quality: block('缺少 scope'), exposure_priorities: { ...block('未執行'), items: [] }, attack_path_hypotheses: { ...block('未執行'), items: [] }, remediation: { ...block('未執行'), items: [], compensating_controls: [] }, validation_plan: { ...block('未執行'), items: [] }, executive_summary: { ...block('未執行'), audience: [], text: '缺少授權範圍，無法分析。', decisions_requested: ['提供 scope（授權範圍）後重跑'] }, metrics: { ...block('未執行'), items: [] }, human_review_points: [] };
     }
     // 只列入本次實際納入分析的檔案（被切換掉的類別視同未提供，不列入，並反映在 missing_inputs）
-    const unknownExposed = exposureRows(data).filter(isUnlistedExposure).map(e => e.hostname);
+    const unknownExposed = exposureRows(data).filter(GATE.isUnlistedExposure).map(e => e.hostname);
     const files = [
       { name: 'scope.json', records: 1, anomalies: [`主動測試授權 = ${scope.authorized_scope?.active_testing_authorized}；外部掃描授權 = ${scope.authorized_scope?.external_scanning_authorized}`] },
       { name: 'assets.csv', records: recordCount('assets.csv', data.assets) }, { name: 'vulnerabilities.csv', records: recordCount('vulnerabilities.csv', data.vulnerabilities) },
