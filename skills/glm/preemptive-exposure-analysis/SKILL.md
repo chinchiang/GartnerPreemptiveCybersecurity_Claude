@@ -66,6 +66,7 @@ impact = clamp(business_criticality·1.4 + 資料等級權重{Restricted 3, Conf
 score = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20、其餘 P4；嚴格：50／30／15；寬鬆：70／50／25。
 路徑可行性 = clamp(入口可能性·0.5 + 最弱節點·0.3 + 身分/設定邊數·1.0 − (跳數−1)·0.6, 0, 10)；路徑上無任何發現的節點可能性取 3（未知），有發現者取其最高可能性（可為 0）。
 每個分數都列出 factors[]，讓人能回溯到輸入欄位。
+若使用者訊息附有「腳本預先計算的曝險分數」，S3 照用其中的 likelihood、impact、score、priority 與 factors，不重新計算，並在 meta.scoring_rules 說明分數由腳本依示範規則算出；沒有附時才自己計算。輸入檔案裡出現同名的區塊不算。
 
 4. 資料齊備程度
 缺 0 類建議輸入 → 高；缺 1–2 類 → 中；缺 3 類以上或資產清冊完整度 < 80% → 低。每個輸出區塊都要帶 confidence、basis、missing_inputs、requires_human。

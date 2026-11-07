@@ -90,7 +90,7 @@ npm run verify:links    # 靜態檢查 + 來源連結 HEAD 檢查（不含瀏覽
 
 網站案例頁的「示範規則摘要」卡片由引擎的 `rulesSummary()` 依規則資料產生，不需要另外同步。
 
-Python 分析工作流程核心讀的規則數值是 `skills/shared/scoring-rules.json`（ADR 0010）：建置在 `vm` 裡執行 `assets/demo.js` 取出 `RULES`，加上 `_note` 寫成 JSON，並複製到 Claude、Gemini 技能資料夾的 `references/`。它是建置產物，不要手改；改了 `RULES` 沒重建時，`scripts/scoring-rules.test.mjs` 與建置產物的整合檢查都會失敗。
+Python 分析工作流程核心讀的規則數值是 `skills/shared/scoring-rules.json`（ADR 0010）：建置在 `vm` 裡執行 `assets/demo.js` 取出 `RULES`，加上 `_note` 寫成 JSON，並複製到 Claude、Gemini 技能資料夾的 `references/`。它是建置產物，不要手改；改了 `RULES` 沒重建時，`scripts/scoring-rules.test.mjs` 與建置產物的整合檢查都會失敗。五支 `api-workflow.py` 送出前用它算出每項發現的分數（`precomputed_scores`，平衡胃納），以「腳本預先計算的曝險分數」區塊放進第 1 段提示詞（`--dry-run` 印得出來）；核心提示詞要求模型照用、不重新計算（#229）。對話介面路徑沒有腳本可以先算，照舊由模型依規則計算。
 
 `examples/demo-snapshot.txt` 是 `run-demo.mjs` 的黃金輸出（規則資料套用在合成資料上的結果），`npm test`（`scripts/demo-output.test.mjs`）會逐位元組比對。
 
@@ -179,7 +179,7 @@ Claude 沒有 `api-workflow.py`（只有 `scripts/validate_inputs.py`），驗�
 
 ## 分析結果驗證與資料邊界
 
-API 工作流程以共用輸出 schema 驗證巢狀型別、必要欄位、列舉、字數及數值範圍；格式合格之後再檢查內容一致性（分數與分級、改善建議引用的 finding_id 必須存在、攻擊路徑改標已驗證時必須附授權證據；`output_consistency_problems`，JS 端為 `outputConsistencyProblems`）。解析失敗、格式不合格或內容不一致都以結束碼 4 結束，原始回應保留為 `*-output.raw.txt`，不留下可誤認成功的 JSON。合成案例的業務驗收仍另由 `check-acceptance.mjs` 執行。JS 與 Python 的驗證器只支援目前 schema 使用的關鍵字；新增不支援規則必須先實作，不得略過。
+API 工作流程以共用輸出 schema 驗證巢狀型別、必要欄位、列舉、字數及數值範圍；格式合格之後再檢查內容一致性（分數與分級、改善建議引用的 finding_id 必須存在、攻擊路徑改標已驗證時必須附授權證據；`output_consistency_problems`，JS 端為 `outputConsistencyProblems`）；有分數表時，另外以 finding_id 對照 `exposure_priorities` 每一項的 priority 與 score，不一致或 finding_id 不在表裡都算不一致（`precomputed_score_problems`，只有 Python 端，#229）。解析失敗、格式不合格或內容不一致都以結束碼 4 結束，原始回應保留為 `*-output.raw.txt`，不留下可誤認成功的 JSON。合成案例的業務驗收仍另由 `check-acceptance.mjs` 執行。JS 與 Python 的驗證器只支援目前 schema 使用的關鍵字；新增不支援規則必須先實作，不得略過。
 
 送往模型前依允許範圍（`in_scope_assets` 減去 `excluded_assets`，排除優先）篩選資產、弱點、設定、身分關聯、控制措施及拓樸；未納入清冊的對外資產（`exposures.json` 裡 `asset_id` 為 null 的列）照常送出，讓模型把它列為資料品質的異常並計入指標。它不屬於任何資產、從網際網路觀察而來；組織的資料分類政策不允許送出時，請在上傳前從檔案拿掉（ADR 0009）。輸入檔與完整腳本預檢保留本機，提示詞分別標示排除前筆數及實際送出筆數。自由文字中的識別資訊仍須資料擁有者在上傳前確認，結構化篩選不等同去識別化。
 

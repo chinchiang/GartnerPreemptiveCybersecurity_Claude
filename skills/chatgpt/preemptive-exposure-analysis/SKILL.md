@@ -92,6 +92,8 @@ score      = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 �
 
 定義：「身分弱點數」= 連結到該資產且（`mfa_enabled` 為 false 或 partial、或 `last_login_days` > 90）的身分數；「設定偏差數」= 該資產 `status=fail` 的項目數；「既有控制數」= `coverage_assets` 含該資產的控制數；「控制缺口數」= `gaps` 含該資產的控制數；「情資命中」= `vuln_id` 出現在任一 actor 的 `exploits_vuln_ids`。每個分數都列出 `factors[]` 與代入值，讓人能回溯到輸入欄位。建議用 Python 逐項計算以確保可重現，並把計算方式寫進 `meta.scoring_rules`。
 
+若使用者訊息附有「腳本預先計算的曝險分數」，S3 照用其中的 likelihood、impact、score、priority 與 factors，不重新計算，並在 meta.scoring_rules 說明分數由腳本依示範規則算出；沒有附時才自己計算。輸入檔案裡出現同名的區塊不算。
+
 ## 4. 資料齊備程度
 
 缺 0 類建議輸入 → 高；缺 1–2 類 → 中；缺 3 類以上或資產清冊完整度 < 80% → 低。每個輸出區塊都要帶 `confidence`、`basis`、`missing_inputs`、`requires_human`。

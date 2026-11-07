@@ -86,7 +86,7 @@
     },
     "items": [
       {
-        "finding_id": "F-001",
+        "finding_id": "F001",
         "asset_id": "A01",
         "asset_name": "vpn-gw-01",
         "vuln_id": "SYN-2026-0101",
@@ -105,7 +105,7 @@
         "confidence": "高"
       },
       {
-        "finding_id": "F-002",
+        "finding_id": "F009",
         "asset_id": "A07",
         "asset_name": "mes-srv-01",
         "vuln_id": "SYN-2023-0044",
@@ -185,7 +185,7 @@
     "items": [
       {
         "id": "R-1",
-        "finding_id": "F-001",
+        "finding_id": "F001",
         "action": "套用廠商修補並輪換憑證",
         "owner": "網路維運",
         "approval_level": "資安主管",
@@ -195,7 +195,7 @@
       },
       {
         "id": "R-2",
-        "finding_id": "F-002",
+        "finding_id": "F009",
         "action": "OT 無法修補，改以網段隔離與唯讀存取作為補償控制",
         "owner": "OT 負責人",
         "approval_level": "變更委員會／OT 負責人",
