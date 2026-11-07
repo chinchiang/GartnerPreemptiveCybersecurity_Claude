@@ -256,6 +256,9 @@
 
   /** 一般物件（不是 null、不是陣列）：scopedBundle 篩選資料列與 isUnlistedExposure 共用 */
   const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  /** 資料列：陣列裡是一般物件的項目；不是陣列時是空的。scopedBundle 與示範引擎（assets/demo.js）共用（#243）；
+   *  Python 核心的 object_rows 是同一條規則，由共用評分案例 tests/fixtures/scoring-cases.json 守住 */
+  const rows = v => Array.isArray(v) ? v.filter(object) : [];
 
   /** 未納入清冊的對外資產：EASM 清單裡 asset_id 是 null 或沒有這個欄位的物件；空字串是字串，照範圍規則處理（ADR 0009）。
    *  scopedBundle 與示範引擎（assets/demo.js）共用這個判定；Python 的 is_unlisted_exposure 是同一條規則，由 tests/fixtures/scoped-bundle-cases.json 守住。 */
@@ -267,7 +270,6 @@
   function scopedBundle(bundle) {
     const data = Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(bundle))).filter(([key]) => INPUT_CATEGORIES.includes(key)));
     const allowed = allowedAssets(data.scope.authorized_scope);
-    const rows = v => Array.isArray(v) ? v.filter(object) : [];
     const inScope = v => typeof v === 'string' && allowed.has(v);
     const refs = v => Array.isArray(v) ? v.filter(inScope) : [];
     for (const key of ['assets', 'vulnerabilities', 'misconfigurations']) if (key in data) data[key] = rows(data[key]).filter(r => inScope(r.asset_id));
@@ -292,7 +294,7 @@
     return data;
   }
 
-  const api = { scopedBundle, isUnlistedExposure, allowedAssets, excludedAssets, excludedAssetsProblems, excludedAssetsRuleNote, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst, INPUT_CATEGORIES };
+  const api = { scopedBundle, isUnlistedExposure, rows, allowedAssets, excludedAssets, excludedAssetsProblems, excludedAssetsRuleNote, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst, INPUT_CATEGORIES };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

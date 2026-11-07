@@ -124,7 +124,8 @@ class ValidateInputsTest(unittest.TestCase):
         (self.dir / "controls.json").write_text(json.dumps(controls, ensure_ascii=False), encoding="utf-8")
         code, out, err = self.run_script()
         self.assertEqual(code, 0, out + err)
-        self.assertEqual(self.line(out, "controls.json"), "[controls.json] 控制項=0")
+        # 筆數只算清單；#243 起腳本預檢也點出 controls 不是陣列（malformed_field，警告，不阻擋分析）
+        self.assertEqual(self.line(out, "controls.json"), "[controls.json] 控制項=0 異常=['controls 不是陣列，評分不計既有控制與控制缺口']")
 
     def test_runs_from_a_standalone_skill_folder(self):
         # Claude Code 裝在 .claude/skills/；Antigravity 與 Gemini CLI 讀工作區的 .agents/skills/

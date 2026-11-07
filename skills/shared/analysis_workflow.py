@@ -423,7 +423,7 @@ def _actor_counts(actor) -> bool:
 
 
 def _shape_findings(loaded: dict) -> list:
-    """評分會用到、形狀卻不對的欄位（警告，#237）：評分照「形狀不對的情資當成沒有命中、形狀不對的 EASM 議題當成沒有議題」
+    """評分會用到、形狀卻不對的欄位（警告，#237、#238、#243）：評分照「形狀不對的情資當成沒有命中、形狀不對的 EASM 議題、控制與拓樸邊當成不存在」
     處理，這裡讓使用者知道是哪個檔案、第幾筆、哪個欄位。整份不是物件由 _file_status_findings 回報（not_an_object），
     這裡不重複記；欄位整個缺少也不記（exploits_vuln_ids 已由 _schema_field_findings 回報，actors、issues 不是必填）。
     不是物件的 actor 會同時算進 _schema_field_findings 的「缺必填欄位」筆數，這裡另外點出它不是物件、評分不計。"""
@@ -450,6 +450,20 @@ def _shape_findings(loaded: dict) -> list:
             warn("exposures.json", f"exposures 第 {n} 筆不是物件，評分不計這一筆")
         elif "issues" in e and not _is_string_list(e["issues"]):
             warn("exposures.json", f"exposures 第 {n} 筆（{e.get('hostname')}）的 issues 不是字串陣列，評分不計 EASM 議題")
+    # #243：不是物件的 control、edge 會算進缺必填欄位的筆數（edge 在資產清冊有資料時另有 non_object_edge），這裡只看清單與欄位的形狀
+    controls = loaded.get("controls.json", {}).get("data")
+    control_rows = controls.get("controls") if isinstance(controls, dict) else None
+    if isinstance(controls, dict) and "controls" in controls and not isinstance(control_rows, list):
+        warn("controls.json", "controls 不是陣列，評分不計既有控制與控制缺口")
+    for n, c in enumerate(control_rows if isinstance(control_rows, list) else [], 1):
+        for key in ("coverage_assets", "gaps"):
+            if isinstance(c, dict) and key in c and not isinstance(c[key], list):
+                warn("controls.json", f"controls 第 {n} 筆（{c.get('name')}）的 {key} 不是陣列，評分不計這一欄")
+    topology = loaded.get("topology.json", {}).get("data")
+    if isinstance(topology, dict) and "edges" in topology and not isinstance(topology["edges"], list):
+        warn("topology.json", "edges 不是陣列，評分不計攻擊路徑")
+    if isinstance(topology, dict) and "crown_jewels" in topology and not isinstance(topology["crown_jewels"], list):
+        warn("topology.json", "crown_jewels 不是陣列，評分不計 crown jewel 與攻擊路徑")
     return findings
 
 
@@ -547,11 +561,17 @@ def is_unlisted_exposure(row: dict) -> bool:
     return row.get("asset_id") is None
 
 
+def object_rows(container, key: str) -> list:
+    """物件包著的清單裡是物件的那些項目；container 不是物件、清單不是陣列時是空的（#238、#243）。
+    評分（score_findings 的 exposures、controls、edges）與未納入清冊的對外資產（unlisted_hosts）共用；
+    示範引擎的 GATE.rows 是同一條規則，由共用評分案例守住。腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
+    rows = container.get(key) if isinstance(container, dict) else None
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+
 def exposure_rows(exposures) -> list:
-    """exposures.json 的清單裡是物件的那些項目；檔案不是物件、exposures 不是陣列時是空的（#238）。
-    評分（score_findings）與未納入清冊的對外資產（unlisted_hosts）共用；腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
-    rows = exposures.get("exposures") if isinstance(exposures, dict) else None
-    return [e for e in rows if isinstance(e, dict)] if isinstance(rows, list) else []
+    """exposures.json 的清單裡是物件的那些項目（object_rows）。"""
+    return object_rows(exposures, "exposures")
 
 
 def unlisted_hosts(exposures) -> list:
@@ -1073,9 +1093,12 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     assets_list = data.get("assets") or []
     assets = {a.get("asset_id"): a for a in assets_list}
     visible = [a.get("asset_id") for a in assets_list]   # 清冊完整度固定 100%：全部看得到
-    controls = (data.get("controls") or {}).get("controls") or []
-    controls_of = lambda i: [c.get("name") for c in controls if i in (c.get("coverage_assets") or [])] if on["controls"] else []  # noqa: E731
-    gaps_of = lambda i: [c.get("name") for c in controls if i in (c.get("gaps") or [])] if on["controls"] else []  # noqa: E731
+    # 形狀不對的控制當成不存在（#243，示範引擎照同一條規則，由共用案例守住）
+    controls = object_rows(data.get("controls"), "controls")
+    # coverage_assets、gaps 不是陣列時當成空的，不做子字串比對（#243）
+    asset_list = lambda v: v if isinstance(v, list) else []  # noqa: E731
+    controls_of = lambda i: [c.get("name") for c in controls if i in asset_list(c.get("coverage_assets"))] if on["controls"] else []  # noqa: E731
+    gaps_of = lambda i: [c.get("name") for c in controls if i in asset_list(c.get("gaps"))] if on["controls"] else []  # noqa: E731
 
     def identity_issues(asset_id):
         if not on["identities"]:
@@ -1102,10 +1125,12 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
             return None
         return next((e for e in exposure_rows(data.get("exposures")) if e.get("asset_id") == asset_id), None)
 
-    crown_jewels = (data.get("topology") or {}).get("crown_jewels") or []   # 示範引擎不看 topology 開關，照樣讀
+    # 形狀不對的拓樸當成不存在（#243，示範引擎照同一條規則，由共用案例守住）
+    topology = data.get("topology") if isinstance(data.get("topology"), dict) else {}
+    crown_jewels = topology.get("crown_jewels") if isinstance(topology.get("crown_jewels"), list) else []   # 示範引擎不看 topology 開關，照樣讀
     entry_nodes = set()
     if on["topology"]:
-        edges = [e for e in (data.get("topology") or {}).get("edges") or []
+        edges = [e for e in object_rows(topology, "edges")
                  if (e.get("from") == "internet" or e.get("from") in visible) and e.get("to") in visible]
         by_from = {}
         for e in edges:

@@ -37,7 +37,7 @@
     return Array.isArray(list) ? list.length : 0;
   };
   // EASM 清單：exposures 不是陣列時當成沒有任何曝險資料（#238，Python 核心只走訪物件，結果相同）
-  const exposureRows = (data) => Array.isArray(data.exposures?.exposures) ? data.exposures.exposures : [];
+  const exposureRows = (data) => GATE.rows(data.exposures?.exposures);
 
   /** 預設參數（可由 UI 調整） */
   const DEFAULTS = {
@@ -79,8 +79,11 @@
     const assets = new Map(scopedAssets.map(a => [a.asset_id, a]));
     const display = (id) => { const a = assets.get(id); if (!a) return id; return maskIds ? `${a.type}（${a.asset_id}）` : a.name; };
 
-    const controlsOf = (id) => P.inputs.controls ? data.controls.controls.filter(c => c.coverage_assets.includes(id)).map(c => c.name) : [];
-    const gapsOf = (id) => P.inputs.controls ? data.controls.controls.filter(c => c.gaps.includes(id)).map(c => c.name) : [];
+    // 形狀不對的控制當成不存在（#243，Python 核心的 score_findings 照同一條規則，由共用案例守住）
+    const controlRows = GATE.rows(data.controls?.controls);
+    const assetList = (v) => Array.isArray(v) ? v : []; // coverage_assets、gaps 不是陣列時當成空的，不做子字串比對
+    const controlsOf = (id) => P.inputs.controls ? controlRows.filter(c => assetList(c.coverage_assets).includes(id)).map(c => c.name) : [];
+    const gapsOf = (id) => P.inputs.controls ? controlRows.filter(c => assetList(c.gaps).includes(id)).map(c => c.name) : [];
     const identityIssues = (id) => P.inputs.identities ? data.identities.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
     // 形狀不對的情資當成沒有命中（#237）：Python 核心的 score_findings 照同一條規則，由共用案例守住
     // （陣列沒有 actors、字串沒有 exploits_vuln_ids，Array.isArray 就擋得住；?. 擋 null）
@@ -92,7 +95,7 @@
     const intelWeight = (a) => typeof a.confidence === 'string' ? L.intel[a.confidence] ?? L.intel.low : L.intel.low;
     const misconfigs = (id) => P.inputs.misconfig ? data.misconfigurations.filter(m => m.asset_id === id && m.status === 'fail') : [];
     const exposureOf = (id) => P.inputs.exposures ? exposureRows(data).find(e => e?.asset_id === id) : null;
-    const crownJewels = (data.topology && data.topology.crown_jewels) || [];
+    const crownJewels = Array.isArray(data.topology?.crown_jewels) ? data.topology.crown_jewels : []; // 不是陣列時當成沒有，不做子字串比對（#243）
 
     // 模擬資產清冊不完整：依完整度隱藏排序靠後的資產（示範用）
     const visibleIds = scopedAssets.map(a => a.asset_id).filter((_, idx, arr) => idx < Math.round(arr.length * P.inventoryCompleteness / 100));
@@ -103,7 +106,9 @@
     // 路徑本身不依賴 S3 的分數，所以先找；S3 的入口加分與 S4 的可行性都用這組路徑
     const paths = [];
     if (P.inputs.topology) {
-      const edges = data.topology.edges.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
+      // 形狀不對的拓樸邊當成不存在（#243，Python 核心照同一條規則，由共用案例守住）
+      const edgeRows = GATE.rows(data.topology?.edges);
+      const edges = edgeRows.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
       const byFrom = {};
       for (const e of edges) (byFrom[e.from] ||= []).push(e);
       const dfs = (node, trail, seen) => {
@@ -213,8 +218,8 @@
     }
     const compensating = [];
     if (P.inputs.controls) {
-      for (const c of data.controls.controls.filter(c => c.maturity === 'none' || c.maturity === 'partial')) {
-        compensating.push({ control: c.name, gaps: c.gaps.map(g => assets.get(g)?.name || g).join('、'), note: c.notes });
+      for (const c of controlRows.filter(c => c.maturity === 'none' || c.maturity === 'partial')) {
+        compensating.push({ control: c.name, gaps: assetList(c.gaps).map(g => assets.get(g)?.name || g).join('、'), note: c.notes });
       }
     }
 

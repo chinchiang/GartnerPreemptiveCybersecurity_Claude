@@ -225,6 +225,206 @@
         { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
         { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
       ]
+    },
+    {
+      "name": "controls.json 的 controls 是字串：當成沒有任何控制（#243）",
+      "inputs": {},
+      "data": { "controls": { "controls": "EDR" } },
+      "why": {
+        "F3": "沒有控制缺口：可能性 3 + 0.6 + 1.6 + 1.2 = 6.4；影響 6.2；分數 39.68 → 39.7 → P3",
+        "F2": "沒有既有控制扣分：可能性 1.05；影響 10；分數 10.5 → P4"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 6.4, "impact": 6.2, "score": 39.7, "priority": "P3", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 1.05, "impact": 10, "score": 10.5, "priority": "P4", "factors": ["crown jewel"] }
+      ]
+    },
+    {
+      "name": "controls.json 的 controls 是物件：當成沒有任何控制（#243）",
+      "inputs": {},
+      "data": { "controls": { "controls": { "EDR": { "coverage_assets": ["A02"] } } } },
+      "why": {
+        "F3": "沒有控制缺口：可能性 3 + 0.6 + 1.6 + 1.2 = 6.4；影響 6.2；分數 39.68 → 39.7 → P3",
+        "F2": "沒有既有控制扣分：可能性 1.05；影響 10；分數 10.5 → P4"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 6.4, "impact": 6.2, "score": 39.7, "priority": "P3", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 1.05, "impact": 10, "score": 10.5, "priority": "P4", "factors": ["crown jewel"] }
+      ]
+    },
+    {
+      "name": "controls 裡有 null 與不是物件的項目：那一項跳過，其餘照算（#243）",
+      "inputs": {},
+      "data": { "controls": { "controls": [
+        null, "EDR",
+        { "name": "EDR", "coverage_assets": ["A02"], "gaps": [] },
+        { "name": "G1", "coverage_assets": [], "gaps": ["A03"] },
+        { "name": "G2", "coverage_assets": [], "gaps": ["A03"] },
+        { "name": "G3", "coverage_assets": [], "gaps": ["A03"] },
+        { "name": "G4", "coverage_assets": [], "gaps": ["A03"] }
+      ] } },
+      "why": { "F1": "null 與字串那兩項跳過，其餘同第一案" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "control 的 coverage_assets、gaps 不是陣列：當成空的，不做子字串比對（#243）",
+      "inputs": {},
+      "data": { "controls": { "controls": [
+        { "name": "EDR", "coverage_assets": "A02,A04", "gaps": [] },
+        { "name": "G1", "coverage_assets": [], "gaps": "A03,A05" },
+        { "name": "G2", "coverage_assets": [], "gaps": ["A03"] },
+        { "name": "G3", "coverage_assets": [], "gaps": ["A03"] },
+        { "name": "G4", "coverage_assets": [], "gaps": ["A03"] }
+      ] } },
+      "why": {
+        "F3": "G1 的 gaps 是字串，不算：控制缺口 3 個，min(1.5, 3×0.4)×0.8 = 0.96；可能性 3 + 0.6 + 1.6 + 1.2 + 0.96 = 7.36；影響 6.2；分數 45.632 → 45.6 → P2。若做子字串比對會算 4 個缺口，同第一案 47.1",
+        "F2": "EDR 的 coverage_assets 是字串，不算：可能性 1.05；分數 10.5 → P4。若做子字串比對（\"A02,A04\" 含 A02）會同第一案 5.7"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.36, "impact": 6.2, "score": 45.6, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 1.05, "impact": 10, "score": 10.5, "priority": "P4", "factors": ["crown jewel"] }
+      ]
+    },
+    {
+      "name": "topology.json 的 edges 是字串：當成沒有拓樸邊（#243）",
+      "inputs": {},
+      "data": { "topology": { "crown_jewels": ["A02"], "edges": "internet->A01" } },
+      "why": {
+        "F1": "沒有邊就沒有攻擊路徑，也沒有入口加分：同「缺拓樸」，影響 4×1.4 + 1 = 6.6；分數 66 → P1",
+        "F2": "crown_jewels 照樣讀得到，crown jewel 照樣列：分數 5.7 → P4"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "topology.json 的 edges 是物件：當成沒有拓樸邊（#243）",
+      "inputs": {},
+      "data": { "topology": { "crown_jewels": ["A02"], "edges": { "internet": "A01" } } },
+      "why": {
+        "F1": "沒有邊就沒有攻擊路徑，也沒有入口加分：同「缺拓樸」，影響 4×1.4 + 1 = 6.6；分數 66 → P1",
+        "F2": "crown_jewels 照樣讀得到，crown jewel 照樣列：分數 5.7 → P4"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "edges 裡有 null 與不是物件的項目：那一項跳過，其餘照走（#243）",
+      "inputs": {},
+      "data": { "topology": { "crown_jewels": ["A02"], "edges": [
+        null, "internet->A01",
+        { "from": "internet", "to": "A01", "trust": "exposed" },
+        { "from": "A01", "to": "A02", "trust": "network" }
+      ] } },
+      "why": { "F1": "null 與字串那兩項跳過，internet → A01 → A02 照樣成立，入口加分照算：同第一案，分數 86（P1）" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "controls.json 的 controls 是數字：當成沒有任何控制（#243；數字不能走訪，字串、物件可以，三種都要守）",
+      "inputs": {},
+      "data": {"controls":{"controls":3}},
+      "why": {"F3":"同「controls 是字串」：分數 39.7 → P3","F2":"同「controls 是字串」：分數 10.5 → P4"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":6.4,"impact":6.2,"score":39.7,"priority":"P3","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":1.05,"impact":10,"score":10.5,"priority":"P4","factors":["crown jewel"]}
+      ]
+    },
+    {
+      "name": "controls.json 頂層是陣列：當成沒有任何控制（#243）",
+      "inputs": {},
+      "data": {"controls":[{"name":"EDR","coverage_assets":["A02"],"gaps":[]}]},
+      "why": {"F3":"同「controls 是字串」：分數 39.7 → P3","F2":"同「controls 是字串」：分數 10.5 → P4"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":6.4,"impact":6.2,"score":39.7,"priority":"P3","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":1.05,"impact":10,"score":10.5,"priority":"P4","factors":["crown jewel"]}
+      ]
+    },
+    {
+      "name": "topology.json 的 edges 是數字：當成沒有拓樸邊（#243）",
+      "inputs": {},
+      "data": {"topology":{"crown_jewels":["A02"],"edges":3}},
+      "why": {"F1":"同「edges 是字串」：分數 66 → P1"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":6.6,"score":66,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]}
+      ]
+    },
+    {
+      "name": "topology.json 頂層是陣列：當成沒有拓樸邊，也沒有 crown jewel（#243）",
+      "inputs": {},
+      "data": {"topology":[{"crown_jewels":["A02"],"edges":[]}]},
+      "why": {"F1":"沒有路徑：同「缺拓樸」，分數 66 → P1","F2":"沒有 crown jewel：影響 5×1.4 + 3 = 10（原本 12 夾到 10，分數不變 5.7），因子少了 crown jewel"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":6.6,"score":66,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR"]}
+      ]
+    },
+    {
+      "name": "topology.json 的 crown_jewels 是字串：當成沒有 crown jewel，不做子字串比對（#243 審查）",
+      "inputs": {},
+      "data": {"topology":{"crown_jewels":"A02,A06","edges":[{"from":"internet","to":"A01","trust":"exposed"},{"from":"A01","to":"A02","trust":"network"}]}},
+      "why": {"F1":"沒有 crown jewel 就沒有到 crown jewel 的路徑，也沒有入口加分：分數 66 → P1。若做子字串比對（\"A02,A06\" 含 A02）會同第一案 86","F2":"不是 crown jewel：影響 5×1.4 + 3 = 10，分數 5.7 不變，因子少了 crown jewel"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":6.6,"score":66,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR"]}
+      ]
+    },
+    {
+      "name": "topology.json 的 crown_jewels 是數字：當成沒有 crown jewel（#243 審查）",
+      "inputs": {},
+      "data": {"topology":{"crown_jewels":5,"edges":[{"from":"internet","to":"A01","trust":"exposed"},{"from":"A01","to":"A02","trust":"network"}]}},
+      "why": {"F1":"同「crown_jewels 是字串」：分數 66 → P1","F2":"同「crown_jewels 是字串」：分數 5.7，因子少了 crown jewel"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":6.6,"score":66,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR"]}
+      ]
+    },
+    {
+      "name": "controls.json 的 controls 是單一 control 物件（沒有包成陣列）：當成沒有任何控制（#243）",
+      "inputs": {},
+      "data": {"controls":{"controls":{"name":"EDR","coverage_assets":["A02"],"gaps":[]}}},
+      "why": {"F2":"不是陣列就沒有控制，不把那一個物件當成一列：可能性 1.05，分數 10.5 → P4。若當成一列，EDR 會涵蓋 A02，同第一案 5.7","F3":"同「controls 是字串」：分數 39.7 → P3"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":6.4,"impact":6.2,"score":39.7,"priority":"P3","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":1.05,"impact":10,"score":10.5,"priority":"P4","factors":["crown jewel"]}
+      ]
     }
   ]
 }

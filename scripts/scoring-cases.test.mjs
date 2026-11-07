@@ -27,3 +27,12 @@ for (const c of FIXTURE.cases) {
     }
   });
 }
+
+test('補償控制：control 的 gaps 不是陣列時不出錯，缺口寫成空的（#243；評分的共用案例只比對 findings，補償控制只有示範引擎有）', () => {
+  const controls = { controls: [
+    { name: 'SIEM', coverage_assets: [], gaps: 'A03', maturity: 'partial', notes: '字串的 gaps' },
+    { name: 'EDR', coverage_assets: [], gaps: ['A03'], maturity: 'none', notes: '正常' }
+  ] };
+  const result = DEMO.analyze(structuredClone({ ...FIXTURE.baseData, controls }), {});
+  assert.deepEqual(result.compensating.map(c => [c.control, c.gaps]), [['SIEM', ''], ['EDR', 'app']]);
+});
