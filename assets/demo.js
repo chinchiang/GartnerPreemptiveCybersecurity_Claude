@@ -73,8 +73,14 @@
     const controlsOf = (id) => P.inputs.controls ? data.controls.controls.filter(c => c.coverage_assets.includes(id)).map(c => c.name) : [];
     const gapsOf = (id) => P.inputs.controls ? data.controls.controls.filter(c => c.gaps.includes(id)).map(c => c.name) : [];
     const identityIssues = (id) => P.inputs.identities ? data.identities.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
-    const intelHits = (vulnIds) => P.inputs.threatIntel ? data.threatIntel.actors.filter(a => a.exploits_vuln_ids.some(v => vulnIds.includes(v))) : [];
-    const intelWeight = (a) => L.intel[a.confidence] ?? L.intel.low; // 未標信心時以 low 計
+    // 形狀不對的情資當成沒有命中（#237）：Python 核心的 score_findings 照同一條規則，由共用案例守住
+    // （陣列沒有 actors、字串沒有 exploits_vuln_ids，Array.isArray 就擋得住；?. 擋 null）
+    const intelActors = (Array.isArray(data.threatIntel?.actors) ? data.threatIntel.actors : [])
+      .filter(a => Array.isArray(a?.exploits_vuln_ids));
+    const intelHits = (vulnIds) => P.inputs.threatIntel ? intelActors.filter(a => a.exploits_vuln_ids.some(v => vulnIds.includes(v))) : [];
+    // confidence 不是規則裡的字串（缺少、陣列等）時以 low 計，因子寫「未標信心」（#237；Python 核心照同一條規則）
+    const confidenceOf = (a) => typeof a.confidence === 'string' ? a.confidence : '未標信心';
+    const intelWeight = (a) => typeof a.confidence === 'string' ? L.intel[a.confidence] ?? L.intel.low : L.intel.low;
     const misconfigs = (id) => P.inputs.misconfig ? data.misconfigurations.filter(m => m.asset_id === id && m.status === 'fail') : [];
     const exposureOf = (id) => P.inputs.exposures ? data.exposures.exposures.find(e => e.asset_id === id) : null;
     const crownJewels = (data.topology && data.topology.crown_jewels) || [];
@@ -114,7 +120,8 @@
       const exposed = a.internet_exposed === true;
       if (exposed) { likelihood += L.exposed * P.weights.exposure; f.factors.push('對外曝露'); }
       const ex = exposureOf(v.asset_id);
-      if (ex && ex.issues.length) { likelihood += L.easmIssues * P.weights.exposure; f.factors.push(`EASM 議題：${ex.issues.join('、')}`); }
+      // issues 不是「每項都是字串的陣列」時當成沒有 EASM 議題（#237，Python 核心照同一條規則）
+      if (ex && Array.isArray(ex.issues) && ex.issues.length && ex.issues.every(i => typeof i === 'string')) { likelihood += L.easmIssues * P.weights.exposure; f.factors.push(`EASM 議題：${ex.issues.join('、')}`); }
       if (!P.inputs.exposures) f.missing.push('外部曝險資料');
       // 2. 利用可能性（合成資料欄位 epss_sim／kev_sim 視同 epss／kev，皆為模擬值）
       const epss = Number(v.epss ?? v.epss_sim ?? 0), kev = (v.kev ?? v.kev_sim) === true;
@@ -139,7 +146,7 @@
       if (!P.inputs.controls) f.missing.push('既有控制措施');
       // 6. 威脅情資
       const hits = intelHits([v.vuln_id]);
-      if (hits.length) { likelihood += Math.max(...hits.map(intelWeight)) * P.weights.intel; f.factors.push(`威脅情資命中：${hits.map(h => `${h.name}（${h.confidence}）`).join('、')}`); }
+      if (hits.length) { likelihood += Math.max(...hits.map(intelWeight)) * P.weights.intel; f.factors.push(`威脅情資命中：${hits.map(h => `${h.name}（${confidenceOf(h)}）`).join('、')}`); }
       if (!P.inputs.threatIntel) f.missing.push('威脅情資');
       if (!P.inputs.topology) f.missing.push('網路拓樸／信任關係');
       f.likelihood = clamp(likelihood, ...L.range);

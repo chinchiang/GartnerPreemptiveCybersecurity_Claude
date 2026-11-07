@@ -299,6 +299,7 @@ class PreflightKind:
     UNLISTED_HOST = "unlisted_host"  # 未納入清冊的對外資產；detail＝hostname 清單
     UNPARSABLE = "unparsable"  # 檔案無法解析；detail＝錯誤訊息（不列在提示詞）
     NOT_AN_OBJECT = "not_an_object"  # schema 是物件、資料卻不是物件（不列在提示詞）
+    MALFORMED_FIELD = "malformed_field"  # 評分會用到的欄位形狀不對，評分不計那一筆（#237）
 
 
 # 預檢發現的嚴重度（見 GLOSSARY.md「預檢發現」）；哪一種問題是哪一級，只在本模組決定（理由見 script_preflight）
@@ -327,7 +328,7 @@ def _file_severity(name: str) -> str:
 
 def script_preflight(inputs: Inputs, input_schema: dict) -> list:
     """腳本預檢（見 GLOSSARY.md）：回傳有順序的 [PreflightFinding]。順序＝提示詞「腳本預檢結果」的順序：
-    必要檔案 → schema 必填欄位 → 資料完整性 → 排除清單格式；提示詞不列的「無法解析」「結構不是物件」排在最後。
+    必要檔案 → schema 必填欄位 → 評分欄位的形狀 → 資料完整性 → 排除清單格式；提示詞不列的「無法解析」「結構不是物件」排在最後。
     任何一列資料缺值或型別不對，都只會變成預檢發現，不會讓腳本預檢本身失敗。
 
     嚴重度放在這裡、而不是交給各渲染端：哪一種問題該擋下分析是規則，不是呈現方式，只能有一份。
@@ -335,7 +336,7 @@ def script_preflight(inputs: Inputs, input_schema: dict) -> list:
     腳本預檢只警告、不阻擋分析，授權範圍以外的問題都交給模型寫進資料品質章節並下修資料齊備程度（#59）。
     核心提示詞對缺必要輸入的指示與此一致：不等待回覆，直接降級並標示限制（#147）。"""
     loaded = {f["name"]: f for f in inputs.files}
-    return (_required_file_findings(loaded) + _schema_field_findings(inputs.files, input_schema)
+    return (_required_file_findings(loaded) + _schema_field_findings(inputs.files, input_schema) + _shape_findings(loaded)
             + _integrity_findings(inputs) + _file_status_findings(inputs, input_schema))
 
 
@@ -400,6 +401,49 @@ def _schema_field_findings(files: list, input_schema: dict) -> list:
                     findings.append(PreflightFinding(name, PreflightKind.NESTED_ROWS_MISSING_FIELDS, _file_severity(name),
                                                      f"{key} 有 {bad} 筆缺少必填欄位（{', '.join(item_required)}）",
                                                      {"key": key, "count": bad, "fields": item_required}))
+    return findings
+
+
+# 評分會用到的欄位怎樣算形狀正確（#237）：評分（score_findings）與腳本預檢（_shape_findings）共用這幾個判定（CODING_STANDARDS §6）；
+# 示範引擎照同一條規則，由共用評分案例守住
+def _is_string_list(value) -> bool:
+    return isinstance(value, list) and all(isinstance(i, str) for i in value)
+
+
+def _intel_actor_list(intel):
+    """threat-intel.json 的 actors 清單；情資不是物件或 actors 不是陣列時是 None（評分當成沒有命中）。"""
+    return intel["actors"] if isinstance(intel, dict) and isinstance(intel.get("actors"), list) else None
+
+
+def _actor_counts(actor) -> bool:
+    """這一筆 actor 能不能算命中：要是物件，exploits_vuln_ids 要是陣列。"""
+    return isinstance(actor, dict) and isinstance(actor.get("exploits_vuln_ids"), list)
+
+
+def _shape_findings(loaded: dict) -> list:
+    """評分會用到、形狀卻不對的欄位（警告，#237）：評分照「形狀不對的情資當成沒有命中、形狀不對的 EASM 議題當成沒有議題」
+    處理，這裡讓使用者知道是哪個檔案、第幾筆、哪個欄位。整份不是物件由 _file_status_findings 回報（not_an_object），
+    這裡不重複記；欄位整個缺少也不記（exploits_vuln_ids 已由 _schema_field_findings 回報，actors、issues 不是必填）。
+    不是物件的 actor 會同時算進 _schema_field_findings 的「缺必填欄位」筆數，這裡另外點出它不是物件、評分不計。"""
+    findings = []
+
+    def warn(name, message):
+        findings.append(PreflightFinding(name, PreflightKind.MALFORMED_FIELD, WARNING, message))
+
+    intel = loaded.get("threat-intel.json", {}).get("data")
+    actors = _intel_actor_list(intel)
+    if isinstance(intel, dict) and "actors" in intel and actors is None:
+        warn("threat-intel.json", "actors 不是陣列，評分不計情資命中")
+    for n, a in enumerate(actors or [], 1):
+        if not isinstance(a, dict):
+            warn("threat-intel.json", f"actors 第 {n} 筆不是物件，評分不計這一筆")
+        elif "exploits_vuln_ids" in a and not _actor_counts(a):
+            warn("threat-intel.json", f"actors 第 {n} 筆（{a.get('name')}）的 exploits_vuln_ids 不是陣列，評分不計這一筆")
+    exposures = loaded.get("exposures.json", {}).get("data")
+    rows = exposures.get("exposures") if isinstance(exposures, dict) else None
+    for n, e in enumerate(rows if isinstance(rows, list) else [], 1):
+        if isinstance(e, dict) and "issues" in e and not _is_string_list(e["issues"]):
+            warn("exposures.json", f"exposures 第 {n} 筆（{e.get('hostname')}）的 issues 不是字串陣列，評分不計 EASM 議題")
     return findings
 
 
@@ -1030,10 +1074,13 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
                 and (i.get("mfa_enabled", _UNDEFINED) is False or i.get("mfa_enabled") == "partial"
                      or _js_num(i.get("last_login_days", _UNDEFINED)) > stale)]
 
+    # 形狀不對的情資當成沒有命中（#237）：示範引擎的 intelHits 照同一條規則，由共用案例守住
+    intel_actors = [a for a in _intel_actor_list(data.get("threatIntel")) or [] if _actor_counts(a)]
+
     def intel_hits(vuln_id):
         if not on["threatIntel"]:
             return []
-        return [a for a in (data.get("threatIntel") or {}).get("actors") or [] if vuln_id in (a.get("exploits_vuln_ids") or [])]
+        return [a for a in intel_actors if vuln_id in a["exploits_vuln_ids"]]
 
     def misconfigs(asset_id):
         return [m for m in data.get("misconfigurations") or [] if m.get("asset_id") == asset_id and m.get("status") == "fail"] if on["misconfig"] else []
@@ -1074,9 +1121,11 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
             likelihood += L["exposed"] * W["exposure"]
             factors.append("對外曝露")
         ex = exposure_of(v.get("asset_id"))
-        if ex and ex.get("issues"):
+        # issues 不是「每項都是字串的陣列」時當成沒有 EASM 議題（#237，示範引擎照同一條規則）
+        issues = ex.get("issues") if ex else None
+        if issues and _is_string_list(issues):
             likelihood += L["easmIssues"] * W["exposure"]
-            factors.append(f"EASM 議題：{'、'.join(ex['issues'])}")
+            factors.append(f"EASM 議題：{'、'.join(issues)}")
         # 合成資料的 epss_sim／kev_sim 視同 epss／kev（JS 的 ?? 只跳過 undefined 與 null）
         raw_epss = v.get("epss") if v.get("epss") is not None else v.get("epss_sim")
         raw_kev = v.get("kev") if v.get("kev") is not None else v.get("kev_sim")
@@ -1110,8 +1159,10 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
             factors.append(f"控制缺口：{'、'.join(map(str, gaps))}")
         hits = intel_hits(v.get("vuln_id"))
         if hits:
-            likelihood += max(L["intel"].get(h.get("confidence"), L["intel"]["low"]) for h in hits) * W["intel"]
-            names = "、".join(f"{h.get('name')}（{h.get('confidence')}）" for h in hits)
+            # confidence 不是字串（缺少、陣列等）時以 low 計，因子寫「未標信心」（#237，示範引擎照同一條規則）
+            confidence = lambda h: h["confidence"] if isinstance(h.get("confidence"), str) else None   # noqa: E731
+            likelihood += max(L["intel"].get(confidence(h), L["intel"]["low"]) for h in hits) * W["intel"]
+            names = "、".join(f"{h.get('name')}（{confidence(h) or '未標信心'}）" for h in hits)
             factors.append(f"威脅情資命中：{names}")
         likelihood = clamp(likelihood, L["range"])
         data_weight = I["dataWeight"].get(a.get("data_classification"), I["dataWeight"]["Internal"])

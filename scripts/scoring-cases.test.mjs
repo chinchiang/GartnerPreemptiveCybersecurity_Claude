@@ -13,7 +13,8 @@ const near = (actual, expected, what) => assert.ok(Math.abs(actual - expected) <
 
 for (const c of FIXTURE.cases) {
   test(`共用評分案例（示範引擎）：${c.name}`, () => {
-    const result = DEMO.analyze(structuredClone(FIXTURE.baseData), { inputs: c.inputs });
+    // data：選用，覆蓋 baseData 的某幾個鍵（例如形狀不對的輸入，#237）
+    const result = DEMO.analyze(structuredClone({ ...FIXTURE.baseData, ...c.data }), { inputs: c.inputs });
     assert.equal(result.refused, undefined, '授權範圍守門不應該擋下共用案例');
     assert.deepEqual(result.findings.map(f => f.finding_id), c.expected.map(e => e.finding_id), '依分數由高到低排列');
     for (const [i, e] of c.expected.entries()) {

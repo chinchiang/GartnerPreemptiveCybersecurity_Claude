@@ -199,6 +199,45 @@ class PreflightFindingMessagesTest(unittest.TestCase):
         self.assertEqual([(f.file, f.kind) for f in findings], [("exposures.json", "unlisted_host")])
         self.assertEqual(findings[0].detail, ["old-test.northwind-synthetic.example"])
 
+    def test_malformed_intel_and_easm_fields_are_warnings(self):
+        # #237：形狀不對的情資與 EASM 議題在評分時不計（共用評分案例），腳本預檢要點出檔案、第幾筆與哪個欄位
+        def write(name, value):
+            (self.dir / name).write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+
+        def malformed(name):
+            return [(f.kind, f.severity, f.message) for f in aw.load_inputs(self.dir, frozenset(), INPUT_SCHEMA).findings
+                    if f.file == name and f.kind == "malformed_field"]
+
+        actor = {"actor_id": "X", "name": "GROUP-A", "ttps": [], "exploits_vuln_ids": ["V1"]}
+        cases = [
+            ("actors 不是陣列", "threat-intel.json", {"actors": "GROUP-A"}, ["actors 不是陣列，評分不計情資命中"]),
+            # 明確寫成 null 也警告，跟 exploits_vuln_ids、issues 是 null 時一致（#237 審查）
+            ("actors 是 null", "threat-intel.json", {"actors": None}, ["actors 不是陣列，評分不計情資命中"]),
+            ("actor 不是物件、exploits_vuln_ids 不是陣列", "threat-intel.json",
+             {"actors": ["GROUP-B", dict(actor, name="GROUP-C", exploits_vuln_ids="V3"), actor]},
+             ["actors 第 1 筆不是物件，評分不計這一筆", "actors 第 2 筆（GROUP-C）的 exploits_vuln_ids 不是陣列，評分不計這一筆"]),
+            ("issues 不是字串陣列", "exposures.json",
+             {"exposures": [{"asset_id": "A01", "hostname": "vpn.example", "issues": ["old-tls", 1]},
+                            {"asset_id": "A02", "hostname": "web.example", "issues": ["ok"]},
+                            {"asset_id": "A03", "hostname": "app.example", "issues": "old-tls"}]},
+             ["exposures 第 1 筆（vpn.example）的 issues 不是字串陣列，評分不計 EASM 議題",
+              "exposures 第 3 筆（app.example）的 issues 不是字串陣列，評分不計 EASM 議題"]),
+        ]
+        for name, file, value, messages in cases:
+            with self.subTest(name):
+                self.fresh()
+                write(file, value)
+                self.assertEqual(malformed(file), [("malformed_field", "警告", m) for m in messages])
+        # 欄位整個缺少：exploits_vuln_ids 已由缺必填欄位回報；actors、issues 不是必填，沒有就是沒有情資或議題。都不記
+        for name, file, value in (
+                ("缺 exploits_vuln_ids", "threat-intel.json", {"actors": [{k: v for k, v in actor.items() if k != "exploits_vuln_ids"}]}),
+                ("缺 actors", "threat-intel.json", {"sector": "製造"}),
+                ("缺 issues", "exposures.json", {"exposures": [{"asset_id": "A01", "hostname": "vpn.example"}]})):
+            with self.subTest(name):
+                self.fresh()
+                write(file, value)
+                self.assertEqual(malformed(file), [])
+
     def test_each_integrity_problem_is_reported(self):
         cases = [
             ("assets.csv", "\nA02,", "\nA01,", "重複 asset_id"),
@@ -698,8 +737,9 @@ class WorkflowRunTest(unittest.TestCase):
                 self.assertIn("【本次未提供的輸入】", out)
 
     def test_no_score_table_when_scores_cannot_be_computed(self):
-        # 腳本預檢只警告、不擋的輸入（非數值欄位、檔案形狀不對、finding_id 重複）算不出可信的分數：
-        # 不附分數表、不比對，印出警告後照常交給模型；不能灌成上限值（示範引擎在這裡是 NaN／P4），也不能印 traceback
+        # 腳本預檢只警告、不擋的輸入（非數值欄位、finding_id 重複）算不出可信的分數，評分本身也可能出錯：
+        # 不附分數表、不比對，印出警告後照常交給模型；不能灌成上限值（示範引擎在這裡是 NaN／P4），也不能印 traceback。
+        # 評分出錯用 mock 模擬（#237）：真的會讓評分出錯的輸入修掉一種就少一種，不能拿來守這層保險
         def edit_csv(name, fn):
             def apply(d):
                 rows = list(csv.reader(io.StringIO((d / name).read_text(encoding="utf-8"))))
@@ -716,27 +756,47 @@ class WorkflowRunTest(unittest.TestCase):
         def duplicate_id(rows):
             next(r for r in rows if r[0] == "F002")[0] = "F001"
 
-        def numeric_issues(d):
-            exposures = json.loads((d / "exposures.json").read_text(encoding="utf-8"))
-            exposures["exposures"][0]["issues"] = [1, 2]   # 腳本預檢不看 issues 的元素型別；評分組 factors 時 join 會失敗
-            (d / "exposures.json").write_text(json.dumps(exposures, ensure_ascii=False), encoding="utf-8")
+        def failing_scoring():
+            return mock.patch.object(aw, "score_findings", side_effect=TypeError("評分出錯（測試用）"))
 
         cases = [
-            ("非數值的 business_criticality", edit_csv("assets.csv", criticality), "F010"),
-            ("EASM issues 是數字", numeric_issues, "TypeError"),
-            ("finding_id 重複", edit_csv("vulnerabilities.csv", duplicate_id), "F001"),
+            ("非數值的 business_criticality", edit_csv("assets.csv", criticality), contextlib.nullcontext, "F010"),
+            ("評分出錯", lambda d: None, failing_scoring, "TypeError: 評分出錯（測試用）"),
+            ("finding_id 重複", edit_csv("vulnerabilities.csv", duplicate_id), contextlib.nullcontext, "F001"),
         ]
-        for name, apply, detail in cases:
+        for name, apply, during, detail in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                inputs = Path(tmp) / "inputs"
+                shutil.copytree(ROOT / "examples" / "synthetic-org", inputs)
+                apply(inputs)
+                with during():
+                    code, out, err = self.run_main(FakeAdapter([]), "--dry-run", "--input-dir", str(inputs))
+                self.assertEqual(code, 0, err)
+                self.assertNotIn("Traceback", err)
+                self.assertNotIn("【腳本預先計算的曝險分數】", out)
+                self.assertIn("[警告] 無法預先計算曝險分數", err)
+                self.assertIn(detail, err)
+
+    def test_malformed_intel_and_easm_still_get_a_score_table(self):
+        # #237：形狀不對的情資與 EASM 議題在評分時不計，照常附分數表；腳本預檢的警告照常列在提示詞
+        def intel_actors_string(d):
+            (d / "threat-intel.json").write_text(json.dumps({"actors": "GROUP-A"}), encoding="utf-8")
+
+        def numeric_issues(d):
+            exposures = json.loads((d / "exposures.json").read_text(encoding="utf-8"))
+            exposures["exposures"][0]["issues"] = [1, 2]
+            (d / "exposures.json").write_text(json.dumps(exposures, ensure_ascii=False), encoding="utf-8")
+
+        for name, apply, file in (("actors 是字串", intel_actors_string, "threat-intel.json"), ("EASM issues 是數字", numeric_issues, "exposures.json")):
             with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
                 inputs = Path(tmp) / "inputs"
                 shutil.copytree(ROOT / "examples" / "synthetic-org", inputs)
                 apply(inputs)
                 code, out, err = self.run_main(FakeAdapter([]), "--dry-run", "--input-dir", str(inputs))
                 self.assertEqual(code, 0, err)
-                self.assertNotIn("Traceback", err)
-                self.assertNotIn("【腳本預先計算的曝險分數】", out)
-                self.assertIn("[警告] 無法預先計算曝險分數", err)
-                self.assertIn(detail, err)
+                self.assertIn("【腳本預先計算的曝險分數】", out)
+                self.assertNotIn("無法預先計算曝險分數", err)
+                self.assertIn(f"{file}：malformed_field ×1（警告）", out)
 
     def test_output_not_matching_precomputed_scores_exits_4_and_keeps_raw_reply(self):
         # #229：priority 或 score 跟腳本算的不一致、或 finding_id 不在分數表裡，都判不合格；分級本身仍與門檻自洽
