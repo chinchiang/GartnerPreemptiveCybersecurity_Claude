@@ -1,0 +1,86 @@
+{
+  "_note": "評分的共用案例（#228、ADR 0010）：示範引擎 assets/demo.js 的 analyze() 與 Python 分析工作流程核心的評分函式都要算出 expected。預期值是依示範規則手算的（計算過程寫在 why），不是拿其中一份實作的輸出。expected 依分數由高到低排列；likelihood、impact 允許 1e-9 的浮點誤差，score、priority、factors 逐字比對。",
+  "baseData": {
+    "scope": { "organization": "共用案例", "analysis_date": "2026-09-08", "authorized_scope": { "in_scope_assets": ["A01", "A02", "A03", "A04"], "active_testing_authorized": false, "external_scanning_authorized": false }, "reporting": { "audience": ["CISO"] } },
+    "assets": [
+      { "asset_id": "A01", "name": "vpn", "type": "VPN", "business_criticality": 4, "data_classification": "Internal", "internet_exposed": true },
+      { "asset_id": "A02", "name": "db", "type": "DB", "business_criticality": 5, "data_classification": "Restricted", "internet_exposed": false },
+      { "asset_id": "A03", "name": "app", "type": "App", "business_criticality": 3, "data_classification": "Confidential", "internet_exposed": true },
+      { "asset_id": "A04", "name": "site", "type": "Site", "business_criticality": 2, "data_classification": "Public", "internet_exposed": true }
+    ],
+    "vulnerabilities": [
+      { "finding_id": "F1", "asset_id": "A01", "vuln_id": "V1", "cvss_base": 9, "exploit_public": true, "epss_sim": 0.5, "kev_sim": true },
+      { "finding_id": "F2", "asset_id": "A02", "vuln_id": "V2", "cvss_base": 7, "exploit_public": false },
+      { "finding_id": "F3", "asset_id": "A03", "vuln_id": "V3", "cvss_base": 5, "exploit_public": false, "epss_sim": 0.2, "kev_sim": false },
+      { "finding_id": "F4", "asset_id": "A04", "vuln_id": "V4", "cvss_base": 4, "exploit_public": false, "epss_sim": 1.0, "kev_sim": false }
+    ],
+    "exposures": { "exposures": [ { "asset_id": "A01", "hostname": "vpn.example", "issues": ["old-tls"] } ] },
+    "identities": [
+      { "identity_id": "U1", "mfa_enabled": false, "last_login_days": 1, "linked_assets": "A03" },
+      { "identity_id": "U2", "mfa_enabled": false, "last_login_days": 1, "linked_assets": "A03" },
+      { "identity_id": "U3", "mfa_enabled": "partial", "last_login_days": 1, "linked_assets": "A03;A04" },
+      { "identity_id": "U4", "mfa_enabled": true, "last_login_days": 10, "linked_assets": "A03" }
+    ],
+    "misconfigurations": [
+      { "asset_id": "A03", "status": "fail" },
+      { "asset_id": "A03", "status": "fail" },
+      { "asset_id": "A03", "status": "fail" },
+      { "asset_id": "A03", "status": "pass" }
+    ],
+    "controls": { "controls": [
+      { "name": "EDR", "coverage_assets": ["A02"], "gaps": [] },
+      { "name": "G1", "coverage_assets": [], "gaps": ["A03"] },
+      { "name": "G2", "coverage_assets": [], "gaps": ["A03"] },
+      { "name": "G3", "coverage_assets": [], "gaps": ["A03"] },
+      { "name": "G4", "coverage_assets": [], "gaps": ["A03"] }
+    ] },
+    "threatIntel": { "actors": [ { "name": "GROUP-A", "confidence": "medium", "exploits_vuln_ids": ["V1"] } ] },
+    "topology": { "crown_jewels": ["A02"], "edges": [
+      { "from": "internet", "to": "A01", "trust": "exposed" },
+      { "from": "A01", "to": "A02", "trust": "network" }
+    ] }
+  },
+  "cases": [
+    {
+      "name": "全部輸入齊全",
+      "inputs": {},
+      "why": {
+        "F1": "可能性 3 + 0.5 + 2 + 3×0.5 + 3 + 情資 medium 1.5 = 11.5，夾到 10；影響 4×1.4 + 1 + 入口 2 = 8.6；分數 86 → P1",
+        "F3": "可能性 3 + 3×0.2 + 身分 min(2,3)×0.8 + 設定 min(1.5,3×0.75)×0.8 + 缺口 min(1.5,4×0.4)×0.8 = 3 + 0.6 + 1.6 + 1.2 + 1.2 = 7.6；影響 3×1.4 + 2 = 6.2；分數 47.12 → 47.1 → P2；EPSS 0.2 < 0.5 不列因子",
+        "F4": "可能性 3 + 3×1 + 身分 min(2,1)×0.8 = 6.8（U3 的 linked_assets 是 A03;A04、MFA partial，A04 也算一項；EPSS 1.0 以 JS 的數字格式寫成 1）；影響 2×1.4 + 0 = 2.8；分數 19.04 → 19 → P4",
+        "F2": "缺 EPSS/KEV，改用 CVSS 近似：7/10×1.5 = 1.05；既有控制 −min(2,0.6)×0.8 = −0.48；可能性 0.57；影響 5×1.4 + 3 + crown jewel 2 = 12，夾到 10；分數 5.7 → P4"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "缺威脅情資：情資因子不算，其餘不變",
+      "inputs": { "threatIntel": false },
+      "why": { "F1": "可能性 3 + 0.5 + 2 + 1.5 + 3 = 10；影響與分數不變（86，P1），因子少了威脅情資" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "缺拓樸：沒有入口加分；crown_jewels 照樣讀得到，所以 crown jewel 照樣列",
+      "inputs": { "topology": false },
+      "why": {
+        "F1": "可能性同第一案 10；影響 4×1.4 + 1 = 6.6（沒有路徑就沒有入口）；分數 66 → P1",
+        "F2": "影響 5×1.4 + 3 = 10（crown_jewels 照樣讀得到，所以 crown jewel 仍列，夾到 10）；分數 5.7 → P4"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    }
+  ]
+}
