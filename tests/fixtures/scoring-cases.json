@@ -1,5 +1,5 @@
 {
-  "_note": "評分的共用案例（#228、ADR 0010）：示範引擎 assets/demo.js 的 analyze() 與 Python 分析工作流程核心的評分函式都要算出 expected。預期值是依示範規則手算的（計算過程寫在 why），不是拿其中一份實作的輸出。expected 依分數由高到低排列；likelihood、impact 允許 1e-9 的浮點誤差，score、priority、factors 逐字比對。",
+  "_note": "評分的共用案例（#228、ADR 0010）：示範引擎 assets/demo.js 的 analyze() 與 Python 分析工作流程核心的評分函式都要算出 expected。預期值是依示範規則手算的（計算過程寫在 why），不是拿其中一份實作的輸出。expected 依分數由高到低排列；likelihood、impact 允許 1e-9 的浮點誤差，score、priority、factors 逐字比對。data 是選用的，覆蓋 baseData 的某幾個鍵（#237：形狀不對的輸入）。",
   "baseData": {
     "scope": { "organization": "共用案例", "analysis_date": "2026-09-08", "authorized_scope": { "in_scope_assets": ["A01", "A02", "A03", "A04"], "active_testing_authorized": false, "external_scanning_authorized": false }, "reporting": { "audience": ["CISO"] } },
     "assets": [
@@ -79,6 +79,102 @@
         { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
         { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
         { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "threat-intel.json 整份是陣列：形狀不對的情資當成沒有命中（#237）",
+      "inputs": {},
+      "data": { "threatIntel": [ { "actors": [ { "name": "GROUP-A", "confidence": "medium", "exploits_vuln_ids": ["V1"] } ] } ] },
+      "why": { "F1": "沒有情資命中：可能性 3 + 0.5 + 2 + 1.5 + 3 = 10；分數不變（86，P1），因子少了威脅情資（同「缺威脅情資」）" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "threat-intel.json 的 actors 是字串：當成沒有命中（#237）",
+      "inputs": {},
+      "data": { "threatIntel": { "actors": "GROUP-A" } },
+      "why": { "F1": "沒有情資命中：可能性 10、分數 86（P1）不變，因子少了威脅情資（同「缺威脅情資」）" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "個別 actor 形狀不對：不是物件（含 null）、exploits_vuln_ids 不是陣列的那一筆不算命中，其餘照算（#237）",
+      "inputs": {},
+      "data": { "threatIntel": { "actors": [
+        "GROUP-B",
+        null,
+        { "name": "GROUP-C", "confidence": "high", "exploits_vuln_ids": "V3" },
+        { "name": "GROUP-A", "confidence": "medium", "exploits_vuln_ids": ["V1"] }
+      ] } },
+      "why": {
+        "F1": "只有 GROUP-A 命中，同第一案：分數 86（P1），因子含 GROUP-A",
+        "F3": "GROUP-C 的 exploits_vuln_ids 是字串，不算命中：可能性 7.6、分數 47.1（P2）不變；若算成命中（high 2）會是 9.6 × 6.2 = 59.5"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "exposures.json 的 issues 不是字串陣列：那一筆當成沒有 EASM 議題（#237）",
+      "inputs": {},
+      "data": { "exposures": { "exposures": [
+        { "asset_id": "A01", "hostname": "vpn.example", "issues": ["old-tls", 1] },
+        { "asset_id": "A03", "hostname": "app.example", "issues": [1, 2] },
+        { "asset_id": "A04", "hostname": "site.example", "issues": "old-tls" }
+      ] } },
+      "why": {
+        "F1": "issues 混了數字，整筆不算：可能性 3 + 2 + 1.5 + 3 + 情資 1.5 = 11，夾到 10；分數 86（P1）不變，因子少了 EASM 議題",
+        "F3": "issues 全是數字，不算：可能性 7.6、分數 47.1（P2）不變；若算成議題（+0.5）會是 8.1 × 6.2 = 50.2",
+        "F4": "issues 是字串，不算：可能性 6.8、分數 19（P4）不變；若算成議題（+0.5）會是 7.3 × 2.8 = 20.4（P3）"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "threat-intel.json 的 actors 是數字：當成沒有命中（#237）",
+      "inputs": {},
+      "data": { "threatIntel": { "actors": 3 } },
+      "why": { "F1": "沒有情資命中：可能性 10、分數 86（P1）不變，因子少了威脅情資（同「缺威脅情資」）。字串可以逐字元走訪、數字不行，兩種都要守" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "confidence 不是字串或缺少：照 low 計，因子寫「未標信心」（#237 審查）",
+      "inputs": {},
+      "data": { "threatIntel": { "actors": [
+        { "name": "GROUP-A", "confidence": "medium", "exploits_vuln_ids": ["V1"] },
+        { "name": "GROUP-D", "confidence": ["high"], "exploits_vuln_ids": ["V3"] },
+        { "name": "GROUP-E", "exploits_vuln_ids": ["V4"] }
+      ] } },
+      "why": {
+        "F1": "同第一案：分數 86（P1）",
+        "F3": "GROUP-D 的 confidence 是陣列，照 low 1 計：可能性 7.6 + 1 = 8.6；影響 6.2；分數 53.32 → 53.3 → P2。若照 high 2 計會是 9.6 × 6.2 = 59.5",
+        "F4": "GROUP-E 缺 confidence，照 low 1 計：可能性 6.8 + 1 = 7.8；影響 2.8；分數 21.84 → 21.8 → P3"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 8.6, "impact": 6.2, "score": 53.3, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4", "威脅情資命中：GROUP-D（未標信心）"] },
+        { "finding_id": "F4", "likelihood": 7.8, "impact": 2.8, "score": 21.8, "priority": "P3", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1", "威脅情資命中：GROUP-E（未標信心）"] },
         { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
       ]
     }

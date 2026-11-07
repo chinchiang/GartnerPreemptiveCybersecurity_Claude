@@ -24,7 +24,8 @@ class SharedScoringCasesTest(unittest.TestCase):
     def test_shared_cases(self):
         for case in FIXTURE["cases"]:
             with self.subTest(case["name"]):
-                findings = aw.score_findings(copy.deepcopy(FIXTURE["baseData"]), case["inputs"])
+                # data：選用，覆蓋 baseData 的某幾個鍵（例如形狀不對的輸入，#237）
+                findings = aw.score_findings(copy.deepcopy({**FIXTURE["baseData"], **case.get("data", {})}), case["inputs"])
                 self.assertEqual([f["finding_id"] for f in findings], [e["finding_id"] for e in case["expected"]], "依分數由高到低排列")
                 for f, e in zip(findings, case["expected"]):
                     self.assertAlmostEqual(f["likelihood"], e["likelihood"], delta=1e-9, msg=f"{e['finding_id']} 可能性")
