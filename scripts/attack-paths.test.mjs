@@ -1,6 +1,6 @@
-// attack-paths.test.mjs — 示範引擎攻擊路徑的跳數上限與入口加分、缺拓樸時不產生路徑、驗證計畫的授權旗標
+// attack-paths.test.mjs — 示範引擎攻擊路徑的跳數上限與入口加分、缺拓樸時不產生路徑、驗證計畫的授權旗標、密集拓樸的分數表耗時
 // 示範引擎的攻擊路徑假設：從 internet 出發走拓樸的邊到 crown jewel，最多 RULES.feasibility.maxHops（5）跳（見 issue #43）。
-// 影響的「可達 crown jewel 之入口」加分比照同一套路徑規則。
+// 影響的「可達 crown jewel 之入口」加分比照同一套路徑規則，但不窮舉路徑，改用可達性搜尋（#248）。
 // 以最小的鏈狀資料直接呼叫 analyze，只看輸出的路徑與入口資產的 factors。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -78,4 +78,28 @@ test('驗證計畫：主動測試與外部掃描兩個授權旗標缺一不可�
   assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), true, true)), [AUTHORIZED]);
   assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), false, true)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
   assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), false, false)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
+});
+
+// 密集拓樸（#248）：40 個資產，internet 連到每一個，資產之間兩兩互連，crown jewel 是 D0。
+// 窮舉簡單路徑要幾十秒（路徑數約隨資產數的 4 次方成長）；分數表只需要「哪些入口可達 crown jewel」，要在 2 秒內算完。
+// 每個資產都有一條直達 D0 的邊（D0 本身是 crown jewel），所以每一項發現都有入口加分。
+const DENSE_IDS = Array.from({ length: 40 }, (_, i) => `D${i}`);
+const denseBundle = () => ({
+  scope: { organization: '測試', analysis_date: '2026-11-08', reporting: { audience: ['CISO'] },
+           authorized_scope: { in_scope_assets: DENSE_IDS, active_testing_authorized: false, external_scanning_authorized: false } },
+  assets: DENSE_IDS.map(asset),
+  vulnerabilities: DENSE_IDS.map((id, i) => ({ ...vuln, finding_id: `F${i}`, asset_id: id })),
+  topology: { crown_jewels: ['D0'], edges: [
+    ...DENSE_IDS.map(id => edge('internet', id)),
+    ...DENSE_IDS.flatMap(from => DENSE_IDS.filter(to => to !== from).map(to => edge(from, to)))
+  ] }
+});
+
+test('密集拓樸：40 個資產完全連通時，分數表 2 秒內算完，每一項都有入口加分（#248）', () => {
+  const started = performance.now();
+  const table = DEMO.scoreTable(denseBundle());
+  const elapsed = performance.now() - started;
+  assert.ok(elapsed < 2000, `scoreTable 花了 ${Math.round(elapsed)} 毫秒`);
+  assert.equal(table.findings.length, 40);
+  assert.ok(table.findings.every(f => f.factors.includes(ENTRY_FACTOR)), '每一項都有入口加分');
 });

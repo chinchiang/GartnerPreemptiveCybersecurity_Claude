@@ -425,6 +425,184 @@
         {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
         {"finding_id":"F2","likelihood":1.05,"impact":10,"score":10.5,"priority":"P4","factors":["crown jewel"]}
       ]
+    },
+    {
+      "name": "入口到 crown jewel 剛好用完跳數上限（從 internet 算起 5 跳）：有入口加分（#248）",
+      "inputs": {},
+      "data": {
+        "scope": { "organization": "共用案例", "analysis_date": "2026-09-08", "authorized_scope": { "in_scope_assets": ["A01", "A02", "A03", "A04", "X1", "X2", "X3", "X4"], "active_testing_authorized": false, "external_scanning_authorized": false }, "reporting": { "audience": ["CISO"] } },
+        "assets": [
+          { "asset_id": "A01", "name": "vpn", "type": "VPN", "business_criticality": 4, "data_classification": "Internal", "internet_exposed": true },
+          { "asset_id": "A02", "name": "db", "type": "DB", "business_criticality": 5, "data_classification": "Restricted", "internet_exposed": false },
+          { "asset_id": "A03", "name": "app", "type": "App", "business_criticality": 3, "data_classification": "Confidential", "internet_exposed": true },
+          { "asset_id": "A04", "name": "site", "type": "Site", "business_criticality": 2, "data_classification": "Public", "internet_exposed": true },
+          { "asset_id": "X1", "name": "x1", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X2", "name": "x2", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X3", "name": "x3", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X4", "name": "x4", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false }
+        ],
+        "topology": { "crown_jewels": ["A02"], "edges": [
+          { "from": "internet", "to": "A01", "trust": "exposed" },
+          { "from": "A01", "to": "X1", "trust": "network" },
+          { "from": "X1", "to": "X2", "trust": "network" },
+          { "from": "X2", "to": "X3", "trust": "network" },
+          { "from": "X3", "to": "A02", "trust": "network" }
+        ] }
+      },
+      "why": {
+        "F1": "internet → A01 → X1 → X2 → X3 → A02 共 5 跳，等於跳數上限，A01 是入口：結果同第一案，影響 8.6，分數 86 → P1",
+        "其他": "X1–X4 沒有弱點，不產生發現；A03、A04 沒有 internet 連進來的邊，不是入口；F2、F3、F4 同第一案"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "入口到 crown jewel 比跳數上限多 1 跳（從 internet 算起 6 跳）：沒有入口加分（#248）",
+      "inputs": {},
+      "data": {
+        "scope": { "organization": "共用案例", "analysis_date": "2026-09-08", "authorized_scope": { "in_scope_assets": ["A01", "A02", "A03", "A04", "X1", "X2", "X3", "X4"], "active_testing_authorized": false, "external_scanning_authorized": false }, "reporting": { "audience": ["CISO"] } },
+        "assets": [
+          { "asset_id": "A01", "name": "vpn", "type": "VPN", "business_criticality": 4, "data_classification": "Internal", "internet_exposed": true },
+          { "asset_id": "A02", "name": "db", "type": "DB", "business_criticality": 5, "data_classification": "Restricted", "internet_exposed": false },
+          { "asset_id": "A03", "name": "app", "type": "App", "business_criticality": 3, "data_classification": "Confidential", "internet_exposed": true },
+          { "asset_id": "A04", "name": "site", "type": "Site", "business_criticality": 2, "data_classification": "Public", "internet_exposed": true },
+          { "asset_id": "X1", "name": "x1", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X2", "name": "x2", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X3", "name": "x3", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X4", "name": "x4", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false }
+        ],
+        "topology": { "crown_jewels": ["A02"], "edges": [
+          { "from": "internet", "to": "A01", "trust": "exposed" },
+          { "from": "A01", "to": "X1", "trust": "network" },
+          { "from": "X1", "to": "X2", "trust": "network" },
+          { "from": "X2", "to": "X3", "trust": "network" },
+          { "from": "X3", "to": "X4", "trust": "network" },
+          { "from": "X4", "to": "A02", "trust": "network" }
+        ] }
+      },
+      "why": {
+        "F1": "internet → A01 → X1 → X2 → X3 → X4 → A02 共 6 跳，超過跳數上限 5，A01 不是入口：同「缺拓樸」，影響 4×1.4 + 1 = 6.6，分數 66 → P1，因子少了入口",
+        "其他": "F2、F3、F4 同第一案"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "拓樸裡有環：照樣算得出來，入口照最短的路判斷（#248）",
+      "inputs": {},
+      "data": {
+        "scope": { "organization": "共用案例", "analysis_date": "2026-09-08", "authorized_scope": { "in_scope_assets": ["A01", "A02", "A03", "A04", "X1", "X2", "X3", "X4"], "active_testing_authorized": false, "external_scanning_authorized": false }, "reporting": { "audience": ["CISO"] } },
+        "assets": [
+          { "asset_id": "A01", "name": "vpn", "type": "VPN", "business_criticality": 4, "data_classification": "Internal", "internet_exposed": true },
+          { "asset_id": "A02", "name": "db", "type": "DB", "business_criticality": 5, "data_classification": "Restricted", "internet_exposed": false },
+          { "asset_id": "A03", "name": "app", "type": "App", "business_criticality": 3, "data_classification": "Confidential", "internet_exposed": true },
+          { "asset_id": "A04", "name": "site", "type": "Site", "business_criticality": 2, "data_classification": "Public", "internet_exposed": true },
+          { "asset_id": "X1", "name": "x1", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X2", "name": "x2", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X3", "name": "x3", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X4", "name": "x4", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false }
+        ],
+        "topology": { "crown_jewels": ["A02"], "edges": [
+          { "from": "internet", "to": "A01", "trust": "exposed" },
+          { "from": "A01", "to": "X1", "trust": "network" },
+          { "from": "X1", "to": "X2", "trust": "network" },
+          { "from": "X2", "to": "X1", "trust": "network" },
+          { "from": "X2", "to": "A01", "trust": "network" },
+          { "from": "X2", "to": "X3", "trust": "network" },
+          { "from": "X3", "to": "A02", "trust": "network" }
+        ] }
+      },
+      "why": {
+        "F1": "X1 ⇄ X2 與 A01 → X1 → X2 → A01 是環；不繞環的路 internet → A01 → X1 → X2 → X3 → A02 共 5 跳，A01 是入口：結果同第一案，分數 86 → P1",
+        "其他": "F2、F3、F4 同第一案"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "唯一的路徑中途經過不在資產清冊裡的節點：沒有入口加分（#248）",
+      "inputs": {},
+      "data": {
+        "topology": { "crown_jewels": ["A02"], "edges": [
+          { "from": "internet", "to": "A01", "trust": "exposed" },
+          { "from": "A01", "to": "X9", "trust": "network" },
+          { "from": "X9", "to": "A02", "trust": "network" }
+        ] }
+      },
+      "why": {
+        "F1": "X9 不在資產清冊裡，攻擊路徑只走清冊看得到的節點，internet → A01 → X9 → A02 不算；A01 不是入口：同「缺拓樸」，影響 6.6，分數 66 → P1，因子少了入口",
+        "其他": "F2、F3、F4 同第一案"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "資產編號剛好是 internet（而且列為 crown jewel）：路徑不經過 internet，也不從它往回找（#248 審查）",
+      "inputs": {},
+      "data": {
+        "scope": { "organization": "共用案例", "analysis_date": "2026-09-08", "authorized_scope": { "in_scope_assets": ["A01", "A02", "A03", "A04", "internet", "X1"], "active_testing_authorized": false, "external_scanning_authorized": false }, "reporting": { "audience": ["CISO"] } },
+        "assets": [
+          { "asset_id": "A01", "name": "vpn", "type": "VPN", "business_criticality": 4, "data_classification": "Internal", "internet_exposed": true },
+          { "asset_id": "A02", "name": "db", "type": "DB", "business_criticality": 5, "data_classification": "Restricted", "internet_exposed": false },
+          { "asset_id": "A03", "name": "app", "type": "App", "business_criticality": 3, "data_classification": "Confidential", "internet_exposed": true },
+          { "asset_id": "A04", "name": "site", "type": "Site", "business_criticality": 2, "data_classification": "Public", "internet_exposed": true },
+          { "asset_id": "internet", "name": "名稱撞到 internet 的資產", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false },
+          { "asset_id": "X1", "name": "x1", "type": "Server", "business_criticality": 1, "data_classification": "Internal", "internet_exposed": false }
+        ],
+        "topology": { "crown_jewels": ["A02", "internet"], "edges": [
+          { "from": "internet", "to": "A01", "trust": "exposed" },
+          { "from": "A01", "to": "internet", "trust": "network" },
+          { "from": "internet", "to": "X1", "trust": "exposed" },
+          { "from": "X1", "to": "A02", "trust": "network" }
+        ] }
+      },
+      "why": {
+        "F1": "A01 唯一往外的邊是 A01 → internet；攻擊路徑從 internet 出發、不會再回到 internet，所以 internet 列為 crown jewel 也到不了，A01 → internet → X1 → A02 也不能走：A01 不是入口。同「缺拓樸」，影響 6.6，分數 66 → P1，因子少了入口",
+        "其他": "X1 是入口但沒有弱點；名稱撞到 internet 的資產沒有弱點；F2、F3、F4 同第一案"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 6.6, "score": 66, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "入口本身就是 crown jewel：也有入口加分（#248 審查）",
+      "inputs": {},
+      "data": {
+        "topology": { "crown_jewels": ["A02"], "edges": [
+          { "from": "internet", "to": "A01", "trust": "exposed" },
+          { "from": "A01", "to": "A02", "trust": "network" },
+          { "from": "internet", "to": "A02", "trust": "exposed" }
+        ] }
+      },
+      "why": {
+        "F2": "internet → A02 一跳就到 crown jewel，A02 是入口：影響 5×1.4 + 3 + crown jewel 2 + 入口 2 = 14，夾到 10；分數仍是 5.7 → P4，因子多了入口（排在 crown jewel 後面）",
+        "其他": "F1、F3、F4 同第一案"
+      },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel", "可達 crown jewel 之入口（blast radius）"] }
+      ]
     }
   ]
 }

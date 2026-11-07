@@ -9,6 +9,7 @@
 import copy
 import json
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -67,6 +68,29 @@ class SyntheticDataMatchesDemoSnapshotTest(unittest.TestCase):
         vpn = next(f for f in aw.score_findings(bundle, flags) if f["vuln_id"] == "SYN-2026-0101")
         self.assertEqual((vpn["priority"], vpn["score"]), ("P1", 86))
         self.assertFalse(any("威脅情資" in factor for factor in vpn["factors"]))
+
+
+class DenseTopologyTest(unittest.TestCase):
+    """密集拓樸（#248）：40 個資產，internet 連到每一個，資產之間兩兩互連，crown jewel 是 D0。
+    窮舉簡單路徑要幾十秒；入口加分只需要「哪些入口可達 crown jewel」，要在 2 秒內算完。
+    每個資產都有一條直達 D0 的邊（D0 本身是 crown jewel），所以每一項發現都有入口加分。示範引擎那一份在 scripts/attack-paths.test.mjs。"""
+
+    def test_forty_fully_connected_assets_score_within_two_seconds(self):
+        ids = [f"D{i}" for i in range(40)]
+        data = {
+            "assets": [{"asset_id": i, "name": i, "type": "server", "business_criticality": 3, "data_classification": "Internal",
+                        "internet_exposed": True, "environment": "IT"} for i in ids],
+            "vulnerabilities": [{"finding_id": f"F{n}", "asset_id": i, "vuln_id": "TEST-1", "cvss_base": 5, "exploit_public": False,
+                                 "epss_sim": 0, "kev_sim": False} for n, i in enumerate(ids)],
+            "topology": {"crown_jewels": ["D0"], "edges": [{"from": "internet", "to": i, "trust": "network"} for i in ids]
+                         + [{"from": a, "to": b, "trust": "network"} for a in ids for b in ids if a != b]},
+        }
+        started = time.perf_counter()
+        findings = aw.score_findings(data)
+        elapsed = time.perf_counter() - started
+        self.assertLess(elapsed, 2, f"score_findings 花了 {elapsed:.1f} 秒")
+        self.assertEqual(len(findings), 40)
+        self.assertTrue(all("可達 crown jewel 之入口（blast radius）" in f["factors"] for f in findings), "每一項都有入口加分")
 
 
 if __name__ == "__main__":

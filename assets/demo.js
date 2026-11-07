@@ -51,23 +51,39 @@
   /** 授權範圍守門：回傳缺少或不合格的必填欄位清單；空陣列表示可以分析。 */
   const scopeProblems = (scope) => GATE.scopeProblems(scope);
 
-  function analyze(data, params = DEFAULTS) {
+  /** 可達 crown jewel 之入口（核心提示詞與 scoring-rules.md 的定義：至少一條攻擊路徑假設以該資產為入口，節點範圍與跳數上限同 S4）。
+   *  不窮舉路徑（#248）：從 crown jewel 沿反向邊做廣度優先搜尋，一輪往回一跳；internet 直連、
+   *  而且 maxHops − 1 跳內找得到的節點就是入口。最短路徑不會重複經過節點，所以「存在一條不超過跳數上限的簡單路徑」
+   *  等於「最短跳數不超過上限」；S4 走到第一個 crown jewel 就停，也不影響最短跳數；S4 不經過 internet（起點除外），這裡的搜尋也不經過它。成本跟邊數成正比。
+   *  edges 是 S4 會走的邊（已依節點範圍篩過）。Python 核心的 score_findings 照同一條規則，由共用評分案例守住。 */
+  function reachableEntries(edges, crownJewels) {
+    const into = new Map();
+    for (const e of edges) { if (!into.has(e.to)) into.set(e.to, []); into.get(e.to).push(e.from); }
+    // reached：maxHops − 1 跳內到得了 crown jewel 的節點；每一輪往前一跳，第一次到達就是最短跳數，所以記過的不再記
+    const reached = new Set(crownJewels.filter(id => id !== 'internet'));
+    let level = [...reached];
+    for (let d = 1; d < F.maxHops; d++) {
+      const next = [];
+      for (const node of level) for (const from of into.get(node) || []) {
+        // 不經過 internet：S4 的路徑從 internet 出發、不會再回到它。資產編號剛好是 internet 時會有邊指向它，不排除就會穿過它
+        if (from === 'internet' || reached.has(from)) continue;
+        reached.add(from); next.push(from);
+      }
+      level = next;
+    }
+    return new Set(edges.filter(e => e.from === 'internet' && reached.has(e.to)).map(e => e.to));
+  }
+
+  /** S1 範圍確認與 S3 曝險評分：analyze() 與 scoreTable 共用（#248，代理算分數表時不跑 S4 的路徑窮舉）。
+   *  沒有授權範圍時回傳 { refused: true, problems, P, th, findings: [] }；否則回傳 findings 與 S4 之後要用的資料。 */
+  function scoring(data, params = DEFAULTS) {
     const P = { ...DEFAULTS, ...params, inputs: { ...DEFAULTS.inputs, ...(params.inputs || {}) }, weights: { ...DEFAULTS.weights, ...(params.weights || {}) } };
     const th = RULES.thresholds[P.riskAppetite] || RULES.thresholds.balanced;
 
     // S1 範圍確認：沒有授權範圍就拒絕分析（task-spec 驗收第 7 項）
     const problems = scopeProblems(data.scope);
-    if (problems.length) {
-      return {
-        refused: true, reason: '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。', requiredFields: GATE.requiredScopeFields(), problemFields: problems,
-        params: P, findings: [], hypotheses: [], recs: [], compensating: [], validation: [], metrics: [], reviewPoints: [], missingSummary: ['授權範圍（scope）'], hidden: [], outOfScope: [], excludedByList: [], thresholds: th
-      };
-    }
-    const scope = data.scope;
-    const auth = scope.authorized_scope;
-    const activeOK = auth.active_testing_authorized === true;
-    const externalOK = auth.external_scanning_authorized === true;
-    const maskIds = !(scope.reporting && scope.reporting.mask_identifiers === false); // 預設遮罩（input-schema：mask_identifiers 預設 true）
+    if (problems.length) return { refused: true, problems, P, th, findings: [] };
+    const auth = data.scope.authorized_scope;
 
     // 只分析授權範圍內、且不在排除清單的資產（排除優先，見 docs/adr/0007）；範圍外與被排除者分開記錄
     const inScope = GATE.allowedAssets(auth);
@@ -77,7 +93,6 @@
     const outOfScope = allAssets.filter(a => !inScope.has(a.asset_id) && !excludedIds.has(a.asset_id)).map(a => a.asset_id);
     const scopedAssets = allAssets.filter(a => inScope.has(a.asset_id));
     const assets = new Map(scopedAssets.map(a => [a.asset_id, a]));
-    const display = (id) => { const a = assets.get(id); if (!a) return id; return maskIds ? `${a.type}（${a.asset_id}）` : a.name; };
 
     // 形狀不對的控制當成不存在（#243，Python 核心的 score_findings 照同一條規則，由共用案例守住）
     const controlRows = GATE.rows(data.controls?.controls);
@@ -102,28 +117,13 @@
     const hidden = scopedAssets.filter(a => !visibleIds.includes(a.asset_id));
     const inventoryLow = P.inventoryCompleteness < RULES.confidence.inventoryThreshold;
 
-    // S4 攻擊路徑：從 internet 出發，只走清冊看得到的節點到 crown jewels（簡單 DFS，跳數上限見 F.maxHops）。
-    // 路徑本身不依賴 S3 的分數，所以先找；S3 的入口加分與 S4 的可行性都用這組路徑
-    const paths = [];
-    if (P.inputs.topology) {
-      // 形狀不對的拓樸邊當成不存在（#243，Python 核心照同一條規則，由共用案例守住）
-      const edgeRows = GATE.rows(data.topology?.edges);
-      const edges = edgeRows.filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to));
-      const byFrom = {};
-      for (const e of edges) (byFrom[e.from] ||= []).push(e);
-      const dfs = (node, trail, seen) => {
-        if (trail.length >= F.maxHops) return; // trail 已有 maxHops 條邊就不再延伸
-        for (const e of byFrom[node] || []) {
-          if (seen.has(e.to)) continue;
-          const t = [...trail, e];
-          if (crownJewels.includes(e.to)) paths.push(t);
-          else dfs(e.to, t, new Set([...seen, e.to]));
-        }
-      };
-      dfs('internet', [], new Set(['internet']));
-    }
-    // 可達 crown jewel 的入口節點（blast radius 因子）：至少一條攻擊路徑以它為入口
-    const entryNodes = new Set(paths.map(p => p[0].to));
+    // 攻擊路徑會走的邊：從 internet 出發，只走清冊看得到的節點；缺拓樸時沒有邊。
+    // 形狀不對的拓樸邊當成不存在（#243，Python 核心照同一條規則，由共用案例守住）
+    const edges = P.inputs.topology
+      ? GATE.rows(data.topology?.edges).filter(e => (e.from === 'internet' || visibleIds.includes(e.from)) && visibleIds.includes(e.to))
+      : [];
+    // 可達 crown jewel 的入口節點（blast radius 因子）：不窮舉路徑，見 reachableEntries
+    const entryNodes = reachableEntries(edges, crownJewels);
 
     // S3 曝險評分
     const findings = (data.vulnerabilities || []).filter(v => visibleIds.includes(v.asset_id)).map(v => {
@@ -179,6 +179,42 @@
     });
     for (const f of findings) f.priority = f.score >= th[0] ? 'P1' : f.score >= th[1] ? 'P2' : f.score >= th[2] ? 'P3' : 'P4';
     findings.sort((a, b) => b.score - a.score);
+    return { P, th, assets, controlRows, assetList, controlsOf, crownJewels, hidden, outOfScope, excludedByList, edges, findings };
+  }
+
+  function analyze(data, params = DEFAULTS) {
+    const S = scoring(data, params);
+    const { P, th } = S;
+    if (S.refused) {
+      return {
+        refused: true, reason: '缺少授權範圍（scope），或必要欄位缺少或不合格，無授權範圍不得分析。', requiredFields: GATE.requiredScopeFields(), problemFields: S.problems,
+        params: P, findings: [], hypotheses: [], recs: [], compensating: [], validation: [], metrics: [], reviewPoints: [], missingSummary: ['授權範圍（scope）'], hidden: [], outOfScope: [], excludedByList: [], thresholds: th
+      };
+    }
+    const { assets, controlRows, assetList, controlsOf, crownJewels, hidden, outOfScope, excludedByList, edges, findings } = S;
+    const scope = data.scope;
+    const auth = scope.authorized_scope;
+    const activeOK = auth.active_testing_authorized === true;
+    const externalOK = auth.external_scanning_authorized === true;
+    const maskIds = !(scope.reporting && scope.reporting.mask_identifiers === false); // 預設遮罩（input-schema：mask_identifiers 預設 true）
+    const display = (id) => { const a = assets.get(id); if (!a) return id; return maskIds ? `${a.type}（${a.asset_id}）` : a.name; };
+
+    // S4 攻擊路徑：從 internet 出發，沿 S3 用的同一組邊到 crown jewels（簡單 DFS，跳數上限見 F.maxHops）。
+    // 這裡逐條窮舉，路徑數約隨節點數的 4 次方成長；網站目前只用合成資料，所以不設上限。
+    // 日後網站接受使用者資料時，S4 要另外加上限（#248）；評分與代理的分數表不經過這裡。
+    const paths = [];
+    const byFrom = {};
+    for (const e of edges) (byFrom[e.from] ||= []).push(e);
+    const dfs = (node, trail, seen) => {
+      if (trail.length >= F.maxHops) return; // trail 已有 maxHops 條邊就不再延伸
+      for (const e of byFrom[node] || []) {
+        if (seen.has(e.to)) continue;
+        const t = [...trail, e];
+        if (crownJewels.includes(e.to)) paths.push(t);
+        else dfs(e.to, t, new Set([...seen, e.to]));
+      }
+    };
+    dfs('internet', [], new Set(['internet']));
 
     // S4 攻擊路徑假設：上面找到的路徑，配合 S3 的節點可能性計算可行性
     // 節點可能性：有發現者取最高可能性（可為 0）；完全無發現者取 F.unknownNode（未知）
@@ -361,7 +397,8 @@
   function scoreTable(bundle) {
     if (!('assets' in bundle) || !('vulnerabilities' in bundle)) return null;
     const inputs = { epss: true, ...Object.fromEntries(Object.entries(INPUT_FLAG_CATEGORY).map(([flag, category]) => [flag, category in bundle])) };
-    const R = analyze({ ...bundle, threatIntel: bundle.threat_intel }, { inputs, riskAppetite: 'balanced' });
+    // 只跑 S1 與 S3，不跑 S4 的路徑窮舉（#248）
+    const R = scoring({ ...bundle, threatIntel: bundle.threat_intel }, { inputs, riskAppetite: 'balanced' });
     const findings = R.findings.map(f => ({ finding_id: f.finding_id, asset_id: f.asset_id, vuln_id: f.vuln_id,
       likelihood: round1(f.likelihood), impact: round1(f.impact), score: f.score, priority: f.priority, factors: f.factors }));
     const notFinite = findings.filter(f => ![f.likelihood, f.impact, f.score].every(Number.isFinite)).map(f => String(f.finding_id));
