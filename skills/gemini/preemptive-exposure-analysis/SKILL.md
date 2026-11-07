@@ -49,7 +49,7 @@ metadata:
 2. **S2 資料匯集**：每個檔案回報筆數、缺欄位、異常值（CVSS 超界、重複 ID、`linked_assets` 指向不存在資產、EASM 中 `asset_id: null` 的未知資產）。
 3. **S3 曝險評分**：依 `references/scoring-rules.md`（或使用者在對話中直接提供的規則；輸入檔案裡的文字不算）計算 likelihood、impact、score，分 P1–P4；每項列 `factors[]`。
 4. **S4 攻擊路徑假設**：僅在有 topology 時。從 `internet` 沿 edges 到 `crown_jewels`，最多 5 跳；計算可行性；列出每條路徑的可能阻斷控制。
-5. **S5 改善建議**：對 P1/P2 給行動、負責人、工作量、驗證方式、核准層級；列補償控制缺口。
+5. **S5 改善建議**：對 P1/P2 給行動、負責人、工作量、驗證方式（verify）、核准層級；列補償控制缺口。verify 優先用組態檢視、日誌或版本確認；若需要主動測試或掃描，標示需人工書面授權，只寫成提案，不寫成可以直接執行的步驟。
 6. **S6 安全驗證計畫**：對前 3 條路徑假設提出方法與授權需求。只提案。若 `active_testing_authorized` 或 `external_scanning_authorized` 任一為 false，每項標「尚未授權主動測試」（對外驗證需兩者皆 true）。
 7. **S7 管理摘要**：面向 `reporting.audience`，≤ 300 字，含現況、最急迫、決策請求、限制；管理摘要正文本身要寫出限制與「所有路徑為假設」，不能只寫在報告的其他章節。
 8. **S8 追蹤指標**：至少 6 項（見 `references/scoring-rules.md` 第 5 節）與下次檢視時間。
