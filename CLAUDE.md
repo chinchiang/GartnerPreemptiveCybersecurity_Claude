@@ -1,1 +1,1 @@
-@Canva AGENTS.md
+@AGENTS.md
