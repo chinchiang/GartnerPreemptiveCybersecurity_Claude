@@ -562,12 +562,18 @@ def is_unlisted_exposure(row: dict) -> bool:
     return row.get("asset_id") is None
 
 
+def object_list(value) -> list:
+    """資料列：清單裡是物件的那些項目；不是陣列時是空的（#245）。送往模型前的授權範圍篩選（scoped_files）
+    與評分（經 object_rows）共用這一個判定；示範引擎與 scopedBundle 共用的 GATE.rows（assets/scope-gate.js）是同一條規則，
+    由共用篩選案例 tests/fixtures/scoped-bundle-cases.json 與共用評分案例 tests/fixtures/scoring-cases.json 守住。
+    腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
+    return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
+
+
 def object_rows(container, key: str) -> list:
-    """物件包著的清單裡是物件的那些項目；container 不是物件、清單不是陣列時是空的（#238、#243）。
-    評分（score_findings 的 exposures、controls、edges）與未納入清冊的對外資產（unlisted_hosts）共用；
-    示範引擎的 GATE.rows 是同一條規則，由共用評分案例守住。腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
-    rows = container.get(key) if isinstance(container, dict) else None
-    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+    """物件包著的清單裡的資料列（object_list）；container 不是物件時是空的（#238、#243）。
+    評分（score_findings 的 exposures、controls、edges）與未納入清冊的對外資產（unlisted_hosts）共用。"""
+    return object_list(container.get(key) if isinstance(container, dict) else None)
 
 
 def exposure_rows(exposures) -> list:
@@ -625,9 +631,6 @@ def scoped_files(inputs: Inputs) -> list:
     import copy
     allowed = allowed_asset_ids(inputs.scope["authorized_scope"])
 
-    def rows(value):
-        return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
-
     def in_scope(value):
         return isinstance(value, str) and value in allowed
 
@@ -639,10 +642,10 @@ def scoped_files(inputs: Inputs) -> list:
         f = copy.deepcopy(source)
         data, category = f["data"], f["category"]
         if category in ("assets", "vulnerabilities", "misconfigurations"):
-            data = [row for row in rows(data) if in_scope(row.get("asset_id"))]
+            data = [row for row in object_list(data) if in_scope(row.get("asset_id"))]
         elif category == "identities":
             identities = []
-            for row in rows(data):
+            for row in object_list(data):
                 linked = refs(row["linked_assets"].split(";")) if isinstance(row.get("linked_assets"), str) else []
                 if linked:
                     row["linked_assets"] = ";".join(linked)
@@ -651,11 +654,11 @@ def scoped_files(inputs: Inputs) -> list:
         elif category == "exposures":
             data = data if isinstance(data, dict) else {}
             # 未納入清冊的對外資產照常送出，模型才能把它列進資料品質與指標（#206，ADR 0009）
-            data["exposures"] = [row for row in rows(data.get("exposures")) if in_scope(row.get("asset_id")) or is_unlisted_exposure(row)]
+            data["exposures"] = [row for row in object_list(data.get("exposures")) if in_scope(row.get("asset_id")) or is_unlisted_exposure(row)]
         elif category == "controls":
             data = data if isinstance(data, dict) else {}
             controls = []
-            for row in rows(data.get("controls")):
+            for row in object_list(data.get("controls")):
                 row["coverage_assets"] = refs(row.get("coverage_assets"))
                 row["gaps"] = refs(row.get("gaps"))
                 if row["coverage_assets"] or row["gaps"]:
@@ -664,7 +667,7 @@ def scoped_files(inputs: Inputs) -> list:
         elif category == "topology":
             data = data if isinstance(data, dict) else {}
             data["crown_jewels"] = refs(data.get("crown_jewels"))
-            data["edges"] = [e for e in rows(data.get("edges")) if (e.get("from") == "internet" or in_scope(e.get("from"))) and in_scope(e.get("to"))]
+            data["edges"] = [e for e in object_list(data.get("edges")) if (e.get("from") == "internet" or in_scope(e.get("from"))) and in_scope(e.get("to"))]
         f["data"] = data
         if f["name"].endswith(".csv"):
             buf = io.StringIO()
