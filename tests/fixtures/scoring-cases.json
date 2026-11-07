@@ -177,6 +177,54 @@
         { "finding_id": "F4", "likelihood": 7.8, "impact": 2.8, "score": 21.8, "priority": "P3", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1", "威脅情資命中：GROUP-E（未標信心）"] },
         { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
       ]
+    },
+    {
+      "name": "exposures.json 的清單有 null：那一項當成不存在（#238）",
+      "inputs": {},
+      "data": { "exposures": { "exposures": [ null, { "asset_id": "A01", "hostname": "vpn.example", "issues": ["old-tls"] } ] } },
+      "why": { "F1": "null 那一項跳過，A01 的 EASM 議題照算：同第一案，分數 86（P1）" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "EASM 議題：old-tls", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "exposures.json 的 exposures 是字串：當成沒有任何曝險資料（#238）",
+      "inputs": {},
+      "data": { "exposures": { "exposures": "abc" } },
+      "why": { "F1": "沒有 EASM 議題：可能性 3 + 2 + 1.5 + 3 + 情資 1.5 = 11，夾到 10；分數 86（P1）不變，因子少了 EASM 議題" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "exposures.json 的 exposures 是物件：當成沒有任何曝險資料（#238）",
+      "inputs": {},
+      "data": { "exposures": { "exposures": { "A01": { "issues": ["old-tls"] } } } },
+      "why": { "F1": "沒有 EASM 議題：可能性 3 + 2 + 1.5 + 3 + 情資 1.5 = 11，夾到 10；分數 86（P1）不變，因子少了 EASM 議題" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
+    },
+    {
+      "name": "exposures.json 的 exposures 是數字：當成沒有任何曝險資料（#238 審查）",
+      "inputs": {},
+      "data": { "exposures": { "exposures": 5 } },
+      "why": { "F1": "沒有 EASM 議題：可能性 11 夾到 10；分數 86（P1）不變，因子少了 EASM 議題。數字不能走訪，字串、物件可以，三種都要守" },
+      "expected": [
+        { "finding_id": "F1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": ["對外曝露", "公開利用程式", "模擬 EPSS 0.5", "模擬 KEV（已知遭利用）", "威脅情資命中：GROUP-A（medium）", "可達 crown jewel 之入口（blast radius）"] },
+        { "finding_id": "F3", "likelihood": 7.6, "impact": 6.2, "score": 47.1, "priority": "P2", "factors": ["對外曝露", "身分弱點 ×3", "設定偏差 ×3", "控制缺口：G1、G2、G3、G4"] },
+        { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
+        { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel"] }
+      ]
     }
   ]
 }

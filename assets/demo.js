@@ -29,6 +29,18 @@
     weights: { exposure: 1.0, exploit: 1.0, identity: 0.8, control: 0.8, intel: 1.0, impact: 1.0 }
   });
   const L = RULES.likelihood, I = RULES.impact, F = RULES.feasibility;
+  // 未納入清冊的對外資產：EASM 清單裡 asset_id 是空的物件；不是物件的項目（例如 null）不算（#238，Python 的 unlisted_hosts 也只看物件）。
+  // 注意：這裡的「空」含空字串，Python 的 is_unlisted_exposure 與授權範圍守門只認 null 或缺欄位（ADR 0009），兩者不一致，另案處理
+  const isUnlistedExposure = (e) => e !== null && typeof e === 'object' && !e.asset_id;
+  // 檔案筆數（data_quality.files）：物件包著清單的檔案，清單存在但不是陣列時算 0，不是字串長度（#238）。
+  // Python 核心的 count_records 照同一條規則，由共用案例 tests/fixtures/record-count-cases.json 守住
+  const RECORD_LIST_KEY = { 'exposures.json': 'exposures', 'controls.json': 'controls', 'threat-intel.json': 'actors', 'topology.json': 'edges' };
+  const recordCount = (name, content) => {
+    const list = name in RECORD_LIST_KEY ? content?.[RECORD_LIST_KEY[name]] : content;
+    return Array.isArray(list) ? list.length : 0;
+  };
+  // EASM 清單：exposures 不是陣列時當成沒有任何曝險資料（#238，Python 核心只走訪物件，結果相同）
+  const exposureRows = (data) => Array.isArray(data.exposures?.exposures) ? data.exposures.exposures : [];
 
   /** 預設參數（可由 UI 調整） */
   const DEFAULTS = {
@@ -82,7 +94,7 @@
     const confidenceOf = (a) => typeof a.confidence === 'string' ? a.confidence : '未標信心';
     const intelWeight = (a) => typeof a.confidence === 'string' ? L.intel[a.confidence] ?? L.intel.low : L.intel.low;
     const misconfigs = (id) => P.inputs.misconfig ? data.misconfigurations.filter(m => m.asset_id === id && m.status === 'fail') : [];
-    const exposureOf = (id) => P.inputs.exposures ? data.exposures.exposures.find(e => e.asset_id === id) : null;
+    const exposureOf = (id) => P.inputs.exposures ? exposureRows(data).find(e => e?.asset_id === id) : null;
     const crownJewels = (data.topology && data.topology.crown_jewels) || [];
 
     // 模擬資產清冊不完整：依完整度隱藏排序靠後的資產（示範用）
@@ -234,7 +246,7 @@
       { name: '可達 crown jewel 的攻擊路徑假設數', value: hypotheses.length, target: '每條路徑至少一個已驗證阻斷點' },
       { name: '資料齊備程度為高的比例', value: findings.length ? (findings.filter(f => f.confidence === '高').length / findings.length * 100).toFixed(0) + '% 為高' : '-', target: '≥ 80%' },
       { name: '資產清冊完整度（模擬）', value: `${P.inventoryCompleteness}%`, target: '≥ 95%' },
-      { name: '未納入清冊的對外資產', value: P.inputs.exposures ? data.exposures.exposures.filter(e => !e.asset_id).length : '未知', target: '0' }
+      { name: '未納入清冊的對外資產', value: P.inputs.exposures ? exposureRows(data).filter(isUnlistedExposure).length : '未知', target: '0' }
     ];
     const reviewPoints = [
       { stage: '範圍確認', who: 'CISO / 系統擁有者', what: '確認授權範圍、排除項與是否允許任何主動測試' },
@@ -297,16 +309,16 @@
         data_quality: block('缺少 scope'), exposure_priorities: { ...block('未執行'), items: [] }, attack_path_hypotheses: { ...block('未執行'), items: [] }, remediation: { ...block('未執行'), items: [], compensating_controls: [] }, validation_plan: { ...block('未執行'), items: [] }, executive_summary: { ...block('未執行'), audience: [], text: '缺少授權範圍，無法分析。', decisions_requested: ['提供 scope（授權範圍）後重跑'] }, metrics: { ...block('未執行'), items: [] }, human_review_points: [] };
     }
     // 只列入本次實際納入分析的檔案（被切換掉的類別視同未提供，不列入，並反映在 missing_inputs）
-    const unknownExposed = (data.exposures?.exposures || []).filter(e => !e.asset_id).map(e => e.hostname);
+    const unknownExposed = exposureRows(data).filter(isUnlistedExposure).map(e => e.hostname);
     const files = [
       { name: 'scope.json', records: 1, anomalies: [`主動測試授權 = ${scope.authorized_scope?.active_testing_authorized}；外部掃描授權 = ${scope.authorized_scope?.external_scanning_authorized}`] },
-      { name: 'assets.csv', records: data.assets?.length ?? 0 }, { name: 'vulnerabilities.csv', records: data.vulnerabilities?.length ?? 0 },
-      R.params.inputs.exposures && { name: 'exposures.json', records: data.exposures?.exposures?.length ?? 0, anomalies: unknownExposed.map(h => `${h}（asset_id null）未納入清冊`) },
-      R.params.inputs.identities && { name: 'identities.csv', records: data.identities?.length ?? 0 },
-      R.params.inputs.misconfig && { name: 'misconfigurations.csv', records: data.misconfigurations?.length ?? 0 },
-      R.params.inputs.controls && { name: 'controls.json', records: data.controls?.controls?.length ?? 0 },
-      R.params.inputs.threatIntel && { name: 'threat-intel.json', records: data.threatIntel?.actors?.length ?? 0 },
-      R.params.inputs.topology && { name: 'topology.json', records: data.topology?.edges?.length ?? 0 }
+      { name: 'assets.csv', records: recordCount('assets.csv', data.assets) }, { name: 'vulnerabilities.csv', records: recordCount('vulnerabilities.csv', data.vulnerabilities) },
+      R.params.inputs.exposures && { name: 'exposures.json', records: recordCount('exposures.json', data.exposures), anomalies: unknownExposed.map(h => `${h}（asset_id null）未納入清冊`) },
+      R.params.inputs.identities && { name: 'identities.csv', records: recordCount('identities.csv', data.identities) },
+      R.params.inputs.misconfig && { name: 'misconfigurations.csv', records: recordCount('misconfigurations.csv', data.misconfigurations) },
+      R.params.inputs.controls && { name: 'controls.json', records: recordCount('controls.json', data.controls) },
+      R.params.inputs.threatIntel && { name: 'threat-intel.json', records: recordCount('threat-intel.json', data.threatIntel) },
+      R.params.inputs.topology && { name: 'topology.json', records: recordCount('topology.json', data.topology) }
     ].filter(Boolean).map(f => ({ missing_fields: [], anomalies: [], ...f }));
     return {
       meta: {
@@ -339,7 +351,7 @@
     ];
   }
 
-  const api = { analyze, toSchema, scopeProblems, rulesSummary, RULES, DEFAULTS };
+  const api = { analyze, toSchema, recordCount, scopeProblems, rulesSummary, RULES, DEFAULTS };
   if (typeof window !== 'undefined') window.DEMO = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
