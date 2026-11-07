@@ -1,6 +1,6 @@
 # 代理指引（Agent instructions）
 
-本檔是本專案代理指引的唯一來源（single source of truth）；`CLAUDE.md` 僅保留單行 `@Canva AGENTS.md`。
+本檔是本專案代理指引的唯一來源（single source of truth）；`CLAUDE.md` 只保留一行 `@AGENTS.md`，其他內容一律寫在這裡。
 
 ## 回覆語言
 
@@ -11,6 +11,10 @@
 ## 架構報告（Architecture reports）
 
 執行 `improve-codebase-architecture` 時，報告一律儲存至 `scratch/architecture-review-<timestamp>.html`，取代技能預設的暫存路徑；完成後提供實際路徑。
+
+## 交接檔（Handoff）
+
+執行 `handoff` 時，交接檔一律儲存至 `scratch/handoff-<timestamp>.md`，取代技能預設的暫存路徑；完成後提供實際路徑。系統暫存目錄（例如 Windows 的 `%TEMP%`）在關機或清理時可能被刪除，`scratch/` 已列在 `.gitignore`，不會被提交。
 
 ## 文件讀取時機
 
