@@ -565,7 +565,7 @@ def is_unlisted_exposure(row: dict) -> bool:
 
 def object_list(value) -> list:
     """資料列：清單裡是物件的那些項目；不是陣列時是空的（#245）。送往模型前的授權範圍篩選（scoped_files）
-    與評分（經 object_rows）共用這一個判定；示範引擎與 scopedBundle 共用的 GATE.rows（assets/scope-gate.js）是同一條規則，
+    與評分（score_findings 直接用，或經 object_rows）共用這一個判定；示範引擎與 scopedBundle 共用的 GATE.rows（assets/scope-gate.js）是同一條規則，
     由共用篩選案例 tests/fixtures/scoped-bundle-cases.json 與共用評分案例 tests/fixtures/scoring-cases.json 守住。
     腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
     return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
@@ -1145,11 +1145,13 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     # JS 的 Math.max(lo, Math.min(hi, NaN)) 是 NaN；Python 的 min(hi, nan) 卻回傳 hi，所以 NaN 要另外放行（#229）
     clamp = lambda v, rng: v if math.isnan(v) else max(rng[0], min(rng[1], v))   # noqa: E731
 
-    assets_list = data.get("assets") or []
+    assets_list = object_list(data.get("assets"))   # 清單裡不是物件的項目跳過（#250，示範引擎照同一條規則，由共用案例守住）
     assets = {a.get("asset_id"): a for a in assets_list}
     visible = [a.get("asset_id") for a in assets_list]   # 清冊完整度固定 100%：全部看得到
     # 形狀不對的控制當成不存在（#243，示範引擎照同一條規則，由共用案例守住）
     controls = object_rows(data.get("controls"), "controls")
+    # 身分與設定基準的清單裡不是物件的項目跳過（#250，示範引擎照同一條規則，由共用案例守住）；先篩一次，每項發現共用
+    identity_rows, misconfig_rows = object_list(data.get("identities")), object_list(data.get("misconfigurations"))
     # coverage_assets、gaps 不是陣列時當成空的，不做子字串比對（#243）
     asset_list = lambda v: v if isinstance(v, list) else []  # noqa: E731
     controls_of = lambda i: [c.get("name") for c in controls if i in asset_list(c.get("coverage_assets"))] if on["controls"] else []  # noqa: E731
@@ -1159,7 +1161,7 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
         if not on["identities"]:
             return []
         stale = rules["identityIssue"]["staleLoginDays"]
-        return [i for i in data.get("identities") or []
+        return [i for i in identity_rows
                 if asset_id in str(i.get("linked_assets", "undefined")).split(";")
                 and (i.get("mfa_enabled", _UNDEFINED) is False or i.get("mfa_enabled") == "partial"
                      or _js_num(i.get("last_login_days", _UNDEFINED)) > stale)]
@@ -1173,7 +1175,7 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
         return [a for a in intel_actors if vuln_id in a["exploits_vuln_ids"]]
 
     def misconfigs(asset_id):
-        return [m for m in data.get("misconfigurations") or [] if m.get("asset_id") == asset_id and m.get("status") == "fail"] if on["misconfig"] else []
+        return [m for m in misconfig_rows if m.get("asset_id") == asset_id and m.get("status") == "fail"] if on["misconfig"] else []
 
     def exposure_of(asset_id):
         if not on["exposures"]:
@@ -1188,7 +1190,7 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     entry_nodes = reachable_entries(edges, crown_jewels, F["maxHops"])
 
     findings = []
-    for v in data.get("vulnerabilities") or []:
+    for v in object_list(data.get("vulnerabilities")):
         if v.get("asset_id") not in visible:
             continue
         a, factors, likelihood = assets[v.get("asset_id")], [], 0
