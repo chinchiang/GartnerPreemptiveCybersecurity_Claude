@@ -3,7 +3,7 @@
 // 一致性檢查（scoring-rules.test.mjs）只比對文件與規則資料的數值；這裡經由 analyze() 斷言引擎實際算出的結果。
 // - 預期值一律是手算的字面數字，旁邊註明算式；不從 RULES 取係數，否則公式寫錯時測試也會跟著錯。
 // - 依據是 skills/shared/task-spec.md 附錄 A（資料齊備程度規則在第 5 節）。文件沒寫的細節照引擎現行行為釘住，
-//   測試名稱標明「文件未寫」：多個行為者命中取最高、未標信心以 low 計、未標資料等級以 Internal 計、分數取到小數一位，
+//   測試名稱標明「文件未寫」：多個行為者命中取最高、未標信心以 low 計、未標資料等級以 Internal 計，
 //   以及各權重乘在哪幾項（附錄 A 只寫預設權重 0.8 的兩組；EASM 歸曝露權重、CVSS 近似歸利用權重、
 //   情資乘情資權重、影響權重也乘在 crown jewel 與入口加分上）。
 // - 跳數上限與入口加分另見 attack-paths.test.mjs。
@@ -112,7 +112,7 @@ test('影響權重乘在整個影響上，包括 crown jewel 與入口的加分�
   near(impactOf({ business_criticality: 2 }, { crownJewels: ['B'], edges: pathAtoB() }), 2.9); // (2×1.4 + 1 + 2)×0.5
 });
 
-test('分數＝可能性×影響，取到小數一位（文件未寫）；剛好等於門檻算高一級，三種風險胃納各有門檻', () => {
+test('分數＝可能性×影響，取到小數一位（十進位四捨五入，#260）；剛好等於門檻算高一級，三種風險胃納各有門檻', () => {
   // impact10：資產 A 的影響 10（業務重要性 5、Restricted：5×1.4 + 3），對外曝露
   const impact10 = (vulnFields, assetFields = {}) => caseWith({
     assets: [asset('A', { internet_exposed: true, business_criticality: 5, data_classification: 'Restricted', ...assetFields })],

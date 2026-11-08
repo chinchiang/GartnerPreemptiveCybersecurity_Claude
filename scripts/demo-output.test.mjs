@@ -27,6 +27,12 @@ test('示範引擎輸出與 examples/demo-snapshot.txt 一致', () => {
     '示範引擎輸出已變動：若是刻意變更評分規則，先讓其他測試（評分規則一致性檢查、scoring.test.mjs）通過，再執行 npm run snapshot 更新快照');
 });
 
+test('關掉 EPSS/KEV 時 F008 的可能性 5.849999…（十進位 5.85）顯示 L 5.9，不是 5.8（#260）', () => {
+  const actual = execFileSync(process.execPath, [RUN_DEMO, '--no-epss'], { encoding: 'utf8' });
+  const line = actual.split(/\r?\n/).find(l => l.includes('erp-db-01'));
+  assert.match(line ?? '', / \| L 5\.9 \| I 10\.0 \| /);
+});
+
 // 必填鍵從 schema 讀，不手抄；每段至少一筆，空陣列不算通過
 for (const section of ['attack_path_hypotheses', 'validation_plan', 'remediation']) {
   test(`${section}.items 每一筆都有 output-schema.json 宣告的必填鍵`, () => {

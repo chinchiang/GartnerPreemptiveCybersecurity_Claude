@@ -9,6 +9,8 @@ import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 const DEMO = require('../assets/demo.js');
 const FIXTURE = JSON.parse(readFileSync(new URL('../tests/fixtures/scoring-cases.json', import.meta.url), 'utf8'));
+// 取一位小數的共用案例（#260）：Python 那一份在 tests/python/test_scoring.py
+const ROUND1 = JSON.parse(readFileSync(new URL('../tests/fixtures/round1-cases.json', import.meta.url), 'utf8'));
 const near = (actual, expected, what) => assert.ok(Math.abs(actual - expected) < 1e-9, `${what}：${actual} 不是 ${expected}`);
 
 for (const c of FIXTURE.cases) {
@@ -27,6 +29,14 @@ for (const c of FIXTURE.cases) {
     }
   });
 }
+
+test('取一位小數：十進位四捨五入、.x5 進位，浮點誤差造成的 .x4999… 當成 .x5（共用案例，#260）', () => {
+  for (const c of ROUND1.cases) assert.equal(DEMO.round1(c.value), c.expected, `${c.value}（${c.from}）`);
+});
+
+test('顯示用的一位小數：照取一位小數的共用案例，再補成一位小數的字串（1.0499… 顯示 1.1，整數補 .0；#260）', () => {
+  for (const c of ROUND1.cases) assert.equal(DEMO.format1(c.value), c.expected.toFixed(1), `${c.value}（${c.from}）`);
+});
 
 test('補償控制：control 的 gaps 不是陣列時不出錯，缺口寫成空的（#243；評分的共用案例只比對 findings，補償控制只有示範引擎有）', () => {
   const controls = { controls: [

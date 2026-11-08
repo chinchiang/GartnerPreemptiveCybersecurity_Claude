@@ -31,7 +31,7 @@ if (R.refused) {
   process.exit(2);
 }
 console.log('== 曝險優先序 ==');
-for (const f of R.findings) console.log(`${f.priority} | ${f.asset.name} | ${f.vuln_id} | score ${f.score} | L ${f.likelihood.toFixed(1)} | I ${f.impact.toFixed(1)} | ${f.confidence} | ${f.factors.join('；')}`);
+for (const f of R.findings) console.log(`${f.priority} | ${f.asset.name} | ${f.vuln_id} | score ${f.score} | L ${ctx.window.DEMO.format1(f.likelihood)} | I ${ctx.window.DEMO.format1(f.impact)} | ${f.confidence} | ${f.factors.join('；')}`);
 console.log('\n== 攻擊路徑假設（status: hypothesis） ==');
 const name = (id) => data.assets.find(a => a.asset_id === id)?.name || id;
 R.hypotheses.forEach((h, i) => console.log(`${i + 1}. internet → ${h.nodes.map(name).join(' → ')} | hops ${h.hops} | feasibility ${h.feasibility} | ${h.status}`));

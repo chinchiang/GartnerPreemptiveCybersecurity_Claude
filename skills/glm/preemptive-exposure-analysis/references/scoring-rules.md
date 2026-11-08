@@ -32,6 +32,8 @@
 
 `score = likelihood × impact`（0–100）。
 
+取一位小數：likelihood、impact、score 與第 4 節的路徑可行性，各依十進位值四捨五入到一位小數，.x5 一律進位（例如 7/10 × 1.5 = 1.05 → 1.1）。score 用未取小數的 likelihood × impact 計算，所以表上取過小數的 likelihood × impact 不一定等於 score。
+
 | 風險胃納 | P1 | P2 | P3 |
 |---|---|---|---|
 | 嚴格 | ≥ 50 | ≥ 30 | ≥ 15 |
