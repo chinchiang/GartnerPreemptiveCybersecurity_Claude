@@ -4,7 +4,7 @@
  * 其他值要有 BASE_URL）、BASE_URL（覆寫端點）、MAX_OUTPUT_TOKENS（輸出上限，預設 8000）、UPSTREAM_TIMEOUT_MS（上游逾時，毫秒，預設 60000、最大 2147483647）。
  * 設定不完整或不合格時一律回 500，不呼叫上游。
  * 安全：固定 system prompt；來源限制；請求大小上限 512 KB（以實際讀到的位元組計算）；上游逾時回 504、上游錯誤回 502 且不轉發上游的內容；
- * 附了分數表時，模型輸出跟分數表不一致、無法檢查或回覆不完整也回 502（附上游 2xx 回應的原文，#247）；
+ * 模型輸出不符合 output-schema.json、內容不一致、跟分數表不一致、無法檢查或回覆不完整時也回 502（附上游 2xx 回應的原文，#247、#252）；
  * 簡易速率限制（每 IP 每分鐘 5 次，使用記憶體 Map，僅示範）。這是範例，不可直接上線（缺的部分見 backend/README.md）。
  */
 // 授權範圍守門：規則只來自 schema，由 assets/scope-gate.js 判定（與網站示範引擎共用，見 docs/adr/0004）；
@@ -12,6 +12,9 @@
 import GATE from '../assets/scope-gate.js';
 // 示範引擎：算分數表（ADR 0010、#230），跟 API 腳本附在提示詞裡的「腳本預先計算的曝險分數」相同；dist/worker.js 也由 build-worker.mjs 內嵌
 import DEMO from '../assets/demo.js';
+// 輸出 schema 驗證與內容一致性（#252）：重用驗收也在用的判定與 schema 母本；dist/worker.js 由 build-worker.mjs 內嵌這兩行
+import { outputProblems, outputConsistencyProblems } from '../scripts/output-schema.mjs';
+import OUTPUT_SCHEMA from '../skills/shared/output-schema.json' with { type: 'json' };
 
 const CORE_PROMPT = `（部署時以 build 步驟把 skills/shared/core-prompt.md 的提示詞區塊貼入此處）`;
 // 已知的供應商：預設端點（不帶尾端斜線，下面接 /chat/completions 或 /v1/messages）與 OpenAI 相容端點的輸出上限參數。
@@ -66,10 +69,11 @@ async function readLimited(request, limit) {
   return new TextDecoder().decode(bytes);
 }
 
-// 模型輸出跟分數表的對照（#247）：照常轉回時回傳 null，否則回傳 { error, problems? }。
+// 模型輸出的檢查（#247、#252）：照常轉回時回傳 null，否則回傳 { error, problems? }。不論有沒有附分數表都要檢查。
 // 只送一輪，所以從模型的文字裡取「最後一個」JSON 區塊（lastJsonBlock；核心提示詞要求報告最後附一個 JSON 區塊，本文可能有別的區塊或大括號）。
 // 回覆不完整（被輸出上限截斷、被內容過濾或拒答，見 INCOMPLETE）時不拿它對照；取不到文字、上游回應形狀不對、找不到或解析不了 JSON，一律不放行。
-// 對照規則是示範引擎的 scoreTableProblems（跟 Python 核心的 score_table_problems 由共用案例守住）
+// 依序：output-schema.json 驗證（output_schema_invalid）→ 內容一致性（output_inconsistent），兩者的 problems 是字串陣列；
+// 附了分數表時再對照分數表（score_table_mismatch，problems 是結構化的）。三項的判定都跟 API 腳本同一條規則，由共用案例守住
 const UNPARSEABLE = { error: 'output_unparseable' };
 // 回覆不完整的結束原因：跟 Python 核心 require_complete 的清單相同（chat_completions 與 anthropic 兩種介面）
 const INCOMPLETE = { chat: ['length', 'content_filter'], anthropic: ['max_tokens', 'model_context_window_exceeded', 'refusal'] };
@@ -104,6 +108,11 @@ function outputVerdict(provider, content, table) {
   if (last === null) return UNPARSEABLE;
   let output;
   try { output = JSON.parse(last); } catch { return UNPARSEABLE; }
+  const schemaProblems = outputProblems(output, OUTPUT_SCHEMA);
+  if (schemaProblems.length) return { error: 'output_schema_invalid', problems: schemaProblems };
+  const inconsistent = outputConsistencyProblems(output);
+  if (inconsistent.length) return { error: 'output_inconsistent', problems: inconsistent };
+  if (!table) return null;
   const problems = DEMO.scoreTableProblems(output, table);
   return problems.length ? { error: 'score_table_mismatch', problems } : null;
 }
@@ -153,8 +162,10 @@ export default {
     } catch {
       return signal.aborted ? new Response('Upstream timeout', { status: 504, headers: cors }) : new Response('Upstream error', { status: 502, headers: cors });
     }
-    // 附了分數表就檢查模型有沒有照用（#247）；不一致、無法檢查或回覆不完整時回 502 並附上游原文，不當成成功回應轉回
-    const verdict = table ? outputVerdict(provider, content, table) : null;
+    // 檢查模型輸出（#247、#252）：不合格、無法檢查或回覆不完整時回 502 並附上游原文，不當成成功回應轉回；沒附分數表時不對照分數表
+    // 檢查本身丟出例外（例如模型輸出巢狀太深，遞迴的 schema 驗證超過呼叫堆疊）就算無法檢查，不讓 Worker 回執行錯誤
+    let verdict;
+    try { verdict = outputVerdict(provider, content, table); } catch { verdict = UNPARSEABLE; }
     if (verdict) return new Response(JSON.stringify({ ...verdict, upstream: content }), { status: 502, headers: { ...cors, 'content-type': 'application/json' } });
     return new Response(content, { status, headers: { ...cors, 'content-type': 'application/json' } });
   }
