@@ -149,6 +149,28 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     assert.equal(sentTable(upstream[0]), null);
   });
 
+  test('分數表：密集拓樸（40 個資產完全連通）2 秒內送出，附上分數表，每一項都有入口加分（#248）', async () => {
+    // internet 連到每一個資產，資產之間兩兩互連，crown jewel 是 D0：每個資產都有一條直達 D0 的邊，所以每一項都是可達 crown jewel 之入口
+    const ids = Array.from({ length: 40 }, (_, i) => `D${i}`);
+    const bundle = {
+      scope: { ...scope, authorized_scope: { ...scope.authorized_scope, in_scope_assets: ids, excluded_assets: [] } },
+      assets: ids.map(id => ({ ...SYNTHETIC.assets[0], asset_id: id, name: id })),
+      vulnerabilities: ids.map((id, i) => ({ ...SYNTHETIC.vulnerabilities[0], finding_id: `F${i}`, asset_id: id })),
+      topology: { crown_jewels: ['D0'], edges: [
+        ...ids.map(id => ({ from: 'internet', to: id, trust: 'network' })),
+        ...ids.flatMap(from => ids.filter(to => to !== from).map(to => ({ from, to, trust: 'network' })))
+      ] }
+    };
+    const started = performance.now();
+    const r = await send(request(JSON.stringify({ bundle })));
+    const elapsed = performance.now() - started;
+    assert.equal(r.status, 200);
+    assert.ok(elapsed < 2000, `代理花了 ${Math.round(elapsed)} 毫秒`);
+    const table = sentTable(upstream[0]);
+    assert.equal(table.findings.length, 40);
+    assert.ok(table.findings.every(f => f.factors.includes('可達 crown jewel 之入口（blast radius）')), '每一項都有入口加分');
+  });
+
   // 參數名稱依各供應商的官方文件（OpenAI、xAI：max_completion_tokens；GLM、DeepSeek、Anthropic：max_tokens）；
   // Gemini 的 OpenAI 相容端點官方未說明，照 #151 的預設用 max_tokens，列為待驗證
   const OUTPUT_PARAM = { openai: 'max_completion_tokens', xai: 'max_completion_tokens', glm: 'max_tokens', deepseek: 'max_tokens', gemini: 'max_tokens', anthropic: 'max_tokens' };

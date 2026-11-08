@@ -1091,10 +1091,36 @@ def scoring_bundle(inputs: Inputs) -> tuple[dict, dict]:
     return _scoring_data(scoring_input_bundle(inputs))
 
 
+def reachable_entries(edges: list, crown_jewels: list, max_hops: int) -> set:
+    """可達 crown jewel 之入口（核心提示詞與 scoring-rules.md 的定義：至少一條攻擊路徑假設以該資產為入口，節點範圍與跳數上限同 S4）。
+    不窮舉路徑（#248）：從 crown jewel 沿反向邊做廣度優先搜尋，一輪往回一跳；internet 直連、
+    而且 max_hops − 1 跳內找得到的節點就是入口。最短路徑不會重複經過節點，所以「存在一條不超過跳數上限的簡單路徑」
+    等於「最短跳數不超過上限」；S4 走到第一個 crown jewel 就停，也不影響最短跳數；S4 不經過 internet（起點除外），這裡的搜尋也不經過它。成本跟邊數成正比。
+    edges 是 S4 會走的邊（已依節點範圍篩過）。搜尋從邊的終點裡是 crown jewel 的開始，用串列比對 crown_jewels，
+    裡面有不能雜湊的值（例如物件）也不會出錯。示範引擎的 reachableEntries 是同一條規則，由共用評分案例守住。"""
+    into = {}
+    for e in edges:
+        into.setdefault(e.get("to"), []).append(e.get("from"))
+    # reached：max_hops − 1 跳內到得了 crown jewel 的節點；每一輪往前一跳，第一次到達就是最短跳數，所以記過的不再記
+    reached = {e.get("to") for e in edges if e.get("to") != "internet" and e.get("to") in crown_jewels}
+    level = list(reached)
+    for _ in range(1, max_hops):
+        nxt = []
+        for node in level:
+            for source in into.get(node, []):
+                # 不經過 internet：S4 的路徑從 internet 出發、不會再回到它。資產編號剛好是 internet 時會有邊指向它，不排除就會穿過它
+                if source == "internet" or source in reached:
+                    continue
+                reached.add(source)
+                nxt.append(source)
+        level = nxt
+    return {e.get("to") for e in edges if e.get("from") == "internet" and e.get("to") in reached}
+
+
 def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = None, risk_appetite: str = "balanced") -> list:
     """示範引擎 analyze() 的 S3 曝險評分：回傳每項發現的 likelihood、impact、score、priority、factors，依分數由高到低。
     data 是示範引擎的資料形狀（scoring_bundle 的結果，已經篩選過授權範圍）；inputs 是開關，沒寫的視為 True。
-    入口加分要先找出攻擊路徑（從 internet 到 crown jewel 的 DFS），所以這裡也照示範引擎找一次，只用來判斷入口。"""
+    入口加分只需要知道哪些入口可達 crown jewel，不窮舉攻擊路徑（reachable_entries，#248）。"""
     rules = rules if rules is not None else load_scoring_rules()
     on = {"threatIntel": True, "identities": True, "controls": True, "misconfig": True, "epss": True, "topology": True, "exposures": True,
           **(inputs or {})}
@@ -1141,26 +1167,9 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     # 形狀不對的拓樸當成不存在（#243，示範引擎照同一條規則，由共用案例守住）
     topology = data.get("topology") if isinstance(data.get("topology"), dict) else {}
     crown_jewels = topology.get("crown_jewels") if isinstance(topology.get("crown_jewels"), list) else []   # 示範引擎不看 topology 開關，照樣讀
-    entry_nodes = set()
-    if on["topology"]:
-        edges = [e for e in object_rows(topology, "edges")
-                 if (e.get("from") == "internet" or e.get("from") in visible) and e.get("to") in visible]
-        by_from = {}
-        for e in edges:
-            by_from.setdefault(e.get("from"), []).append(e)
-
-        def dfs(node, trail, seen):
-            if len(trail) >= F["maxHops"]:
-                return
-            for e in by_from.get(node, []):
-                if e.get("to") in seen:
-                    continue
-                path = trail + [e]
-                if e.get("to") in crown_jewels:
-                    entry_nodes.add(path[0].get("to"))
-                else:
-                    dfs(e.get("to"), path, seen | {e.get("to")})
-        dfs("internet", [], {"internet"})
+    edges = [e for e in object_rows(topology, "edges")
+             if (e.get("from") == "internet" or e.get("from") in visible) and e.get("to") in visible] if on["topology"] else []
+    entry_nodes = reachable_entries(edges, crown_jewels, F["maxHops"])
 
     findings = []
     for v in data.get("vulnerabilities") or []:
