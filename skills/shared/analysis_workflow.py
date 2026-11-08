@@ -1029,9 +1029,6 @@ def load_scoring_rules(path: Path | None = None) -> dict:
 
 _UNDEFINED = object()   # JS 的 undefined：欄位不存在（跟 JSON 的 null 不同）
 _CSV_NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
-# 示範引擎 P.inputs 的開關，對應到哪一類輸入；epss 沒有獨立的檔案，逐筆看弱點有沒有 EPSS／KEV
-_INPUT_FLAGS = {"threatIntel": "threat_intel", "identities": "identities", "controls": "controls",
-                "misconfig": "misconfigurations", "topology": "topology", "exposures": "exposures"}
 
 
 def round1(value: float) -> float:
@@ -1092,17 +1089,14 @@ def scoring_input_bundle(inputs: Inputs) -> dict:
     return bundle
 
 
-def _scoring_data(bundle: dict) -> tuple[dict, dict]:
-    """bundle（input-schema 的鍵）轉成示範引擎 analyze() 讀的資料形狀與開關（P.inputs）：沒提供的那類輸入是 False。
-    示範引擎的 scoreTable 照同一條規則（INPUT_FLAG_CATEGORY），由共用案例 tests/fixtures/score-table-cases.json 守住。"""
-    data = {("threatIntel" if key == "threat_intel" else key): value for key, value in bundle.items()}
-    flags = {flag: category in bundle for flag, category in _INPUT_FLAGS.items()}
-    flags["epss"] = True
-    return data, flags
+def _scoring_data(bundle: dict) -> dict:
+    """bundle（input-schema 的鍵）轉成示範引擎 analyze() 讀的資料形狀（threat_intel → threatIntel）。
+    不另算開關：輸入不存在時評分讀到的是空清單，開關開或關算出的分數都相同（#255）；示範引擎的 scoreTable 也用預設開關。"""
+    return {("threatIntel" if key == "threat_intel" else key): value for key, value in bundle.items()}
 
 
-def scoring_bundle(inputs: Inputs) -> tuple[dict, dict]:
-    """把授權範圍篩選後的輸入轉成示範引擎 analyze() 讀的資料形狀，回傳 (資料, 開關)。"""
+def scoring_bundle(inputs: Inputs) -> dict:
+    """把授權範圍篩選後的輸入轉成示範引擎 analyze() 讀的資料形狀。"""
     return _scoring_data(scoring_input_bundle(inputs))
 
 
@@ -1134,7 +1128,8 @@ def reachable_entries(edges: list, crown_jewels: list, max_hops: int) -> set:
 
 def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = None, risk_appetite: str = "balanced") -> list:
     """示範引擎 analyze() 的 S3 曝險評分：回傳每項發現的 likelihood、impact、score、priority、factors，依分數由高到低。
-    data 是示範引擎的資料形狀（scoring_bundle 的結果，已經篩選過授權範圍）；inputs 是開關，沒寫的視為 True。
+    data 是示範引擎的資料形狀（scoring_bundle 的結果，已經篩選過授權範圍）；inputs 是開關，沒寫的視為 True；
+    分數表（score_table）不傳開關、一律用預設值（#255），目前只有共用評分案例會傳，用來對照示範引擎網站上的開關。
     入口加分只需要知道哪些入口可達 crown jewel，不窮舉攻擊路徑（reachable_entries，#248）。"""
     rules = rules if rules is not None else load_scoring_rules()
     on = {"threatIntel": True, "identities": True, "controls": True, "misconfig": True, "epss": True, "topology": True, "exposures": True,
@@ -1286,12 +1281,12 @@ def score_table(bundle: dict, rules: dict) -> dict | None:
     表格不可信，丟出 UnscorableInputs。示範引擎的 scoreTable（後端代理用）是同一條規則，由共用案例 tests/fixtures/score-table-cases.json 守住。"""
     if "assets" not in bundle or "vulnerabilities" not in bundle:
         return None
-    data, flags = _scoring_data(bundle)
+    data = _scoring_data(bundle)
     th = rules["thresholds"]["balanced"]
     findings = [{"finding_id": f["finding_id"], "asset_id": f["asset_id"], "vuln_id": f["vuln_id"],
                  "likelihood": _js_value(round1(f["likelihood"])), "impact": _js_value(round1(f["impact"])),
                  "score": _js_value(f["score"]), "priority": f["priority"], "factors": f["factors"]}
-                for f in score_findings(data, flags, rules)]
+                for f in score_findings(data, rules=rules)]
     not_finite = [str(f["finding_id"]) for f in findings if not all(math.isfinite(f[k]) for k in ("likelihood", "impact", "score"))]
     if not_finite:
         raise UnscorableInputs(f"{'、'.join(not_finite)} 的分數不是有限數字（輸入有非數值的欄位）")
