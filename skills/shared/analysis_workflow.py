@@ -516,7 +516,7 @@ def _integrity_findings(inputs: Inputs) -> list:
         if asset_ids and r.get("asset_id") not in asset_ids:
             anomaly("vulnerabilities.csv", PreflightKind.DANGLING_REFERENCE, f"{r.get('finding_id')} 指向不存在資產 {r.get('asset_id')}")
     for r in loaded.get("identities.csv", {}).get("data") or []:
-        for a in str(r.get("linked_assets") or "").split(";"):
+        for a in linked_asset_ids(r):
             if a and asset_ids and a not in asset_ids:
                 anomaly("identities.csv", PreflightKind.DANGLING_REFERENCE, f"{r.get('identity_id')} linked_assets 指向不存在資產 {a}")
     topology = loaded.get("topology.json", {}).get("data")
@@ -568,6 +568,14 @@ def object_list(value) -> list:
     由共用篩選案例 tests/fixtures/scoped-bundle-cases.json 與共用評分案例 tests/fixtures/scoring-cases.json 守住。
     腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
     return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
+
+
+def linked_asset_ids(row: dict) -> list:
+    """身分關聯的資產：linked_assets 以分號分隔的字串切開；不是字串時當成沒有關聯任何資產（#256）。
+    腳本預檢、授權範圍篩選（scoped_files）與評分（score_findings）共用；JS 是授權範圍守門匯出的 linkedAssets（assets/scope-gate.js），
+    由共用篩選案例與共用評分案例守住。"""
+    value = row.get("linked_assets")
+    return value.split(";") if isinstance(value, str) else []
 
 
 def object_rows(container, key: str) -> list:
@@ -646,7 +654,7 @@ def scoped_files(inputs: Inputs) -> list:
         elif category == "identities":
             identities = []
             for row in object_list(data):
-                linked = refs(row["linked_assets"].split(";")) if isinstance(row.get("linked_assets"), str) else []
+                linked = refs(linked_asset_ids(row))
                 if linked:
                     row["linked_assets"] = ";".join(linked)
                     identities.append(row)
@@ -1156,7 +1164,7 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
             return []
         stale = rules["identityIssue"]["staleLoginDays"]
         return [i for i in identity_rows
-                if asset_id in str(i.get("linked_assets", "undefined")).split(";")
+                if asset_id in linked_asset_ids(i)
                 and (i.get("mfa_enabled", _UNDEFINED) is False or i.get("mfa_enabled") == "partial"
                      or _js_num(i.get("last_login_days", _UNDEFINED)) > stale)]
 
