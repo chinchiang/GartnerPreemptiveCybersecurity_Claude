@@ -86,11 +86,15 @@ test('產物內嵌示範引擎（#230）：沒有任何 import，載入建置出
     const cases = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/score-table-cases.json'), 'utf8'));
     const { bundle, expected } = cases.cases[0];
     const sent = [];
-    globalThis.fetch = async (url, init) => { sent.push(init); return new Response('{}', { status: 200 }); };
+    // 假的上游回一份跟分數表一致的模型回覆（手算的 expected），產物裡的對照（#247）放行，回 200
+    const agreed = { exposure_priorities: { items: expected.findings.map(({ finding_id, priority, score }) => ({ finding_id, priority, score })) } };
+    const upstreamReply = JSON.stringify({ choices: [{ message: { content: '報告\n\n```json\n' + JSON.stringify(agreed) + '\n```' }, finish_reason: 'stop' }] });
+    globalThis.fetch = async (url, init) => { sent.push(init); return new Response(upstreamReply, { status: 200 }); };
     const env = { ALLOWED_ORIGIN: 'https://allowed.example', PROVIDER: 'openai', MODEL: 'm', PROVIDER_API_KEY: 'k' };
     const res = await worker.fetch(new Request('https://worker.example/api/analyze', { method: 'POST',
       headers: { 'content-type': 'application/json', origin: env.ALLOWED_ORIGIN, 'cf-connecting-ip': '203.0.113.9' }, body: JSON.stringify({ bundle }) }), env);
     assert.equal(res.status, 200);
+    assert.equal(await res.text(), upstreamReply, '一致時照常轉回');
     const content = JSON.parse(sent[0].body).messages.at(-1).content;
     const table = JSON.parse(content.split('【腳本預先計算的曝險分數】')[1].split('```json\n')[1].split('\n```')[0]);
     assert.deepEqual(table, expected);

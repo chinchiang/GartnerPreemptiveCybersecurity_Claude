@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "b2b579f15c21",
+ "contentHash": "465e422e7507",
  "research": [
   {
    "id": "00-method",
@@ -174,7 +174,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 83402
+   "bytes": 84427
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -274,7 +274,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "gemini",
-   "bytes": 83402
+   "bytes": 84427
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -374,7 +374,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 83271
+   "bytes": 84296
   },
   {
    "path": "skills/shared/core-prompt.md",

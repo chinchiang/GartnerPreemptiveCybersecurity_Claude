@@ -938,10 +938,12 @@ def output_consistency_problems(data) -> list:
     return problems
 
 
-def precomputed_score_problems(data, scores: dict | None) -> list:
-    """輸出有沒有照用腳本預先計算的分數（ADR 0010、#229）：exposure_priorities 的每一項以 finding_id 對照分數表，
-    priority 或 score 不同、或 finding_id 不在表裡都算不一致；表裡有、輸出沒列的不在這裡判。
-    形狀不合格的部分略過，交給 output_problems 回報；scores 是 None（沒有分數表）時不檢查。"""
+def score_table_problems(data, scores: dict | None) -> list:
+    """輸出有沒有照用腳本預先計算的分數（ADR 0010、#229、#247）：exposure_priorities 的每一項以 finding_id 對照分數表，
+    priority 不同、score 不同或不是有限數字算 mismatch，finding_id 不在表裡算 not_in_table；表裡有、輸出沒列的不在這裡判。
+    形狀不合格的部分略過，交給 output_problems 回報；scores 是 None（沒有分數表）時不檢查。
+    回傳 [{index, finding_id, kind, expected?, got}]，got 裡沒有的欄位是 None。示範引擎的 scoreTableProblems（後端代理用）
+    是同一條規則，由共用案例 tests/fixtures/score-problems-cases.json 守住。"""
     if scores is None or not isinstance(data, dict) or not isinstance(data.get("exposure_priorities"), dict):
         return []
     items = data["exposure_priorities"].get("items")
@@ -950,14 +952,28 @@ def precomputed_score_problems(data, scores: dict | None) -> list:
     for i, item in enumerate(items if isinstance(items, list) else []):
         if not isinstance(item, dict) or not isinstance(item.get("finding_id"), str):
             continue
-        where = f"$.exposure_priorities.items[{i}] {item['finding_id']}"
+        got = {"priority": item.get("priority"), "score": item.get("score")}
         want = expected.get(item["finding_id"])
         if want is None:
-            problems.append(f"{where} 不在腳本預先計算的分數表裡")
+            problems.append({"index": i, "finding_id": item["finding_id"], "kind": "not_in_table", "got": got})
         elif item.get("priority") != want["priority"] or not _is_number(item.get("score")) or item["score"] != want["score"]:
-            got = f"{item.get('priority')}／{_fmt(item['score']) if _is_number(item.get('score')) else item.get('score')}"
-            problems.append(f"{where} 腳本算的是 {want['priority']}／{_fmt(want['score'])}，輸出是 {got}")
+            problems.append({"index": i, "finding_id": item["finding_id"], "kind": "mismatch",
+                             "expected": {"priority": want["priority"], "score": want["score"]}, "got": got})
     return problems
+
+
+def precomputed_score_problems(data, scores: dict | None) -> list:
+    """score_table_problems 的結果組成給人看的訊息（API 腳本印在錯誤訊息裡）。"""
+    messages = []
+    for p in score_table_problems(data, scores):
+        where = f"$.exposure_priorities.items[{p['index']}] {p['finding_id']}"
+        if p["kind"] == "not_in_table":
+            messages.append(f"{where} 不在腳本預先計算的分數表裡")
+        else:
+            want, got = p["expected"], p["got"]
+            shown = f"{got['priority']}／{_fmt(got['score']) if _is_number(got['score']) else got['score']}"
+            messages.append(f"{where} 腳本算的是 {want['priority']}／{_fmt(want['score'])}，輸出是 {shown}")
+    return messages
 
 
 def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, output_schema: dict, scores: dict | None = None) -> int:

@@ -111,7 +111,8 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
 
   test('分數表：送出時附上分數表，區塊跟共用案例的字面值逐字相同（#230）', async () => {
     const r = await send(request(JSON.stringify({ bundle: TABLE_CASES.cases[0].bundle })));
-    assert.equal(r.status, 200);
+    assert.equal(r.status, 502); // 假的上游回 {}，不是模型回覆的形狀，代理回 output_unparseable（#247）；這裡主要看送出的內容
+    assert.equal(JSON.parse(await r.text()).error, 'output_unparseable');
     assert.deepEqual(sentTable(upstream[0]), TABLE_CASES.cases[0].expected);
     assert.ok(sentText(upstream[0]).endsWith(`\n\n${TABLE_CASES.section}`), '區塊格式跟 API 腳本相同');
     assert.deepEqual(JSON.parse(sentJson(upstream[0])), gate.scopedBundle(TABLE_CASES.cases[0].bundle), '第一個區塊仍是篩選後的資料');
@@ -119,7 +120,8 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
 
   test('分數表：合成資料的 F001 是 P1／86（示範快照 examples/demo-snapshot.txt，#230）', async () => {
     const r = await send(request(JSON.stringify({ bundle: SYNTHETIC })));
-    assert.equal(r.status, 200);
+    assert.equal(r.status, 502); // 假的上游回 {}，不是模型回覆的形狀，代理回 output_unparseable（#247）；這裡主要看送出的內容
+    assert.equal(JSON.parse(await r.text()).error, 'output_unparseable');
     const top = sentTable(upstream[0]).findings[0];
     assert.deepEqual([top.finding_id, top.priority, top.score, top.likelihood, top.impact], ['F001', 'P1', 86, 10, 8.6]);
   });
@@ -128,7 +130,8 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     const bundle = { ...SYNTHETIC, assets: [...SYNTHETIC.assets, { ...SYNTHETIC.assets[0], asset_id: 'A99', name: 'outside' }],
       vulnerabilities: [...SYNTHETIC.vulnerabilities, { ...SYNTHETIC.vulnerabilities[0], finding_id: 'F099', asset_id: 'A99' }] };
     const r = await send(request(JSON.stringify({ bundle })));
-    assert.equal(r.status, 200);
+    assert.equal(r.status, 502); // 假的上游回 {}，不是模型回覆的形狀，代理回 output_unparseable（#247）；這裡主要看送出的內容
+    assert.equal(JSON.parse(await r.text()).error, 'output_unparseable');
     const ids = sentTable(upstream[0]).findings.map(f => f.finding_id);
     assert.equal(ids.length, 14);
     assert.ok(!ids.includes('F099'), 'A99 不在 in_scope_assets，F099 不能出現在分數表');
@@ -164,11 +167,121 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     const started = performance.now();
     const r = await send(request(JSON.stringify({ bundle })));
     const elapsed = performance.now() - started;
-    assert.equal(r.status, 200);
+    assert.equal(r.status, 502); // 假的上游回 {}，不是模型回覆的形狀，代理回 output_unparseable（#247）；這裡主要看送出的內容
+    assert.equal(JSON.parse(await r.text()).error, 'output_unparseable');
     assert.ok(elapsed < 2000, `代理花了 ${Math.round(elapsed)} 毫秒`);
     const table = sentTable(upstream[0]);
     assert.equal(table.findings.length, 40);
     assert.ok(table.findings.every(f => f.factors.includes('可達 crown jewel 之入口（blast radius）')), '每一項都有入口加分');
+  });
+
+  // 模型輸出跟分數表的對照（#247）。送出的是共用分數表案例第一筆，分數表是它手算的 expected：
+  // F1 P1／86、F3 P2／47.1、F4 P4／19、F2 P4／5.7。模型的回覆是報告加上最後一個 ```json 區塊。
+  const AGREED = [['F1', 'P1', 86], ['F3', 'P2', 47.1], ['F4', 'P4', 19], ['F2', 'P4', 5.7]];
+  const jsonBlock = (rows) => '```json\n' + JSON.stringify({ exposure_priorities: { items: rows.map(([finding_id, priority, score]) => ({ finding_id, priority, score })) } }) + '\n```';
+  const report = (rows) => `## 曝險優先序\n\n報告本文。\n\n${jsonBlock(rows)}`;
+  const openaiReply = (text, finish = 'stop') => JSON.stringify({ choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: finish }] });
+  const anthropicReply = (text, stop = 'end_turn') => JSON.stringify({ content: [{ type: 'text', text }], stop_reason: stop });
+  const ANTHROPIC = { ...ENV, PROVIDER: 'anthropic' };
+  const withTable = () => request(JSON.stringify({ bundle: TABLE_CASES.cases[0].bundle }));
+  const rejected = async (r) => { assert.equal(r.status, 502); assert.equal(r.headers.get('access-control-allow-origin'), ORIGIN); return JSON.parse(await r.text()); };
+
+  test('模型輸出：priority 跟分數表不同時回 502，列出不一致的項目並附上游原文（#247）', async () => {
+    const content = openaiReply(report([['F1', 'P2', 86], ...AGREED.slice(1)]));
+    reply = () => new Response(content, { status: 200 });
+    const body = await rejected(await send(withTable()));
+    assert.deepEqual(body, { error: 'score_table_mismatch', upstream: content,
+      problems: [{ index: 0, finding_id: 'F1', kind: 'mismatch', expected: { priority: 'P1', score: 86 }, got: { priority: 'P2', score: 86 } }] });
+  });
+
+  test('模型輸出：跟分數表一致時，狀態碼與內容都跟上游逐字相同（OpenAI 相容與 Anthropic，#247）', async () => {
+    for (const [env, content] of [[ENV, openaiReply(report(AGREED))], [ANTHROPIC, anthropicReply(report(AGREED))]]) {
+      reply = () => new Response(content, { status: 200 });
+      const r = await send(withTable(), env);
+      assert.equal(r.status, 200, env.PROVIDER);
+      assert.equal(await r.text(), content, env.PROVIDER);
+    }
+  });
+
+  test('模型輸出：Anthropic 的回覆裡 finding_id 不在分數表時回 502（#247）', async () => {
+    // 文字分成兩個 text 區塊，中間夾一個不是文字的區塊：代理把 text 區塊接起來再取 JSON。
+    // 最後還有一個不是 text、卻帶著 text 欄位的區塊（內容是一致的 JSON）：只接 type 是 text 的區塊，所以它不算
+    const text = report([...AGREED, ['F9', 'P1', 70]]);
+    const cut = text.indexOf('```json');
+    const content = JSON.stringify({ content: [{ type: 'text', text: text.slice(0, cut) }, { type: 'tool_use', id: 't1', name: 'x', input: {} },
+      { type: 'text', text: text.slice(cut) }, { type: 'tool_result', text: `\n\n${jsonBlock(AGREED)}` }], stop_reason: 'end_turn' });
+    reply = () => new Response(content, { status: 200 });
+    const body = await rejected(await send(withTable(), ANTHROPIC));
+    assert.deepEqual(body, { error: 'score_table_mismatch', upstream: content,
+      problems: [{ index: 4, finding_id: 'F9', kind: 'not_in_table', got: { priority: 'P1', score: 70 } }] });
+  });
+
+  test('模型輸出：回覆裡有兩個 ```json 區塊時，取最後一個（#247）', async () => {
+    const wrong = [['F1', 'P3', 1], ...AGREED.slice(1)];
+    // 前面的區塊不一致、最後的一致：照常轉回
+    let content = openaiReply(`${jsonBlock(wrong)}\n\n${report(AGREED)}`);
+    reply = () => new Response(content, { status: 200 });
+    let r = await send(withTable());
+    assert.equal(r.status, 200);
+    assert.equal(await r.text(), content);
+    // 前面的區塊一致、最後的不一致：回 502
+    content = openaiReply(`${jsonBlock(AGREED)}\n\n${report(wrong)}`);
+    r = await send(withTable());
+    assert.equal((await rejected(r)).error, 'score_table_mismatch');
+  });
+
+  test('模型輸出：沒標語言、標大寫 JSON、結尾的 ``` 有縮排的區塊也算 JSON 區塊（#247 審查）', async () => {
+    const items = JSON.stringify({ exposure_priorities: { items: AGREED.map(([finding_id, priority, score]) => ({ finding_id, priority, score })) } });
+    for (const [name, text] of [['沒標語言', `報告\n\n\`\`\`\n${items}\n\`\`\``], ['大寫 JSON', `報告\n\n\`\`\`JSON\n${items}\n\`\`\``],
+                                ['結尾有縮排', `報告\n\n  \`\`\`json  \n${items}\n   \`\`\`  `]]) {
+      const content = openaiReply(text);
+      reply = () => new Response(content, { status: 200 });
+      const r = await send(withTable());
+      assert.equal(r.status, 200, name);
+      assert.equal(await r.text(), content, name);
+    }
+  });
+
+  test('模型輸出：標別的語言的區塊不算 JSON 區塊，JSON 區塊後面接 ```text 也照樣取到 JSON（#247 審查）', async () => {
+    // 不一致的 JSON 區塊後面接一個 ```text 區塊：取到的是 JSON 區塊，回 502 的 score_table_mismatch（不是 output_unparseable）
+    const content = openaiReply(`${report([['F1', 'P3', 1], ...AGREED.slice(1)])}\n\n\`\`\`text\n本分析由語言模型整理。\n\`\`\``);
+    reply = () => new Response(content, { status: 200 });
+    assert.equal((await rejected(await send(withTable()))).error, 'score_table_mismatch');
+  });
+
+  test('模型輸出：取不到文字、找不到或解析不了 JSON 時回 502 的 output_unparseable，不放行（#247）', async () => {
+    const cases = [
+      ['上游回應不是 JSON', ENV, '分析結果'],
+      ['沒有 choices', ENV, JSON.stringify({ id: 'x' })],
+      ['message.content 不是字串', ENV, JSON.stringify({ choices: [{ message: { content: null }, finish_reason: 'stop' }] })],
+      ['沒有 ```json 區塊', ENV, openaiReply('## 報告\n\n只有本文，沒有 JSON。')],
+      ['```json 區塊解析不了', ENV, openaiReply('## 報告\n\n```json\n{ "exposure_priorities": \n```')],
+      ['Anthropic 沒有 text 區塊', ANTHROPIC, JSON.stringify({ content: [{ type: 'tool_use', id: 't1', name: 'x', input: {} }], stop_reason: 'end_turn' })]
+    ];
+    for (const [name, env, content] of cases) {
+      reply = () => new Response(content, { status: 200 });
+      assert.deepEqual(await rejected(await send(withTable(), env)), { error: 'output_unparseable', upstream: content }, name);
+    }
+  });
+
+  test('模型輸出：回覆被輸出上限截斷時回 502 的 output_incomplete，不拿截斷的內容對照（#247）', async () => {
+    // JSON 區塊本身一致，但結束原因代表回覆不完整；清單跟 Python 核心的 require_complete 相同（#247 審查）
+    const cases = [[ENV, openaiReply(report(AGREED), 'length')], [ENV, openaiReply(report(AGREED), 'content_filter')],
+      [ANTHROPIC, anthropicReply(report(AGREED), 'max_tokens')], [ANTHROPIC, anthropicReply(report(AGREED), 'model_context_window_exceeded')],
+      [ANTHROPIC, anthropicReply(report(AGREED), 'refusal')]];
+    for (const [env, content] of cases) {
+      reply = () => new Response(content, { status: 200 });
+      assert.deepEqual(await rejected(await send(withTable(), env)), { error: 'output_incomplete', upstream: content }, `${env.PROVIDER} ${content.slice(-40)}`);
+    }
+  });
+
+  test('模型輸出：沒附分數表（缺弱點）時不檢查，上游的回應照常轉回（#247）', async () => {
+    const { vulnerabilities, ...bundle } = SYNTHETIC;
+    const content = openaiReply('## 報告\n\n沒有 JSON 區塊。');
+    reply = () => new Response(content, { status: 200 });
+    const r = await send(request(JSON.stringify({ bundle })));
+    assert.equal(r.status, 200);
+    assert.equal(await r.text(), content);
   });
 
   // 參數名稱依各供應商的官方文件（OpenAI、xAI：max_completion_tokens；GLM、DeepSeek、Anthropic：max_tokens）；

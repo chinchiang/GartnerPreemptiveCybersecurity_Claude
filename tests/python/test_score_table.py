@@ -41,5 +41,18 @@ class SharedScoreTableCasesTest(unittest.TestCase):
         self.assertEqual(aw.score_table_section(table), FIXTURE["section"])
 
 
+PROBLEM_CASES = json.loads((ROOT / "tests/fixtures/score-problems-cases.json").read_text(encoding="utf-8"))
+
+
+class SharedScoreProblemsCasesTest(unittest.TestCase):
+    """模型輸出跟分數表對照的共用案例（#247）：Python 的 score_table_problems 這一份；
+    示範引擎的 scoreTableProblems 讀同一份 tests/fixtures/score-problems-cases.json（scripts/score-problems-cases.test.mjs）。"""
+
+    def test_shared_cases(self):
+        for case in PROBLEM_CASES["cases"]:
+            with self.subTest(case["name"]):
+                self.assertEqual(aw.score_table_problems(copy.deepcopy(case["output"]), PROBLEM_CASES["table"]), case["expected"])
+
+
 if __name__ == "__main__":
     unittest.main()
