@@ -394,13 +394,12 @@
   // 分數表（ADR 0010、#230）：後端代理把它附在送往模型的訊息裡，跟 API 腳本的「腳本預先計算的曝險分數」相同。
   // bundle 是授權範圍篩選後、以 input-schema 的鍵為鍵的資料（scopedBundle 的結果）。缺資產清冊或弱點時沒有分數可算，回傳 null；
   // 分數不是有限數字或 finding_id 重複、缺少時，表格不可信，丟出例外。Python 核心的 score_table 是同一條規則，
-  // 由共用案例 tests/fixtures/score-table-cases.json 守住
-  const INPUT_FLAG_CATEGORY = { threatIntel: 'threat_intel', identities: 'identities', controls: 'controls', misconfig: 'misconfigurations', topology: 'topology', exposures: 'exposures' };
+  // 由共用案例 tests/fixtures/score-table-cases.json 守住。開關用預設值（全部開著）：輸入不存在時評分讀到的是空清單，
+  // 開關開或關算出的分數表都相同，差別只在分數表不含的資料齊備程度（#255）
   function scoreTable(bundle) {
     if (!('assets' in bundle) || !('vulnerabilities' in bundle)) return null;
-    const inputs = { epss: true, ...Object.fromEntries(Object.entries(INPUT_FLAG_CATEGORY).map(([flag, category]) => [flag, category in bundle])) };
     // 只跑 S1 與 S3，不跑 S4 的路徑窮舉（#248）
-    const R = scoring({ ...bundle, threatIntel: bundle.threat_intel }, { inputs, riskAppetite: 'balanced' });
+    const R = scoring({ ...bundle, threatIntel: bundle.threat_intel }, { riskAppetite: 'balanced' });
     const findings = R.findings.map(f => ({ finding_id: f.finding_id, asset_id: f.asset_id, vuln_id: f.vuln_id,
       likelihood: round1(f.likelihood), impact: round1(f.impact), score: f.score, priority: f.priority, factors: f.factors }));
     const notFinite = findings.filter(f => ![f.likelihood, f.impact, f.score].every(Number.isFinite)).map(f => String(f.finding_id));

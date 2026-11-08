@@ -55,17 +55,16 @@ class SyntheticDataMatchesDemoSnapshotTest(unittest.TestCase):
         expected = [line.split(" | ") for line in lines if line.strip()]
         self.assertEqual(len(expected), 14)
         inputs = aw.load_inputs(ROOT / "examples/synthetic-org", frozenset(), INPUT_SCHEMA)
-        findings = aw.score_findings(*aw.scoring_bundle(inputs))
+        findings = aw.score_findings(aw.scoring_bundle(inputs))
         got = [[f["priority"], f["asset_name"], f["vuln_id"], f"score {aw.js_number(f['score'])}",
                 f"L {f['likelihood']:.1f}", f"I {f['impact']:.1f}", "；".join(f["factors"])] for f in findings]
         self.assertEqual(got, [[e[0], e[1], e[2], e[3], e[4], e[5], e[7]] for e in expected])
 
-    def test_missing_threat_intel_turns_the_intel_factor_off(self):
-        # 缺 threat-intel.json 時對應示範引擎的 inputs.threatIntel = false：SYN-2026-0101 少了情資因子，分數照樣 86（可能性已達上限）
+    def test_missing_threat_intel_has_no_intel_factor(self):
+        # 缺 threat-intel.json 時沒有情資可以命中：SYN-2026-0101 少了情資因子，分數照樣 86（可能性已達上限）。
+        # 開關用預設值（全部開著），只看行為（#255）
         inputs = aw.load_inputs(ROOT / "examples/synthetic-org", frozenset({"threat_intel"}), INPUT_SCHEMA)
-        bundle, flags = aw.scoring_bundle(inputs)
-        self.assertFalse(flags["threatIntel"])
-        vpn = next(f for f in aw.score_findings(bundle, flags) if f["vuln_id"] == "SYN-2026-0101")
+        vpn = next(f for f in aw.score_findings(aw.scoring_bundle(inputs)) if f["vuln_id"] == "SYN-2026-0101")
         self.assertEqual((vpn["priority"], vpn["score"]), ("P1", 86))
         self.assertFalse(any("威脅情資" in factor for factor in vpn["factors"]))
 
