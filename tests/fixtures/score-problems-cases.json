@@ -1,0 +1,80 @@
+{
+  "_note": "模型輸出跟分數表的對照（#247、ADR 0010）：示範引擎的 scoreTableProblems 與 Python 核心的 score_table_problems 都要算出 expected。規則：exposure_priorities.items 的每一項以 finding_id 對照分數表；priority 不同、score 不同或不是有限數字算 mismatch，finding_id 不在表裡算 not_in_table；表裡有、輸出沒列的不算；形狀不合格的部分略過（交給 schema 驗證，#252）。index 是項目在 items 裡的位置；got 裡沒有的欄位寫 null；not_in_table 沒有 expected。預期值手寫，不由任一份實作產生。",
+  "table": {
+    "risk_appetite": "balanced",
+    "thresholds": { "P1": 60, "P2": 40, "P3": 20 },
+    "findings": [
+      { "finding_id": "F1", "asset_id": "A01", "vuln_id": "V1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": [] },
+      { "finding_id": "F2", "asset_id": "A02", "vuln_id": "V2", "likelihood": 0.6, "impact": 10, "score": 5.7, "priority": "P4", "factors": [] },
+      { "finding_id": "F3", "asset_id": "A03", "vuln_id": "V3", "likelihood": 0.5, "impact": 2, "score": 1, "priority": "P4", "factors": [] }
+    ]
+  },
+  "cases": [
+    {
+      "name": "一致：每一項的 priority 與 score 都跟分數表相同",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F1", "priority": "P1", "score": 86 }, { "finding_id": "F2", "priority": "P4", "score": 5.7 } ] } },
+      "expected": []
+    },
+    {
+      "name": "priority 不同",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F1", "priority": "P2", "score": 86 } ] } },
+      "expected": [ { "index": 0, "finding_id": "F1", "kind": "mismatch", "expected": { "priority": "P1", "score": 86 }, "got": { "priority": "P2", "score": 86 } } ]
+    },
+    {
+      "name": "score 不同",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F2", "priority": "P4", "score": 6 }, { "finding_id": "F1", "priority": "P1", "score": 85.9 } ] } },
+      "expected": [
+        { "index": 0, "finding_id": "F2", "kind": "mismatch", "expected": { "priority": "P4", "score": 5.7 }, "got": { "priority": "P4", "score": 6 } },
+        { "index": 1, "finding_id": "F1", "kind": "mismatch", "expected": { "priority": "P1", "score": 86 }, "got": { "priority": "P1", "score": 85.9 } }
+      ]
+    },
+    {
+      "name": "score 不是數字（字串的 \"86\"、布林值）：算不一致",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F1", "priority": "P1", "score": "86" }, { "finding_id": "F2", "priority": "P4", "score": true } ] } },
+      "expected": [
+        { "index": 0, "finding_id": "F1", "kind": "mismatch", "expected": { "priority": "P1", "score": 86 }, "got": { "priority": "P1", "score": "86" } },
+        { "index": 1, "finding_id": "F2", "kind": "mismatch", "expected": { "priority": "P4", "score": 5.7 }, "got": { "priority": "P4", "score": true } }
+      ]
+    },
+    {
+      "name": "score 是布林值 true、分數表是 1：仍算不一致（Python 的 True == 1，要另外檢查是不是數字）",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F3", "priority": "P4", "score": true }, { "finding_id": "F3", "priority": "P4", "score": 1 } ] } },
+      "expected": [ { "index": 0, "finding_id": "F3", "kind": "mismatch", "expected": { "priority": "P4", "score": 1 }, "got": { "priority": "P4", "score": true } } ]
+    },
+    {
+      "name": "缺 priority 與 score：算不一致，got 寫 null",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F1" } ] } },
+      "expected": [ { "index": 0, "finding_id": "F1", "kind": "mismatch", "expected": { "priority": "P1", "score": 86 }, "got": { "priority": null, "score": null } } ]
+    },
+    {
+      "name": "finding_id 不在分數表裡",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F1", "priority": "P1", "score": 86 }, { "finding_id": "F9", "priority": "P1", "score": 70 } ] } },
+      "expected": [ { "index": 1, "finding_id": "F9", "kind": "not_in_table", "got": { "priority": "P1", "score": 70 } } ]
+    },
+    {
+      "name": "分數表裡有、輸出沒列：不算",
+      "output": { "exposure_priorities": { "items": [ { "finding_id": "F1", "priority": "P1", "score": 86 } ] } },
+      "expected": []
+    },
+    {
+      "name": "exposure_priorities 不是物件：略過",
+      "output": { "exposure_priorities": [ { "finding_id": "F1", "priority": "P2", "score": 1 } ] },
+      "expected": []
+    },
+    {
+      "name": "items 不是陣列：略過",
+      "output": { "exposure_priorities": { "items": { "finding_id": "F1", "priority": "P2", "score": 1 } } },
+      "expected": []
+    },
+    {
+      "name": "輸出不是物件：略過",
+      "output": [ { "finding_id": "F1", "priority": "P2", "score": 1 } ],
+      "expected": []
+    },
+    {
+      "name": "項目不是物件、沒有 finding_id 或 finding_id 不是字串：那一項略過，其餘照對",
+      "output": { "exposure_priorities": { "items": [ null, 5, "F1", { "priority": "P2", "score": 1 }, { "finding_id": 1, "priority": "P2", "score": 1 }, { "finding_id": "F2", "priority": "P3", "score": 5.7 } ] } },
+      "expected": [ { "index": 5, "finding_id": "F2", "kind": "mismatch", "expected": { "priority": "P4", "score": 5.7 }, "got": { "priority": "P3", "score": 5.7 } } ]
+    }
+  ]
+}

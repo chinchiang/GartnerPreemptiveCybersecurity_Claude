@@ -4,6 +4,7 @@
  * 其他值要有 BASE_URL）、BASE_URL（覆寫端點）、MAX_OUTPUT_TOKENS（輸出上限，預設 8000）、UPSTREAM_TIMEOUT_MS（上游逾時，毫秒，預設 60000、最大 2147483647）。
  * 設定不完整或不合格時一律回 500，不呼叫上游。
  * 安全：固定 system prompt；來源限制；請求大小上限 512 KB（以實際讀到的位元組計算）；上游逾時回 504、上游錯誤回 502 且不轉發上游的內容；
+ * 附了分數表時，模型輸出跟分數表不一致、無法檢查或回覆不完整也回 502（附上游 2xx 回應的原文，#247）；
  * 簡易速率限制（每 IP 每分鐘 5 次，使用記憶體 Map，僅示範）。這是範例，不可直接上線（缺的部分見 backend/README.md）。
  */
 // 授權範圍守門：規則只來自 schema，由 assets/scope-gate.js 判定（與網站示範引擎共用，見 docs/adr/0004）；
@@ -65,6 +66,48 @@ async function readLimited(request, limit) {
   return new TextDecoder().decode(bytes);
 }
 
+// 模型輸出跟分數表的對照（#247）：照常轉回時回傳 null，否則回傳 { error, problems? }。
+// 只送一輪，所以從模型的文字裡取「最後一個」JSON 區塊（lastJsonBlock；核心提示詞要求報告最後附一個 JSON 區塊，本文可能有別的區塊或大括號）。
+// 回覆不完整（被輸出上限截斷、被內容過濾或拒答，見 INCOMPLETE）時不拿它對照；取不到文字、上游回應形狀不對、找不到或解析不了 JSON，一律不放行。
+// 對照規則是示範引擎的 scoreTableProblems（跟 Python 核心的 score_table_problems 由共用案例守住）
+const UNPARSEABLE = { error: 'output_unparseable' };
+// 回覆不完整的結束原因：跟 Python 核心 require_complete 的清單相同（chat_completions 與 anthropic 兩種介面）
+const INCOMPLETE = { chat: ['length', 'content_filter'], anthropic: ['max_tokens', 'model_context_window_exceeded', 'refusal'] };
+// 最後一個 JSON 區塊的內容：逐行找 ``` 圍起來的區塊（開頭的 ``` 可以帶語言、前後可以有空白，結尾是單獨一行的 ```），
+// 沒標語言或標 json（不分大小寫）的才算；沒結尾的區塊不算。逐行解析，前面別的區塊的結尾不會被誤認成新的開頭
+function lastJsonBlock(text) {
+  let last = null, open = null;
+  for (const line of text.split(/\r?\n/)) {
+    const fence = line.match(/^\s*```\s*(\S*)\s*$/);
+    if (!open) { if (fence) open = { tag: fence[1].toLowerCase(), lines: [] }; }
+    else if (fence && fence[1] === '') { if (open.tag === '' || open.tag === 'json') last = open.lines.join('\n'); open = null; }
+    else open.lines.push(line);
+  }
+  return last;
+}
+function outputVerdict(provider, content, table) {
+  let body;
+  try { body = JSON.parse(content); } catch { return UNPARSEABLE; }
+  let text;
+  if (provider === 'anthropic') {
+    if (INCOMPLETE.anthropic.includes(body?.stop_reason)) return { error: 'output_incomplete' };
+    const blocks = Array.isArray(body?.content) ? body.content.filter(b => b?.type === 'text' && typeof b.text === 'string') : [];
+    if (!blocks.length) return UNPARSEABLE;
+    text = blocks.map(b => b.text).join('');
+  } else {
+    const choice = Array.isArray(body?.choices) ? body.choices[0] : undefined;
+    if (INCOMPLETE.chat.includes(choice?.finish_reason)) return { error: 'output_incomplete' };
+    text = choice?.message?.content;
+    if (typeof text !== 'string') return UNPARSEABLE;
+  }
+  const last = lastJsonBlock(text);
+  if (last === null) return UNPARSEABLE;
+  let output;
+  try { output = JSON.parse(last); } catch { return UNPARSEABLE; }
+  const problems = DEMO.scoreTableProblems(output, table);
+  return problems.length ? { error: 'score_table_mismatch', problems } : null;
+}
+
 export default {
   async fetch(request, env) {
     const config = readConfig(env);
@@ -110,6 +153,9 @@ export default {
     } catch {
       return signal.aborted ? new Response('Upstream timeout', { status: 504, headers: cors }) : new Response('Upstream error', { status: 502, headers: cors });
     }
+    // 附了分數表就檢查模型有沒有照用（#247）；不一致、無法檢查或回覆不完整時回 502 並附上游原文，不當成成功回應轉回
+    const verdict = table ? outputVerdict(provider, content, table) : null;
+    if (verdict) return new Response(JSON.stringify({ ...verdict, upstream: content }), { status: 502, headers: { ...cors, 'content-type': 'application/json' } });
     return new Response(content, { status, headers: { ...cors, 'content-type': 'application/json' } });
   }
 };
