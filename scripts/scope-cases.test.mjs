@@ -50,7 +50,10 @@ const analyze = (scope, target = worker, env = {}) => target.fetch(new Request('
 
 describe('後端代理（backend/worker.js）', () => {
   const realFetch = globalThis.fetch;
-  before(() => { globalThis.fetch = async (url, init) => { upstreamRequests.push([url, init]); return new Response('{}', { status: 200 }); }; });
+  // 假的上游回一份合格的模型輸出（examples/acceptance-fixture.json）：代理會檢查模型輸出（#247、#252），這裡看的是守門放不放行
+  const fixture = readFileSync(new URL('../examples/acceptance-fixture.json', import.meta.url), 'utf8');
+  const modelReply = JSON.stringify({ choices: [{ message: { content: '報告\n\n```json\n' + fixture + '\n```' }, finish_reason: 'stop' }] });
+  before(() => { globalThis.fetch = async (url, init) => { upstreamRequests.push([url, init]); return new Response(modelReply, { status: 200 }); }; });
   after(() => { globalThis.fetch = realFetch; });
   afterEach(() => { upstreamRequests = []; });
 

@@ -1,11 +1,12 @@
-// build-worker.test.mjs — 後端代理建置的測試：兩個嵌入點都要恰好一處
+// build-worker.test.mjs — 後端代理建置的測試：每個嵌入點都要恰好一處，產物不留 import 且內嵌的判定有效
 // 後端代理建置（build-worker.mjs）的測試：實際執行 CLI，模板由這裡讀 backend/worker.js 再改字串，寫到暫存目錄傳進去。
-// 兩個嵌入點（CORE_PROMPT 佔位字串、import GATE 那一行）都要恰好一處，0 處或 2 處以上就中止，不默默只換第一處。
+// 每個嵌入點（CORE_PROMPT 佔位字串與模板裡的每一行 import）都要恰好一處，0 處或 2 處以上就中止，不默默只換第一處。
 // 執行：node --test scripts/build-worker.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import vm from 'node:vm';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -86,18 +87,53 @@ test('產物內嵌示範引擎（#230）：沒有任何 import，載入建置出
     const cases = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/score-table-cases.json'), 'utf8'));
     const { bundle, expected } = cases.cases[0];
     const sent = [];
-    // 假的上游回一份跟分數表一致的模型回覆（手算的 expected），產物裡的對照（#247）放行，回 200
-    const agreed = { exposure_priorities: { items: expected.findings.map(({ finding_id, priority, score }) => ({ finding_id, priority, score })) } };
-    const upstreamReply = JSON.stringify({ choices: [{ message: { content: '報告\n\n```json\n' + JSON.stringify(agreed) + '\n```' }, finish_reason: 'stop' }] });
-    globalThis.fetch = async (url, init) => { sent.push(init); return new Response(upstreamReply, { status: 200 }); };
+    // 這裡只看送出的分數表；假的上游回 {}，不是模型回覆的形狀，代理回 502 的 output_unparseable（#247）。回應那一側見下一個測試
+    globalThis.fetch = async (url, init) => { sent.push(init); return new Response('{}', { status: 200 }); };
     const env = { ALLOWED_ORIGIN: 'https://allowed.example', PROVIDER: 'openai', MODEL: 'm', PROVIDER_API_KEY: 'k' };
     const res = await worker.fetch(new Request('https://worker.example/api/analyze', { method: 'POST',
       headers: { 'content-type': 'application/json', origin: env.ALLOWED_ORIGIN, 'cf-connecting-ip': '203.0.113.9' }, body: JSON.stringify({ bundle }) }), env);
-    assert.equal(res.status, 200);
-    assert.equal(await res.text(), upstreamReply, '一致時照常轉回');
+    assert.equal(res.status, 502);
+    assert.equal(JSON.parse(await res.text()).error, 'output_unparseable');
     const content = JSON.parse(sent[0].body).messages.at(-1).content;
     const table = JSON.parse(content.split('【腳本預先計算的曝險分數】')[1].split('```json\n')[1].split('\n```')[0]);
     assert.deepEqual(table, expected);
+  } finally {
+    globalThis.fetch = realFetch;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('產物內嵌輸出 schema 與判定（#252）：合格的模型輸出照常轉回，不符合 schema 時回 output_schema_invalid', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pea-build-worker-'));
+  const realFetch = globalThis.fetch;
+  try {
+    const out = join(dir, 'dist.mjs');
+    const r = spawnSync(process.execPath, [SCRIPT, out], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.doesNotMatch(readFileSync(out, 'utf8'), /^import /m, '部署的是單一檔案，不能留 import');
+    const { default: worker } = await import(pathToFileURL(out).href);
+    // 合成資料當 bundle、examples/acceptance-fixture.json 當模型輸出（它的 F001、F009 跟示範快照相同，而且合格）
+    const ctx = { window: {} };
+    vm.runInNewContext(readFileSync(join(ROOT, 'data/case.js'), 'utf8'), ctx);
+    const { threatIntel, ...rest } = ctx.window.CASE_DATA;
+    const bundle = { ...rest, threat_intel: threatIntel };
+    const fixture = JSON.parse(readFileSync(join(ROOT, 'examples/acceptance-fixture.json'), 'utf8'));
+    const replyWith = (output) => JSON.stringify({ choices: [{ message: { content: '報告\n\n```json\n' + JSON.stringify(output) + '\n```' }, finish_reason: 'stop' }] });
+    const env = { ALLOWED_ORIGIN: 'https://allowed.example', PROVIDER: 'openai', MODEL: 'm', PROVIDER_API_KEY: 'k' };
+    let ip = 0;
+    const send = async (upstreamReply) => {
+      globalThis.fetch = async () => new Response(upstreamReply, { status: 200 });
+      return worker.fetch(new Request('https://worker.example/api/analyze', { method: 'POST',
+        headers: { 'content-type': 'application/json', origin: env.ALLOWED_ORIGIN, 'cf-connecting-ip': `203.0.113.${++ip}` }, body: JSON.stringify({ bundle }) }), env);
+    };
+    const ok = replyWith(fixture);
+    let res = await send(ok);
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), ok, '合格時照常轉回');
+    const { thresholds, ...withoutThresholds } = fixture.exposure_priorities;
+    res = await send(replyWith({ ...fixture, exposure_priorities: withoutThresholds }));
+    assert.equal(res.status, 502);
+    assert.deepEqual(JSON.parse(await res.text()).problems, ['$.exposure_priorities.thresholds 必填']);
   } finally {
     globalThis.fetch = realFetch;
     rmSync(dir, { recursive: true, force: true });

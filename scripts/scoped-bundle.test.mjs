@@ -51,10 +51,9 @@ test('後端實際送出的每份 bundle 都符合共用案例，不傳出不合
         assert.equal(await response.text(), 'excluded_assets 格式不合格（須為陣列，且每項為非空白字串）；格式不符時排除不會生效，為避免把要排除的資產送往模型，不送出', c.name);
         assert.equal(sent, undefined, `${c.name}：上游被呼叫了`);
       } else {
-        // 重點是送往上游的內容。附了分數表時，假的上游回 {} 不是模型回覆的形狀，代理回 502 的 output_unparseable（#247）；
-        // 沒附分數表（缺資產清冊或弱點）時照常轉回 200
-        if (response.status === 502) assert.equal(JSON.parse(await response.text()).error, 'output_unparseable', c.name);
-        else assert.equal(response.status, 200, c.name);
+        // 重點是送往上游的內容。假的上游回 {} 不是模型回覆的形狀，代理不論有沒有附分數表都會檢查模型輸出，回 502 的 output_unparseable（#247、#252）
+        assert.equal(response.status, 502, c.name);
+        assert.equal(JSON.parse(await response.text()).error, 'output_unparseable', c.name);
         assert.deepEqual(sent, { ...c.expected, scope: caseScope }, c.name);
       }
     }
