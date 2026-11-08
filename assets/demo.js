@@ -88,7 +88,7 @@
     // 只分析授權範圍內、且不在排除清單的資產（排除優先，見 docs/adr/0007）；範圍外與被排除者分開記錄
     const inScope = GATE.allowedAssets(auth);
     const excludedIds = GATE.excludedAssets(auth);
-    const allAssets = data.assets || [];
+    const allAssets = GATE.rows(data.assets); // 清單裡不是物件的項目跳過（#250，Python 核心照同一條規則，由共用案例守住）
     const excludedByList = allAssets.filter(a => excludedIds.has(a.asset_id)).map(a => a.asset_id);
     const outOfScope = allAssets.filter(a => !inScope.has(a.asset_id) && !excludedIds.has(a.asset_id)).map(a => a.asset_id);
     const scopedAssets = allAssets.filter(a => inScope.has(a.asset_id));
@@ -96,10 +96,12 @@
 
     // 形狀不對的控制當成不存在（#243，Python 核心的 score_findings 照同一條規則，由共用案例守住）
     const controlRows = GATE.rows(data.controls?.controls);
+    // 身分與設定基準的清單裡不是物件的項目跳過（#250，Python 核心照同一條規則，由共用案例守住）；先篩一次，每項發現共用
+    const identityRows = GATE.rows(data.identities), misconfigRows = GATE.rows(data.misconfigurations);
     const assetList = (v) => Array.isArray(v) ? v : []; // coverage_assets、gaps 不是陣列時當成空的，不做子字串比對
     const controlsOf = (id) => P.inputs.controls ? controlRows.filter(c => assetList(c.coverage_assets).includes(id)).map(c => c.name) : [];
     const gapsOf = (id) => P.inputs.controls ? controlRows.filter(c => assetList(c.gaps).includes(id)).map(c => c.name) : [];
-    const identityIssues = (id) => P.inputs.identities ? data.identities.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
+    const identityIssues = (id) => P.inputs.identities ? identityRows.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
     // 形狀不對的情資當成沒有命中（#237）：Python 核心的 score_findings 照同一條規則，由共用案例守住
     // （陣列沒有 actors、字串沒有 exploits_vuln_ids，Array.isArray 就擋得住；?. 擋 null）
     const intelActors = (Array.isArray(data.threatIntel?.actors) ? data.threatIntel.actors : [])
@@ -108,7 +110,7 @@
     // confidence 不是規則裡的字串（缺少、陣列等）時以 low 計，因子寫「未標信心」（#237；Python 核心照同一條規則）
     const confidenceOf = (a) => typeof a.confidence === 'string' ? a.confidence : '未標信心';
     const intelWeight = (a) => typeof a.confidence === 'string' ? L.intel[a.confidence] ?? L.intel.low : L.intel.low;
-    const misconfigs = (id) => P.inputs.misconfig ? data.misconfigurations.filter(m => m.asset_id === id && m.status === 'fail') : [];
+    const misconfigs = (id) => P.inputs.misconfig ? misconfigRows.filter(m => m.asset_id === id && m.status === 'fail') : [];
     const exposureOf = (id) => P.inputs.exposures ? exposureRows(data).find(e => e?.asset_id === id) : null;
     const crownJewels = Array.isArray(data.topology?.crown_jewels) ? data.topology.crown_jewels : []; // 不是陣列時當成沒有，不做子字串比對（#243）
 
@@ -126,7 +128,7 @@
     const entryNodes = reachableEntries(edges, crownJewels);
 
     // S3 曝險評分
-    const findings = (data.vulnerabilities || []).filter(v => visibleIds.includes(v.asset_id)).map(v => {
+    const findings = GATE.rows(data.vulnerabilities).filter(v => visibleIds.includes(v.asset_id)).map(v => {
       const a = assets.get(v.asset_id);
       const f = { ...v, asset: a, factors: [], missing: [] };
       let likelihood = 0;

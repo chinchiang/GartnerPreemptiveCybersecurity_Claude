@@ -603,6 +603,54 @@
         { "finding_id": "F4", "likelihood": 6.8, "impact": 2.8, "score": 19, "priority": "P4", "factors": ["對外曝露", "模擬 EPSS 1", "身分弱點 ×1"] },
         { "finding_id": "F2", "likelihood": 0.57, "impact": 10, "score": 5.7, "priority": "P4", "factors": ["既有控制：EDR", "crown jewel", "可達 crown jewel 之入口（blast radius）"] }
       ]
+    },
+    {
+      "name": "assets 裡有 null 與不是物件的項目：那一項跳過，其餘照算（#250）",
+      "inputs": {},
+      "data": { "assets": [null,5,"x",{"asset_id":"A01","name":"vpn","type":"VPN","business_criticality":4,"data_classification":"Internal","internet_exposed":true},{"asset_id":"A02","name":"db","type":"DB","business_criticality":5,"data_classification":"Restricted","internet_exposed":false},{"asset_id":"A03","name":"app","type":"App","business_criticality":3,"data_classification":"Confidential","internet_exposed":true},{"asset_id":"A04","name":"site","type":"Site","business_criticality":2,"data_classification":"Public","internet_exposed":true}] },
+      "why": { "全部": "null、5、\"x\" 不是物件，跳過；其餘項目同 baseData，結果同第一案「全部輸入齊全」" },
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]}
+      ]
+    },
+    {
+      "name": "vulnerabilities 裡有 null 與不是物件的項目：那一項跳過，其餘照算（#250）",
+      "inputs": {},
+      "data": { "vulnerabilities": [null,5,"x",{"finding_id":"F1","asset_id":"A01","vuln_id":"V1","cvss_base":9,"exploit_public":true,"epss_sim":0.5,"kev_sim":true},{"finding_id":"F2","asset_id":"A02","vuln_id":"V2","cvss_base":7,"exploit_public":false},{"finding_id":"F3","asset_id":"A03","vuln_id":"V3","cvss_base":5,"exploit_public":false,"epss_sim":0.2,"kev_sim":false},{"finding_id":"F4","asset_id":"A04","vuln_id":"V4","cvss_base":4,"exploit_public":false,"epss_sim":1,"kev_sim":false}] },
+      "why": { "全部": "null、5、\"x\" 不是物件，跳過；其餘項目同 baseData，結果同第一案「全部輸入齊全」" },
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]}
+      ]
+    },
+    {
+      "name": "identities 裡有 null 與不是物件的項目：那一項跳過，其餘照算（#250）",
+      "inputs": {},
+      "data": { "identities": [null,5,"x",{"identity_id":"U1","mfa_enabled":false,"last_login_days":1,"linked_assets":"A03"},{"identity_id":"U2","mfa_enabled":false,"last_login_days":1,"linked_assets":"A03"},{"identity_id":"U3","mfa_enabled":"partial","last_login_days":1,"linked_assets":"A03;A04"},{"identity_id":"U4","mfa_enabled":true,"last_login_days":10,"linked_assets":"A03"}] },
+      "why": { "全部": "null、5、\"x\" 不是物件，跳過；其餘項目同 baseData，結果同第一案「全部輸入齊全」" },
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]}
+      ]
+    },
+    {
+      "name": "misconfigurations 裡有 null 與不是物件的項目：那一項跳過，其餘照算（#250）",
+      "inputs": {},
+      "data": { "misconfigurations": [null,5,"x",{"asset_id":"A03","status":"fail"},{"asset_id":"A03","status":"fail"},{"asset_id":"A03","status":"fail"},{"asset_id":"A03","status":"pass"}] },
+      "why": { "全部": "null、5、\"x\" 不是物件，跳過；其餘項目同 baseData，結果同第一案「全部輸入齊全」" },
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]}
+      ]
     }
   ]
 }
