@@ -101,7 +101,7 @@
     const assetList = (v) => Array.isArray(v) ? v : []; // coverage_assets、gaps 不是陣列時當成空的，不做子字串比對
     const controlsOf = (id) => P.inputs.controls ? controlRows.filter(c => assetList(c.coverage_assets).includes(id)).map(c => c.name) : [];
     const gapsOf = (id) => P.inputs.controls ? controlRows.filter(c => assetList(c.gaps).includes(id)).map(c => c.name) : [];
-    const identityIssues = (id) => P.inputs.identities ? identityRows.filter(i => String(i.linked_assets).split(';').includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
+    const identityIssues = (id) => P.inputs.identities ? identityRows.filter(i => GATE.linkedAssets(i).includes(id) && (i.mfa_enabled === false || i.mfa_enabled === 'partial' || Number(i.last_login_days) > RULES.identityIssue.staleLoginDays)) : [];
     // 形狀不對的情資當成沒有命中（#237）：Python 核心的 score_findings 照同一條規則，由共用案例守住
     // （陣列沒有 actors、字串沒有 exploits_vuln_ids，Array.isArray 就擋得住；?. 擋 null）
     const intelActors = (Array.isArray(data.threatIntel?.actors) ? data.threatIntel.actors : [])

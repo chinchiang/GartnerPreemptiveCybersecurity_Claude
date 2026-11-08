@@ -1537,5 +1537,74 @@
         }
       ]
     }
+  },
+  {
+    "name": "身分連結不是字串（陣列、null）時整筆丟掉，即使轉成字串剛好等於範圍內的資產編號（#256）",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "null",
+            "None"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "null"
+        },
+        {
+          "asset_id": "None"
+        }
+      ],
+      "identities": [
+        {
+          "identity_id": "U1",
+          "linked_assets": [
+            "A01"
+          ]
+        },
+        {
+          "identity_id": "U2",
+          "linked_assets": null
+        },
+        {
+          "identity_id": "U3",
+          "linked_assets": "A01"
+        }
+      ]
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01",
+            "null",
+            "None"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        },
+        {
+          "asset_id": "null"
+        },
+        {
+          "asset_id": "None"
+        }
+      ],
+      "identities": [
+        {
+          "identity_id": "U3",
+          "linked_assets": "A01"
+        }
+      ]
+    }
   }
 ]

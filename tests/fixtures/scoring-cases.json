@@ -651,6 +651,27 @@
         {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
         {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]}
       ]
+    },
+    {
+      "name": "linked_assets 不是字串（null、true、陣列）的身分不算任何資產的身分弱點（#256）",
+      "inputs": {},
+      "data": {
+        "scope": {"organization":"共用案例","analysis_date":"2026-09-08","authorized_scope":{"in_scope_assets":["A01","A02","A03","A04","null","None","true","True"],"active_testing_authorized":false,"external_scanning_authorized":false},"reporting":{"audience":["CISO"]}},
+        "assets": [{"asset_id":"A01","name":"vpn","type":"VPN","business_criticality":4,"data_classification":"Internal","internet_exposed":true},{"asset_id":"A02","name":"db","type":"DB","business_criticality":5,"data_classification":"Restricted","internet_exposed":false},{"asset_id":"A03","name":"app","type":"App","business_criticality":3,"data_classification":"Confidential","internet_exposed":true},{"asset_id":"A04","name":"site","type":"Site","business_criticality":2,"data_classification":"Public","internet_exposed":true},{"asset_id":"null","name":"資產 null","type":"Server","business_criticality":1,"data_classification":"Internal","internet_exposed":false},{"asset_id":"None","name":"資產 None","type":"Server","business_criticality":1,"data_classification":"Internal","internet_exposed":false},{"asset_id":"true","name":"資產 true","type":"Server","business_criticality":1,"data_classification":"Internal","internet_exposed":false},{"asset_id":"True","name":"資產 True","type":"Server","business_criticality":1,"data_classification":"Internal","internet_exposed":false}],
+        "vulnerabilities": [{"finding_id":"F1","asset_id":"A01","vuln_id":"V1","cvss_base":9,"exploit_public":true,"epss_sim":0.5,"kev_sim":true},{"finding_id":"F2","asset_id":"A02","vuln_id":"V2","cvss_base":7,"exploit_public":false},{"finding_id":"F3","asset_id":"A03","vuln_id":"V3","cvss_base":5,"exploit_public":false,"epss_sim":0.2,"kev_sim":false},{"finding_id":"F4","asset_id":"A04","vuln_id":"V4","cvss_base":4,"exploit_public":false,"epss_sim":1,"kev_sim":false},{"finding_id":"F_null","asset_id":"null","vuln_id":"V_null","cvss_base":5,"exploit_public":false},{"finding_id":"F_None","asset_id":"None","vuln_id":"V_None","cvss_base":5,"exploit_public":false},{"finding_id":"F_true","asset_id":"true","vuln_id":"V_true","cvss_base":5,"exploit_public":false},{"finding_id":"F_True","asset_id":"True","vuln_id":"V_True","cvss_base":5,"exploit_public":false}],
+        "identities": [{"identity_id":"U1","mfa_enabled":false,"last_login_days":1,"linked_assets":"A03"},{"identity_id":"U2","mfa_enabled":false,"last_login_days":1,"linked_assets":"A03"},{"identity_id":"U3","mfa_enabled":"partial","last_login_days":1,"linked_assets":"A03;A04"},{"identity_id":"U4","mfa_enabled":true,"last_login_days":10,"linked_assets":"A03"},{"identity_id":"U5","mfa_enabled":false,"last_login_days":1,"linked_assets":null},{"identity_id":"U6","mfa_enabled":false,"last_login_days":1,"linked_assets":true},{"identity_id":"U7","mfa_enabled":false,"last_login_days":1,"linked_assets":["A01"]}]
+      },
+      "why": {"U5–U7":"MFA 未啟用，但 linked_assets 不是字串，跟授權範圍篩選同一條規則，當成沒有關聯任何資產。改動前 JS 的 String(null)、String(true)、String([\"A01\"]) 是 \"null\"、\"true\"、\"A01\"，Python 的 str() 是 \"None\"、\"True\"、\"['A01']\"，兩邊會各自算到不同的資產","F1":"同第一案（U7 不連到 A01）","F_null 等 4 項":"不對外、沒有公開利用、沒有 EPSS：可能性 CVSS 近似 5/10×1.5 = 0.75；影響 1×1.4 + Internal 1 = 2.4；分數 0.75×2.4 = 1.8 → P4；沒有任何因子","其他":"F2、F3、F4 同第一案"},
+      "expected": [
+        {"finding_id":"F1","likelihood":10,"impact":8.6,"score":86,"priority":"P1","factors":["對外曝露","EASM 議題：old-tls","公開利用程式","模擬 EPSS 0.5","模擬 KEV（已知遭利用）","威脅情資命中：GROUP-A（medium）","可達 crown jewel 之入口（blast radius）"]},
+        {"finding_id":"F3","likelihood":7.6,"impact":6.2,"score":47.1,"priority":"P2","factors":["對外曝露","身分弱點 ×3","設定偏差 ×3","控制缺口：G1、G2、G3、G4"]},
+        {"finding_id":"F4","likelihood":6.8,"impact":2.8,"score":19,"priority":"P4","factors":["對外曝露","模擬 EPSS 1","身分弱點 ×1"]},
+        {"finding_id":"F2","likelihood":0.57,"impact":10,"score":5.7,"priority":"P4","factors":["既有控制：EDR","crown jewel"]},
+        {"finding_id":"F_null","likelihood":0.75,"impact":2.4,"score":1.8,"priority":"P4","factors":[]},
+        {"finding_id":"F_None","likelihood":0.75,"impact":2.4,"score":1.8,"priority":"P4","factors":[]},
+        {"finding_id":"F_true","likelihood":0.75,"impact":2.4,"score":1.8,"priority":"P4","factors":[]},
+        {"finding_id":"F_True","likelihood":0.75,"impact":2.4,"score":1.8,"priority":"P4","factors":[]}
+      ]
     }
   ]
 }
