@@ -212,7 +212,8 @@
         "id": "V-1",
         "hypothesis": "H-1",
         "method": "授權後以外部版本確認 + 內部 BAS 模擬橫向移動",
-        "authorization_required": "尚未授權主動測試；需書面授權",
+        "authorization_required": "需書面授權",
+        "authorization_status": "尚未授權主動測試",
         "scope_exclusions": [
           "OT 網段"
         ],
@@ -222,7 +223,8 @@
         "id": "V-2",
         "hypothesis": "H-2",
         "method": "設定審查（被動）",
-        "authorization_required": "尚未授權主動測試",
+        "authorization_required": "需 CISO 書面核准",
+        "authorization_status": "尚未授權主動測試",
         "scope_exclusions": [],
         "success_criteria": "erp-app-01 是否允許以服務帳號直連資料庫"
       }

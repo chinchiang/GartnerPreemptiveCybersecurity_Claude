@@ -89,7 +89,7 @@
 |---|---|---|
 | 2 | `vpn-gw-01 / SYN-2026-0101` | P1；依據含對外曝露、公開利用程式、模擬 KEV、威脅情資命中 |
 | 3 | 路徑 | 含 `internet → vpn-gw-01 → ad-dc-01 → erp-db-01`，hypothesis |
-| 4 | 驗證計畫 | 每項「尚未授權主動測試」（`node scripts/run-demo.mjs` 驗證計畫段） |
+| 4 | 驗證計畫 | 每項的 `authorization_status` 是「尚未授權主動測試」（JSON 輸出的 `validation_plan`；`node scripts/run-demo.mjs` 的驗證計畫段只印說明文字） |
 | 5 | 管理摘要 | 正體中文、正文 ≤ 300 字、含「決策請求」與「限制」（`run-demo.mjs` 管理摘要段） |
 | 6 | 移除 threat-intel.json（`--no-intel`） | 資料齊備程度「中」；`SYN-2026-0101` 仍 P1；`mail-gw-01` 降 P2；`ad-dc-01` 降 P3；輸出列「未納入威脅情資」 |
 | 7 | 移除 scope.json（`--no-scope`） | 拒絕分析並列出必要欄位（exit code 2） |

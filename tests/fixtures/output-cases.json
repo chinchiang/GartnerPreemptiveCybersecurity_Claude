@@ -237,5 +237,55 @@
     "problems": [
       "$.metrics.items[0].next_review 必填"
     ]
+  },
+  {
+    "name": "驗證計畫缺 authorization_status（#267）",
+    "path": [
+      "validation_plan",
+      "items",
+      0,
+      "authorization_status"
+    ],
+    "delete": true,
+    "valid": false,
+    "problems": [
+      "$.validation_plan.items[0].authorization_status 必填"
+    ]
+  },
+  {
+    "name": "驗證計畫的 authorization_status 不在允許值中：自由文字不算（#267，Gemini 第 6 次 baseline 的原句）",
+    "path": [
+      "validation_plan",
+      "items",
+      0,
+      "authorization_status"
+    ],
+    "value": "需取得 CISO 書面授權與變更維護窗口審批",
+    "valid": false,
+    "problems": [
+      "$.validation_plan.items[0].authorization_status 不在允許值中"
+    ]
+  },
+  {
+    "name": "驗證計畫的 authorization_status 是「尚未授權主動測試」：合格（#267）",
+    "path": [
+      "validation_plan",
+      "items",
+      0,
+      "authorization_status"
+    ],
+    "value": "尚未授權主動測試",
+    "valid": true
+  },
+  {
+    "name": "驗證計畫的 authorization_status 是「已授權」：合格（#267）",
+    "path": [
+      "validation_plan",
+      "items",
+      0,
+      "authorization_status"
+    ],
+    "value": "已授權",
+    "valid": true
   }
 ]
