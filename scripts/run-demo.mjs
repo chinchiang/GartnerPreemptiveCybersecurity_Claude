@@ -33,7 +33,7 @@ if (R.refused) {
 console.log('== 曝險優先序 ==');
 for (const f of R.findings) console.log(`${f.priority} | ${f.asset.name} | ${f.vuln_id} | score ${f.score} | L ${ctx.window.DEMO.format1(f.likelihood)} | I ${ctx.window.DEMO.format1(f.impact)} | ${f.confidence} | ${f.factors.join('；')}`);
 console.log('\n== 攻擊路徑假設（status: hypothesis） ==');
-const name = (id) => data.assets.find(a => a.asset_id === id)?.name || id;
+const name = (id) => R.rows.assets.find(a => a.asset_id === id)?.name || id; // 正規化過的資產（#262），清單裡有 null 時不出錯
 R.hypotheses.forEach((h, i) => console.log(`${i + 1}. internet → ${h.nodes.map(name).join(' → ')} | hops ${h.hops} | feasibility ${h.feasibility} | ${h.status}`));
 console.log('\n== 指標 ==');
 for (const m of R.metrics) console.log(`${m.name}: ${m.value} (目標 ${m.target})`);

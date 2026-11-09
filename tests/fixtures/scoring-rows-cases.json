@@ -1,0 +1,153 @@
+{
+  "description": "評分入口的正規化（#262）：示範引擎 scoringRows（assets/demo.js，scripts/scoring-rows.test.mjs）與 Python 核心 scoring_rows（skills/shared/analysis_workflow.py，tests/python/test_scoring_rows.py）跑同一份。data 是示範引擎的資料形狀（威脅情資的鍵是 threatIntel）；expected 是正規化後的完整結果，預期值依 #262 的 brief 手寫：容器不是物件時當成 {}，清單不是陣列時當成 []，清單裡不是物件的項目跳過（GLOSSARY.md 的資料列），crown_jewels 不是陣列時當成 []（項目是字串，不跳過）。結果只含形狀表的鍵與其中的清單，其他鍵與欄位不保留（評分只讀清單；檔案筆數照舊讀原始資料）。",
+  "cases": [
+    {
+      "name": "形狀全部合格：原樣保留",
+      "data": {
+        "assets": [{ "asset_id": "A01" }],
+        "vulnerabilities": [{ "vuln_id": "V1", "asset_id": "A01" }],
+        "identities": [{ "identity_id": "U1", "linked_assets": "A01" }],
+        "misconfigurations": [{ "asset_id": "A01", "status": "fail" }],
+        "exposures": { "exposures": [{ "asset_id": "A01" }] },
+        "controls": { "controls": [{ "name": "EDR" }] },
+        "threatIntel": { "actors": [{ "name": "APT-X", "exploits_vuln_ids": ["V1"] }] },
+        "topology": { "edges": [{ "from": "internet", "to": "A01" }], "crown_jewels": ["A01"] }
+      },
+      "expected": {
+        "assets": [{ "asset_id": "A01" }],
+        "vulnerabilities": [{ "vuln_id": "V1", "asset_id": "A01" }],
+        "identities": [{ "identity_id": "U1", "linked_assets": "A01" }],
+        "misconfigurations": [{ "asset_id": "A01", "status": "fail" }],
+        "exposures": { "exposures": [{ "asset_id": "A01" }] },
+        "controls": { "controls": [{ "name": "EDR" }] },
+        "threatIntel": { "actors": [{ "name": "APT-X", "exploits_vuln_ids": ["V1"] }] },
+        "topology": { "edges": [{ "from": "internet", "to": "A01" }], "crown_jewels": ["A01"] }
+      }
+    },
+    {
+      "name": "全部缺少：每份清單都是空的",
+      "data": {},
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "容器是 null：當成 {}",
+      "data": { "exposures": null, "controls": null, "threatIntel": null, "topology": null },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "容器是陣列：當成 {}，陣列裡的物件不算資料列",
+      "data": {
+        "exposures": [{ "asset_id": "A01" }], "controls": [{ "name": "EDR" }],
+        "threatIntel": [{ "name": "APT-X", "exploits_vuln_ids": ["V1"] }], "topology": [{ "from": "internet", "to": "A01" }]
+      },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "容器是字串：當成 {}",
+      "data": { "exposures": "exposures", "controls": "controls", "threatIntel": "actors", "topology": "edges" },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "清單是 null：當成 []",
+      "data": {
+        "assets": null, "vulnerabilities": null, "identities": null, "misconfigurations": null,
+        "exposures": { "exposures": null }, "controls": { "controls": null }, "threatIntel": { "actors": null },
+        "topology": { "edges": null, "crown_jewels": null }
+      },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "清單是物件：當成 []，物件本身不算資料列",
+      "data": {
+        "assets": { "asset_id": "A01" }, "vulnerabilities": { "vuln_id": "V1" }, "identities": { "identity_id": "U1" }, "misconfigurations": { "asset_id": "A01" },
+        "exposures": { "exposures": { "asset_id": "A01" } }, "controls": { "controls": { "name": "EDR" } },
+        "threatIntel": { "actors": { "name": "APT-X" } }, "topology": { "edges": { "from": "internet", "to": "A01" }, "crown_jewels": { "A01": true } }
+      },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "清單是字串：當成 []，不逐字元走訪",
+      "data": {
+        "assets": "A01", "vulnerabilities": "V1", "identities": "U1", "misconfigurations": "A01",
+        "exposures": { "exposures": "A01" }, "controls": { "controls": "EDR" },
+        "threatIntel": { "actors": "APT-X" }, "topology": { "edges": "A01", "crown_jewels": "A01" }
+      },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    },
+    {
+      "name": "清單裡混有 null、數字、字串、陣列：跳過，只留物件",
+      "data": {
+        "assets": [null, 1, "A02", ["A03"], { "asset_id": "A01" }],
+        "vulnerabilities": [null, 1, "V2", ["V3"], { "vuln_id": "V1" }],
+        "identities": [null, 1, "U2", ["U3"], { "identity_id": "U1" }],
+        "misconfigurations": [null, 1, "A02", ["A03"], { "asset_id": "A01" }],
+        "exposures": { "exposures": [null, 1, "A02", ["A03"], { "asset_id": "A01" }] },
+        "controls": { "controls": [null, 1, "EDR", ["WAF"], { "name": "SIEM" }] },
+        "threatIntel": { "actors": [null, 1, "APT-Y", ["APT-Z"], { "name": "APT-X" }] },
+        "topology": { "edges": [null, 1, "A02", ["A03"], { "from": "internet", "to": "A01" }], "crown_jewels": ["A01"] }
+      },
+      "expected": {
+        "assets": [{ "asset_id": "A01" }],
+        "vulnerabilities": [{ "vuln_id": "V1" }],
+        "identities": [{ "identity_id": "U1" }],
+        "misconfigurations": [{ "asset_id": "A01" }],
+        "exposures": { "exposures": [{ "asset_id": "A01" }] },
+        "controls": { "controls": [{ "name": "SIEM" }] },
+        "threatIntel": { "actors": [{ "name": "APT-X" }] },
+        "topology": { "edges": [{ "from": "internet", "to": "A01" }], "crown_jewels": ["A01"] }
+      }
+    },
+    {
+      "name": "crown_jewels 是陣列：項目原樣保留，不跳過字串",
+      "data": { "topology": { "edges": [], "crown_jewels": ["A01", "A02"] } },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": ["A01", "A02"] }
+      }
+    },
+    {
+      "name": "其他鍵與容器裡的其他欄位不保留",
+      "data": {
+        "scope": { "organization": "X" }, "unknown": [{ "a": 1 }],
+        "exposures": { "exposures": [], "generated_at": "2026-01-01" },
+        "controls": { "controls": [], "owner": "SOC" },
+        "threatIntel": { "actors": [], "source": "feed" },
+        "topology": { "edges": [], "crown_jewels": [], "notes": "n" }
+      },
+      "expected": {
+        "assets": [], "vulnerabilities": [], "identities": [], "misconfigurations": [],
+        "exposures": { "exposures": [] }, "controls": { "controls": [] }, "threatIntel": { "actors": [] },
+        "topology": { "edges": [], "crown_jewels": [] }
+      }
+    }
+  ]
+}

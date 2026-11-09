@@ -256,9 +256,9 @@
 
   /** 一般物件（不是 null、不是陣列）：scopedBundle 篩選資料列與 isUnlistedExposure 共用 */
   const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
-  /** 資料列：陣列裡是一般物件的項目；不是陣列時是空的。scopedBundle 與示範引擎（assets/demo.js）共用（#243）；
-   *  Python 核心的 object_list 是同一條規則（篩選與評分共用，#245），由共用篩選案例 tests/fixtures/scoped-bundle-cases.json
-   *  與共用評分案例 tests/fixtures/scoring-cases.json 守住 */
+  /** 資料列：陣列裡是一般物件的項目；不是陣列時是空的。scopedBundle 與示範引擎評分入口的正規化（assets/demo.js 的 scoringRows，#262）共用（#243）；
+   *  Python 核心的 object_list 是同一條規則（篩選與 scoring_rows 共用，#245），由共用篩選案例 tests/fixtures/scoped-bundle-cases.json、
+   *  共用評分案例 tests/fixtures/scoring-cases.json 與共用正規化案例 tests/fixtures/scoring-rows-cases.json 守住 */
   const rows = v => Array.isArray(v) ? v.filter(object) : [];
   /** 身分關聯的資產：linked_assets 以分號分隔的字串切開；不是字串時當成沒有關聯任何資產（#256）。scopedBundle 與示範引擎共用；
    *  Python 核心的 linked_asset_ids 是同一條規則，由共用篩選案例與共用評分案例守住 */

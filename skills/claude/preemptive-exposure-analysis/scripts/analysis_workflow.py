@@ -565,7 +565,7 @@ def is_unlisted_exposure(row: dict) -> bool:
 
 def object_list(value) -> list:
     """資料列：清單裡是物件的那些項目；不是陣列時是空的（#245）。送往模型前的授權範圍篩選（scoped_files）
-    與評分（score_findings 直接用，或經 object_rows）共用這一個判定；示範引擎與 scopedBundle 共用的 GATE.rows（assets/scope-gate.js）是同一條規則，
+    與評分入口的正規化（scoring_rows，#262）共用這一個判定；示範引擎與 scopedBundle 共用的 GATE.rows（assets/scope-gate.js）是同一條規則，
     由共用篩選案例 tests/fixtures/scoped-bundle-cases.json 與共用評分案例 tests/fixtures/scoring-cases.json 守住。
     腳本預檢要點出第幾筆不是物件，所以直接看原始清單。"""
     return [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
@@ -581,18 +581,40 @@ def linked_asset_ids(row: dict) -> list:
 
 def object_rows(container, key: str) -> list:
     """物件包著的清單裡的資料列（object_list）；container 不是物件時是空的（#238、#243）。
-    評分（score_findings 的 exposures、controls、edges）與未納入清冊的對外資產（unlisted_hosts）共用。"""
+    未納入清冊的對外資產（unlisted_hosts）用；評分入口的正規化（scoring_rows）照同一條規則判定容器。"""
     return object_list(container.get(key) if isinstance(container, dict) else None)
 
 
-def exposure_rows(exposures) -> list:
-    """exposures.json 的清單裡是物件的那些項目（object_rows）。"""
-    return object_rows(exposures, "exposures")
+# 評分讀的清單（#262）：以示範引擎的資料鍵為鍵（威脅情資是 threatIntel）。"rows" 表示這個鍵本身就是清單；
+# dict 表示容器，rows 是容器裡的清單，arrays 是容器裡的字串陣列（不套用資料列判定）。
+# 鍵要等於 input-schema.json 的 properties 去掉 scope（threat_intel 換成 threatIntel），由 tests/python/test_scoring_rows.py 守住；
+# 示範引擎的 ROW_SHAPES（assets/demo.js）是同一張表，由共用正規化案例 tests/fixtures/scoring-rows-cases.json 守住
+SCORING_ROW_SHAPES = {
+    "assets": "rows", "vulnerabilities": "rows", "identities": "rows", "misconfigurations": "rows",
+    "exposures": {"rows": "exposures"}, "controls": {"rows": "controls"}, "threatIntel": {"rows": "actors"},
+    "topology": {"rows": "edges", "arrays": ["crown_jewels"]},
+}
+
+
+def scoring_rows(data: dict) -> dict:
+    """評分入口的正規化（#262）：依 SCORING_ROW_SHAPES 把每份清單換成它的資料列（object_list）；容器不是物件時當成 {}，
+    arrays 不是陣列時當成 []。結果只含形狀表的鍵與其中的清單，不修改輸入。score_findings 只讀這一份；
+    示範引擎的 scoringRows 是同一條規則，由共用正規化案例 tests/fixtures/scoring-rows-cases.json 守住。"""
+    result = {}
+    for key, shape in SCORING_ROW_SHAPES.items():
+        if shape == "rows":
+            result[key] = object_list(data.get(key))
+            continue
+        value = data.get(key)
+        container = value if isinstance(value, dict) else {}
+        result[key] = {shape["rows"]: object_list(container.get(shape["rows"])),
+                       **{name: container[name] if isinstance(container.get(name), list) else [] for name in shape.get("arrays", [])}}
+    return result
 
 
 def unlisted_hosts(exposures) -> list:
     """exposures.json 裡未納入清冊的對外資產（is_unlisted_exposure），回傳其 hostname。"""
-    return [e.get("hostname") for e in exposure_rows(exposures) if is_unlisted_exposure(e)]
+    return [e.get("hostname") for e in object_rows(exposures, "exposures") if is_unlisted_exposure(e)]
 
 
 # ---------------------------------------------------------------------------
@@ -1154,13 +1176,14 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     # JS 的 Math.max(lo, Math.min(hi, NaN)) 是 NaN；Python 的 min(hi, nan) 卻回傳 hi，所以 NaN 要另外放行（#229）
     clamp = lambda v, rng: v if math.isnan(v) else max(rng[0], min(rng[1], v))   # noqa: E731
 
-    assets_list = object_list(data.get("assets"))   # 清單裡不是物件的項目跳過（#250，示範引擎照同一條規則，由共用案例守住）
+    # 評分只讀正規化過的清單（scoring_rows，#262）：清單裡不是物件的項目跳過、形狀不對的容器當成不存在（#243、#250），
+    # 示範引擎的 scoring() 照同一條規則，由共用正規化案例與共用評分案例守住
+    rows = scoring_rows(data)
+    assets_list = rows["assets"]
     assets = {a.get("asset_id"): a for a in assets_list}
     visible = [a.get("asset_id") for a in assets_list]   # 清冊完整度固定 100%：全部看得到
-    # 形狀不對的控制當成不存在（#243，示範引擎照同一條規則，由共用案例守住）
-    controls = object_rows(data.get("controls"), "controls")
-    # 身分與設定基準的清單裡不是物件的項目跳過（#250，示範引擎照同一條規則，由共用案例守住）；先篩一次，每項發現共用
-    identity_rows, misconfig_rows = object_list(data.get("identities")), object_list(data.get("misconfigurations"))
+    controls = rows["controls"]["controls"]
+    identity_rows, misconfig_rows = rows["identities"], rows["misconfigurations"]
     # coverage_assets、gaps 不是陣列時當成空的，不做子字串比對（#243）
     asset_list = lambda v: v if isinstance(v, list) else []  # noqa: E731
     controls_of = lambda i: [c.get("name") for c in controls if i in asset_list(c.get("coverage_assets"))] if on["controls"] else []  # noqa: E731
@@ -1176,7 +1199,7 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
                      or _js_num(i.get("last_login_days", _UNDEFINED)) > stale)]
 
     # 形狀不對的情資當成沒有命中（#237）：示範引擎的 intelHits 照同一條規則，由共用案例守住
-    intel_actors = [a for a in _intel_actor_list(data.get("threatIntel")) or [] if _actor_counts(a)]
+    intel_actors = [a for a in rows["threatIntel"]["actors"] if _actor_counts(a)]
 
     def intel_hits(vuln_id):
         if not on["threatIntel"]:
@@ -1189,17 +1212,15 @@ def score_findings(data: dict, inputs: dict | None = None, rules: dict | None = 
     def exposure_of(asset_id):
         if not on["exposures"]:
             return None
-        return next((e for e in exposure_rows(data.get("exposures")) if e.get("asset_id") == asset_id), None)
+        return next((e for e in rows["exposures"]["exposures"] if e.get("asset_id") == asset_id), None)
 
-    # 形狀不對的拓樸當成不存在（#243，示範引擎照同一條規則，由共用案例守住）
-    topology = data.get("topology") if isinstance(data.get("topology"), dict) else {}
-    crown_jewels = topology.get("crown_jewels") if isinstance(topology.get("crown_jewels"), list) else []   # 示範引擎不看 topology 開關，照樣讀
-    edges = [e for e in object_rows(topology, "edges")
+    crown_jewels = rows["topology"]["crown_jewels"]   # 示範引擎不看 topology 開關，照樣讀
+    edges = [e for e in rows["topology"]["edges"]
              if (e.get("from") == "internet" or e.get("from") in visible) and e.get("to") in visible] if on["topology"] else []
     entry_nodes = reachable_entries(edges, crown_jewels, F["maxHops"])
 
     findings = []
-    for v in object_list(data.get("vulnerabilities")):
+    for v in rows["vulnerabilities"]:
         if v.get("asset_id") not in visible:
             continue
         a, factors, likelihood = assets[v.get("asset_id")], [], 0
