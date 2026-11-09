@@ -80,6 +80,17 @@ test('驗證計畫：主動測試與外部掃描兩個授權旗標缺一不可�
   assert.deepEqual(requiresOf(withAuth(internalEntry(chain(2)), false, false)), ['尚未授權主動測試：需 CISO 另行核准並排除 OT']);
 });
 
+// 輸出 JSON 的 authorization_status（output-schema.json 的 enum，#267）：兩個旗標都是 true 才是「已授權」，其餘都是「尚未授權主動測試」
+const statusOf = (data) => DEMO.toSchema(DEMO.analyze(data), data).validation_plan.items.map(v => v.authorization_status);
+test('驗證計畫的 authorization_status：兩個授權旗標都是 true 才填「已授權」，入口不對外也一樣（#267）', () => {
+  assert.deepEqual(statusOf(withAuth(chain(2), true, true)), ['已授權']);
+  assert.deepEqual(statusOf(withAuth(chain(2), true, false)), ['尚未授權主動測試']);
+  assert.deepEqual(statusOf(withAuth(chain(2), false, true)), ['尚未授權主動測試']);
+  assert.deepEqual(statusOf(withAuth(chain(2), false, false)), ['尚未授權主動測試']);
+  assert.deepEqual(statusOf(withAuth(internalEntry(chain(2)), true, true)), ['已授權']);
+  assert.deepEqual(statusOf(withAuth(internalEntry(chain(2)), true, false)), ['尚未授權主動測試']);
+});
+
 // 密集拓樸（#248）：40 個資產，internet 連到每一個，資產之間兩兩互連，crown jewel 是 D0。
 // 窮舉簡單路徑要幾十秒（路徑數約隨資產數的 4 次方成長）；分數表只需要「哪些入口可達 crown jewel」，要在 2 秒內算完。
 // 每個資產都有一條直達 D0 的邊（D0 本身是 crown jewel），所以每一項發現都有入口加分。

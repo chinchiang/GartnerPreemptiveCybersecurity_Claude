@@ -55,7 +55,7 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 
 ### O4 安全驗證計畫（提案）
 
-- **結構**：每項 `id`、`hypothesis`、`method`、`authorization_required`、`scope_exclusions[]`、`success_criteria`。
+- **結構**：每項 `id`、`hypothesis`、`method`、`authorization_required`（需要誰的書面授權）、`authorization_status`（「尚未授權主動測試」或「已授權」）、`scope_exclusions[]`、`success_criteria`。
 - **範例（合成）**：`V1 vpn-gw-01 → erp-db-01：授權下的外部版本確認 + 內部 BAS 模擬橫向移動；尚未授權主動測試：需 CISO 另行核准並排除 OT；成功準則：證明路徑不可行或確認阻斷點有效`。
 - **判斷依據**：O2 前 3 條；I1 授權旗標；OT 排除。
 - **可信度考量**：不適用（提案）。
