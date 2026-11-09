@@ -8,6 +8,7 @@
 """
 import copy
 import json
+import math
 import sys
 import time
 import unittest
@@ -35,11 +36,18 @@ class SharedScoringCasesTest(unittest.TestCase):
                     self.assertEqual(f["priority"], e["priority"], f"{e['finding_id']} 分級")
                     self.assertEqual(f["factors"], e["factors"], f"{e['finding_id']} 依據")
 
-    def test_half_rounds_up_like_math_round(self):
-        # 示範引擎的 round1 是 Math.round(v×10)/10：.x5 一律往上（Python 的 round 是銀行家捨入，0.25 會變 0.2）
-        self.assertEqual(aw.round1(0.25), 0.3)
-        self.assertEqual(aw.round1(47.12), 47.1)
-        self.assertEqual(aw.round1(2.35), 2.4)
+    def test_round1_shared_cases(self):
+        # 取一位小數的共用案例（#260）：十進位四捨五入、.x5 進位；示範引擎那一份由 scripts/scoring-cases.test.mjs 跑
+        cases = json.loads((ROOT / "tests/fixtures/round1-cases.json").read_text(encoding="utf-8"))["cases"]
+        for case in cases:
+            with self.subTest(value=case["value"], source=case["from"]):
+                self.assertEqual(aw.round1(case["value"]), case["expected"])
+
+    def test_round1_keeps_non_finite_like_javascript(self):
+        # JS 的 Math.round(NaN)/10 是 NaN、Math.round(Infinity)/10 是 Infinity；value×10 溢位時也是 Infinity，不能丟 OverflowError
+        self.assertTrue(math.isnan(aw.round1(float("nan"))))
+        self.assertEqual(aw.round1(float("inf")), float("inf"))
+        self.assertEqual(aw.round1(1.7e308), float("inf"))
 
     def test_numbers_are_written_like_javascript(self):
         # factors 裡的數字要跟示範引擎的樣板字串相同：1.0 寫成 1，0.5 寫成 0.5

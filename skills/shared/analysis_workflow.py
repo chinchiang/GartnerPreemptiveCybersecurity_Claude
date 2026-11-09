@@ -1062,8 +1062,14 @@ _CSV_NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
 
 
 def round1(value: float) -> float:
-    """示範引擎的 round1：Math.round(v×10)/10，.x5 一律往上（Python 的 round 是銀行家捨入）；NaN 照 JS 仍是 NaN。"""
-    return value if math.isnan(value) else math.floor(value * 10 + 0.5) / 10
+    """示範引擎的 round1：十進位四捨五入到一位，.x5 一律往上（Python 的 round 是銀行家捨入）；NaN、inf 照 JS 原樣回傳。
+
+    先把 value×10 取 12 位有效數字去掉浮點尾數（#260），跟示範引擎的 toPrecision(12) 一樣：7/10×1.5 = 1.0499999999999998 得 1.1。
+    """
+    scaled = value * 10
+    if not math.isfinite(scaled):   # NaN、inf，以及 value×10 溢位成 inf：跟 JS 一樣原樣回傳（math.floor 會丟 OverflowError）
+        return scaled / 10
+    return math.floor(float(f"{scaled:.12g}") + 0.5) / 10
 
 
 def js_number(value) -> str:

@@ -125,6 +125,7 @@ likelihood = clamp(
 impact = clamp(business_criticality·1.4 + data_weight(Restricted=3, Confidential=2, Internal=1, Public=0) + 2·[crown_jewel] + 2·[entry_to_crown_jewel], 0, 10)
   # entry_to_crown_jewel：至少一條 S4 攻擊路徑假設以該資產為入口（節點範圍與跳數上限同 S4）
 score = likelihood × impact  (0–100)
+  # 取一位小數：likelihood、impact、score、path_feasibility 各依十進位值四捨五入到一位，.x5 一律進位（7/10·1.5 = 1.05 → 1.1）；score 用未取小數的 likelihood × impact 計算
 priority: balanced（預設）→ P1 ≥ 60, P2 ≥ 40, P3 ≥ 20, 其餘 P4；strict → 50/30/15；tolerant → 70/50/25
 path_feasibility = clamp(entry_likelihood·0.5 + weakest_node·0.3 + identity_or_misconfig_edges·1.0 − (hops−1)·0.6, 0, 10)
   # 節點可能性：有發現者取其最高 likelihood（可為 0）；完全無發現的節點取 3（未知）

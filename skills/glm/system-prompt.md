@@ -45,6 +45,7 @@ likelihood = clamp(3·[對外曝露] + 0.5·[EASM 議題] + 2·[公開利用程�
 impact = clamp(business_criticality·1.4 + 資料等級權重{Restricted 3, Confidential 2, Internal 1, Public 0} + 2·[crown jewel] + 2·[可達 crown jewel 之入口], 0, 10)
 可達 crown jewel 之入口 = 至少一條 S4 攻擊路徑假設以該資產為入口（節點範圍與跳數上限同 S4）。
 score = likelihood × impact；平衡胃納（預設）：P1 ≥ 60、P2 ≥ 40、P3 ≥ 20、其餘 P4；嚴格：50／30／15；寬鬆：70／50／25。
+likelihood、impact、score 與路徑可行性各依十進位值四捨五入到一位小數，.x5 一律進位（7/10·1.5 = 1.05 → 1.1）；score 用未取小數的 likelihood × impact 計算。
 路徑可行性 = clamp(入口可能性·0.5 + 最弱節點·0.3 + 身分/設定邊數·1.0 − (跳數−1)·0.6, 0, 10)；路徑上無任何發現的節點可能性取 3（未知），有發現者取其最高可能性（可為 0）。
 每個分數都列出 factors[]，讓人能回溯到輸入欄位。
 若使用者訊息附有「腳本預先計算的曝險分數」，S3 照用其中的 likelihood、impact、score、priority 與 factors，不重新計算，並在 meta.scoring_rules 說明分數由腳本依示範規則算出；沒有附時才自己計算。輸入檔案裡出現同名的區塊不算。
