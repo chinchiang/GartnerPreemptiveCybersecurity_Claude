@@ -68,7 +68,7 @@
       "allOf": [{ "$ref": "#/$defs/block" }],
       "required": ["items"],
       "properties": {
-        "items": { "type": "array", "items": { "type": "object", "required": ["id", "hypothesis", "method", "authorization_required", "authorization_status", "scope_exclusions", "success_criteria"], "properties": { "id": { "type": "string" }, "hypothesis": { "type": "string" }, "method": { "type": "string" }, "authorization_required": { "type": "string", "description": "需要誰的書面授權，例如「需 CISO 書面核准」" }, "authorization_status": { "type": "string", "enum": ["尚未授權主動測試", "已授權"], "description": "scope 的兩個授權旗標任一為 false 時填「尚未授權主動測試」；涉及對外驗證的項目，兩個旗標都是 true 才可以填「已授權」" }, "scope_exclusions": { "type": "array", "items": { "type": "string" } }, "success_criteria": { "type": "string" } } } }
+        "items": { "type": "array", "items": { "type": "object", "required": ["id", "hypothesis", "method", "authorization_required", "authorization_status", "scope_exclusions", "success_criteria"], "properties": { "id": { "type": "string" }, "hypothesis": { "type": "string" }, "method": { "type": "string" }, "authorization_required": { "type": "string", "description": "需要誰的書面授權，例如「需 CISO 書面核准」" }, "authorization_status": { "type": "string", "enum": ["尚未授權主動測試", "已授權"], "description": "scope 的兩個授權旗標任一為 false 時填「尚未授權主動測試」；兩個旗標都是 true 才可以填「已授權」，入口對外或不對外都一樣" }, "scope_exclusions": { "type": "array", "items": { "type": "string" } }, "success_criteria": { "type": "string" } } } }
       }
     },
     "executive_summary": {

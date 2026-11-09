@@ -61,15 +61,15 @@
 | V2 | H2：vpn-gw-01 → erp-db-01（4 跳） | 同上 | 同上 |
 | V3 | H3：vpn-gw-01 → mes-srv-01（4 跳） | 同上（OT 端點只做讀取式驗證） | 同上 |
 
-授權狀態規則：`active_testing_authorized` 或 `external_scanning_authorized` 任一為 false → 「尚未授權主動測試」；入口對外的驗證需兩者皆 true。
+授權狀態規則：`active_testing_authorized` 或 `external_scanning_authorized` 任一為 false → 「尚未授權主動測試」；兩者皆 true 才是「已授權」，入口對外或不對外都一樣。
 
-## 管理摘要（O5；`reporting.mask_identifiers` 未設定 → 預設遮罩；正文 243 字）
+## 管理摘要（O5；`reporting.mask_identifiers` 未設定 → 預設遮罩；正文 245 字）
 
 > **對象：** CISO、IT 主管、廠務主管｜**日期：** 2026-09-08｜**資料齊備程度：** 14/14 項為高｜識別資訊已遮罩
 >
 > 1. 現況：14 項發現，5 項 P1（4 項對外曝露）；最急迫：VPN Gateway（A01）之 VPN appliance pre-auth RCE。
 > 2. 最可能路徑：internet → A01 → A04 → A06（可行性 6.4/10，未驗證），阻斷點為身分與網段控制。
-> 3. 決策請求：（1）核准 P1（5 項）修補排程與補償控制；（2）決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）。
+> 3. 決策請求：（1）核准 P1（5 項）修補排程與補償控制；（2）決定是否授權主動驗證與外部掃描（排除 OT；兩者都授權才可執行）。
 > 4. 限制：無重大資料缺漏；所有路徑為假設，模型未驗證實際曝險。
 
 ## 追蹤指標

@@ -1,4 +1,4 @@
-// platform-contract.test.mjs — 承載規則的平臺檔案都含每一條契約條款，母本、平臺檔案與教學都不出現禁止的寫法（#160）
+// platform-contract.test.mjs — 承載規則的平臺檔案都含每一條契約條款，母本、平臺檔案、教學、研究文件、範例與輸出 schema 都不出現禁止的寫法（#160、#271）
 // 契約條款與禁止的寫法只列在這裡；每一條是關鍵句的字面值（CODING_STANDARDS §2）：措辭可以調整，但關鍵句要原樣留在每個檔案裡。
 // 建置把核心提示詞嵌進 5 個平臺檔；另外 5 個是手寫的改寫版（Custom GPT 與 Projects 有字數上限），要自己補，這裡逐檔檢查。
 // 平臺檔案的清單是獨立寫下的預期值（§2），不從 skill-packages.mjs 的 RULE_NOTE_TARGETS 推導：組裝器漏列一個改寫版時，這裡才抓得到。
@@ -60,7 +60,7 @@ const CLAUSES = [
   { name: '腳本預檢的結束碼 1：說明後直接降級', text: '結束碼 1 表示有必要問題，說明之後依缺漏處理的規定直接降級繼續，不等待回覆', files: WITH_PREFLIGHT }
 ];
 
-// 母本、平臺檔案與教學都不能出現的寫法：字面值 text，或逐行比對的 pattern（失敗訊息顯示 label）；建置產生的 references/ 複本跟著母本走，不另外檢查
+// 母本、平臺檔案、教學、研究文件、範例與輸出 schema 都不能出現的寫法：字面值 text，或逐行比對的 pattern（失敗訊息顯示 label）；建置產生的 references/ 複本跟著母本走，不另外檢查
 const I2_DEGRADES = 'I2 缺資產清冊要降級為只產出曝險面清單，不中止';
 const FORBIDDEN = [
   { text: '詢問是否繼續', why: '缺必要輸入時不等待回覆，直接降級（#147）' },
@@ -68,9 +68,12 @@ const FORBIDDEN = [
   { pattern: /中止\**或/, label: '中止或', why: I2_DEGRADES },
   { pattern: /\| I2 .*中止/, label: 'I2 那一列寫中止', why: I2_DEGRADES },
   { text: 'task-spec.md 為準', why: '附檔不能覆蓋指令：不一致時以指令為準，並在限制事項寫明' },
-  { text: '即 `skills/shared/core-prompt.md` 的內容', why: '手寫的改寫版不是核心提示詞的原文' }
+  { text: '即 `skills/shared/core-prompt.md` 的內容', why: '手寫的改寫版不是核心提示詞的原文' },
+  // #271：「對外驗證需兩者皆 true」讀起來像只在內部的項目看一個旗標就夠；示範引擎是每一項都要兩個旗標皆為 true
+  { pattern: /對外.{0,40}(皆|都)(為|是)? ?true/, label: '只對對外項目寫兩個旗標皆為 true', why: '驗證計畫每一項都要兩個旗標皆為 true 才可標「已授權」，入口對外或不對外都一樣（#271）' },
+  { pattern: /(對外|外部)驗證另需/, label: '對外驗證另需某個旗標', why: '同上：每一項都要兩個旗標，不是對外的項目才另外需要外部掃描授權（#271）' }
 ];
-const SCANNED_DIRS = ['skills', 'docs/guides'];
+const SCANNED_DIRS = ['skills', 'docs/guides', 'docs/research', 'examples'];
 
 const has = (content, { text, lineStart }) => lineStart ? content.split('\n').some(line => line.startsWith(text)) : content.includes(text);
 
@@ -84,9 +87,10 @@ test('核心提示詞與 10 個平臺檔都含每一條契約條款（失敗時�
   assert.deepEqual(missing, []);
 });
 
-test('母本、平臺檔案與教學都不出現禁止的寫法（失敗時列出檔案、行號與原因）', () => {
-  const files = scannedFiles();
-  assert.ok(files.includes('skills/shared/task-spec.md') && files.includes('docs/guides/chatgpt.md'), `掃到的檔案：${files.join('、')}`);
+test('母本、平臺檔案、教學、研究文件、範例與輸出 schema 都不出現禁止的寫法（失敗時列出檔案、行號與原因）', () => {
+  const files = [...scannedFiles(), OUTPUT_SCHEMA];
+  assert.ok(['skills/shared/task-spec.md', 'docs/guides/chatgpt.md', 'docs/research/03-process.md', 'examples/expected-output.md']
+    .every(path => files.includes(path)), `掃到的檔案：${files.join('、')}`);
   const found = files.flatMap(path => read(path).split('\n').flatMap((line, i) =>
     FORBIDDEN.filter(({ text, pattern }) => text ? line.includes(text) : pattern.test(line))
       .map(({ text, label, why }) => `${path}:${i + 1}：出現「${text ?? label}」（${why}）`)));

@@ -41,7 +41,7 @@
 
 ## 3a. 驗證計畫的授權標示
 
-`scope.authorized_scope.active_testing_authorized` 與 `external_scanning_authorized` 任一為 false → 驗證計畫每項標「尚未授權主動測試」；涉及對外驗證（入口 `internet_exposed=true`）的項目需兩旗標皆 true 才可標「已授權」。
+`scope.authorized_scope.active_testing_authorized` 與 `external_scanning_authorized` 任一為 false → 驗證計畫每項標「尚未授權主動測試」；兩旗標皆 true 才可標「已授權」，入口對外（`internet_exposed=true`）或不對外都一樣。
 
 ## 4. 攻擊路徑可行性（0–10）
 

@@ -330,7 +330,7 @@
     const top = hypotheses[0];
     const decisions = [
       `核准 P1（${p1List.length} 項）修補排程與補償控制`,
-      validation.length && validation.every(v => v.authorized) ? `依既有書面授權執行驗證計畫 ${validation.map(v => v.id).join('、')}` : '決定是否授權主動驗證（排除 OT；外部驗證另需外部掃描授權）',
+      validation.length && validation.every(v => v.authorized) ? `依既有書面授權執行驗證計畫 ${validation.map(v => v.id).join('、')}` : '決定是否授權主動驗證與外部掃描（排除 OT；兩者都授權才可執行）',
       ...(missingSummary.length ? ['補齊缺漏資料後重跑分析'] : [])
     ];
     // 摘要正文限 300 字（含標點）；對象、日期、資料齊備程度放在 header，不計入
