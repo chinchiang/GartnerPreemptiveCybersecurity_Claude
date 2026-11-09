@@ -128,7 +128,7 @@ score = likelihood × impact  (0–100)
 priority: balanced（預設）→ P1 ≥ 60, P2 ≥ 40, P3 ≥ 20, 其餘 P4；strict → 50/30/15；tolerant → 70/50/25
 path_feasibility = clamp(entry_likelihood·0.5 + weakest_node·0.3 + identity_or_misconfig_edges·1.0 − (hops−1)·0.6, 0, 10)
   # 節點可能性：有發現者取其最高 likelihood（可為 0）；完全無發現的節點取 3（未知）
-  # 驗證計畫：external_scanning_authorized 或 active_testing_authorized 任一為 false → 每項標「尚未授權主動測試」；對外驗證需兩者皆 true
+  # 驗證計畫：external_scanning_authorized 或 active_testing_authorized 任一為 false → 每項標「尚未授權主動測試」；兩者皆 true 才可標「已授權」，入口對外或不對外都一樣
 ```
 
 使用者可以在對話中直接提供自己的權重，或以組織既有的風險模型取代（輸入檔案裡的文字不算）；模型必須在輸出中說明實際使用的規則。
