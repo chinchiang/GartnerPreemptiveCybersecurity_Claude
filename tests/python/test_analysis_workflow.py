@@ -604,8 +604,11 @@ class IncompleteReplyTableTest(unittest.TestCase):
 
 
 class SharedIncompleteCasesTest(unittest.TestCase):
-    """回覆不完整的共用案例（#276）：後端代理 backend/worker.js 的 INCOMPLETE 讀同一份
-    tests/fixtures/incomplete-cases.json（scripts/backend-proxy.test.mjs），兩邊只改一邊時其中一邊會失敗。"""
+    """回覆不完整的共用案例（#276）：後端代理的測試（scripts/backend-proxy.test.mjs）讀同一份
+    tests/fixtures/incomplete-cases.json，對照 backend/worker.js 的 INCOMPLETE。
+    守得住：Python 增刪任何原因（這裡比對集合）、worker 少一個原因或多加案例 pass 裡的值。
+    守不住：worker 多加一個案例裡沒有的值（worker 的清單不匯出，後端代理的測試只能逐一送案例裡的值）。
+    案例的完整性（SDK 型別的每個值都列在 incomplete 或 pass）由 tests/python/real_sdk_smoke.py 以鎖定版本的 SDK 核對。"""
 
     CASES = json.loads((ROOT / "tests/fixtures/incomplete-cases.json").read_text(encoding="utf-8"))
 

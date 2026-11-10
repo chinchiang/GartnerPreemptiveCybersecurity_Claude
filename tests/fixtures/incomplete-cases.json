@@ -1,5 +1,5 @@
 {
-  "_note": "回覆不完整的結束原因的跨語言共用案例（#276）：Python 核心的 INCOMPLETE／require_complete 與後端代理 backend/worker.js 的 INCOMPLETE 都依這份判定。incomplete 是算不完整、要中止（API 腳本結束碼 1）或回 502 output_incomplete（後端代理）的結束原因；pass 是要放行的值：SDK 型別裡的正常結束原因、缺值（null）與不認得的值。兩種介面的結束原因都對照過 SDK 的型別（2026-11-10：openai 2.54.0 的 ChatCompletion Choice.finish_reason、anthropic 2.7.0 的 StopReason），每個值不是在 incomplete 就是在 pass。只比對集合，不比對 Python 的類別（輸出上限／其他）。介面名稱用 Python 的寫法，後端代理的 chat 就是 chat_completions。responses、xai、interactions 後端代理不支援，不在這裡。",
+  "_note": "回覆不完整的結束原因的跨語言共用案例（#276）：Python 核心的 INCOMPLETE／require_complete 與後端代理 backend/worker.js 的 INCOMPLETE 都依這份判定。incomplete 是算不完整、要中止（API 腳本結束碼 1）或回 502 output_incomplete（後端代理）的結束原因；pass 是要放行的值：SDK 型別裡的正常結束原因、缺值（null）與不認得的值。SDK 型別裡的每個結束原因都要列在 incomplete 或 pass：tests/python/real_sdk_smoke.py 以 .github/model-acceptance/ 鎖定版本的 SDK 核對（openai 的 ChatCompletion Choice.finish_reason、anthropic 的 StopReason；2026-11-10 是 openai 3.41.0、anthropic 2.3.0），由 CI 的 real-sdk job 執行。只比對集合，不比對 Python 的類別（輸出上限／其他）。介面名稱用 Python 的寫法，後端代理的 chat 就是 chat_completions。responses、xai、interactions 後端代理不支援，不在這裡。",
   "chat_completions": {
     "incomplete": ["length", "content_filter"],
     "pass": ["stop", "tool_calls", "function_call", null, "not_a_known_reason"]

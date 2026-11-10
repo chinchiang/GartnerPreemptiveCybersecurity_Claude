@@ -75,8 +75,9 @@ async function readLimited(request, limit) {
 // 取出的 JSON 交給輸出判定（scripts/output-verdict.mjs 的 outputVerdict）：依序對照 output-schema.json、內容一致性與分數表，
 // 回報第一個失敗的（output_schema_invalid／output_inconsistent／score_table_mismatch）；跟 API 腳本的 output_verdict 同一個判定，由共用案例守住
 const UNPARSEABLE = { error: 'output_unparseable' };
-// 回覆不完整的結束原因（chat 就是 Python 核心的 chat_completions）：由共用案例 tests/fixtures/incomplete-cases.json 守住，
-// Python 核心的 INCOMPLETE 讀同一份；改這裡時共用案例要一起改（#276）
+// 回覆不完整的結束原因（chat 就是 Python 核心的 chat_completions）：跟 Python 核心的 INCOMPLETE 由共用案例
+// tests/fixtures/incomplete-cases.json 守住，兩邊的測試都讀它（執行時兩邊都不讀）；改這裡時共用案例與 Python 要一起改。
+// 這裡多加一個案例裡沒有的值，測試抓不到（#276）
 const INCOMPLETE = { chat: ['length', 'content_filter'], anthropic: ['max_tokens', 'model_context_window_exceeded', 'refusal'] };
 // 最後一個 JSON 區塊的內容：逐行找 ``` 圍起來的區塊（開頭的 ``` 可以帶語言、前後可以有空白，結尾是單獨一行的 ```），
 // 沒標語言或標 json（不分大小寫）的才算；沒結尾的區塊不算。逐行解析，前面別的區塊的結尾不會被誤認成新的開頭
