@@ -321,14 +321,24 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     }
   });
 
-  test('模型輸出：回覆被輸出上限截斷時回 502 的 output_incomplete，不拿截斷的內容對照（#247）', async () => {
-    // JSON 區塊本身合格且一致，但結束原因代表回覆不完整；清單跟 Python 核心的 require_complete 相同（#247 審查）
-    const cases = [[ENV, openaiReply(report(), 'length')], [ENV, openaiReply(report(), 'content_filter')],
-      [ANTHROPIC, anthropicReply(report(), 'max_tokens')], [ANTHROPIC, anthropicReply(report(), 'model_context_window_exceeded')],
-      [ANTHROPIC, anthropicReply(report(), 'refusal')]];
-    for (const [env, content] of cases) {
-      reply = () => new Response(content, { status: 200 });
-      assert.deepEqual(await rejected(await send(withTable(), env)), { error: 'output_incomplete', upstream: content }, `${env.PROVIDER} ${content.slice(-40)}`);
+  test('模型輸出：回覆不完整時回 502 的 output_incomplete，不拿截斷的內容對照；正常結束、缺值與不認得的值照常轉回（#247、#276）', async () => {
+    // JSON 區塊本身合格且一致，只有結束原因不同。清單由共用案例 tests/fixtures/incomplete-cases.json 守住，
+    // Python 核心的 INCOMPLETE／require_complete 讀同一份（tests/python/test_analysis_workflow.py 的 SharedIncompleteCasesTest）
+    const cases = JSON.parse(readFileSync(new URL('../tests/fixtures/incomplete-cases.json', import.meta.url), 'utf8'));
+    const interfaces = [['chat_completions', ENV, openaiReply], ['anthropic', ANTHROPIC, anthropicReply]];
+    for (const [api, env, replyWith] of interfaces) {
+      for (const finish of cases[api].incomplete) {
+        const content = replyWith(report(), finish);
+        reply = () => new Response(content, { status: 200 });
+        assert.deepEqual(await rejected(await send(withTable(), env)), { error: 'output_incomplete', upstream: content }, `${api} ${finish}`);
+      }
+      for (const finish of cases[api].pass) {
+        const content = replyWith(report(), finish);
+        reply = () => new Response(content, { status: 200 });
+        const r = await send(withTable(), env);
+        assert.equal(r.status, 200, `${api} ${finish}`);
+        assert.equal(await r.text(), content, `${api} ${finish}`);
+      }
     }
   });
 

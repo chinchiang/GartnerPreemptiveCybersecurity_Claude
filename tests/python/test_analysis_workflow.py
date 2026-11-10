@@ -603,6 +603,29 @@ class IncompleteReplyTableTest(unittest.TestCase):
                 aw.require_complete("chat_completion", finish, "report", mock.Mock(max_tokens=100))
 
 
+class SharedIncompleteCasesTest(unittest.TestCase):
+    """回覆不完整的共用案例（#276）：後端代理 backend/worker.js 的 INCOMPLETE 讀同一份
+    tests/fixtures/incomplete-cases.json（scripts/backend-proxy.test.mjs），兩邊只改一邊時其中一邊會失敗。"""
+
+    CASES = json.loads((ROOT / "tests/fixtures/incomplete-cases.json").read_text(encoding="utf-8"))
+
+    def test_incomplete_finishes_match_the_shared_cases(self):
+        # 集合相等：Python 多加或少一個原因都會失敗（類別由上面的 IncompleteReplyTableTest 守住）
+        for api in ("chat_completions", "anthropic"):
+            with self.subTest(api):
+                self.assertEqual(set(aw.INCOMPLETE[api]), set(self.CASES[api]["incomplete"]))
+
+    def test_require_complete_aborts_on_incomplete_and_lets_pass_values_through(self):
+        args = mock.Mock(max_tokens=16000)
+        for api in ("chat_completions", "anthropic"):
+            for finish in self.CASES[api]["incomplete"]:
+                with self.subTest(api=api, finish=finish), self.assertRaises(aw.Abort):
+                    aw.require_complete(api, finish, "report", args)
+            for finish in self.CASES[api]["pass"]:
+                with self.subTest(api=api, finish=finish):
+                    self.assertIsNone(aw.require_complete(api, finish, "report", args))
+
+
 class FakeAdapter:
     """測試用的模型 adapter：記錄每一段收到的訊息，依序回傳預先寫好的回覆。"""
     platform = "fake"

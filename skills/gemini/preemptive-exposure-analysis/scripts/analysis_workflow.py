@@ -783,6 +783,8 @@ def build_json_prompt(output_schema_text: str, generated_by: str) -> str:
 
 # 回覆不完整就中止（#161）：判定只寫在這裡，各平臺 adapter 只負責從 SDK 的回覆取出結束原因交給 require_complete。
 # 每種介面：{結束原因: 類別}；不在表裡的值（正常結束、缺值、不認得的值）一律放行。
+# chat_completions 與 anthropic 兩種介面的鍵，跟後端代理 backend/worker.js 的 INCOMPLETE 由共用案例
+# tests/fixtures/incomplete-cases.json 守住；改這兩種介面時共用案例要一起改（#276）。
 OUTPUT_LIMIT = "output_limit"              # 因為輸出上限被截斷
 MAYBE_OUTPUT_LIMIT = "maybe_output_limit"  # 介面沒有原因欄位，可能是輸出上限
 OTHER = "other"                            # 其他原因的不完整（內容過濾、上下文上限、時間上限等）
