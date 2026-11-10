@@ -5,7 +5,8 @@
  * 設定不完整或不合格時一律回 500，不呼叫上游。
  * 安全：固定 system prompt；來源限制；請求大小上限 512 KB（以實際讀到的位元組計算）；上游逾時回 504、上游錯誤回 502 且不轉發上游的內容；
  * 模型輸出不符合 output-schema.json、內容不一致、跟分數表不一致、無法檢查或回覆不完整時也回 502（附上游 2xx 回應的原文，#247、#252）；
- * 簡易速率限制（每 IP 每分鐘 5 次，使用記憶體 Map，僅示範）。這是範例，不可直接上線（缺的部分見 backend/README.md）。
+ * 簡易速率限制（每 IP 每分鐘 5 次，超過回 429；缺 cf-connecting-ip 時回 400；紀錄只在單一實例的記憶體裡、過期的會清掉，僅示範，#158）。
+ * 這是範例，不可直接上線（缺的部分見 backend/README.md 的「不可直接上線」）。
  */
 // 授權範圍守門：規則只來自 schema，由 assets/scope-gate.js 判定（與網站示範引擎共用，見 docs/adr/0004）；
 // 部署用的 dist/worker.js 由 scripts/build-worker.mjs 把它內嵌，仍是單一檔案
@@ -15,6 +16,8 @@ import DEMO from '../assets/demo.js';
 // 輸出 schema 驗證與內容一致性（#252）：重用驗收也在用的判定與 schema 母本；dist/worker.js 由 build-worker.mjs 內嵌這兩行
 import { outputVerdict } from '../scripts/output-verdict.mjs';
 import OUTPUT_SCHEMA from '../skills/shared/output-schema.json' with { type: 'json' };
+// 速率限制（每 IP 每分鐘 5 次，#158）：紀錄只在這個實例的記憶體裡，過期的會清掉；dist/worker.js 由 build-worker.mjs 內嵌這一行
+import { createRateLimiter } from './rate-limit.js';
 
 const CORE_PROMPT = `（部署時以 build 步驟把 skills/shared/core-prompt.md 的提示詞區塊貼入此處）`;
 // 已知的供應商：預設端點（不帶尾端斜線，下面接 /chat/completions 或 /v1/messages）與 OpenAI 相容端點的輸出上限參數。
@@ -31,7 +34,7 @@ const PROVIDERS = {
 };
 const MAX_BODY = 512 * 1024; // 請求內容上限（位元組）
 const MAX_TIMER_MS = 2 ** 31 - 1; // 計時器的上限；超過時 Node 會改成 1 毫秒（實測），等於每次都立刻逾時
-const hits = new Map();
+const limiter = createRateLimiter({ limit: 5, windowMs: 60000 });
 
 // 讀設定並檢查：必填的沒設（或是空字串）、PROVIDER 不認得又沒有 BASE_URL、選用的數值不是正整數（或超過上限）時，
 // 都列進 problems，呼叫端一律拒絕、不放行。選用的數值沒設或是空字串時用預設值
@@ -124,10 +127,12 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'POST' || new URL(request.url).pathname !== '/api/analyze') return new Response('Not found', { status: 404 });
     if (origin !== env.ALLOWED_ORIGIN) return new Response('Forbidden origin', { status: 403 });
-    const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-    const now = Date.now(); const rec = hits.get(ip) || []; const recent = rec.filter(t => now - t < 60000);
-    if (recent.length >= 5) return new Response('Rate limited', { status: 429, headers: cors });
-    hits.set(ip, [...recent, now]);
+    // 部署在 Cloudflare 上時，cf-connecting-ip 由 Cloudflare 填入用戶端 IP，每個請求都有；沒有就無法依 IP 限制，一律拒絕（fail-closed，#158）。
+    // 這個標頭只有在 Cloudflare 上才可信：部署在別的地方時它由用戶端自己帶，可以任意輪換（見 backend/README.md 的「不可直接上線」）。
+    // 速率限制在讀內容之前計數，回 413 或 400 的請求也算一次，避免繞過限制去消耗解析與檢查的成本
+    const ip = request.headers.get('cf-connecting-ip');
+    if (!ip) return new Response('缺少 cf-connecting-ip（用戶端 IP），無法套用速率限制', { status: 400, headers: cors });
+    if (!limiter.hit(ip, Date.now())) return new Response('Rate limited', { status: 429, headers: cors });
     const tooLarge = () => new Response('Payload too large', { status: 413, headers: cors });
     // 宣告的大小超過就不讀內容；宣告的不一定正確，實際位元組仍由 readLimited 數
     if (Number(request.headers.get('content-length') || 0) > MAX_BODY) return tooLarge();
