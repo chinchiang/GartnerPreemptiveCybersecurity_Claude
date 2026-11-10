@@ -854,7 +854,8 @@ JSON_PARSE_FAILED = 4
 
 
 def parse_json_loose(text: str):
-    """去掉可能的 ```json 圍欄後解析；不行就取第一個 { 到最後一個 }。失敗回傳 None。"""
+    """去掉可能的 ```json 圍欄後解析；不行就取第一個 { 到最後一個 }。失敗回傳 None。
+    巢狀太深時 json.loads 丟的 RecursionError 不在這裡攔，由 save_outputs 處理（#278）。"""
     t = text.strip()
     m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", t, re.S)
     if m:
@@ -1017,7 +1018,7 @@ def output_verdict(data, output_schema: dict, scores: dict | None = None):
     """輸出判定（GLOSSARY.md）：解析後的輸出依序對照 output schema、內容一致性與分數表，第一個失敗的就是結果。
     通過回傳 None；失敗回傳 {"kind", "problems"}，kind 是 output_schema_invalid、output_inconsistent 或 score_table_mismatch，
     前兩種的 problems 是字串清單，score_table_mismatch 是 score_table_problems 的結構化紀錄。scores 是 None 時不對照分數表。
-    schema 驗證是遞迴的，巢狀太深時會丟出 RecursionError，這裡不攔。
+    schema 驗證是遞迴的，沒有型別限制的欄位會沿著資料一路往下走，巢狀太深時會丟出 RecursionError，這裡不攔，由 save_outputs 處理。
     scripts/output-verdict.mjs 的 outputVerdict（後端代理用）是同一個判定，由共用案例 tests/fixtures/verdict-cases.json 守住。"""
     problems = output_problems(data, output_schema)
     if problems:
@@ -1035,6 +1036,8 @@ def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, o
     """寫出 <平臺>-report.md 與 <平臺>-output.json；JSON 解析失敗時另存 <平臺>-output.raw.txt 並回傳 4。
     輸出判定（output_verdict）不通過時，保留原始回應並回傳 4，stderr 只列第一個失敗的種類與問題；
     判定通過時不留下上一次失敗的 <平臺>-output.raw.txt（#279）。
+    輸出巢狀太深時，解析、判定或序列化 JSON 會遇到 RecursionError（哪一步先遇到依 Python 版本而定），
+    同樣保留原始回應並回傳 4（#278）；其他例外照舊往外丟。
     寫出結果之前先刪掉上一次的 output.json 與 raw.txt：刪不掉時在寫出任何結果之前就中止，不會留下這次的 JSON 跟上一次的原始回應並存。
     合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1045,19 +1048,28 @@ def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, o
     raw_path.unlink(missing_ok=True)
     report_path.write_text(report, encoding="utf-8")
     print(f"[完成] Markdown 報告：{report_path}")
-    data = parse_json_loose(json_text)
+    try:  # 只攔 RecursionError：其他例外（例如 schema 用了不支援的規則）是程式錯誤，照舊往外丟
+        data = parse_json_loose(json_text)
+        verdict = serialized = None
+        if isinstance(data, dict):
+            verdict = output_verdict(data, output_schema, scores)
+            if not verdict:
+                serialized = json.dumps(data, ensure_ascii=False, indent=2)
+    except RecursionError:
+        raw_path.write_text(json_text, encoding="utf-8")
+        print(f"[錯誤] 輸出巢狀太深，超過呼叫堆疊，無法檢查；原始回應已存至 {raw_path}，請人工檢查或重跑。", file=sys.stderr)
+        return 4
     if not isinstance(data, dict):
         raw_path.write_text(json_text, encoding="utf-8")
         print(f"[警告] JSON 解析失敗，原始回應已存至 {raw_path}；請人工檢查或重跑。", file=sys.stderr)
         return JSON_PARSE_FAILED
-    verdict = output_verdict(data, output_schema, scores)
     if verdict:
         raw_path.write_text(json_text, encoding="utf-8")
         kind, problems = verdict["kind"], verdict["problems"]
         messages = score_table_messages(problems) if kind == "score_table_mismatch" else problems
         print(f"[錯誤] {VERDICT_HEADINGS[kind]}（{kind}）：" + "；".join(messages), file=sys.stderr)
         return 4
-    json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    json_path.write_text(serialized, encoding="utf-8")
     print(f"[完成] JSON 輸出：{json_path}")
     return 0
 
