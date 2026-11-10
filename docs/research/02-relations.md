@@ -27,10 +27,10 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
         │ 攻擊面管理  │ │ 攻擊路徑分析   │ │ 安全驗證（AEV：BAS、  │
         │ EASM／EAP  │ │（Gartner Impact│ │ 自動滲透、紅隊）      │
         │（Gartner：  │ │ Radar：       │ │（Gartner：AEV 證明   │
-        │ discovery／ │ │ anticipate    │ │ 曝險可被利用；        │
-        │ scoping 的  │ │ attack paths  │ │ 驗證是 CTEM 第四階段）│
-        │ 工具類別）  │ │ [G-IR]；方法為 │ │                       │
-        │            │ │ 本專案推論）  │ │                       │
+        │ discovery／ │ │ 預測攻擊路徑  │ │ 曝險可被利用；        │
+        │ scoping 的  │ │ [G-IR]；方法為│ │ 驗證是 CTEM 第四階段）│
+        │ 工具類別）  │ │ 本專案推論）  │ │                       │
+        │            │ │               │ │                       │
         └────────────┘ └───────────────┘ └───────────────────────┘
 ```
 
@@ -48,7 +48,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 - 預測："By 2026, Gartner predicts that organizations prioritizing their security investments based on a CTEM program will realize a two-thirds reduction in breaches." [G7]（廠商常引用 2022 年付費研究的另一種寫法「three times less likely」[G30]，數值等價；後者未在免費頁面確認。Vectra 引用時自註該數字 "directionally supported, but not empirically validated" [V7]，提醒讀者這是預測而非實證。）
 - **CTEM 與先制型的關係**（付費研究公開摘要 [G16]）："Exposure management supports a proactive approach to cybersecurity for the modern attack surface. However, with the increase in sophistication of cyberattacks, it must accelerate the preattack cycle — from identification to mitigation — to effectively transition from proactive to preemptive."
 - 經廠商轉載 [G22]："Continuous threat exposure management is a process-oriented Gartner framework for buyers to proactively identify where they have risk."
-- Impact Radar 對 PEM 的定義 [G-IR]："accelerate one or more aspects of the continuous threat exposure management (CTEM) process, such as continuous attack surface enumeration, high-accuracy validation, or both automated and guided mitigation."——這是 Gartner 把先制型資安與 CTEM 直接連結的最明確句子，且已讀全文。
+- Impact Radar 對 PEM 的定義 [G-IR]：PEM 方案運用 AI、智慧模擬與分析，"accelerate one or more aspects of the continuous threat exposure management (CTEM) process"，例如持續的攻擊面列舉、高準確度的驗證，以及自動化與引導式的緩解。——這是 Gartner 把先制型資安與 CTEM 直接連結的最明確句子，且已讀全文。
 - 2026 年研究把 "preemptive exposure management" 列為先制型資安五支柱之首 [G27]。
 
 **其他來源**：Morphisec 部落格引述 Gartner 對 PEM 的描述 "is not a new technology category; rather, it represents progressive techniques for executing exposure management activities" [V8]（廠商轉載，非授權 reprint，未在 Gartner 頁面確認）。
@@ -62,7 +62,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 - PTI 是三個命名能力之一 [G1]；「作為預警系統，預測未來攻擊並排定先制緩解的優先序」[G12]。
 - 2025 年研究指出 AI 型 PTI 的成敗取決於 "the accuracy of underlying AI and ML algorithms, the quality and quantity of data used to train these models, and the availability of solution integrators" [G18]。
 - 2026 年五支柱之二為 "adversary management and threat intelligence" [G27]。
-- Impact Radar 對 PTI 的定義（見第 1 章 1.6 表 [G-IR]）：PTI "forecast the likelihood of future cyberattacks and provide early insights on emerging threats"，並會擴充 EAP、AEV、ASCA——也就是情資不只是獨立產品，而是曝險管理、驗證與控制評估的加值層。
+- Impact Radar 對 PTI 的定義 [G-IR]：PTI 用來預測未來網路攻擊的可能性，並及早提供新興威脅的線索；它會擴充 EAP、AEV、ASCA——也就是情資不只是獨立產品，而是曝險管理、驗證與控制評估的加值層。
 
 **其他來源**：Hype Cycle for Security Operations 2026 的第三方摘要提到「威脅情資正在轉型」[V9]。
 
@@ -77,7 +77,7 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 - Exposure Assessment Platforms（EAP）市場定義：EAP "help enterprises manage Continuous Threat Exposure Management (CTEM) programs by scoping the attack surface, prioritizing exposures, and enabling remediation." [G29]
 - 2026 年「Top Funded Startups for Preemptive Exposure Management」摘要把 "preemptive exposure assessment (PEA)" 定義為 "technologies that continuously discover and map attack surfaces and prioritize findings by enriching them with deep business context" [G32]。
 - Gartner 提到「全球攻擊面網格（GASG）」的擴張是先制型資安的驅動力 [G1]。
-- Impact Radar 對 PEM 的定義把 "continuous attack surface enumeration" 列為 PEM 要加速的 CTEM 面向之一 [G-IR]（見第 1 章 1.6 表）。
+- Impact Radar 對 PEM 的定義把持續的攻擊面列舉列為 PEM 要加速的 CTEM 面向之一 [G-IR]（見 2.2）。
 
 **待驗證**：Gartner 對 External Attack Surface Management（EASM）與 CAASM 本身的市場定義頁在研究環境無法開啟，本章未引用；讀者應以 Gartner Peer Insights 的 EASM 市場定義為準（列入證據頁待驗證清單）。
 
@@ -99,9 +99,9 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 ## 2.6 攻擊路徑分析（Attack Path Analysis）
 
-**證據狀態（修正）**：在公開網頁的搜尋摘錄中，沒有 Gartner 先制型資安文本點名「attack path analysis」；但已讀全文的 Impact Radar [G-IR] 在關鍵發現中明確寫道："AI and machine learning (ML) technologies must be used to **anticipate attack paths** and predict where an adversary is likely to strike"，並在 PTI 一節指出 PTI 會用於 "correlate and enrich findings and analyses of alerts, threats, vulnerabilities and **attack paths**"。因此「預測攻擊路徑」是 **Gartner 明確陳述**；而「以圖論分析關鍵節點（choke point）」等具體方法則來自廠商內容（例如 XM Cyber [V6]）與 AI 生成報告 [U2]，屬其他來源。Gartner AEV 市場定義中的「攻擊情境」概念（"performing attack scenarios and modeling or measuring the outcome" [G28b]）與此相呼應。
+**證據狀態（修正）**：在公開網頁的搜尋摘錄中，沒有 Gartner 先制型資安文本點名「attack path analysis」；但已讀全文的 Impact Radar [G-IR] 在關鍵發現中明確寫道："AI and machine learning (ML) technologies must be used to **anticipate attack paths**"，用來預判對手可能出手的位置；PTI 一節也把攻擊路徑列為 PTI 要關聯與補充分析的對象之一（"alerts, threats, vulnerabilities and **attack paths**"）。因此「預測攻擊路徑」是 **Gartner 明確陳述**；而「以圖論分析關鍵節點（choke point）」等具體方法則來自廠商內容（例如 XM Cyber [V6]）與 AI 生成報告 [U2]，屬其他來源。Gartner AEV 市場定義中的「攻擊情境」概念（"performing attack scenarios and modeling or measuring the outcome" [G28b]）與此相呼應。
 
-**本專案推論**：攻擊路徑分析是把「單一弱點的優先序」提升為「可達 crown jewel 的路徑優先序」的方法，與 Gartner 的 "anticipate attack paths" [G-IR]、"identifying and mitigating likely attack vectors" [G22] 和 "forecasting likely exploits" [G25] 一致。本流程的 S4「攻擊路徑假設」即為此設計，並強調輸出是**假設**，需要 S6 驗證。
+**本專案推論**：攻擊路徑分析是把「單一弱點的優先序」提升為「可達 crown jewel 的路徑優先序」的方法，與 Gartner 要預測攻擊路徑的說法 [G-IR]、"identifying and mitigating likely attack vectors" [G22] 和 "forecasting likely exploits" [G25] 一致。本流程的 S4「攻擊路徑假設」即為此設計，並強調輸出是**假設**，需要 S6 驗證。
 
 ## 2.7 安全驗證（Security Validation）
 
@@ -127,11 +127,11 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 
 **其他來源**：CounterCraft 稱 Gartner "named deception technology as one of three core capabilities in this shift" [V2]，與 [G1] 一致。
 
-- Impact Radar 對 advanced cyber deception 的定義（第 1 章 1.6 表 [G-IR]）："automate the deployment of deceptive elements and adapt behavior based on how attackers interact with them"；範圍 1–3 年，但 Gartner 評其市場「質量」為低，理由是主流採用慢且產業差異大。
+- Impact Radar 對 advanced cyber deception 的定義 [G-IR]：用欺敵技術主動偵測與反制網路威脅，自動部署欺敵元素，並依攻擊者與它們互動的方式調整行為。
 
 **本專案推論**：在流程中，欺敵不是分析步驟而是「改善建議」的一種選項：當路徑假設的阻斷成本高（例如 OT 無法修補），可建議在路徑節點部署誘餌帳號／憑證（honey accounts/tokens）作為補償控制，並列入 S8 指標。
 
-**與本流程的具體對應（本專案推論）**：合成案例的 `controls.json` 把 "Deception (honey accounts/tokens)" 列為成熟度 none 的控制，因此 S3 對 ad-dc-01、erp-db-01、file-srv-01 各加一項「控制缺口」，S5 對無修補的 OT 主機建議部署誘餌憑證作為補償控制。這與 Gartner 把欺敵評為「質量低」並不矛盾：本流程只把它當成本低、可局部部署的選項，不假設組織已有欺敵平臺；是否採用仍是 S5 人工決策點（變更委員會／OT 負責人）的判斷。
+**與本流程的具體對應（本專案推論）**：合成案例的 `controls.json` 把 "Deception (honey accounts/tokens)" 列為成熟度 none 的控制，因此 S3 對 ad-dc-01、erp-db-01、file-srv-01 各加一項「控制缺口」，S5 對無修補的 OT 主機建議部署誘餌憑證作為補償控制。本流程把欺敵當成本低、可局部部署的選項，不假設組織已有欺敵平臺；是否採用仍是 S5 人工決策點（變更委員會／OT 負責人）的判斷。
 
 ## 2.9 對照表：關聯的證據等級
 
@@ -139,9 +139,9 @@ summary: 逐項說明每個關聯的證據來源；Gartner 有說的標為明確
 |---|---|---|---|
 | CTEM ↔ 先制型 | proactive → preemptive 需加速 preattack cycle [G16]；五支柱之首 [G27] | Cymulate、Picus 等 | 八步流程以 CTEM 為骨架 |
 | 威脅情資 | PTI 為命名能力 [G1][G12]；PTI 定義與擴充 EAP／AEV／ASCA [G-IR] | Dropzone 摘要 [V9] | 情資作為加權因子（依 confidence） |
-| 攻擊面管理 | EAP／preemptive exposure assessment 定義 [G29][G32]；attack surface enumeration 為 PEM 面向 [G-IR] | —（EASM 市場定義待驗證） | EASM 與清冊差集 → 未知資產指標 |
+| 攻擊面管理 | EAP／preemptive exposure assessment 定義 [G29][G32]；持續的攻擊面列舉為 PEM 面向 [G-IR] | —（EASM 市場定義待驗證） | EASM 與清冊差集 → 未知資產指標 |
 | 曝險管理 | 曝險管理的未來是先制型 [G21][G22][G32] | Morphisec [V8]、Picus 對 G24 的引用 | 時間窗口指標 |
-| 攻擊路徑分析 | Impact Radar："anticipate attack paths" [G-IR]（網頁摘錄中未見） | XM Cyber、AI 生成報告 [U1][U2] 的 choke point 方法 | 路徑假設（S4） |
-| 安全控制評估（ASCA）| Impact Radar：結合資產脈絡、弱點與情資可「preemptively address and prioritize mitigation of deficiencies prior to breach」[G-IR] | — | 設定偏差與控制覆蓋因子（S3） |
+| 攻擊路徑分析 | Impact Radar：要預測攻擊路徑 [G-IR]（網頁摘錄中未見） | XM Cyber、AI 生成報告 [U1][U2] 的 choke point 方法 | 路徑假設（S4） |
+| 安全控制評估（ASCA）| Impact Radar：結合資產脈絡、弱點與情資，可以在入侵前先處理控制缺失、排定緩解的優先序 [G-IR] | — | 設定偏差與控制覆蓋因子（S3） |
 | 安全驗證 | AEV 定義 [G28b]；CTEM 第四階段 [G8]；AAE 在低容錯產業受限 [G-IR] | Picus「轉折點」說法 [V4] | 模型只提案；兩旗標決定方法 |
-| 欺敵 | 命名能力、三個 D 之一 [G1][G3]；Impact Radar 定義與「質量低」評估 [G-IR] | CounterCraft [V2] | 作為補償控制選項 |
+| 欺敵 | 命名能力、三個 D 之一 [G1][G3]；Impact Radar 的定義 [G-IR] | CounterCraft [V2] | 作為補償控制選項 |

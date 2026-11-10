@@ -80,48 +80,30 @@ Gartner 在 2025 年 9 月 18 日的新聞稿中給出目前最常被引用的�
 
 ## 1.6 Gartner《Emerging Tech Impact Radar: Preemptive Cybersecurity》（2025-10-07）— 已讀全文 [G-IR]
 
-這是本研究唯一讀過全文的 Gartner 研究文件（使用者提供之授權轉載版）。它面向**產品領導者**，分析 11 項新興技術與趨勢的「範圍（range，距離早期多數採用的年數）」與「質量（mass，對市場的影響）」。以下皆為 Gartner 明確陳述。
+這是本研究唯一讀過全文的 Gartner 研究文件（使用者提供之授權轉載版）。它面向**產品領導者**，評估 11 項先制型資安相關的新興技術與趨勢：距離主流採用還有多遠，對市場的影響有多大。依 Gartner 使用政策，本節以中文轉述，不逐字引用，也不整理 Radar 的圖表內容；需要原句的地方只引用少數短句（引用標準見 0.3.1）。以下除了標成本專案說明或本專案推論的地方，都是 Gartner 明確陳述的轉述。
 
-**核心敘述**（第 2 頁）：
+**核心敘述**：先制型資安是一個新興趨勢與一組相關的進階技術，在 AI 廠商的競賽中，正快速被視為企業韌性的關鍵要素。和傳統的偵測與回應方案不同，它不等攻擊出現，而是結合多種方法主動阻止攻擊；這些方法的目的是拒止、干擾與欺騙攻擊者。
 
-> "Preemptive cybersecurity (PCS) is an emerging trend and related set of advanced technologies that are quickly becoming recognized as a critical component for business resilience within the AI vendor race. ... Unlike traditional detection and response security solutions, they don't wait for cyberattacks to appear. Instead, they actively seek to prevent them through a combination of methods that are designed to deny, disrupt, and deceive attackers."
+**三個主題**：Radar 把 11 項技術依影響所在分成 operations、intelligence、infrastructure 三個主題。
 
-**三個主題**：Radar 把 11 項技術依影響所在分為 1) operations、2) intelligence、3) infrastructure。
+**關鍵發現**：
 
-**關鍵發現**（第 1 頁）：
+- 必須用 AI 與機器學習預測攻擊路徑、預判對手可能出手的位置，才能在攻擊開始前更有效地化解。（本專案說明：這是 Gartner 在先制型資安文本中明確點名「攻擊路徑」的地方，原句見第 2 章 2.6；它修正了本研究第 2 章原先依搜尋摘錄所做的判斷。）
+- 資安的未來取決於動態的基礎設施，而不是靜態的防禦：持續、適應性的變動讓基礎設施本身更有韌性、更難預測，攻擊者就找不到穩定的目標。
 
-- "AI and machine learning (ML) technologies must be used to anticipate attack paths and predict where an adversary is likely to strike to more effectively neutralize potential attacks before they begin."（**注意：這是 Gartner 在先制型資安文本中明確點名「攻擊路徑」的句子**，修正了本研究第 2 章原先依搜尋摘錄所做的判斷。）
-- "The future of cybersecurity is defined not by static defenses, but by dynamic infrastructure. ... By implementing continuous, adaptive changes, organizations can make their infrastructure inherently more resilient and unpredictable, effectively neutralizing threats by denying attackers a stable target."
+**給 C 級主管的建議**：把資本轉向能分析網路行為、模擬攻擊、持續調整技術基礎設施的先制型方案；優先投資預測型威脅情資與智慧模擬；從靜態防禦轉為持續適應。
 
-**給 C 級主管的建議**（第 2 頁）：把資本轉向能「analyze network behavior, simulate attacks, and continuously adapt technology infrastructures」的先制型方案；優先投資 predictive threat intelligence 與 intelligent simulation；從靜態防禦轉為持續適應。
+**Impact Radar 內的數字預測**（轉述）：
 
-**11 項技術的定義、範圍與質量**：
+- 到 2027 年，40% 的綜合型資安供應商會提供 ASCA 功能（目前不到 5%）。
+- 到 2029 年，80% 的威脅情資方案會具備預測分析功能。
+- 到 2027 年，45% 的曝險管理方案會內建智慧威脅模擬；到 2028 年，曝險驗證會成為傳統滲透測試可接受的替代做法。
+- 到 2028 年，隱形網路（stealth networking）可能占零信任市場的 25%。
 
-| 技術 | Gartner 定義（摘錄） | 範圍 | 質量 |
-|---|---|---|---|
-| Preemptive exposure management（PEM） | "a critical shift from generalized proactive defense to a targeted and intelligence-driven strategy for reducing exposure risk before exploitation occurs. PEM solutions leverage artificial intelligence, intelligent simulation and analytics to accelerate one or more aspects of the continuous threat exposure management (CTEM) process, such as continuous attack surface enumeration, high-accuracy validation, or both automated and guided mitigation." | 1–3 年 | 極高 |
-| Predictive threat intelligence（PTI） | "to forecast the likelihood of future cyberattacks and provide early insights on emerging threats ... PTI is a critical emerging technology that is foundational to preemptive cybersecurity strategies." PTI 會擴充 EAP、AEV、ASCA。 | 1–3 年 | 高 |
-| Automated security control assessment（ASCA） | "continuously analyze, prioritize and optimize security control configurations to minimize threat exposure ... When combined with asset context, vulnerability data and threat intelligence, ASCA provides comprehensive security posture analysis, enabling organizations to preemptively address and prioritize mitigation of deficiencies prior to breach." | 1–3 年 | 高 |
-| Advanced cyber deception | "uses deceptive techniques to proactively detect and counter cyberthreats ... automate the deployment of deceptive elements and adapt behavior based on how attackers interact with them" | 1–3 年 | 低（主流採用慢且產業差異大） |
-| Secure software-defined storage（SSDS） | 在儲存層主動防禦資料（例如偵測大量刪除、未授權加密即阻斷存取） | 1–3 年 | 中 |
-| Autonomous adversarial emulation（AAE） | "combines predictive machine learning models with historical and simulated threat actor behavior to perform real-time emulation and simulation of cyberattacks ... autonomously creating and executing tailored attack playbooks" | 3–6 年 | 高 |
-| Cybersecurity precrime platforms | 以歷史資料、AI 與預測分析預測可能的網路犯罪 | 3–6 年 | 中 |
-| Advanced obfuscation | 轉換程式碼／資料使其對人與工具不可理解但保留功能；具雙重用途 | 3–6 年 | 中 |
-| Automated moving target defense（AMTD） | "dynamically change or move system resources, creating a constantly shifting attack surface ... shifting parameters like IP addresses, memory layouts and network configurations" | 3–6 年（文中）| 極高 |
-| Quantum computing security / PQC | 後量子密碼移轉；"public key cryptographic algorithms will be broken between 2029 and 2031" 的預期 | 6–8 年 | 高 |
-| Zero-trust stealth networking | 在零信任之上加「隱形」層，使關鍵資源對未授權者不可見 | 6–8 年 | 高 |
-
-**Impact Radar 內的數字預測**（Gartner 明確陳述）：
-
-- "by 2027, 40% of broad portfolio security providers will offer ASCA features, up from less than 5% today."
-- "by 2029, predictive analytics will be a feature in 80% of threat intelligence solutions."
-- "intelligent threat simulation will be embedded in 45% of exposure management solutions by 2027 and ... exposure validation will be an accepted alternative to traditional penetration testing by 2028."
-- "stealth networking could represent 25% of the total zero-trust market by 2028."
-
-**對本專案的意義**（本專案推論）：PEM 的定義直接把先制型資安錨定在「加速 CTEM 流程」；PTI「擴充 EAP／AEV／ASCA」的描述，與本專案把情資當作優先序加權因子、把設定偏差與控制覆蓋納入評分的設計一致。AAE 與 AMTD 屬 3–6 年技術，本專案流程只把它們列為「驗證方法選項」與「補償控制選項」，不假設組織已具備。
+**對本專案的意義**（本專案推論）：Radar 對 PEM（preemptive exposure management）的定義，直接把先制型資安錨定在「加速 CTEM 流程」（原句見第 2 章 2.2）；PTI（predictive threat intelligence）會擴充 EAP、AEV 與 ASCA 的描述，與本專案把情資當作優先序加權因子、把設定偏差與控制覆蓋納入評分的設計一致。本專案流程只把 AAE（autonomous adversarial emulation）與 AMTD（automated moving target defense）列為「驗證方法選項」與「補償控制選項」，不假設組織已具備。
 
 ## 1.7 本章小結
 
-- 可驗證的核心：定義（AI/ML 在威脅成形前預測並中和）、三個命名能力（PTI、deception、AMTD）、兩個 2030 年預測（50% 支出、75% 產品；50% 支出預測另見媒體轉載 [M1][M2]）、CVE 破百萬預測、「取代獨立 DR」的定位、Impact Radar 的「deny, disrupt, and deceive」[G-IR]。
+- 可驗證的核心：定義（AI/ML 在威脅成形前預測並中和）、三個命名能力（PTI、deception、AMTD）、兩個 2030 年預測（50% 支出、75% 產品；50% 支出預測另見媒體轉載 [M1][M2]）、CVE 破百萬預測、「取代獨立 DR」的定位、Impact Radar 的「拒止、干擾與欺騙」[G-IR]。
 - 需要小心的：「三個 D」在 [G3] 只有單一搜尋摘錄，仍待原頁核對；50% 不是市場金額；「predict–prevent–detect–respond」對映是他人詮釋；「35% by 2028」（僅見於 Silent Push 轉載頁與 Splunk 部落格 [V5]）、「ACIS 75%」等數字待驗證（見證據頁）。
-- 已讀全文的 Impact Radar [G-IR] 補充了 11 項技術的定義、範圍與質量，並明確提到「anticipate attack paths」。
+- 已讀全文的 Impact Radar [G-IR] 補充了 11 項技術的評估與三個主題，並明確點名要預測攻擊路徑（見第 2 章 2.6）。
