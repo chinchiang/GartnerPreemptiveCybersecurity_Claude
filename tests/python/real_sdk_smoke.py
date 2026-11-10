@@ -144,6 +144,38 @@ def check_path(platform, adapter_name, extra, build):
     return problems
 
 
+def _literal_values(tp):
+    """型別註記裡所有 Literal 的值（Optional[Literal[...]]、Union 也展開）。"""
+    import typing
+    if typing.get_origin(tp) is typing.Literal:
+        return set(typing.get_args(tp))
+    return set().union(*(_literal_values(arg) for arg in typing.get_args(tp)))
+
+
+def chat_completions_finishes():
+    from openai.types.chat.chat_completion import Choice
+    return _literal_values(Choice.model_fields["finish_reason"].annotation)
+
+
+def anthropic_stop_reasons():
+    from anthropic.types import StopReason
+    return _literal_values(StopReason)
+
+
+# 共用案例 tests/fixtures/incomplete-cases.json 的完整性（#276）：SDK 型別裡的每個結束原因都要列在 incomplete 或 pass。
+# SDK 新增了結束原因時這裡失敗，提醒判斷它算不算不完整，再同步 analysis_workflow.py 與 backend/worker.js 的 INCOMPLETE。
+FINISH_ENUMS = {chat_completions: ("chat_completions", chat_completions_finishes),
+                anthropic_messages: ("anthropic", anthropic_stop_reasons)}
+
+
+def check_incomplete_cases(api, sdk_values):
+    """回傳問題清單：SDK 型別裡有、共用案例沒列的結束原因。"""
+    import json
+    case = json.loads((ROOT / "tests/fixtures/incomplete-cases.json").read_text(encoding="utf-8"))[api]
+    missing = sorted(sdk_values - set(case["incomplete"]) - set(case["pass"]))
+    return [f"SDK 型別裡的結束原因 {missing} 不在共用案例的 incomplete 或 pass 裡"] if missing else []
+
+
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) != 1 or argv[0] not in SDK_MODULES:
@@ -171,6 +203,17 @@ def main(argv=None) -> int:
             print(f"[失敗] {platform} {label}：{problem}", file=sys.stderr)
         if not problems:
             print(f"[通過] {platform} {label}：截斷時中止、正常時存檔")
+        failed += bool(problems)
+    for api, values in dict(FINISH_ENUMS[build] for _, _, _, build in PATHS[platform] if build in FINISH_ENUMS).items():
+        try:
+            sdk_values = values()
+            problems = check_incomplete_cases(api, sdk_values)
+        except Exception as exc:  # noqa: BLE001 — 型別的位置改了也算失敗
+            problems = [f"{type(exc).__name__}: {exc}"]
+        for problem in problems:
+            print(f"[失敗] {platform} {api} 的結束原因：{problem}", file=sys.stderr)
+        if not problems:
+            print(f"[通過] {platform} {api} 的結束原因：SDK 型別的 {sorted(sdk_values)} 都在共用案例裡")
         failed += bool(problems)
     return 1 if failed else 0
 
