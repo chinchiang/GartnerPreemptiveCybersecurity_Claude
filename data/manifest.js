@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "3abef1aa2460",
+ "contentHash": "b384bea7b3f2",
  "research": [
   {
    "id": "00-method",
@@ -89,7 +89,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/api-workflow.py",
    "platform": "chatgpt",
-   "bytes": 6805
+   "bytes": 6846
   },
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
@@ -174,7 +174,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "claude",
-   "bytes": 87557
+   "bytes": 87793
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -189,7 +189,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/api-workflow.py",
    "platform": "deepseek",
-   "bytes": 6668
+   "bytes": 6709
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
@@ -239,7 +239,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/api-workflow.py",
    "platform": "gemini",
-   "bytes": 16346
+   "bytes": 16387
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/SKILL.md",
@@ -274,7 +274,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/analysis_workflow.py",
    "platform": "gemini",
-   "bytes": 87557
+   "bytes": 87793
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/scripts/validate_inputs.py",
@@ -294,7 +294,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 8537
+   "bytes": 8578
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",
@@ -349,7 +349,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/api-workflow.py",
    "platform": "grok",
-   "bytes": 7851
+   "bytes": 7892
   },
   {
    "path": "skills/grok/requirements.txt",
@@ -374,7 +374,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/shared/analysis_workflow.py",
    "platform": "shared",
-   "bytes": 87426
+   "bytes": 87662
   },
   {
    "path": "skills/shared/core-prompt.md",

@@ -32,7 +32,7 @@ GLM（Zhipu AI / Z.ai）API 工作流程：先制型曝險分析（Preemptive Ex
   python3 skills/glm/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出與結束碼
-  output/glm-report.md、output/glm-output.json（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 output/glm-output.raw.txt）
+  output/glm-report.md、output/glm-output.json（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 output/glm-output.raw.txt；成功時會清掉上一次的 raw.txt）
   0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符
 
 安全邊界

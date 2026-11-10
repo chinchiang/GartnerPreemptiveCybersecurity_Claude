@@ -130,7 +130,7 @@ export OPENAI_MODEL=gpt-6-astra                           # 預設值；在意�
 python3 skills/chatgpt/api-workflow.py
 ```
 
-輸出：`output/chatgpt-report.md`、`output/chatgpt-output.json`（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 `output/chatgpt-output.raw.txt`）。
+輸出：`output/chatgpt-report.md`、`output/chatgpt-output.json`（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 `output/chatgpt-output.raw.txt`；成功時會清掉上一次的 `raw.txt`）。
 
 兩段式對話：第 1 段要 Markdown 報告，第 2 段延續同一對話（`instructions` 放系統提示，`input` 放整串訊息）、只要 JSON，output-schema.json 放在第 2 段。不啟用任何工具。
 
