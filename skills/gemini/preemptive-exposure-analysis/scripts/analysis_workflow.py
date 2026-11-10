@@ -925,7 +925,7 @@ def _fmt(value) -> str:
 
 def output_consistency_problems(data) -> list:
     """輸出內容一致性（schema 之外的第二層，#148）：分數與分級、參照完整性、驗證狀態要有證據。
-    形狀不合格的部分略過，交給 output_problems 回報。與 JS 的 outputConsistencyProblems（scripts/output-schema.mjs）
+    形狀不合格的部分略過，交給 output_problems 回報。與 JS 的 outputConsistencyProblems（scripts/output-verdict.mjs）
     逐字相同，由 tests/fixtures/consistency-cases.json 守住。"""
     if not isinstance(data, dict):
         return []
@@ -972,7 +972,7 @@ def score_table_problems(data, scores: dict | None) -> list:
     """輸出有沒有照用腳本預先計算的分數（ADR 0010、#229、#247）：exposure_priorities 的每一項以 finding_id 對照分數表，
     priority 不同、score 不同或不是有限數字算 mismatch，finding_id 不在表裡算 not_in_table；表裡有、輸出沒列的不在這裡判。
     形狀不合格的部分略過，交給 output_problems 回報；scores 是 None（沒有分數表）時不檢查。
-    回傳 [{index, finding_id, kind, expected?, got}]，got 裡沒有的欄位是 None。示範引擎的 scoreTableProblems（後端代理用）
+    回傳 [{index, finding_id, kind, expected?, got}]，got 裡沒有的欄位是 None。scripts/output-verdict.mjs 的 scoreTableProblems（後端代理用）
     是同一條規則，由共用案例 tests/fixtures/score-problems-cases.json 守住。"""
     if scores is None or not isinstance(data, dict) or not isinstance(data.get("exposure_priorities"), dict):
         return []
@@ -992,10 +992,10 @@ def score_table_problems(data, scores: dict | None) -> list:
     return problems
 
 
-def precomputed_score_problems(data, scores: dict | None) -> list:
-    """score_table_problems 的結果組成給人看的訊息（API 腳本印在錯誤訊息裡）。"""
+def score_table_messages(problems: list) -> list:
+    """score_table_problems 的結構化紀錄組成給人看的訊息（save_outputs 印在錯誤訊息裡）。"""
     messages = []
-    for p in score_table_problems(data, scores):
+    for p in problems:
         where = f"$.exposure_priorities.items[{p['index']}] {p['finding_id']}"
         if p["kind"] == "not_in_table":
             messages.append(f"{where} 不在腳本預先計算的分數表裡")
@@ -1006,10 +1006,35 @@ def precomputed_score_problems(data, scores: dict | None) -> list:
     return messages
 
 
+VERDICT_HEADINGS = {
+    "output_schema_invalid": "輸出不符合 output-schema.json",
+    "output_inconsistent": "輸出內容不一致",
+    "score_table_mismatch": "輸出跟腳本預先計算的分數表不一致",
+}
+
+
+def output_verdict(data, output_schema: dict, scores: dict | None = None):
+    """輸出判定（GLOSSARY.md）：解析後的輸出依序對照 output schema、內容一致性與分數表，第一個失敗的就是結果。
+    通過回傳 None；失敗回傳 {"kind", "problems"}，kind 是 output_schema_invalid、output_inconsistent 或 score_table_mismatch，
+    前兩種的 problems 是字串清單，score_table_mismatch 是 score_table_problems 的結構化紀錄。scores 是 None 時不對照分數表。
+    schema 驗證是遞迴的，巢狀太深時會丟出 RecursionError，這裡不攔。
+    scripts/output-verdict.mjs 的 outputVerdict（後端代理用）是同一個判定，由共用案例 tests/fixtures/verdict-cases.json 守住。"""
+    problems = output_problems(data, output_schema)
+    if problems:
+        return {"kind": "output_schema_invalid", "problems": problems}
+    problems = output_consistency_problems(data)
+    if problems:
+        return {"kind": "output_inconsistent", "problems": problems}
+    problems = score_table_problems(data, scores)
+    if problems:
+        return {"kind": "score_table_mismatch", "problems": problems}
+    return None
+
+
 def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, output_schema: dict, scores: dict | None = None) -> int:
     """寫出 <平臺>-report.md 與 <平臺>-output.json；JSON 解析失敗時另存 <平臺>-output.raw.txt 並回傳 4。
-    輸出不符合 schema，或內容不一致（output_consistency_problems，以及有分數表時的 precomputed_score_problems）時，
-    保留原始回應並回傳 4；合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
+    輸出判定（output_verdict）不通過時，保留原始回應並回傳 4，stderr 只列第一個失敗的種類與問題；
+    合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
     output_dir.mkdir(parents=True, exist_ok=True)
     report_path = output_dir / f"{platform}-report.md"
     report_path.write_text(report, encoding="utf-8")
@@ -1021,16 +1046,12 @@ def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, o
         raw_path.write_text(json_text, encoding="utf-8")
         print(f"[警告] JSON 解析失敗，原始回應已存至 {raw_path}；請人工檢查或重跑。", file=sys.stderr)
         return JSON_PARSE_FAILED
-    problems = output_problems(data, output_schema)
-    if problems:
+    verdict = output_verdict(data, output_schema, scores)
+    if verdict:
         (output_dir / f"{platform}-output.raw.txt").write_text(json_text, encoding="utf-8")
-        (output_dir / f"{platform}-output.json").unlink(missing_ok=True)
-        print("[錯誤] 輸出不符合 output-schema.json：" + "；".join(problems), file=sys.stderr)
-        return 4
-    inconsistent = output_consistency_problems(data) + precomputed_score_problems(data, scores)
-    if inconsistent:
-        (output_dir / f"{platform}-output.raw.txt").write_text(json_text, encoding="utf-8")
-        print("[錯誤] 輸出內容不一致：" + "；".join(inconsistent), file=sys.stderr)
+        kind, problems = verdict["kind"], verdict["problems"]
+        messages = score_table_messages(problems) if kind == "score_table_mismatch" else problems
+        print(f"[錯誤] {VERDICT_HEADINGS[kind]}（{kind}）：" + "；".join(messages), file=sys.stderr)
         return 4
     json_path = output_dir / f"{platform}-output.json"
     json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

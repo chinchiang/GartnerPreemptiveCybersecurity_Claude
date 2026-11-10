@@ -836,10 +836,15 @@ class WorkflowRunTest(unittest.TestCase):
             out = copy.deepcopy(VALID_OUTPUT)
             out["exposure_priorities"]["items"][1].update(fields)
             return out
+        # 改名成 F099 時，改善建議也跟著指向 F099：否則參照完整性先不合格，輸出判定只回內容不一致（#275）
+        renamed = changed(finding_id="F099")
+        for r in renamed["remediation"]["items"]:
+            if r["finding_id"] == "F009":
+                r["finding_id"] = "F099"
         cases = [
             ("score", changed(score=70), "F009 腳本算的是 P1／72.5，輸出是 P1／70"),
             ("priority", changed(score=55, priority="P2"), "F009 腳本算的是 P1／72.5，輸出是 P2／55"),
-            ("不在分數表", changed(finding_id="F099"), "F099 不在腳本預先計算的分數表裡"),
+            ("不在分數表", renamed, "F099 不在腳本預先計算的分數表裡"),
         ]
         # 只有 priority 不同：模型自己換了門檻，score 照用、分級跟它自己的門檻自洽，仍要判不合格
         own_thresholds = changed(priority="P2")

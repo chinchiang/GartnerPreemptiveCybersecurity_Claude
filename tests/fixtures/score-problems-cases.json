@@ -1,5 +1,5 @@
 {
-  "_note": "模型輸出跟分數表的對照（#247、ADR 0010）：示範引擎的 scoreTableProblems 與 Python 核心的 score_table_problems 都要算出 expected。規則：exposure_priorities.items 的每一項以 finding_id 對照分數表；priority 不同、score 不同或不是有限數字算 mismatch，finding_id 不在表裡算 not_in_table；表裡有、輸出沒列的不算；形狀不合格的部分略過（交給 schema 驗證，#252）。index 是項目在 items 裡的位置；got 裡沒有的欄位寫 null；not_in_table 沒有 expected。預期值手寫，不由任一份實作產生。",
+  "_note": "模型輸出跟分數表的對照（#247、ADR 0010）：scripts/output-verdict.mjs 的 scoreTableProblems 與 Python 核心的 score_table_problems 都要算出 expected。規則：exposure_priorities.items 的每一項以 finding_id 對照分數表；priority 不同、score 不同或不是有限數字算 mismatch，finding_id 不在表裡算 not_in_table；表裡有、輸出沒列的不算；形狀不合格的部分略過（交給 schema 驗證，#252）。index 是項目在 items 裡的位置；got 裡沒有的欄位寫 null；not_in_table 沒有 expected。預期值手寫，不由任一份實作產生。",
   "table": {
     "risk_appetite": "balanced",
     "thresholds": { "P1": 60, "P2": 40, "P3": 20 },

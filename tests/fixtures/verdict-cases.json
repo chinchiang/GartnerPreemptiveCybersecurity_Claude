@@ -1,0 +1,55 @@
+{
+  "_note": "輸出判定的跨語言共用案例（#275）：Python 核心的 output_verdict 與 scripts/output-verdict.mjs 的 outputVerdict 都要回傳 expected。輸出以 examples/acceptance-fixture.json 為基準套用 changes（[路徑, 值]）；with_table 為 true 時對照下面的 table，false 時不附分數表。判定依序對照 output-schema.json、內容一致性與分數表，第一個失敗的就是結果；通過時 expected 是 null。預期值手寫，不由任一份實作產生。",
+  "table": {
+    "risk_appetite": "balanced",
+    "thresholds": { "P1": 60, "P2": 40, "P3": 20 },
+    "findings": [
+      { "finding_id": "F001", "asset_id": "A01", "vuln_id": "V1", "likelihood": 10, "impact": 8.6, "score": 86, "priority": "P1", "factors": [] },
+      { "finding_id": "F009", "asset_id": "A02", "vuln_id": "V2", "likelihood": 10, "impact": 7.25, "score": 72.5, "priority": "P1", "factors": [] }
+    ]
+  },
+  "cases": [
+    {
+      "name": "一致性與分數表都有問題：只回內容不一致，不看分數表",
+      "changes": [[["exposure_priorities", "items", 1, "score"], 0]],
+      "with_table": true,
+      "expected": { "kind": "output_inconsistent", "problems": ["$.exposure_priorities.items[1] 分數 0 依門檻應為 P4，卻標為 P1"] }
+    },
+    {
+      "name": "三層都有問題：只回 schema 不合格",
+      "changes": [
+        [["exposure_priorities", "thresholds", "P1"], "60"],
+        [["remediation", "items", 0, "finding_id"], "F-999"],
+        [["exposure_priorities", "items", 1, "score"], 0]
+      ],
+      "with_table": true,
+      "expected": { "kind": "output_schema_invalid", "problems": ["$.exposure_priorities.thresholds.P1 型別不合格"] }
+    },
+    {
+      "name": "內容不一致、沒附分數表：回內容不一致",
+      "changes": [[["remediation", "items", 0, "finding_id"], "F-999"]],
+      "with_table": false,
+      "expected": { "kind": "output_inconsistent", "problems": ["$.remediation.items[0].finding_id F-999 不在曝險優先序中"] }
+    },
+    {
+      "name": "只有分數表不符：回分數表不符，附結構化的問題",
+      "changes": [[["exposure_priorities", "items", 1, "score"], 70]],
+      "with_table": true,
+      "expected": { "kind": "score_table_mismatch", "problems": [
+        { "index": 1, "finding_id": "F009", "kind": "mismatch", "expected": { "priority": "P1", "score": 72.5 }, "got": { "priority": "P1", "score": 70 } }
+      ] }
+    },
+    {
+      "name": "跟分數表不符但沒附分數表：通過",
+      "changes": [[["exposure_priorities", "items", 1, "score"], 70]],
+      "with_table": false,
+      "expected": null
+    },
+    {
+      "name": "合格且跟分數表一致：通過",
+      "changes": [],
+      "with_table": true,
+      "expected": null
+    }
+  ]
+}
