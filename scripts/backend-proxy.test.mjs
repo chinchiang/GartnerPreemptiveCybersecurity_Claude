@@ -295,13 +295,15 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     assert.equal((await rejected(await send(withTable()))).error, 'output_inconsistent');
   });
 
-  test('模型輸出：巢狀太深、檢查時丟出例外也回 502 的 output_unparseable，不讓 Worker 回執行錯誤（#252 審查）', async () => {
-    // metrics.items[].value 在 schema 裡沒有型別限制；5000 層的陣列會讓遞迴的 schema 驗證超過呼叫堆疊。
-    // JSON.stringify 一樣是遞迴的，這裡直接用字串組出那一段，不然先出錯的是測試自己
+  test('模型輸出：沒有型別限制的欄位巢狀很深但合格，照常轉回，不讓 Worker 回執行錯誤（#252 審查、#281）', async () => {
+    // metrics.items[].value 在 schema 裡沒有型別限制。#281 之前，5000 層的陣列會讓遞迴的 schema 驗證超過呼叫堆疊；
+    // 現在陣列沒有 items 限制時不逐項檢查，判定通過。JSON.stringify 一樣是遞迴的，這裡直接用字串組出那一段，不然先出錯的是測試自己
     const json = JSON.stringify(modelOutput(o => { o.metrics.items[0].value = '__DEEP__'; })).replace('"__DEEP__"', '['.repeat(5000) + ']'.repeat(5000));
     const content = openaiReply(`## 曝險優先序\n\n報告本文。\n\n\`\`\`json\n${json}\n\`\`\``);
     reply = () => new Response(content, { status: 200 });
-    assert.deepEqual(await rejected(await send(withTable())), { error: 'output_unparseable', upstream: content });
+    const r = await send(withTable());
+    assert.equal(r.status, 200);
+    assert.equal(await r.text(), content);
   });
 
   test('模型輸出：取不到文字、找不到或解析不了 JSON 時回 502 的 output_unparseable，不放行（#247）', async () => {

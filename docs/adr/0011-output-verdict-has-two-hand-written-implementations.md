@@ -21,4 +21,4 @@
 - 改判定順序或新增失敗種類時，兩份實作與 `verdict-cases.json` 要一起改；後端代理的 502 回應用 `error` 欄位放失敗種類，對外的格式也跟著變。
 - `scripts/acceptance.mjs` 要逐層列出所有問題，不用輸出判定，直接呼叫逐步的函式；逐步的函式因此仍然從 `output-verdict.mjs` 匯出。
 - 從模型回應抽出 JSON（Python 的 `parse_json_loose`、JS 的 `lastJsonBlock`）與回覆完整性的檢查（`require_complete`、`INCOMPLETE`）不在判定裡，兩邊的規則本來就不同；`INCOMPLETE` 清單的同步見 #276。
-- 判定不攔例外：schema 解讀是遞迴的，沒有型別限制的欄位（例如 `metrics.items[].value`）會沿著資料一路往下走，巢狀太深時會超過呼叫堆疊。由呼叫端處理：後端代理把例外當成 `output_unparseable`；API 腳本的 `save_outputs` 用同一個 `except RecursionError` 包住解析、判定與序列化 JSON（巢狀太深時哪一步先超過呼叫堆疊依 Python 版本而定），比照判定失敗保留原始回應並以結束碼 4 結束；其他例外（例如 schema 用了不支援的規則）是程式錯誤，照舊往外丟（#278）。
+- 判定不攔例外。schema 解讀只在陣列的 schema 有 `items` 時才逐項檢查，不沿著沒有限制的資料往下走，所以遞迴深度只受 schema 的結構限制，模型輸出巢狀再深也不會在判定時超過呼叫堆疊（#281；共用案例 `output-cases.json` 的 `nest` 守住）。呼叫端仍要處理例外，因為解析與序列化 JSON 也是遞迴的：後端代理把檢查時的例外當成 `output_unparseable`，現在會走到那裡的主要是程式錯誤（例如 schema 用了不支援的規則），也回 502，跟 API 腳本不同；API 腳本的 `save_outputs` 用同一個 `except RecursionError` 包住解析、判定與序列化 JSON（巢狀太深時哪一步先超過呼叫堆疊依 Python 版本而定），比照判定失敗保留原始回應並以結束碼 4 結束；其他例外（例如 schema 用了不支援的規則）是程式錯誤，照舊往外丟（#278）。序列化那一步只有 Python 3.12 測得到，所以 CI 的 verify job 用 3.11 與 3.12 各跑一次 Python 測試。

@@ -870,7 +870,8 @@ def parse_json_loose(text: str):
 
 
 def output_problems(value, schema, root=None, path="$"):
-    """依輸出 schema 驗證型別、參照、組合、必要欄位及界限；未知規則拒絕處理。"""
+    """依輸出 schema 驗證型別、參照、組合、必要欄位及界限；未知規則拒絕處理。
+    陣列只在 schema 有 items 時才逐項檢查，不沿著沒有限制的資料往下走：遞迴深度因此只受 schema 的結構限制（#281）。"""
     import math
     root = schema if root is None else root
     supported = {"$schema", "$id", "$defs", "$ref", "title", "description", "type", "required", "properties", "items", "allOf", "enum", "minimum", "maximum", "minLength", "maxLength", "minItems"}
@@ -899,8 +900,9 @@ def output_problems(value, schema, root=None, path="$"):
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             errors.append(path + " 項目不足")
-        for i, item in enumerate(value):
-            errors += output_problems(item, schema.get("items", {}), root, f"{path}[{i}]")
+        if "items" in schema:
+            for i, item in enumerate(value):
+                errors += output_problems(item, schema["items"], root, f"{path}[{i}]")
     if isinstance(value, dict):
         errors += [path + "." + key + " 必填" for key in schema.get("required", []) if key not in value]
         for key, node in schema.get("properties", {}).items():
@@ -1017,7 +1019,7 @@ def output_verdict(data, output_schema: dict, scores: dict | None = None):
     """輸出判定（GLOSSARY.md）：解析後的輸出依序對照 output schema、內容一致性與分數表，第一個失敗的就是結果。
     通過回傳 None；失敗回傳 {"kind", "problems"}，kind 是 output_schema_invalid、output_inconsistent 或 score_table_mismatch，
     前兩種的 problems 是字串清單，score_table_mismatch 是 score_table_problems 的結構化紀錄。scores 是 None 時不對照分數表。
-    schema 驗證是遞迴的，沒有型別限制的欄位會沿著資料一路往下走，巢狀太深時會丟出 RecursionError，這裡不攔，由 save_outputs 處理。
+    schema 驗證是遞迴的，但陣列沒有 items 限制時不逐項檢查，深度只受 schema 的結構限制（#281）；這裡不攔例外，解析與序列化 JSON 的 RecursionError 由 save_outputs 處理。
     scripts/output-verdict.mjs 的 outputVerdict（後端代理用）是同一個判定，由共用案例 tests/fixtures/verdict-cases.json 守住。"""
     problems = output_problems(data, output_schema)
     if problems:
@@ -1035,7 +1037,7 @@ def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, o
     """寫出 <平臺>-report.md 與 <平臺>-output.json；JSON 解析失敗時另存 <平臺>-output.raw.txt 並回傳 4。
     輸出判定（output_verdict）不通過時，保留原始回應並回傳 4，stderr 只列第一個失敗的種類與問題；
     判定通過時不留下上一次失敗的 <平臺>-output.raw.txt（#279）。
-    輸出巢狀太深時，解析、判定或序列化 JSON 會遇到 RecursionError（哪一步先遇到依 Python 版本而定），
+    輸出巢狀太深時，解析或序列化 JSON 會遇到 RecursionError（哪一步先遇到依 Python 版本而定；判定的深度只受 schema 限制，#281），
     同樣保留原始回應並回傳 4（#278）；其他例外照舊往外丟。
     寫出結果之前先刪掉上一次的 output.json 與 raw.txt：刪不掉時在寫出任何結果之前就中止，不會留下這次的 JSON 跟上一次的原始回應並存。
     合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""

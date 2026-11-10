@@ -20,12 +20,15 @@ class AuditRegressionTest(unittest.TestCase):
             node = output
             for key in case['path'][:-1]:
                 node = node[key]
+            value = case.get('value')
+            for _ in range(case.get('nest', 0)):  # nest：把 value 包成這麼多層陣列；JSON 檔放不下這麼深（#281）
+                value = [value]
             if case.get('delete'):  # delete：刪掉 path 指的鍵；problems：有寫就逐字比對（#163）
                 del node[case['path'][-1]]
             elif case['path']:
-                node[case['path'][-1]] = case['value']
+                node[case['path'][-1]] = value
             else:
-                output = case['value']
+                output = value
             self.assertEqual(not aw.output_problems(output, schema), case['valid'], case['name'])
             if 'problems' in case:
                 self.assertEqual(aw.output_problems(output, schema), case['problems'], case['name'])
