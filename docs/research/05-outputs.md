@@ -42,7 +42,7 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 - **判斷依據**：拓樸邊 + O1 的入口可能性 + 身分／設定邊數 − 跳數。
 - **可信度考量**：取決於 I10 與 I6 品質；**永遠標示為假設**。
 - **驗證方式**：O4 的授權驗證；驗證後可改為 `validated-feasible` 或 `validated-blocked`。回填與下一輪沿用是導入時應建立的制度（見第 3 章 3.6「驗證回饋」）。
-- **對應 Gartner 概念**："anticipate attack paths" [G-IR]；AEV 證明可利用性 [G28b]。
+- **對應 Gartner 概念**：預測攻擊路徑 [G-IR]；AEV 證明可利用性 [G28b]。
 
 ### O3 改善建議
 
@@ -51,7 +51,7 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 - **判斷依據**：修補可用性、是否設定議題、環境（OT）、重要性。
 - **可信度考量**：中（模型不知維護窗口與成本）。
 - **驗證方式**：變更後重跑分析；O4 驗證。
-- **對應 Gartner 概念**：PEM「automated and guided mitigation」[G-IR]；欺敵與 AMTD 作為先制對策 [G1][G3]。
+- **對應 Gartner 概念**：PEM 的自動化與引導式緩解 [G-IR]；欺敵與 AMTD 作為先制對策 [G1][G3]。
 
 ### O4 安全驗證計畫（提案）
 
@@ -86,7 +86,7 @@ summary: 逐項說明每個輸出的結構與範例、對應輸入與判斷依�
 - **判斷依據**：O1–O2 統計 + I2/I4 品質。
 - **可信度考量**：等同輸入新鮮度。
 - **驗證方式**：每週趨勢；與事件資料交叉。
-- **對應 Gartner 概念**：Gartner 建議以「time-to-remediate critical exposures」與「attack surface for high-value assets」對齊業務成果 [G-IR]；本流程維持單次分析，上面的指標都是當期數值，沒有修補天數之類的時間類指標，也沒有跨期比較；成果型指標由導入的組織建立（見第 3 章 3.6「成果型指標」與 [ADR 0008](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/docs/adr/0008-single-analysis-feedback-and-outcome-metrics-are-adoption-practices.md)）。
+- **對應 Gartner 概念**：Gartner 建議用縮短關鍵曝險的修補時間，或縮小高價值資產的攻擊面來對齊業務成果 [G-IR]；本流程維持單次分析，上面的指標都是當期數值，沒有修補天數之類的時間類指標，也沒有跨期比較；成果型指標由導入的組織建立（見第 3 章 3.6「成果型指標」與 [ADR 0008](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/docs/adr/0008-single-analysis-feedback-and-outcome-metrics-are-adoption-practices.md)）。
 
 ## 5.3 輸出的共同限制
 

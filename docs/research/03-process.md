@@ -7,7 +7,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 ## 3.1 設計原則（本專案推論）
 
 1. **骨架來自 CTEM**：S1 對應 scoping、S2 對應 discovery、S3–S4 對應 prioritization、S6 對應 validation、S5／S7 對應 mobilization [G8]。
-2. **先制型的加速點**：Gartner 對 PEM 的定義 [G-IR] 是加速曝險管理的 "one or more aspects… such as" 持續攻擊面列舉、高準確度驗證、自動化與引導式緩解——這幾處是舉例，不是封閉的清單。本流程與這幾處相關的是 S2（彙整 EASM 等工具提供的攻擊面資料，本身不做列舉）、S6、S5（引導式緩解）；其中 S6 只產出驗證**計畫**，不是 Gartner 說的高準確度驗證本身，驗證要由人員以合規工具執行。
+2. **先制型的加速點**：Gartner 對 PEM 的定義 [G-IR] 是加速曝險管理的一個或多個面向，並以持續攻擊面列舉、高準確度驗證、自動化與引導式緩解為例——這幾處是舉例，不是封閉的清單。本流程與這幾處相關的是 S2（彙整 EASM 等工具提供的攻擊面資料，本身不做列舉）、S6、S5（引導式緩解）；其中 S6 只產出驗證**計畫**，不是 Gartner 說的高準確度驗證本身，驗證要由人員以合規工具執行。
 3. **語言模型的邊界**：模型負責資料整合、規則化推理、假設生成與文件撰寫；不執行掃描、不驗證、不變更。每一步都標出人工決策點。
 4. **迴圈而非直線**：S8 的指標回饋到 S1／S2，對應 CTEM「continuous」的精神。這是流程設計：本專案的技能與示範引擎每次只做一次分析，跨期追蹤要由導入的組織另行建立（見 3.6）。
 
@@ -54,7 +54,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：O1。
 - **限制**：示範規則是線性加權，不是機率模型；EPSS 本身不含企業脈絡。組織應以自己的風險模型取代。
 - **人工決策點**：業務擁有者確認 P1 的業務重要性與排序。
-- **依據**：CTEM prioritization「urgency, severity, ability to remediate and level of risk」[G8]；ASCA「combined with asset context, vulnerability data and threat intelligence」[G-IR]；PTI 擴充 EAP 以「better prioritize exposures」[G-IR]。
+- **依據**：CTEM prioritization「urgency, severity, ability to remediate and level of risk」[G8]；ASCA 結合資產脈絡、弱點資料與威脅情資 [G-IR]；PTI 擴充 EAP，以更好地排定曝險的優先序 [G-IR]。
 
 ### S4 攻擊路徑假設（Hypothesis）
 
@@ -64,7 +64,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：O2，`status: hypothesis`。
 - **限制**：拓樸是人給的；模型不能證明路徑可行。無拓樸時跳過。
 - **人工決策點**：資安架構師審查邊與信任關係是否正確。
-- **依據**：Gartner "anticipate attack paths" [G-IR]；AEV 以攻擊情境證明可利用性 [G28b]。
+- **依據**：Gartner 要預測攻擊路徑 [G-IR]（原句見第 2 章 2.6）；AEV 以攻擊情境證明可利用性 [G28b]。
 
 ### S5 改善建議（Remediation）
 
@@ -74,7 +74,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：O3。
 - **限制**：模型不知道維護窗口與變更成本；工作量為粗估。
 - **人工決策點**：CISO 核准改善方案與排序；變更委員會核准正式環境變更，涉及 OT 端點須先取得 OT 工程同意（見 3.4 的 S5a、S5b）。
-- **依據**：CTEM mobilization「reduce friction in the approvals for treatments」[G8]；PEM「automated and guided mitigation」[G-IR]；欺敵作為先制能力 [G1][G-IR]。
+- **依據**：CTEM mobilization「reduce friction in the approvals for treatments」[G8]；PEM 的自動化與引導式緩解 [G-IR]；欺敵作為先制能力 [G1][G-IR]。
 
 ### S6 安全驗證計畫（Validation plan）
 
@@ -104,7 +104,7 @@ summary: 把可驗證的概念轉為可執行流程。本章為本專案推論�
 - **輸出**：O6。
 - **限制**：指標只反映輸入資料的品質，而且只是單次分析的數值；跨期比較、結案證據與趨勢不在本專案的實作範圍（見 3.6）。
 - **人工決策點**：每週檢視；重大變更時回到 S1。
-- **依據**：Gartner 建議以「reducing time-to-remediate critical exposures or decreasing the attack surface for high-value assets」對齊業務成果 [G-IR]；本流程維持單次分析，O6 只有當期的數值，沒有修補天數之類的時間類指標，也沒有跨期比較；成果型指標由導入的組織建立（見 3.6「成果型指標」與 [ADR 0008](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/docs/adr/0008-single-analysis-feedback-and-outcome-metrics-are-adoption-practices.md)）。
+- **依據**：Gartner 建議用縮短關鍵曝險的修補時間，或縮小高價值資產的攻擊面來對齊業務成果 [G-IR]（原句見 3.6「成果型指標」）；本流程維持單次分析，O6 只有當期的數值，沒有修補天數之類的時間類指標，也沒有跨期比較；成果型指標由導入的組織建立（見 3.6「成果型指標」與 [ADR 0008](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/docs/adr/0008-single-analysis-feedback-and-outcome-metrics-are-adoption-practices.md)）。
 
 ## 3.4 角色與職責（本專案推論；參考 [U1] 的 RACI 觀點）
 

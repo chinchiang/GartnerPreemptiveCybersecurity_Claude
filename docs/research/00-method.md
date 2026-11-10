@@ -39,7 +39,7 @@ summary: 先讀這一章：說明資料如何取得、哪些內容能被驗證�
 
 | 文件 | 性質 | 本研究的使用方式 |
 |---|---|---|
-| Gartner《Emerging Tech Impact Radar: Preemptive Cybersecurity》（ID G00830315，2025-10-07，Emerging Tech and Trends Security Research Team，35 頁） | **Gartner 付費研究的授權轉載版**（reprint；公開版本由 SimSpace 於 2026-04 託管）。這是本研究唯一**讀過全文**的 Gartner 研究文件。 | 引用短句並標示 [G-IR]；依 Gartner 使用政策**不將全文放入儲存庫**，只引用必要片段。凡引自本文件者，證據等級為「Gartner 明確陳述（已讀全文）」。 |
+| Gartner《Emerging Tech Impact Radar: Preemptive Cybersecurity》（ID G00830315，2025-10-07，Emerging Tech and Trends Security Research Team，35 頁） | **Gartner 付費研究的授權轉載版**（reprint；公開版本由 SimSpace 於 2026-04 託管）。這是本研究唯一**讀過全文**的 Gartner 研究文件。 | 以中文轉述為主，只在論證需要原文時引用短句並標示 [G-IR]：每段不超過 15 個英文字，全 repo 合計不超過 10 段。依 Gartner 使用政策**不將全文放入儲存庫**，也不整理 Radar 的圖表內容（各項技術的範圍與質量）。凡引自本文件者，證據等級為「Gartner 明確陳述（已讀全文）」。 |
 | 《先制式資安（Preemptive Cybersecurity）深度研究報告》（2026-07-29，以 Claude 生成，面向臺灣 ODM/EMS 資安主管，16 頁） | **AI 生成的研究報告**，內含其自訂的證據分級 | 視為「其他來源」：只採用其**結構性觀點**（例如 OT 環境的被動探索原則、RACI、曝險平臺本身是「王冠珠寶地圖」的風險），其中引用的數字（例如 Verizon DBIR 2026 統計）在本研究環境內無法核對，一律標示待驗證 [U1]。 |
 | 《新興技術研究報告：Preemptive Cybersecurity 的頂尖解決方案能力》（以 ChatGPT 生成，約 2026-07，23 頁） | **AI 生成的研究報告**，以廠商官方文件比較曝險管理與 AEV 平臺 | 視為「其他來源」：採用其六層參考架構與「五個治理問題」作為對照 [U2]；廠商比較與數字不採用為事實。 |
 

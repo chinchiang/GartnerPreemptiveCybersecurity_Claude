@@ -60,4 +60,4 @@ python3 skills/claude/preemptive-exposure-analysis/scripts/validate_inputs.py ex
 ## 授權與商標
 
 - 本專案內容（文件、程式碼、合成資料）採 MIT License（見 `LICENSE`）。
-- Gartner 為 Gartner, Inc. 之商標。本專案與 Gartner 無關；引用僅限公開資料與短句，並標示來源。依 Gartner 使用政策，不在儲存庫內收錄任何 Gartner 文件全文。
+- Gartner 為 Gartner, Inc. 之商標。本專案與 Gartner 無關；引用僅限公開資料與短句，並標示來源；唯一讀過全文的 Impact Radar 也以中文轉述為主，逐字引用只有少數短句。依 Gartner 使用政策，不在儲存庫內收錄任何 Gartner 文件全文。

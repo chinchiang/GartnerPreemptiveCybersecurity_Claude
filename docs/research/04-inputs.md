@@ -4,7 +4,7 @@ order: 4
 summary: 逐項說明每個輸入的用途與必要性、資料來源與格式、更新頻率、品質要求、敏感程度與缺漏替代方案。
 ---
 
-> 本章為本專案推論。分類依據：Gartner 對 discovery 與 prioritization 的描述 [G8]、ASCA 的「asset context, vulnerability data and threat intelligence」[G-IR]、preemptive exposure assessment 的「deep business context」[G32]。網站「Inputs／Outputs 對照」頁提供可篩選版本。
+> 本章為本專案推論。分類依據：Gartner 對 discovery 與 prioritization 的描述 [G8]、ASCA 結合資產脈絡、弱點資料與威脅情資的描述 [G-IR]、preemptive exposure assessment 的「deep business context」[G32]。網站「Inputs／Outputs 對照」頁提供可篩選版本。
 
 ## 4.1 總表
 
@@ -73,7 +73,7 @@ summary: 逐項說明每個輸入的用途與必要性、資料來源與格式�
 
 ### I7 設定基準偏差（misconfigurations）
 
-- **用途**：對應 Gartner 對 ASCA 的定義「continuously analyze, prioritize and optimize security control configurations to minimize threat exposure」[G-IR]（見第 1 章 1.6 表）；設定議題常是無修補時的主要曝險。
+- **用途**：對應 Gartner 對 ASCA 的定義：持續分析、排序與最佳化安全控制的設定，把威脅曝險降到最低 [G-IR]；設定議題常是無修補時的主要曝險。
 - **來源／格式／頻率**：CIS 基準掃描、雲端 CSPM、ASCA 工具；CSV/JSON；每週。
 - **品質要求**：`status` 為 pass/fail/unknown；`control` 可對應基準條目。
 - **敏感程度**：高。
@@ -89,7 +89,7 @@ summary: 逐項說明每個輸入的用途與必要性、資料來源與格式�
 
 ### I9 威脅情資（threat_intel）
 
-- **用途**：對應 Gartner PTI「early warning」與「prioritize preemptive mitigation」[G12][G-IR]；在本流程作為加權而非預測。
+- **用途**：對應 Gartner 對 PTI 的描述：及早預警，並協助排定先制緩解的優先序 [G12][G-IR]；在本流程作為加權而非預測。
 - **來源／格式／頻率**：ISAC、商業情資、政府通報、PTI 平臺；JSON；每日或每週。
 - **品質要求**：每個行為者有 `confidence`；`exploits_vuln_ids` 使用與 I3 相同的識別碼；`as_of` 日期。
 - **敏感程度**：中。
