@@ -43,49 +43,67 @@ class SharedVerdictCasesTest(unittest.TestCase):
 
 
 class SaveOutputsFollowsVerdictTest(unittest.TestCase):
-    """save_outputs 只依輸出判定寫檔：判定失敗時存原始回應、刪掉舊的 JSON、回傳 4，stderr 只列第一個失敗。"""
+    """save_outputs 只依輸出判定寫檔：判定失敗時存這次的原始回應、刪掉舊的 JSON、回傳 4，stderr 只列第一個失敗；
+    判定通過時寫出 JSON，不留下上一次失敗的原始回應（#279）。每個案例都在兩種輸出目錄各跑一次：
+    只有上一次成功的 JSON，以及另外還有上一次失敗的 raw.txt。"""
 
-    def save(self, output, scores=None):
+    PREVIOUS_RUNS = [("上一次成功", False), ("上一次成功、之後又失敗", True)]
+
+    def save(self, output, scores=None, previous_raw=False):
+        """output 是字串時原樣當成模型回應（用來測 JSON 解析失敗），否則序列化成 JSON。"""
         with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
             folder = Path(tmp)
             (folder / "fake-output.json").write_text("{}", encoding="utf-8")   # 上一次成功的輸出
-            reply = json.dumps(output, ensure_ascii=False)
+            if previous_raw:
+                (folder / "fake-output.raw.txt").write_text("上一次失敗的原始回應", encoding="utf-8")
+            reply = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False)
             code = aw.save_outputs(folder, "fake", "# 報告", reply, SCHEMA, scores)
             files = {p.name: p.read_text(encoding="utf-8") for p in folder.iterdir()}
         return code, files, err.getvalue(), reply
 
+    def assert_failure_keeps_this_reply(self, output, scores, expected_err):
+        """兩種輸出目錄都要回傳 4、沒有 JSON、raw.txt 是這次的回應、stderr 含 expected_err；回傳各次的 stderr。"""
+        errs = []
+        for name, previous_raw in self.PREVIOUS_RUNS:
+            with self.subTest(name):
+                code, files, err, reply = self.save(output, scores, previous_raw)
+                self.assertEqual(code, 4)
+                self.assertNotIn("fake-output.json", files)
+                self.assertEqual(files["fake-output.raw.txt"], reply)
+                for text in expected_err:
+                    self.assertIn(text, err)
+                errs.append(err)
+        return errs
+
+    def test_unparsable_reply_keeps_raw_reply_and_exits_4(self):
+        self.assert_failure_keeps_this_reply("抱歉，我無法輸出 JSON", FIXTURE["table"], ["JSON 解析失敗"])
+
     def test_inconsistent_and_mismatched_reports_only_the_inconsistency(self):
-        code, files, err, reply = self.save(apply_changes([[["exposure_priorities", "items", 1, "score"], 0]]), FIXTURE["table"])
-        self.assertEqual(code, 4)
-        self.assertNotIn("fake-output.json", files)
-        self.assertEqual(files["fake-output.raw.txt"], reply)
-        self.assertIn("output_inconsistent", err)
-        self.assertIn("$.exposure_priorities.items[1] 分數 0 依門檻應為 P4，卻標為 P1", err)
-        self.assertNotIn("分數表", err)
+        output = apply_changes([[["exposure_priorities", "items", 1, "score"], 0]])
+        expected = ["output_inconsistent", "$.exposure_priorities.items[1] 分數 0 依門檻應為 P4，卻標為 P1"]
+        for err in self.assert_failure_keeps_this_reply(output, FIXTURE["table"], expected):
+            self.assertNotIn("分數表", err)
 
     def test_schema_invalid_keeps_raw_reply_and_exits_4(self):
-        code, files, err, reply = self.save(apply_changes([[["exposure_priorities", "thresholds", "P1"], "60"]]), FIXTURE["table"])
-        self.assertEqual(code, 4)
-        self.assertNotIn("fake-output.json", files)
-        self.assertEqual(files["fake-output.raw.txt"], reply)
-        self.assertIn("輸出不符合 output-schema.json（output_schema_invalid）：$.exposure_priorities.thresholds.P1 型別不合格", err)
+        output = apply_changes([[["exposure_priorities", "thresholds", "P1"], "60"]])
+        expected = ["輸出不符合 output-schema.json（output_schema_invalid）：$.exposure_priorities.thresholds.P1 型別不合格"]
+        self.assert_failure_keeps_this_reply(output, FIXTURE["table"], expected)
 
     def test_score_table_mismatch_prints_readable_messages(self):
-        code, files, err, reply = self.save(apply_changes([[["exposure_priorities", "items", 1, "score"], 70]]), FIXTURE["table"])
-        self.assertEqual(code, 4)
-        self.assertNotIn("fake-output.json", files)
-        self.assertEqual(files["fake-output.raw.txt"], reply)
-        self.assertIn("（score_table_mismatch）：$.exposure_priorities.items[1] F009 腳本算的是 P1／72.5，輸出是 P1／70", err)
+        output = apply_changes([[["exposure_priorities", "items", 1, "score"], 70]])
+        expected = ["（score_table_mismatch）：$.exposure_priorities.items[1] F009 腳本算的是 P1／72.5，輸出是 P1／70"]
+        self.assert_failure_keeps_this_reply(output, FIXTURE["table"], expected)
 
-    def test_passing_verdict_writes_json_and_exits_0(self):
-        for name, scores in [("附分數表", FIXTURE["table"]), ("沒附分數表", None)]:
-            with self.subTest(name):
-                code, files, err, _ = self.save(BASE, scores)
-                self.assertEqual(code, 0)
-                self.assertEqual(json.loads(files["fake-output.json"]), BASE)
-                self.assertNotIn("fake-output.raw.txt", files)
-                self.assertEqual(err, "")
+    def test_passing_verdict_writes_json_leaves_no_raw_reply_and_exits_0(self):
+        for table_name, scores in [("附分數表", FIXTURE["table"]), ("沒附分數表", None)]:
+            for run_name, previous_raw in self.PREVIOUS_RUNS:
+                with self.subTest(f"{table_name}、{run_name}"):
+                    code, files, err, _ = self.save(BASE, scores, previous_raw)
+                    self.assertEqual(code, 0)
+                    self.assertEqual(json.loads(files["fake-output.json"]), BASE)
+                    self.assertNotIn("fake-output.raw.txt", sorted(files))   # 失敗時只印檔名，不印整份 JSON
+                    self.assertEqual(err, "")
 
 
 if __name__ == "__main__":

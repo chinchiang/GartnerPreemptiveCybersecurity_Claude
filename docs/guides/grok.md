@@ -88,7 +88,7 @@ python3 skills/grok/api-workflow.py                 # 輸出 output/grok-report.
 
 `--compat` 改走 OpenAI 相容端點（預設 `https://api.x.ai/v1`，可用環境變數 `XAI_COMPAT_BASE_URL` 改寫；相容性待驗證；openai 套件已列在 `requirements.txt`）。
 
-輸出：`output/grok-report.md`、`output/grok-output.json`（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 `output/grok-output.raw.txt`）。
+輸出：`output/grok-report.md`、`output/grok-output.json`（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 `output/grok-output.raw.txt`；成功時會清掉上一次的 `raw.txt`）。
 
 結束碼：0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷，這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符。授權範圍不合格時，在呼叫 API 之前中止。資訊訊息（筆數、缺漏、腳本預檢結果）印到 stderr；`--dry-run` 把 system 與兩段 user 提示詞完整印到 stdout，不寫任何檔案。
 

@@ -1033,26 +1033,29 @@ def output_verdict(data, output_schema: dict, scores: dict | None = None):
 def save_outputs(output_dir: Path, platform: str, report: str, json_text: str, output_schema: dict, scores: dict | None = None) -> int:
     """寫出 <平臺>-report.md 與 <平臺>-output.json；JSON 解析失敗時另存 <平臺>-output.raw.txt 並回傳 4。
     輸出判定（output_verdict）不通過時，保留原始回應並回傳 4，stderr 只列第一個失敗的種類與問題；
+    判定通過時不留下上一次失敗的 <平臺>-output.raw.txt（#279）。
+    寫出結果之前先刪掉上一次的 output.json 與 raw.txt：刪不掉時在寫出任何結果之前就中止，不會留下這次的 JSON 跟上一次的原始回應並存。
     合成案例的業務驗收另交給 scripts/check-acceptance.mjs。"""
     output_dir.mkdir(parents=True, exist_ok=True)
     report_path = output_dir / f"{platform}-report.md"
+    json_path = output_dir / f"{platform}-output.json"
+    raw_path = output_dir / f"{platform}-output.raw.txt"
+    json_path.unlink(missing_ok=True)
+    raw_path.unlink(missing_ok=True)
     report_path.write_text(report, encoding="utf-8")
     print(f"[完成] Markdown 報告：{report_path}")
-    (output_dir / f"{platform}-output.json").unlink(missing_ok=True)
     data = parse_json_loose(json_text)
     if not isinstance(data, dict):
-        raw_path = output_dir / f"{platform}-output.raw.txt"
         raw_path.write_text(json_text, encoding="utf-8")
         print(f"[警告] JSON 解析失敗，原始回應已存至 {raw_path}；請人工檢查或重跑。", file=sys.stderr)
         return JSON_PARSE_FAILED
     verdict = output_verdict(data, output_schema, scores)
     if verdict:
-        (output_dir / f"{platform}-output.raw.txt").write_text(json_text, encoding="utf-8")
+        raw_path.write_text(json_text, encoding="utf-8")
         kind, problems = verdict["kind"], verdict["problems"]
         messages = score_table_messages(problems) if kind == "score_table_mismatch" else problems
         print(f"[錯誤] {VERDICT_HEADINGS[kind]}（{kind}）：" + "；".join(messages), file=sys.stderr)
         return 4
-    json_path = output_dir / f"{platform}-output.json"
     json_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[完成] JSON 輸出：{json_path}")
     return 0
