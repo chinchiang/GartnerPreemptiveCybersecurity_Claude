@@ -34,6 +34,18 @@ def apply_changes(changes):
     return output
 
 
+DEEP_MARK = "__DEEP__"
+
+
+def deep_reply(place, depth):
+    """BASE 的 JSON 文字，place 放 DEEP_MARK 的位置換成 depth 層的陣列。"""
+    output = copy.deepcopy(BASE)
+    place(output)
+    text = json.dumps(output, ensure_ascii=False)
+    assert text.count(json.dumps(DEEP_MARK)) == 1
+    return text.replace(json.dumps(DEEP_MARK), "[" * depth + '"x"' + "]" * depth)
+
+
 class SharedVerdictCasesTest(unittest.TestCase):
     def test_shared_cases(self):
         for case in FIXTURE["cases"]:
@@ -77,7 +89,46 @@ class SaveOutputsFollowsVerdictTest(unittest.TestCase):
         return errs
 
     def test_unparsable_reply_keeps_raw_reply_and_exits_4(self):
-        self.assert_failure_keeps_this_reply("抱歉，我無法輸出 JSON", FIXTURE["table"], ["JSON 解析失敗"])
+        for err in self.assert_failure_keeps_this_reply("抱歉，我無法輸出 JSON", FIXTURE["table"], ["JSON 解析失敗"]):
+            self.assertNotIn("巢狀太深", err)   # 跟巢狀太深的訊息分得開
+
+    # 巢狀太深的回應（#278）：解析、判定與寫出 JSON 都是遞迴的，哪一步先超過呼叫堆疊依 Python 版本而定。
+    # 回應用字串拼出深層陣列，不經過 json.dumps：測試自己序列化時就可能先超過呼叫堆疊。
+
+    def test_too_deeply_nested_reply_keeps_raw_reply_and_exits_4(self):
+        # 10 萬層：每個版本都在 json.loads 解析時丟 RecursionError，不是 JSONDecodeError
+        reply = deep_reply(lambda output: output.__setitem__("metrics", DEEP_MARK), 100_000)
+        self.assert_failure_keeps_this_reply(reply, FIXTURE["table"], ["巢狀太深"])
+
+    def test_too_deeply_nested_untyped_value_keeps_raw_reply_and_exits_4(self):
+        # metrics.items[].value 沒有型別限制，schema 驗證會沿著陣列一路遞迴。2000 層在 Python 3.12、3.13 解析得過、
+        # 判定時超過呼叫堆疊；解析上限比較低的版本在解析時就失敗。兩種都要回傳 4、保留原始回應。
+        reply = deep_reply(lambda output: output["metrics"]["items"][0].__setitem__("value", DEEP_MARK), 2000)
+        self.assert_failure_keeps_this_reply(reply, FIXTURE["table"], ["巢狀太深"])
+
+    def test_deep_value_under_unlisted_key_never_ends_with_a_traceback(self):
+        # schema 沒列出的鍵不會被驗證，判定可能通過；接著寫出 JSON 時（json.dumps 加 indent）在 Python 3.12 超過呼叫堆疊，
+        # 3.13 則寫得出來。所以只要求兩者其一：通過就寫出 JSON、沒有 raw.txt；失敗就回傳 4、保留這次的原始回應。
+        reply = deep_reply(lambda output: output.__setitem__("extra_key", DEEP_MARK), 2500)
+        for name, previous_raw in self.PREVIOUS_RUNS:
+            with self.subTest(name):
+                code, files, err, _ = self.save(reply, FIXTURE["table"], previous_raw)
+                self.assertIn(code, (0, 4))
+                if code == 0:
+                    self.assertIn("fake-output.json", files)
+                    self.assertNotIn("fake-output.raw.txt", sorted(files))
+                else:
+                    self.assertNotIn("fake-output.json", files)
+                    self.assertEqual(files["fake-output.raw.txt"], reply)
+                    self.assertIn("巢狀太深", err)
+
+    def test_unsupported_schema_rule_is_a_program_error_and_propagates(self):
+        # schema 用了不支援的規則是程式錯誤，不是模型輸出的問題：不當成判定失敗（#278 只攔 RecursionError）
+        schema = {**SCHEMA, "additionalProperties": False}
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaisesRegex(ValueError, "不支援的輸出 schema 規則"):
+                aw.save_outputs(Path(tmp), "fake", "# 報告", json.dumps(BASE, ensure_ascii=False), schema, None)
 
     def test_inconsistent_and_mismatched_reports_only_the_inconsistency(self):
         output = apply_changes([[["exposure_priorities", "items", 1, "score"], 0]])
