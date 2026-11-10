@@ -17,7 +17,7 @@ const LIMIT = 524288; // 512 KB
 
 let upstream = []; // 假上游收到的 [網址, fetch 的第二個參數]
 let reply; // 假上游的回應：(url, init) => Response 或 Promise
-let ip = 0; // worker 每個 IP 每分鐘只放行 5 次，每個請求用不同的 IP
+let ip = 0; // worker 每個 IP 每分鐘只放行 5 次：request() 預設每個請求用不同的 IP；速率限制的測試另外指定固定的 IP（192.0.2.250、.251）
 const request = (body, headers = {}, method = 'POST') => new Request('https://worker.example/api/analyze', {
   method, headers: { 'content-type': 'application/json', origin: ORIGIN, 'cf-connecting-ip': `198.51.100.${++ip}`, ...headers }, body
 });
@@ -462,6 +462,32 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     const r = await send(request(JSON.stringify({ bundle: { scope } }), { origin: 'https://evil.example' }));
     assert.equal(r.status, 403);
     assert.equal(upstream.length, 0);
+  });
+
+  test('用戶端 IP：沒有 cf-connecting-ip 或是空字串時回 400，說明無法套用速率限制，不呼叫上游（#158）', async () => {
+    const body = JSON.stringify({ bundle: { scope } });
+    const missing = new Request('https://worker.example/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json', origin: ORIGIN }, body });
+    for (const [label, req] of [['沒有標頭', missing], ['空字串', request(body, { 'cf-connecting-ip': '' })]]) {
+      const r = await send(req);
+      assert.equal(r.status, 400, label);
+      assert.match(await r.text(), /cf-connecting-ip/, label);
+    }
+    assert.equal(upstream.length, 0);
+  });
+
+  test('用戶端 IP：OPTIONS 不帶 cf-connecting-ip 照舊回 CORS 標頭（#158）', async () => {
+    const r = await send(new Request('https://worker.example/api/analyze', { method: 'OPTIONS', headers: { origin: ORIGIN } }));
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('access-control-allow-origin'), ORIGIN);
+  });
+
+  test('速率限制：同一個 IP 一分鐘內第 6 次回 429，不呼叫上游；換一個 IP 照常送出（#158）', async () => {
+    const body = JSON.stringify({ bundle: { scope } });
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await send(request(body, { 'cf-connecting-ip': '192.0.2.250' }))).status);
+    assert.deepEqual(statuses, [200, 200, 200, 200, 200, 429]);
+    assert.equal(upstream.length, 5);
+    assert.equal((await send(request(body, { 'cf-connecting-ip': '192.0.2.251' }))).status, 200);
   });
 
   test('設定完整：PROVIDER 不在預設清單、但有 BASE_URL 時照常送往 BASE_URL', async () => {

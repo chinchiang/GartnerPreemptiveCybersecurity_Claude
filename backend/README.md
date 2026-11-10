@@ -2,16 +2,23 @@
 
 網站預設**不需要任何 API 金鑰**：案例互動展示使用確定性的示範規則在瀏覽器內執行。若你想在網站上加一個「用真實語言模型跑 skill」的按鈕，**不要**把金鑰放進前端。本目錄提供一個最小的代理範例，金鑰只存在伺服器端環境變數。
 
-**這是範例，不可直接上線。** 目前只有來源限制、記憶體裡的速率限制、請求大小上限、輸出上限、上游逾時與錯誤處理、模型輸出的檢查；正式使用前至少還缺：
+**這是範例，不可直接上線。** 目前有來源限制、單一實例記憶體裡的速率限制、請求大小上限、輸出上限、上游逾時與錯誤處理、模型輸出的檢查。正式部署前，至少要自己補上下面幾項（這裡只列可以怎麼補，代理不會內建；為什麼不內建，見 [`.out-of-scope/backend-proxy-production-hardening.md`](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/blob/main/.out-of-scope/backend-proxy-production-hardening.md)）：
 
-- **身分驗證**：`ALLOWED_ORIGIN` 只比對 `origin` 標頭，非瀏覽器的用戶端可以任意偽造，不能取代身分驗證。見 [#158](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/issues/158)。
-- **持久的速率限制與總用量配額**：每 IP 的次數只記在 Worker 記憶體裡，不同實例不共用、重新啟動就清空；總用量與費用也沒有上限。見 [#158](https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude/issues/158)。
+- **身分驗證**：`ALLOWED_ORIGIN` 只比對 `origin` 標頭，非瀏覽器的用戶端可以任意偽造，不能取代身分驗證；拿到網址的人都能用你的金鑰呼叫模型。可以怎麼補：Cloudflare Access（只給組織內部用）、Turnstile（公開網站防機器人）、簽發給前端的短效權杖，或只給操作者自己用、不公開網址。
+- **共用而且持久的速率限制**：每 IP 每分鐘 5 次的紀錄只在單一 Worker 實例的記憶體裡，不同實例不共用、重新啟動就清空，同一個 IP 打到不同實例就能超過限制。另外：
+  - IP 取自 `cf-connecting-ip`，只有部署在 Cloudflare 上才可信；部署在別的地方時這個標頭由用戶端自己帶，每次換一個值就能繞過限制。
+  - 以完整的 IP 當 key，IPv6 的用戶端可以在同一個網段（例如 /64）裡換位址繞過限制。
+  - 一分鐘內沒有再來的 IP 會清掉，但一分鐘內來了大量不同的 IP 時，紀錄數跟著請求量增加，單一實例的記憶體會被吃掉。
+
+  可以怎麼補：Cloudflare Rate Limiting binding、KV 或 Durable Objects；IPv6 以網段為 key；紀錄數設上限。
+- **總用量／費用上限**：`MAX_OUTPUT_TOKENS` 只限制單次請求的輸出，總請求數與總花費沒有上限；速率限制擋得住單一 IP，擋不住很多 IP 一起來。可以怎麼補：每日總請求數或 token 預算，超過時回 429，或停用到隔天。
+- **巢狀深度**：模型輸出巢狀很深但合格時（輸出判定只沿著 schema 往下走，沒有限制的欄位放多深都算合格，#281），代理照原樣轉回 200。下游如果用遞迴的方式解析或處理回應（例如 Python 的 `json.loads`），可能超過呼叫堆疊。可以怎麼補：下游自己限制深度或改用不遞迴的解析方式，或在代理檢查輸出之前加一個深度上限。
 
 ## 設計原則
 
 1. 金鑰只在伺服器（Worker 的 secret）；前端只呼叫 `/api/analyze`。
 2. 代理只允許固定的 system prompt（讀自 `skills/shared/core-prompt.md`），不讓前端覆蓋第 0 節。
-3. 速率限制與來源限制（`ALLOWED_ORIGIN`）；請求體大小上限 512 KB，以實際讀到的位元組計算（不只看 `content-length`），超過就停止讀取並回 413；送往模型的 JSON 一律完整，不截斷。
+3. 速率限制與來源限制（`ALLOWED_ORIGIN`）：每 IP（`cf-connecting-ip`）每分鐘 5 次，超過回 429；請求沒有 `cf-connecting-ip`（或是空字串）時回 400，不呼叫上游：部署在 Cloudflare 上時每個請求都會帶它，沒有就無法依 IP 限制。速率限制在讀請求內容之前計數，回 413 或 400 的請求也算一次。紀錄只在單一實例的記憶體裡，一分鐘內沒有再來的 IP 會清掉，記錄數不會隨見過的 IP 總數一直增加（`rate-limit.js`，#158）；請求體大小上限 512 KB，以實際讀到的位元組計算（不只看 `content-length`），超過就停止讀取並回 413；送往模型的 JSON 一律完整，不截斷。
 4. 授權範圍守門：`bundle.scope` 缺少或必填欄位不合格就回 400 並列出缺少的欄位，不送往模型供應商；規則只來自 `skills/shared/input-schema.json` 的 scope 定義，由與網站示範引擎共用的 `assets/scope-gate.js` 判定（見 `docs/adr/0004-scope-gate-reads-the-schema-in-two-interpreters.md`）。`authorized_scope` 有 `excluded_assets` 而且不符合 schema 的定義（例如寫成字串）時也回 400，訊息寫明它的規則：格式不符時排除不會生效，照常送出會把要排除的資產送往模型（見 `docs/adr/0007-excluded-assets-take-precedence.md`）。送往模型的資料只保留輸入 schema 頂層定義的類別，不認得的鍵一律丟掉。
 5. 附上分數表：用示範引擎（`assets/demo.js` 的 `scoreTable`）依授權範圍篩選後的資料算出每項發現的分數，以「腳本預先計算的曝險分數」區塊附在送出的訊息裡，模型照用、不重新計算（跟 API 腳本相同，見 `docs/adr/0010-api-path-precomputes-exposure-scores.md`）。缺資產清冊或弱點、或算不出可信的分數時不附表，照常送出。分數表只跑範圍確認與曝險評分，不跑攻擊路徑假設；入口加分用可達性搜尋判斷，不窮舉攻擊路徑，成本大約是邊數乘以資產數（篩選邊時逐一比對資產清冊），不會隨路徑數暴增（窮舉時 40 個資產完全連通就要數十秒，#248）。收到上游 2xx 的回應後，不論有沒有附分數表，都檢查模型輸出（#247、#252）：從模型的文字裡取最後一個 JSON 區塊（``` 圍起來、沒標語言或標 json），交給輸出判定（`scripts/output-verdict.mjs`，#275），依序做三項檢查，回報第一個不合格的：（1）依 `skills/shared/output-schema.json` 驗證；（2）內容一致性（分數與分級、參照完整性、驗證狀態要有證據）；（3）附了分數表時，以 finding_id 對照分數表。判定順序與每一項都跟 API 腳本的 `output_verdict` 相同，由共用案例守住（順序：`tests/fixtures/verdict-cases.json`；各項：`output-cases.json`、`consistency-cases.json`、`score-problems-cases.json`）；schema 的錯誤訊息是 JS 這一份（`scripts/output-verdict.mjs`）的文字，跟 API 腳本印的可能不同。全部通過才照原樣轉發；否則回 502，內容是 JSON，`error` 是 `output_schema_invalid`、`output_inconsistent`（兩者附 `problems` 字串陣列）、`score_table_mismatch`（附結構化的 `problems`）、`output_unparseable`（取不到文字、找不到或解析不了 JSON）或 `output_incomplete`（回覆不完整：被輸出上限截斷時可調高 `MAX_OUTPUT_TOKENS`；被內容過濾或拒答也算），都附上 `upstream`（上游回應的原文），無法檢查時一律不放行。
 6. 不記錄請求內容。上游 2xx 的回應照原樣轉發（要先通過第 5 點的檢查）；上游回非 2xx 或連線失敗時回 502，只附上游的狀態碼數字，不轉發上游的回應內容與例外訊息（可能含帳號或金鑰的資訊）；超過 `UPSTREAM_TIMEOUT_MS` 就中止並回 504。
@@ -22,8 +29,9 @@
 ## 檔案
 
 - `worker.js`：Cloudflare Worker **模板**，支援 `PROVIDER=openai|anthropic|xai|glm|deepseek|gemini`（皆為 OpenAI 相容或 Anthropic 相容端點；`gemini` 走 Gemini API 的 OpenAI 相容端點，官方標示 beta）。其中 `CORE_PROMPT` 是佔位字串、授權範圍守門與示範引擎以相對路徑 import `../assets/scope-gate.js`、`../assets/demo.js`，部署前必須先建置。
+- `rate-limit.js`：速率限制（`createRateLimiter`），每個 key 在時間窗內的次數上限，過期的紀錄會清掉；時間由呼叫端傳入，測試在 `scripts/rate-limit.test.mjs`。只能有 `export function`、不能有 import：建置內嵌時拿掉 `export`，部署的單一檔案只留 `export default`（Cloudflare 會把 named export 當成進入點）。
 - `package.json`：只宣告 `"type": "module"`，讓 Node 以 ES module 載入 `worker.js`（`scripts/scope-cases.test.mjs` 的守門測試）；根目錄的 `package.json` 不能這樣宣告，因為測試以 `require` 載入 `assets/demo.js`。
-- `../scripts/build-worker.mjs`：把 `skills/shared/core-prompt.md` 的提示詞區塊嵌入模板，並內嵌模板 import 的 `assets/scope-gate.js`、`assets/demo.js`、`scripts/output-verdict.mjs` 與 `skills/shared/output-schema.json`（改了其中任何一個都要重新建置與部署），輸出單一檔案 `backend/dist/worker.js`（已列入 `.gitignore`）。
+- `../scripts/build-worker.mjs`：把 `skills/shared/core-prompt.md` 的提示詞區塊嵌入模板，並內嵌模板 import 的 `assets/scope-gate.js`、`assets/demo.js`、`scripts/output-verdict.mjs`、`skills/shared/output-schema.json` 與 `rate-limit.js`（改了其中任何一個都要重新建置與部署），輸出單一檔案 `backend/dist/worker.js`（已列入 `.gitignore`）。
 - `.env.example`：需要設定的變數清單（**不要**建立含真實值的 `.env` 並提交）。
 
 ## 部署（Cloudflare Workers）
@@ -40,7 +48,7 @@ wrangler deploy dist/worker.js --name pea-proxy --compatibility-date 2026-01-01 
 
 `MODEL`、`PROVIDER_API_KEY`、`ALLOWED_ORIGIN` 是必填，少一個 Worker 就對所有請求回 500。`PROVIDER` 預設 `openai`；`MAX_OUTPUT_TOKENS`（預設 8000）與 `UPSTREAM_TIMEOUT_MS`（毫秒，預設 60000）是選用，上面寫出預設值方便調整，不需要時可以拿掉。
 
-`MODEL` 請以各供應商官方模型列表為準；本專案未在真實模型上驗證代理（列為待驗證）。速率限制使用 Worker 記憶體，僅為示範；正式使用請改用 Cloudflare Rate Limiting 或 KV／Durable Objects（見上面「不可直接上線」）。
+`MODEL` 請以各供應商官方模型列表為準；本專案未在真實模型上驗證代理（列為待驗證）。速率限制只在單一實例的記憶體裡，僅為示範；正式使用前要補的項目見上面「不可直接上線」。
 
 前端接法（示意，未內建於本站）：
 
@@ -50,5 +58,5 @@ const r = await fetch('https://<worker>/api/analyze', { method: 'POST', headers:
 
 ## 其他選項
 
-- Vercel／Netlify Functions：同樣邏輯，金鑰放環境變數。
+- Vercel／Netlify Functions：同樣邏輯，金鑰放環境變數。這些平臺不會帶 `cf-connecting-ip`，代理會對每個請求回 400：移植時要改成讀該平臺提供的用戶端 IP，並確認那個值不能由用戶端偽造。
 - 企業內部：以既有 API gateway 承載，並加上 SSO。

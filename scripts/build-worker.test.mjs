@@ -82,6 +82,8 @@ test('產物內嵌示範引擎（#230）：沒有任何 import，載入建置出
     assert.equal(r.status, 0, r.stderr);
     const built = readFileSync(out, 'utf8');
     assert.doesNotMatch(built, /^import /m, '部署的是單一檔案，不能留 import');
+    // 內嵌的 module（輸出判定、速率限制）拿掉了 export；Cloudflare 會把 named export 當成進入點，產物只能有 export default（#158）
+    assert.deepEqual(built.match(/^export .*$/gm), ['export default {']);
     const { default: worker } = await import(pathToFileURL(out).href);
     // 預期值取自共用分數表案例（手算，CODING_STANDARDS §2），不由被測的 scoreTable 推算
     const cases = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/score-table-cases.json'), 'utf8'));
