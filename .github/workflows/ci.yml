@@ -134,8 +134,16 @@ jobs:
       - name: Browser verification (navigation, search, filters, copy, download, case interaction, mobile, a11y)
         id: verification
         run: npm run verify
+      - name: List screenshots that differ from the committed ones (warning only)
+        # 截圖偶爾有零星的反鋸齒雜訊，不讓 job 失敗，只列出：一行 warning，job summary 放每張的 md5 與像素差異（#265）
+        # 比對執行目錄與 HEAD 已提交的版本，不看工作樹；判定是不是雜訊見 docs/agents/workflow.md 的截圖交叉比對
+        if: ${{ steps.verification.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          RUN_DIRECTORY: ${{ steps.verification.outputs.run-directory }}
+        run: node scripts/screenshot-diff.mjs "$RUN_DIRECTORY"
       - name: Committed verify-report.md is up to date (ignoring the run time line)
-        # 報告嵌入網站附錄，過時了沒有別的檢查會發現；執行時間每次都不同，其餘內容要逐行相同。截圖逐位元組比對不穩定，不比對
+        # 報告嵌入網站附錄，過時了沒有別的檢查會發現；執行時間每次都不同，其餘內容要逐行相同。截圖不讓 job 失敗，只列出（上一步）
         # 判定用 scripts/verify-report.mjs 的 sameReportIgnoringRunTime（full-check.mjs 也用它，#139）；不同時另外印出完整的差異給人看
         run: |
           if ! node --input-type=module -e "import { sameReportIgnoringRunTime } from './scripts/verify-report.mjs'; import { readFileSync } from 'node:fs'; import { execFileSync } from 'node:child_process'; process.exit(sameReportIgnoringRunTime(execFileSync('git', ['show', 'HEAD:verify-report.md'], { encoding: 'utf8' }), readFileSync('verify-report.md', 'utf8')) ? 0 : 1)"; then

@@ -45,6 +45,10 @@ curl -fsSLO "https://nodejs.org/dist/latest-v22.x/$f" && grep " $f\$" SHASUMS256
 
 瀏覽器檢查的每個 context 都開 reduced motion（`scripts/browser-checks.mjs` 的 `opener`），網站的 `prefers-reduced-motion` 樣式會關掉 smooth scroll、transition 和 animation，所以同一個 commit 在 CI 上的截圖幾乎每次都位元組相同。偶爾還是會有零星的反鋸齒像素差異：#115 統計了 12 次執行、156 張截圖，有 1 張差 2 個像素，每個色彩通道差 1～2 個色階。要檢查動畫或 smooth scroll 本身的情境，得自己另開 context，不能用 `open`。
 
+### 截圖交叉比對
+
+CI 的 browser job 在完整驗證成功後，用 `scripts/screenshot-diff.mjs` 比對這次產生的截圖與 `HEAD` 已提交的版本：有不同時印一行 warning，job summary 列出每張的 md5、不同像素數、最大單一色彩通道差與差異範圍，也列出新增、尺寸不同、已提交但這次沒有產生、像素相同只有編碼不同，以及解不開的截圖。這一步不讓 job 失敗，也不判定是不是雜訊：單次執行分不出雜訊，所以仍要照下面的方式交叉比對兩次執行。本機不跑這個比對（字型跟 CI 不同）。
+
 網站畫面有變時，用 PR 最後一個 commit 的兩次 CI 執行（push 與 pull_request）交叉比對，把雜訊排除掉，再決定要換哪些截圖（本機的截圖字型不同，照舊一律還原）。pull_request 那次跑的是 PR 跟 `main` 合併後的結果（`refs/pull/<n>/merge`），不是 commit 本身；比對之前，分支要先跟上 `main`（例如 `git merge main` 後再 push），否則兩次執行的差異可能是真的內容不同，不是雜訊：
 
 | 兩次執行彼此 | 跟已提交的比 | 結論 |
