@@ -92,35 +92,40 @@ class SaveOutputsFollowsVerdictTest(unittest.TestCase):
         for err in self.assert_failure_keeps_this_reply("抱歉，我無法輸出 JSON", FIXTURE["table"], ["JSON 解析失敗"]):
             self.assertNotIn("巢狀太深", err)   # 跟巢狀太深的訊息分得開
 
-    # 巢狀太深的回應（#278）：解析、判定與寫出 JSON 都是遞迴的，哪一步先超過呼叫堆疊依 Python 版本而定。
-    # 回應用字串拼出深層陣列，不經過 json.dumps：測試自己序列化時就可能先超過呼叫堆疊。
+    # 巢狀太深的回應（#278）：解析與寫出 JSON 是遞迴的，哪一步先超過呼叫堆疊依 Python 版本而定；
+    # 判定不會，因為陣列沒有 items 限制時不逐項檢查（#281）。回應用字串拼出深層陣列，不經過 json.dumps：測試自己序列化時就可能先超過呼叫堆疊。
 
     def test_too_deeply_nested_reply_keeps_raw_reply_and_exits_4(self):
         # 10 萬層：每個版本都在 json.loads 解析時丟 RecursionError，不是 JSONDecodeError
         reply = deep_reply(lambda output: output.__setitem__("metrics", DEEP_MARK), 100_000)
         self.assert_failure_keeps_this_reply(reply, FIXTURE["table"], ["巢狀太深"])
 
-    def test_too_deeply_nested_untyped_value_keeps_raw_reply_and_exits_4(self):
-        # metrics.items[].value 沒有型別限制，schema 驗證會沿著陣列一路遞迴。2000 層在 Python 3.12、3.13 解析得過、
-        # 判定時超過呼叫堆疊；解析上限比較低的版本在解析時就失敗。兩種都要回傳 4、保留原始回應。
-        reply = deep_reply(lambda output: output["metrics"]["items"][0].__setitem__("value", DEEP_MARK), 2000)
-        self.assert_failure_keeps_this_reply(reply, FIXTURE["table"], ["巢狀太深"])
-
-    def test_deep_value_under_unlisted_key_never_ends_with_a_traceback(self):
-        # schema 沒列出的鍵不會被驗證，判定可能通過；接著寫出 JSON 時（json.dumps 加 indent）在 Python 3.12 超過呼叫堆疊，
-        # 3.13 則寫得出來。所以只要求兩者其一：通過就寫出 JSON、沒有 raw.txt；失敗就回傳 4、保留這次的原始回應。
-        reply = deep_reply(lambda output: output.__setitem__("extra_key", DEEP_MARK), 2500)
-        for name, previous_raw in self.PREVIOUS_RUNS:
-            with self.subTest(name):
-                code, files, err, _ = self.save(reply, FIXTURE["table"], previous_raw)
-                self.assertIn(code, (0, 4))
-                if code == 0:
-                    self.assertIn("fake-output.json", files)
-                    self.assertNotIn("fake-output.raw.txt", sorted(files))
-                else:
-                    self.assertNotIn("fake-output.json", files)
-                    self.assertEqual(files["fake-output.raw.txt"], reply)
-                    self.assertIn("巢狀太深", err)
+    def test_deep_but_valid_reply_never_ends_with_a_traceback(self):
+        # 沒有型別限制的欄位與 schema 沒列出的鍵：深層資料都不影響判定，判定通過。接著寫出 JSON 時（json.dumps 加 indent）
+        # 在 Python 3.12 超過呼叫堆疊，3.13 則寫得出來；3.11 預期在解析時就失敗。所以只要求兩者其一：
+        # 通過就寫出 JSON、沒有 raw.txt；失敗就回傳 4、保留這次的原始回應。
+        # 這個測試守的是 save_outputs 不帶著 traceback 結束；判定不沿著資料往下走（#281）由共用案例 output-cases.json 的 nest 守住。
+        # 3.12 另外斷言回傳 4：CI 用 3.12 另跑一次，就是要測到「寫出 JSON 也要攔下」（#278）。之後的 3.12.x 若寫得出來，
+        # 這裡會失敗提醒，不會默默變成沒測到。
+        places = [
+            ("沒有型別限制的 metrics.items[0].value", lambda output: output["metrics"]["items"][0].__setitem__("value", DEEP_MARK)),
+            ("schema 沒列出的鍵", lambda output: output.__setitem__("extra_key", DEEP_MARK)),
+        ]
+        for place_name, place in places:
+            reply = deep_reply(place, 2500)
+            for run_name, previous_raw in self.PREVIOUS_RUNS:
+                with self.subTest(f"{place_name}、{run_name}"):
+                    code, files, err, _ = self.save(reply, FIXTURE["table"], previous_raw)
+                    self.assertIn(code, (0, 4))
+                    if sys.version_info[:2] == (3, 12):
+                        self.assertEqual(code, 4, "3.12 預期在寫出 JSON 時超過呼叫堆疊")
+                    if code == 0:
+                        self.assertIn("fake-output.json", files)
+                        self.assertNotIn("fake-output.raw.txt", sorted(files))
+                    else:
+                        self.assertNotIn("fake-output.json", files)
+                        self.assertEqual(files["fake-output.raw.txt"], reply)
+                        self.assertIn("巢狀太深", err)
 
     def test_unsupported_schema_rule_is_a_program_error_and_propagates(self):
         # schema 用了不支援的規則是程式錯誤，不是模型輸出的問題：不當成判定失敗（#278 只攔 RecursionError）

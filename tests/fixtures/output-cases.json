@@ -287,5 +287,17 @@
     ],
     "value": "已授權",
     "valid": true
+  },
+  {
+    "name": "沒有型別限制的欄位放 2 萬層陣列：合格，陣列沒有 items 限制時不逐項檢查（#281）",
+    "path": [
+      "metrics",
+      "items",
+      0,
+      "value"
+    ],
+    "value": "x",
+    "nest": 20000,
+    "valid": true
   }
 ]

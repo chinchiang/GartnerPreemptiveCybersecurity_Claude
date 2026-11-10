@@ -54,8 +54,10 @@ test('共用輸出案例在 JS 與 Python 使用同一份規格', () => {
   for (const c of cases) {
     let output = fixture(), node = output;
     for (const key of c.path.slice(0, -1)) node = node[key];
-    // delete：刪掉 path 指的鍵；problems：有寫就逐字比對（#163）
-    if (c.delete) delete node[c.path.at(-1)]; else if (c.path.length) node[c.path.at(-1)] = c.value; else output = c.value;
+    // delete：刪掉 path 指的鍵；problems：有寫就逐字比對（#163）；nest：把 value 包成這麼多層陣列，JSON 檔放不下這麼深（#281）
+    let value = c.value;
+    for (let i = 0; i < (c.nest ?? 0); i++) value = [value];
+    if (c.delete) delete node[c.path.at(-1)]; else if (c.path.length) node[c.path.at(-1)] = value; else output = value;
     assert.equal(outputProblems(output, context.outputSchema).length === 0, c.valid, c.name);
     if (c.problems) assert.deepEqual(outputProblems(output, context.outputSchema), c.problems, c.name);
   }

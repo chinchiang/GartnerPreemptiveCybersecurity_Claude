@@ -62,7 +62,10 @@ jobs:
           node-version: '22'
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.11'
+          # 兩版都裝，最後一行是預設的 python3；3.12 只用來另跑一次 Python 測試（見下面的步驟）
+          python-version: |
+            3.12
+            3.11
       - name: Build data files and downloads
         run: npm run build
       - name: Static verification (data, sources, schema, demo engine checks + snapshot, secrets scan)
@@ -83,6 +86,10 @@ jobs:
           for p in claude gemini; do python3 skills/$p/preemptive-exposure-analysis/scripts/validate_inputs.py examples/synthetic-org >/dev/null; done
       - name: Python tests (analysis workflow core, model adapters with fake SDKs, scope gate shared cases; stdlib unittest)
         run: python3 -m unittest discover -s tests/python -v
+      - name: Python tests again on 3.12
+        # 遞迴上限依版本而異：巢狀太深的回應在 3.11 解析時就失敗，3.12 解析得過、到 save_outputs 寫出 JSON 時才超過呼叫堆疊，
+        # 所以「寫出 JSON 也要攔下」只有 3.12 測得到（#278、#281）。另跑一次，不改這個 job 的名稱（ruleset 以名稱要求 verify）
+        run: python3.12 -m unittest discover -s tests/python
       - name: Platform skill-package ZIPs run standalone after unzip (dry-run, no API keys)
         run: |
           for p in chatgpt grok glm deepseek gemini claude; do

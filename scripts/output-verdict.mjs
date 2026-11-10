@@ -16,7 +16,8 @@ export function outputProblems(value, schema, root = schema, path = '$') {
   if (typeof value === 'string' && ([...value].length < (schema.minLength ?? 0) || [...value].length > (schema.maxLength ?? Infinity))) errors.push(`${path} 字數不合格`);
   if (Array.isArray(value)) {
     if (value.length < (schema.minItems ?? 0)) errors.push(`${path} 項目不足`);
-    value.forEach((item, i) => errors.push(...outputProblems(item, schema.items || {}, root, `${path}[${i}]`)));
+    // 只在 schema 有 items 時逐項檢查，不沿著沒有限制的資料往下走：遞迴深度因此只受 schema 的結構限制（#281）
+    if (Object.hasOwn(schema, 'items')) value.forEach((item, i) => errors.push(...outputProblems(item, schema.items, root, `${path}[${i}]`)));
   } else if (value !== null && typeof value === 'object') {
     for (const key of schema.required || []) if (!Object.hasOwn(value, key)) errors.push(`${path}.${key} 必填`);
     for (const [key, node] of Object.entries(schema.properties || {})) if (Object.hasOwn(value, key)) errors.push(...outputProblems(value[key], node, root, `${path}.${key}`));
@@ -100,7 +101,7 @@ export function scoreTableProblems(output, table) {
  * 輸出判定（GLOSSARY.md）：解析後的輸出依序對照 output schema、內容一致性與分數表，第一個失敗的就是結果。
  * 通過回傳 null；失敗回傳 { kind, problems }，kind 是 output_schema_invalid、output_inconsistent 或 score_table_mismatch，
  * 前兩種的 problems 是字串陣列，score_table_mismatch 是 scoreTableProblems 的結構化紀錄。table 是 null 時不對照分數表。
- * schema 驗證是遞迴的，巢狀太深時會超過呼叫堆疊而丟出例外；schema 用了不支援的關鍵字也會丟出例外，這裡都不攔。
+ * schema 驗證是遞迴的，但陣列沒有 items 限制時不逐項檢查，深度只受 schema 的結構限制（#281）；schema 用了不支援的關鍵字會丟出例外，這裡不攔。
  * Python 核心的 output_verdict 是同一個判定，由共用案例 tests/fixtures/verdict-cases.json 守住。
  */
 export function outputVerdict(output, schema, table) {

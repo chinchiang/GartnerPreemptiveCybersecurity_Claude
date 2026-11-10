@@ -159,7 +159,8 @@ export default {
       return signal.aborted ? new Response('Upstream timeout', { status: 504, headers: cors }) : new Response('Upstream error', { status: 502, headers: cors });
     }
     // 檢查模型輸出（#247、#252）：不合格、無法檢查或回覆不完整時回 502 並附上游原文，不當成成功回應轉回；沒附分數表時不對照分數表
-    // 檢查本身丟出例外（例如模型輸出巢狀太深，遞迴的 schema 驗證超過呼叫堆疊）就算無法檢查，不讓 Worker 回執行錯誤
+    // 檢查本身丟出例外就算無法檢查，不讓 Worker 回執行錯誤。#281 之後判定的遞迴深度只受 schema 限制，模型輸出巢狀再深也不會超過呼叫堆疊，
+    // 會走到這裡的主要是程式錯誤（例如 schema 用了不支援的規則）：這裡也回 502 output_unparseable，跟 API 腳本讓例外往外丟不同
     let verdict;
     try { verdict = upstreamVerdict(provider, content, table); } catch { verdict = UNPARSEABLE; }
     if (verdict) return new Response(JSON.stringify({ ...verdict, upstream: content }), { status: 502, headers: { ...cors, 'content-type': 'application/json' } });
