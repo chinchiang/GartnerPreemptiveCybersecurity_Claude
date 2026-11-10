@@ -26,9 +26,9 @@
   python3 skills/chatgpt/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
 
 輸出與結束碼
-  output/chatgpt-report.md、output/chatgpt-output.json（JSON 解析、輸出 schema 驗證失敗或內容不一致時另存 output/chatgpt-output.raw.txt）
-  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗或內容不一致
-  輸出 schema 驗證失敗或內容不一致即中止；合成案例的業務驗收另交給 scripts/check-acceptance.mjs
+  output/chatgpt-report.md、output/chatgpt-output.json（JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符時另存 output/chatgpt-output.raw.txt）
+  0 成功；1 輸入、授權範圍、環境或 API 錯誤（含回覆不完整，例如因輸出上限被截斷；這時不存任何輸出檔）；4 JSON 解析、輸出 schema 驗證失敗、內容不一致或跟分數表不符
+  輸出 schema 驗證失敗、內容不一致或跟分數表不符即中止；合成案例的業務驗收另交給 scripts/check-acceptance.mjs
 
 安全邊界
   不啟用任何工具（無 web search、無 code interpreter、無 function calling）；所有輸入以文字送出。

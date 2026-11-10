@@ -46,7 +46,7 @@ PROBLEM_CASES = json.loads((ROOT / "tests/fixtures/score-problems-cases.json").r
 
 class SharedScoreProblemsCasesTest(unittest.TestCase):
     """模型輸出跟分數表對照的共用案例（#247）：Python 的 score_table_problems 這一份；
-    示範引擎的 scoreTableProblems 讀同一份 tests/fixtures/score-problems-cases.json（scripts/score-problems-cases.test.mjs）。"""
+    scripts/output-verdict.mjs 的 scoreTableProblems 讀同一份 tests/fixtures/score-problems-cases.json（scripts/score-problems-cases.test.mjs）。"""
 
     def test_shared_cases(self):
         for case in PROBLEM_CASES["cases"]:

@@ -61,6 +61,10 @@ _Avoid_: 資料預檢、輸入驗證
 英文：Precheck finding。腳本預檢的一筆結果：哪個檔案、哪一種問題，以及它是必要問題、警告還是異常。
 _Avoid_: 預檢警告、finding
 
+**輸出判定**：
+英文：Output verdict。模型輸出解析後，依序對照 output schema、內容一致性與分數表，得出的第一個失敗或通過；API 腳本（Python 核心的 `output_verdict`）與選用後端代理（`scripts/output-verdict.mjs` 的 `outputVerdict`）用同一個判定，由共用案例 `tests/fixtures/verdict-cases.json` 守住（ADR 0011）。失敗種類是 `output_schema_invalid`、`output_inconsistent`、`score_table_mismatch`。從模型回應抽出 JSON、檢查回覆完不完整都在判定之前，不屬於此詞條；驗收（`scripts/acceptance.mjs`）逐層列出所有問題，也不是輸出判定。
+_Avoid_: 輸出驗證、輸出檢查
+
 **模型側守門**：
 英文：Model-side gate。在聊天介面上由模型依核心提示詞執行的授權範圍檢查，規則與授權範圍守門相同；資料已經交給模型，所以只能拒絕分析，擋不住資料送出。
 _Avoid_: 提示詞守門、模型驗證

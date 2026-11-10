@@ -39,21 +39,6 @@ class AuditRegressionTest(unittest.TestCase):
         self.assertEqual(aw.output_problems(output, schema), ['$.exposure_priorities.thresholds 必填'])
         self.assertEqual(aw.output_consistency_problems(output), [])
 
-    def test_api_script_exits_4_on_malformed_thresholds(self):
-        """API 腳本存檔時（save_outputs）門檻缺少或格式不對就以結束碼 4 結束，保留原始回應（#163）。"""
-        schema = json.loads((ROOT / 'skills/shared/output-schema.json').read_text(encoding='utf-8'))
-        fixture = json.loads((ROOT / 'examples/acceptance-fixture.json').read_text(encoding='utf-8'))
-        for name, change in [('缺 thresholds', lambda ep: ep.pop('thresholds')), ('缺 P2', lambda ep: ep['thresholds'].pop('P2')),
-                             ('P1 是字串', lambda ep: ep['thresholds'].__setitem__('P1', '60'))]:
-            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
-                output = json.loads(json.dumps(fixture))
-                change(output['exposure_priorities'])
-                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-                    self.assertEqual(aw.save_outputs(Path(tmp), 'fake', '報告', json.dumps(output, ensure_ascii=False), schema), 4)
-                self.assertFalse((Path(tmp) / 'fake-output.json').exists())
-        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(aw.save_outputs(Path(tmp), 'fake', '報告', json.dumps(fixture, ensure_ascii=False), schema), 0)
-
     def test_scope_filter_and_prompt_do_not_leak_excluded_records(self):
         schema = json.loads((ROOT / 'skills/shared/input-schema.json').read_text(encoding='utf-8'))
         inputs = aw.load_inputs(ROOT / 'examples/synthetic-org', frozenset(), schema)
@@ -170,16 +155,3 @@ class OutputConsistencyTest(unittest.TestCase):
                     node[path[-1]] = value
                 self.assertEqual(aw.output_problems(output, schema), [])
                 self.assertEqual(aw.output_consistency_problems(output), c['problems'])
-
-    def test_save_outputs_rejects_inconsistent_output(self):
-        schema = json.loads((ROOT / 'skills/shared/output-schema.json').read_text(encoding='utf-8'))
-        output = json.loads((ROOT / 'examples/acceptance-fixture.json').read_text(encoding='utf-8'))
-        output['remediation']['items'][0]['finding_id'] = 'F-999'
-        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
-            folder = Path(tmp)
-            (folder / 'fake-output.json').write_text('{}', encoding='utf-8')   # 上一次成功的輸出
-            code = aw.save_outputs(folder, 'fake', '# 報告', json.dumps(output, ensure_ascii=False), schema)
-            self.assertEqual(code, 4)
-            self.assertFalse((folder / 'fake-output.json').exists())
-            self.assertTrue((folder / 'fake-output.raw.txt').exists())
-            self.assertIn('輸出內容不一致', err.getvalue())

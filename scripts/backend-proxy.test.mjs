@@ -272,12 +272,15 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
       { error: 'output_schema_invalid', problems: ['$.exposure_priorities.thresholds 必填'], upstream: content });
   });
 
-  test('模型輸出：符合 schema 但內容不一致時回 502 的 output_inconsistent，列出不一致的地方（#252）', async () => {
-    // 訊息的字面值同 tests/fixtures/consistency-cases.json 的「分數 0 卻標 P1（有門檻）」：第 1 項（F009）分數改成 0、仍標 P1
+  test('模型輸出：符合 schema 但內容不一致時回 502 的 output_inconsistent，列出不一致的地方；同時跟分數表不符也只回這一項（#252、#275）', async () => {
+    // 訊息的字面值同 tests/fixtures/consistency-cases.json 的「分數 0 卻標 P1（有門檻）」：第 1 項（F009）分數改成 0、仍標 P1。
+    // 分數表裡 F009 是 P1／72.5（最後一行斷言確認；示範快照 examples/demo-snapshot.txt 第 3 行的 mes-srv-01），所以這份輸出也跟分數表不符；輸出判定只回第一個失敗
     const content = openaiReply(report(modelOutput(o => { item(o, 'F009').score = 0; })));
     reply = () => new Response(content, { status: 200 });
     assert.deepEqual(await rejected(await send(withTable())),
       { error: 'output_inconsistent', problems: ['$.exposure_priorities.items[1] 分數 0 依門檻應為 P4，卻標為 P1'], upstream: content });
+    const f009 = sentTable(upstream[0]).findings.find(f => f.finding_id === 'F009');
+    assert.deepEqual([f009.priority, f009.score], ['P1', 72.5]);
   });
 
   test('模型輸出：依序檢查 schema → 內容一致性 → 分數表，只回報第一個不合格的（#252）', async () => {

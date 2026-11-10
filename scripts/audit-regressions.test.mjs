@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { acceptanceResults, loadAcceptanceContext } from './acceptance.mjs';
-import { outputProblems } from './output-schema.mjs';
+import { outputProblems } from './output-verdict.mjs';
 import { fileURLToPath } from 'node:url';
 const context = loadAcceptanceContext(fileURLToPath(new URL('..', import.meta.url)));
 const fixture = () => JSON.parse(readFileSync(new URL('../examples/acceptance-fixture.json', import.meta.url)));
@@ -18,7 +18,7 @@ test('不合法的巢狀輸出及空聲明不再被驗收放行，null 也能回
   }
   assert.ok(acceptanceResults(null, context).some(r => !r.pass));
 });
-test('輸出驗證拒絕未知規則', () => assert.throws(() => outputProblems({}, { notSupported: true }), /不支援/));
+test('輸出 schema 驗證拒絕未知規則', () => assert.throws(() => outputProblems({}, { notSupported: true }), /不支援/));
 test('所有授權旗標組合：摘要只建議執行已授權且實際存在的計畫', () => {
   for (const active of [false, true]) for (const external of [false, true]) {
     const data = structuredClone(ctx.window.CASE_DATA);
@@ -40,7 +40,7 @@ test('逐筆 EPSS／KEV 缺值採 CVSS 替代並下修資料齊備程度；0 與
 });
 
 test('分級門檻缺少時：格式驗證回報必填，一致性檢查略過，不退回只比大小順序（#163）', async () => {
-  const { outputConsistencyProblems } = await import('./output-schema.mjs');
+  const { outputConsistencyProblems } = await import('./output-verdict.mjs');
   // 以前的退回路徑會報「P1 的分數 86 低於 P2 的分數 90」；現在缺門檻由格式驗證擋下
   const o = fixture();
   delete o.exposure_priorities.thresholds;
@@ -85,7 +85,7 @@ test('稽核 1（#146）：excluded_assets 排除優先，示範引擎不分析�
   assert.equal(demo.analyze(text).findings.filter(f => f.asset_id === 'A01').length, 2, '文字 excluded 只是限制事項');
 });
 test('稽核 3（#148）：格式合格但內容不一致的輸出被第二層擋下；共用案例逐字相同', async () => {
-  const { outputConsistencyProblems } = await import('./output-schema.mjs');
+  const { outputConsistencyProblems } = await import('./output-verdict.mjs');
   const { cases } = JSON.parse(readFileSync(new URL('../tests/fixtures/consistency-cases.json', import.meta.url)));
   for (const c of cases) {
     const o = fixture();

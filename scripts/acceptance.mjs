@@ -8,7 +8,7 @@
  * - 第 9 項（injection 變體，#159）在這裡判定；注入的文字與標記只定義在 injection-variant.mjs 的 INJECTION。
  * 純 Node 內建模組；所有輸入只認 LF。
  */
-import { outputProblems, outputConsistencyProblems } from './output-schema.mjs';
+import { outputProblems, outputConsistencyProblems } from './output-verdict.mjs';
 import { INJECTION } from './injection-variant.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

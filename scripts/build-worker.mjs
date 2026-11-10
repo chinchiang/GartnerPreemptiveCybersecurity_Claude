@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * build-worker.mjs — 選用後端代理的建置：把核心提示詞、授權範圍守門、示範引擎與輸出 schema 驗證內嵌成單一檔案 backend/dist/worker.js
+ * build-worker.mjs — 選用後端代理的建置：把核心提示詞、授權範圍守門、示範引擎與輸出判定內嵌成單一檔案 backend/dist/worker.js
  * 把 skills/shared/core-prompt.md 內的 ```text 提示詞區塊嵌入 backend/worker.js 的 CORE_PROMPT，並把模板 import 的
  * assets/scope-gate.js（授權範圍守門，見 docs/adr/0004）、assets/demo.js（示範引擎，算分數表，見 docs/adr/0010）、
- * scripts/output-schema.mjs（輸出 schema 驗證與內容一致性）與 skills/shared/output-schema.json（#252）內嵌進去，
+ * scripts/output-verdict.mjs（輸出判定，#275）與 skills/shared/output-schema.json（#252）內嵌進去，
  * 輸出到 backend/dist/worker.js（已列入 .gitignore，不提交）。
  * 這樣代理伺服器使用的系統提示與六平臺共用的核心提示詞永遠一致，部署的仍是單一檔案。
  *
@@ -31,10 +31,10 @@ const gateInline = `const GATE = (() => { const module = { exports: {} };\n${gat
 // demo.js 同樣只設定 module.exports；它在沒有 window 時 require('./scope-gate.js')，這裡接到上面已內嵌的 GATE（#230）
 const demoSource = readFileSync(join(ROOT, 'assets/demo.js'), 'utf8').replace(/\r\n/g, '\n');
 const demoInline = `const DEMO = (() => { const module = { exports: {} }; const require = () => GATE;\n${demoSource}\nreturn module.exports; })();`;
-// 輸出 schema 驗證與內容一致性（#252）：output-schema.mjs 是沒有 import 的 ES module，拿掉兩個 export function 的 export 包起來
+// 輸出判定（#252、#275）：output-verdict.mjs 是沒有 import 的 ES module，拿掉每個 export function 的 export 包起來，只取出 outputVerdict
 // （日後若多了別的 export 或 import，包起來的程式碼會語法錯誤，建置測試載入產物時就會失敗）。schema 母本 skills/shared/output-schema.json 嵌成 JSON 字面值
-const checksSource = readFileSync(join(ROOT, 'scripts/output-schema.mjs'), 'utf8').replace(/\r\n/g, '\n').replace(/^export function /gm, 'function ');
-const checksInline = `const { outputProblems, outputConsistencyProblems } = (() => {\n${checksSource}\nreturn { outputProblems, outputConsistencyProblems };\n})();`;
+const checksSource = readFileSync(join(ROOT, 'scripts/output-verdict.mjs'), 'utf8').replace(/\r\n/g, '\n').replace(/^export function /gm, 'function ');
+const checksInline = `const { outputVerdict } = (() => {\n${checksSource}\nreturn { outputVerdict };\n})();`;
 const schemaInline = `const OUTPUT_SCHEMA = ${JSON.stringify(JSON.parse(readFileSync(join(ROOT, 'skills/shared/output-schema.json'), 'utf8')))};`;
 // 兩個嵌入點都要恰好一處；先換 CORE_PROMPT 再內嵌 scope-gate.js，數佔位字串時不會數到 scope-gate.js 的內容
 let built;
@@ -46,8 +46,8 @@ try {
     n => `${templateLabel} 內必須恰好有一行 import GATE from '../assets/scope-gate.js';，找到 ${n} 行`);
   built = replaceExactlyOnce(built, /^import DEMO from '\.\.\/assets\/demo\.js';$/gm, () => demoInline,
     n => `${templateLabel} 內必須恰好有一行 import DEMO from '../assets/demo.js';，找到 ${n} 行`);
-  built = replaceExactlyOnce(built, /^import \{ outputProblems, outputConsistencyProblems \} from '\.\.\/scripts\/output-schema\.mjs';$/gm, () => checksInline,
-    n => `${templateLabel} 內必須恰好有一行 import { outputProblems, outputConsistencyProblems } from '../scripts/output-schema.mjs';，找到 ${n} 行`);
+  built = replaceExactlyOnce(built, /^import \{ outputVerdict \} from '\.\.\/scripts\/output-verdict\.mjs';$/gm, () => checksInline,
+    n => `${templateLabel} 內必須恰好有一行 import { outputVerdict } from '../scripts/output-verdict.mjs';，找到 ${n} 行`);
   built = replaceExactlyOnce(built, /^import OUTPUT_SCHEMA from '\.\.\/skills\/shared\/output-schema\.json' with \{ type: 'json' \};$/gm, () => schemaInline,
     n => `${templateLabel} 內必須恰好有一行 import OUTPUT_SCHEMA from '../skills/shared/output-schema.json' with { type: 'json' };，找到 ${n} 行`);
 } catch (e) { console.error(e.message); process.exit(1); }
