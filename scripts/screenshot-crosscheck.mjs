@@ -121,6 +121,40 @@ export function renderMarkdown({ pr, sha, pinned = false, runs, rows }) {
   return lines.join('\n') + '\n';
 }
 
+// ---------- CLI 外層的判斷：不碰 gh、git、網路與檔案系統 ----------
+
+// gh run list（--json databaseId,event,status,conclusion,headBranch,attempt）的結果 → 這個 PR 分支上、每種 event 最新的一次，沒有就是 null。
+// 用 headBranch 篩掉同一個 commit 在別的分支或別的 PR 的執行
+export function pickRuns(list, branch) {
+  const mine = list.filter(r => r.headBranch === branch);
+  return Object.fromEntries(EVENTS.map(e => [e, mine.filter(r => r.event === e).sort((a, b) => b.databaseId - a.databaseId)[0] || null]));
+}
+
+// pickRuns 選出的執行能不能拿來比對：可以是 null，不行時是要拋出的錯誤訊息（一次都沒有、還沒跑完、結論不是 success）
+export function runProblem(found, { branch, sha }) {
+  const present = EVENTS.filter(e => found[e]);
+  if (!present.length) return `找不到 ${branch} 分支上 ${sha.slice(0, 7)} 的 ci.yml 執行`;
+  const pending = present.filter(e => found[e].status !== 'completed');
+  if (pending.length) return `${pending.map(e => `${e} run ${found[e].databaseId}`).join('、')} 還沒跑完，等 CI 結束再比對`;
+  // 失敗或取消的執行，artifact 仍會上傳（if: always()），但截圖可能不完整，不能當依據
+  const failed = present.filter(e => found[e].conclusion !== 'success');
+  if (failed.length) return `${failed.map(e => `${e} run ${found[e].databaseId} 的結論是 ${found[e].conclusion}`).join('、')}：CI 通過之後再比對`;
+  return null;
+}
+
+// 這次執行的 artifact 下載到哪裡：<out>/<event>-<run id>-<attempt>，重跑（新的 attempt）或新的執行不會沿用舊的截圖
+export const cacheDir = (out, event, run) => join(out, `${event}-${run.databaseId}-${run.attempt}`);
+
+// 每種 event 的下載結果（成功是截圖 Map，失敗是 Error；沒找到那次執行就沒有這一項）→ crosscheck 的 push、pr 與 renderMarkdown 的 runs。
+// 一次下載失敗（例如 artifact 過了保留期限）就退回另一次的單次比對：用到的那一次放在 push，pr 是 null，沒用到的那一次 run id 是 null；
+// 兩次都失敗才拋出錯誤
+export function usableRuns(found, results) {
+  const used = EVENTS.filter(e => results[e] instanceof Map);
+  if (!used.length) throw new Error('兩次執行的 artifact 都下載失敗');
+  return { push: results[used[0]], pr: used[1] ? results[used[1]] : null,
+    runs: Object.fromEntries(EVENTS.map(e => [e, used.includes(e) ? found[e].databaseId : null])) };
+}
+
 // ---------- CLI：gh 與 git 的呼叫都在這裡 ----------
 const USAGE = `用法：node scripts/screenshot-crosscheck.mjs --pr <n> [--sha <commit>] [--out <目錄>]
   --pr <n>       PR 編號（正整數）
@@ -173,24 +207,20 @@ function ensureCommit(oid, refs) {
   throw new Error(`本機找不到 ${oid.slice(0, 7)}：fetch origin ${refs.join('、')} 之後還是沒有（GitHub 的 remote 不叫 origin 時，先自己 fetch 那個 commit）`);
 }
 
-// 這個 PR 分支上、每種 event 最新的一次執行。head_sha 篩選偶爾回空的結果（workflow.md），兩種沒找齊就重試。
-// 用 headBranch 篩掉同一個 commit 在別的分支或別的 PR 的執行
+// 這個 PR 分支上、每種 event 最新的一次執行（pickRuns）。head_sha 篩選偶爾回空的結果（workflow.md），兩種沒找齊就重試
 function findRuns(sha, branch) {
   let runs = {};
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const list = JSON.parse(gh('run', 'list', '--workflow=ci.yml', '--commit', sha, '--limit', '50', '--json', 'databaseId,event,status,conclusion,headBranch,attempt'))
-      .filter(r => r.headBranch === branch);
-    runs = Object.fromEntries(EVENTS.map(e => [e, list.filter(r => r.event === e).sort((a, b) => b.databaseId - a.databaseId)[0] || null]));
+  for (let retry = 1; retry <= 3; retry++) {
+    runs = pickRuns(JSON.parse(gh('run', 'list', '--workflow=ci.yml', '--commit', sha, '--limit', '50', '--json', 'databaseId,event,status,conclusion,headBranch,attempt')), branch);
     if (EVENTS.every(e => runs[e])) break;
-    if (attempt < 3) { log(`找到的執行：${EVENTS.map(e => `${e} ${runs[e]?.databaseId ?? '無'}`).join('、')}；5 秒後重試`); sleep(5000); }
+    if (retry < 3) { log(`找到的執行：${EVENTS.map(e => `${e} ${runs[e]?.databaseId ?? '無'}`).join('、')}；5 秒後重試`); sleep(5000); }
   }
   return runs;
 }
 
-// 下載到 <event>-<run id>-<attempt>/：重跑（新的 attempt）或新的執行不會沿用舊的截圖。
-// 先下載到 .partial，完整了才改名，下載到一半失敗不會留下被當成快取的目錄
+// 下載到 cacheDir，已經有截圖就沿用。先下載到 .partial，完整了才改名，下載到一半失敗不會留下被當成快取的目錄
 function download(event, r, out) {
-  const dir = join(out, `${event}-${r.databaseId}-${r.attempt}`);
+  const dir = cacheDir(out, event, r);
   if (existsSync(join(dir, DIR))) { log(`沿用已下載的 ${dir}`); return dir; }
   const partial = `${dir}.partial`;
   rmSync(partial, { recursive: true, force: true });
@@ -207,28 +237,24 @@ function main(argv) {
   if (args.error) { console.error(`${args.error}\n${USAGE}`); return 2; }
   const pr = resolvePr(args), { sha } = pr;
   const found = findRuns(sha, pr.headRefName);
-  const present = EVENTS.filter(e => found[e]);
-  if (!present.length) throw new Error(`找不到 ${pr.headRefName} 分支上 ${sha.slice(0, 7)} 的 ci.yml 執行`);
-  const pending = present.filter(e => found[e].status !== 'completed');
-  if (pending.length) throw new Error(`${pending.map(e => `${e} run ${found[e].databaseId}`).join('、')} 還沒跑完，等 CI 結束再比對`);
-  // 失敗或取消的執行，artifact 仍會上傳（if: always()），但截圖可能不完整，不能當依據
-  const failed = present.filter(e => found[e].conclusion !== 'success');
-  if (failed.length) throw new Error(`${failed.map(e => `${e} run ${found[e].databaseId} 的結論是 ${found[e].conclusion}`).join('、')}：CI 通過之後再比對`);
+  const problem = runProblem(found, { branch: pr.headRefName, sha });
+  if (problem) throw new Error(problem);
   const out = args.out || join('scratch', 'screenshot-crosscheck', `pr-${args.pr}-${sha.slice(0, 7)}`);
-  // 一次下載失敗（例如 artifact 過了保留期限）就退回另一次的單次比對；兩次都失敗才結束
-  const usable = [];
-  for (const e of present) {
-    try { usable.push([e, readProduced(download(e, found[e], out))]); }
-    catch (err) { log(`${e} run ${found[e].databaseId} 的 artifact 下載失敗，不用這一次：${err.stderr?.toString().trim() || err.message}`); }
+  // 每次找到的執行各自下載；失敗的記下錯誤，用不用哪一次由 usableRuns 決定
+  const results = {};
+  for (const e of EVENTS.filter(e => found[e])) {
+    try { results[e] = readProduced(download(e, found[e], out)); }
+    catch (err) {
+      log(`${e} run ${found[e].databaseId} 的 artifact 下載失敗，不用這一次：${err.stderr?.toString().trim() || err.message}`);
+      results[e] = err;
+    }
   }
-  if (!usable.length) throw new Error('兩次執行的 artifact 都下載失敗');
+  const { push, pr: prShots, runs } = usableRuns(found, results);
   ensureCommit(sha, [`refs/pull/${args.pr}/head`]);
   ensureCommit(pr.baseRefOid, [pr.baseRefName]);
-  const rows = crosscheck({ push: usable[0][1], pr: usable[1]?.[1] || null, committed: readCommitted(process.cwd(), sha),
+  const rows = crosscheck({ push, pr: prShots, committed: readCommitted(process.cwd(), sha),
     // 改過的檔案算到這個 commit 為止（--sha 時不是 PR head 的 diff）；用 git，不必下載整份 PR diff
     changedFiles: git(['diff', '--name-only', '-z', `${pr.baseRefOid}...${sha}`]).split('\0').filter(Boolean) });
-  const used = new Set(usable.map(([e]) => e));
-  const runs = Object.fromEntries(EVENTS.map(e => [e, used.has(e) ? found[e].databaseId : null]));
   process.stdout.write(renderMarkdown({ pr: args.pr, sha, pinned: !!args.sha, runs, rows }));
   return 0;
 }

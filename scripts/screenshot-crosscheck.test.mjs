@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { crosscheck, renderMarkdown, SCREENSHOT_SOURCES } from './screenshot-crosscheck.mjs';
+import { crosscheck, renderMarkdown, SCREENSHOT_SOURCES, pickRuns, runProblem, cacheDir, usableRuns } from './screenshot-crosscheck.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CLI = fileURLToPath(new URL('./screenshot-crosscheck.mjs', import.meta.url));
@@ -220,4 +220,78 @@ test('renderMarkdown：用 --sha 指定 commit 時，標題寫 commit、指令�
   const md = renderMarkdown({ pr: 290, sha: '38c7b007af1555fc7ed21bcef3f501867125de61', pinned: true, runs: { push: 1, pull_request: 2 },
     rows: [{ name: 'a.png', verdict: 'unchanged' }] });
   assert.equal(md, '- **截圖交叉比對**（commit `38c7b00`；push run 1、pull_request run 2；`node scripts/screenshot-crosscheck.mjs --pr 290 --sha 38c7b00`）：1 張都跟已提交的相同，不用換。\n');
+});
+
+// ---------- CLI 外層的判斷（純函式）：gh run list 的一筆 ----------
+const ghRun = (databaseId, event, extra = {}) =>
+  ({ databaseId, event, status: 'completed', conclusion: 'success', headBranch: 'feature', attempt: 1, ...extra });
+
+test('pickRuns：同一個 commit 在別的分支的執行被篩掉', () => {
+  const list = [ghRun(10, 'push'), ghRun(99, 'push', { headBranch: 'other' }), ghRun(20, 'pull_request'), ghRun(98, 'pull_request', { headBranch: 'other' })];
+  assert.deepEqual(pickRuns(list, 'feature'), { push: ghRun(10, 'push'), pull_request: ghRun(20, 'pull_request') });
+});
+
+test('pickRuns：同一種 event 有多筆時取 databaseId 最大的（最新的一次），不看陣列順序', () => {
+  const list = [ghRun(11, 'push'), ghRun(13, 'push'), ghRun(12, 'push'), ghRun(22, 'pull_request'), ghRun(21, 'pull_request')];
+  assert.deepEqual(pickRuns(list, 'feature'), { push: ghRun(13, 'push'), pull_request: ghRun(22, 'pull_request') });
+});
+
+test('pickRuns：只有一種 event 時另一種是 null；空陣列時兩種都是 null', () => {
+  assert.deepEqual(pickRuns([ghRun(10, 'push')], 'feature'), { push: ghRun(10, 'push'), pull_request: null });
+  assert.deepEqual(pickRuns([ghRun(20, 'pull_request')], 'feature'), { push: null, pull_request: ghRun(20, 'pull_request') });
+  assert.deepEqual(pickRuns([], 'feature'), { push: null, pull_request: null });
+});
+
+const where = { branch: 'feature', sha: '07196bd7e3b1c9a0d2f4e6a8b0c2d4e6f8a0b2c4' };
+
+test('runProblem：沒有任何執行時，回傳找不到的訊息（寫出分支與短 SHA）', () => {
+  assert.equal(runProblem({ push: null, pull_request: null }, where), '找不到 feature 分支上 07196bd 的 ci.yml 執行');
+});
+
+test('runProblem：有執行還沒跑完（status 是 in_progress），回傳要等 CI 的訊息；還沒有結論，不看 conclusion', () => {
+  assert.equal(runProblem({ push: ghRun(10, 'push'), pull_request: ghRun(20, 'pull_request', { status: 'in_progress', conclusion: '' }) }, where),
+    'pull_request run 20 還沒跑完，等 CI 結束再比對');
+});
+
+test('runProblem：結論是 failure 或 cancelled 的執行，回傳 CI 通過之後再比對的訊息', () => {
+  assert.equal(runProblem({ push: ghRun(10, 'push', { conclusion: 'failure' }), pull_request: ghRun(20, 'pull_request', { conclusion: 'cancelled' }) }, where),
+    'push run 10 的結論是 failure、pull_request run 20 的結論是 cancelled：CI 通過之後再比對');
+});
+
+test('runProblem：兩次都跑完而且通過，回傳 null；只有一次、而且通過時也是 null（之後退回單次比對）', () => {
+  assert.equal(runProblem({ push: ghRun(10, 'push'), pull_request: ghRun(20, 'pull_request') }, where), null);
+  assert.equal(runProblem({ push: ghRun(10, 'push'), pull_request: null }, where), null);
+});
+
+test('cacheDir：<out>/<event>-<run id>-<attempt>；重跑（attempt 不同）時目錄不同，不會沿用舊的截圖', () => {
+  assert.equal(cacheDir('scratch/x', 'push', ghRun(10, 'push')), join('scratch/x', 'push-10-1'));
+  assert.equal(cacheDir('scratch/x', 'pull_request', ghRun(20, 'pull_request', { attempt: 2 })), join('scratch/x', 'pull_request-20-2'));
+});
+
+const both = { push: ghRun(10, 'push'), pull_request: ghRun(20, 'pull_request') };
+const pushShots = shots({ 'io.png': 'P' }), prShots = shots({ 'io.png': 'Q' });
+
+test('usableRuns：兩次都下載成功，push、pr 各放各的截圖，runs 列兩次的 run id', () => {
+  assert.deepEqual(usableRuns(both, { push: pushShots, pull_request: prShots }),
+    { push: pushShots, pr: prShots, runs: { push: 10, pull_request: 20 } });
+});
+
+test('usableRuns：只有 push 下載成功，退回單次比對：pr 是 null，runs.pull_request 是 null', () => {
+  assert.deepEqual(usableRuns(both, { push: pushShots, pull_request: new Error('HTTP 410') }),
+    { push: pushShots, pr: null, runs: { push: 10, pull_request: null } });
+});
+
+test('usableRuns：只有 pull_request 下載成功，push 參數放 pull_request 的截圖，runs.push 是 null', () => {
+  assert.deepEqual(usableRuns(both, { push: new Error('HTTP 410'), pull_request: prShots }),
+    { push: prShots, pr: null, runs: { push: null, pull_request: 20 } });
+});
+
+test('usableRuns：只找到一次執行（另一次沒有下載結果）時，也退回單次比對', () => {
+  assert.deepEqual(usableRuns({ push: ghRun(10, 'push'), pull_request: null }, { push: pushShots }),
+    { push: pushShots, pr: null, runs: { push: 10, pull_request: null } });
+});
+
+test('usableRuns：兩次都下載失敗，拋出錯誤', () => {
+  assert.throws(() => usableRuns(both, { push: new Error('HTTP 410'), pull_request: new Error('HTTP 503') }),
+    { message: '兩次執行的 artifact 都下載失敗' });
 });
