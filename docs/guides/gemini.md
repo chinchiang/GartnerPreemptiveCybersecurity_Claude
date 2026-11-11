@@ -17,8 +17,9 @@ platform: gemini
 | 免費方案與 Google One 使用者的 Gemini CLI，2026-06-18 起由 Antigravity CLI 取代 | 已查證 |
 | 模型：新專案建議 `gemini-3.8-flash`；旗艦推理模型 `gemini-4-argon` | 已查證 |
 | google-genai SDK 的 Interactions API、`previous_interaction_id`、JSON 輸出的 `response_format` 與它支援的 schema 關鍵字 | 已查證 |
-| 不帶 schema 的 JSON 模式、延續對話時是否保留 `system_instruction` | 待驗證 |
-| OpenAI 相容端點（beta）的 `json_object` | 待驗證 |
+| 不帶 schema 的 JSON 模式 | 待驗證（2026-11-11 重讀官方文件仍沒寫） |
+| 延續對話時 `system_instruction` 不會保留，每次都要重送 | 已查證（2026-11-11，Interactions 總覽；腳本兩段都帶） |
+| OpenAI 相容端點（beta）的 `json_object` | 待驗證（2026-11-11 重讀官方文件仍沒寫） |
 | Gemini 應用（gemini.google.com）、Gemini API 的 Skills | 待驗證（沒找到官方文件） |
 
 **能力限制**：模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。技能與腳本都不啟用任何工具。

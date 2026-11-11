@@ -12,7 +12,7 @@ platform: claude
 
 | 項目 | 狀態 |
 |---|---|
-| 模型：Claude Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5 | 已查證 |
+| 模型：Claude Fable 5.2、Opus 5.5、Sonnet 5.5、Haiku 5.5（Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5 等列為舊版、仍可使用） | 已查證（2026-11-11） |
 | Agent Skills（SKILL.md）於 claude.ai、Claude Code、Skills API、Agent SDK | 已查證 |
 | claude.ai 上傳 skill 需 Pro/Max/Team/Enterprise 且啟用 code execution | 已查證 |
 | 技能不跨介面同步；只有六個 frontmatter 欄位跨介面有效 | 已查證 |

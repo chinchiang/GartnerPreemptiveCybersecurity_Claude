@@ -14,10 +14,12 @@ platform: glm
 |---|---|
 | 模型 GLM-5／5.1／5.2／5.3（744B-A40B）、GLM-5.3-Flash | 已查證（`zai-org/GLM-5` README） |
 | Z.ai 官方 Claude Code 外掛市集 `zai-org/zai-coding-plugins` | 已查證 |
-| Anthropic 相容端點 `https://api.z.ai/api/anthropic`（GLM Coding Plan） | 部分查證（第三方引述 docs.z.ai） |
+| Anthropic 相容端點 `https://api.z.ai/api/anthropic`（GLM Coding Plan） | 已查證（docs.z.ai/devpack/tool/claude，2026-11-11） |
 | Z.ai 以 SKILL.md 格式發布 `glm-master-skill` | 已查證（發布者角色） |
 | chat.z.ai／智譜清言 的智能體、知識庫 | **待驗證** |
-| Z.ai API Platform／BigModel base URL、function calling 細節 | 部分查證／待驗證 |
+| Z.ai API Platform 的 base URL `https://api.z.ai/api/paas/v4/` 與 function calling | 已查證（docs.z.ai，2026-11-11） |
+| BigModel 的 base URL | 待驗證（docs.bigmodel.cn 的首頁與模型總覽沒寫） |
+| GLM-5.3 授權 | 已查證（Hugging Face：GLM-5.3 License，不是 MIT 或 Apache；年營收超過 100 億美元的 MaaS 業者商用前要通過 Z.AI 的安全審查） |
 
 **能力限制**：聊天應用能否載入 SKILL.md 未查證；API 細節需以 docs.z.ai／open.bigmodel.cn 為準；模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
 
@@ -63,7 +65,7 @@ Markdown 報告 + JSON。縮短版合成範例與 Claude 教學第 5 節相同�
 1. 若有「智能體／自訂助理」：建立一個，指令欄貼入 `system-prompt.md` 的提示詞區塊；知識庫上傳 `task-spec.md` 與資料檔。
 2. 若沒有：新對話第一則貼入提示詞，再附上 9 個資料檔內容。
 
-### B. Claude Code + GLM 後端（部分查證）
+### B. Claude Code + GLM 後端（已查證）
 
 ```bash
 git clone https://github.com/chinchiang/GartnerPreemptiveCybersecurity_Claude.git

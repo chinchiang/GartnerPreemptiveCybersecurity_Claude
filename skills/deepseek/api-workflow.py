@@ -12,18 +12,19 @@ DeepSeek API 工作流程：先制型曝險分析（Preemptive Exposure Analysis
   本腳本只依賴「OpenAI 相容 chat completions + system prompt + JSON Output」三件事，
   不依賴特定模型版本。模型 ID 以環境變數 DEEPSEEK_MODEL 指定（預設 deepseek-v4-pro），
   請以 https://api-docs.deepseek.com 的最新模型列表為準。
-  ※ 依官方 change log 摘要，舊名稱 deepseek-chat / deepseek-reasoner 已於 2026-07-24 退役（PARTIALLY VERIFIED）。
+  ※ 依官方 V4 Preview 公告與 change log，舊名稱 deepseek-chat / deepseek-reasoner 已於 2026-07-24 退役（2026-11-11 查證）。
 
 兩段式呼叫
   第 1 段：產出人可讀的 Markdown 報告（正體中文）。
   第 2 段：延續同一對話，以 response_format={"type": "json_object"} 只輸出符合 output-schema.json 的 JSON。
-          ※ JSON Output 支援依官方 V4-Pro GA 公告摘要（PARTIALLY VERIFIED）；端點拒絕時自動改以提示詞要求
+          ※ JSON Output：官方 Models & Pricing 頁列為支援（2026-11-11 查證）；端點拒絕時自動改以提示詞要求
             純 JSON 重試一次，也可加 --no-json-mode 直接關閉。
 
 環境變數（勿寫入程式碼、勿提交到 git）
   DEEPSEEK_API_KEY   必要（--dry-run 時不需要）
   DEEPSEEK_BASE_URL  預設 https://api.deepseek.com
-  DEEPSEEK_MODEL     預設 deepseek-v4-pro（替代：deepseek-v4-flash；請以官方文件確認）
+  DEEPSEEK_MODEL     預設 deepseek-v4-pro（替代：deepseek-flash；舊名 deepseek-v4-flash 仍可使用，但對應的模型已退役；
+                     2026-11-11 查證，請以官方文件確認）
 
 用法
   python3 skills/deepseek/api-workflow.py --dry-run                 # 只跑流程、印出提示詞，不呼叫 API、不需 SDK
@@ -75,7 +76,7 @@ class DeepSeekAdapter:
                             help="第 2 段不使用 response_format json_object，改以提示詞要求純 JSON")
 
     def describe(self, args):
-        mode = "關閉（提示詞要求純 JSON）" if args.no_json_mode else "response_format json_object（PARTIALLY VERIFIED）"
+        mode = "關閉（提示詞要求純 JSON）" if args.no_json_mode else "response_format json_object（官方文件列為支援）"
         return [f"端點：{os.environ.get('DEEPSEEK_BASE_URL', DEFAULT_BASE_URL)}", f"JSON 模式：{mode}"]
 
     def generated_by(self, args):

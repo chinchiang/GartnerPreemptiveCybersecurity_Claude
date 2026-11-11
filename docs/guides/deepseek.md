@@ -12,11 +12,14 @@ platform: deepseek
 
 | 項目 | 狀態 |
 |---|---|
-| DeepSeek V4 Preview（2026-04-24）：`deepseek-v4-pro`、`deepseek-v4-flash`；OpenAI 與 Anthropic 相容介面 | 部分查證（官方 URL 與摘要；頁面無法開啟） |
-| DeepSeek-V4-Pro GA（2026-08-13）：1M context、384K 輸出、JSON Output、Tool Calls | 部分查證 |
-| `deepseek-chat`／`deepseek-reasoner` 於 2026-07-24 退役 | 部分查證 |
+| DeepSeek V4 Preview（2026-04-24）：`deepseek-v4-pro`、`deepseek-v4-flash`；OpenAI 與 Anthropic 相容介面 | 已查證（官方公告，2026-11-11） |
+| 現在的模型 ID：`deepseek-v4-pro`（DeepSeek-V4-Pro-0813）、`deepseek-flash`（DeepSeek-V4.1-Flash-1017）；舊名 `deepseek-v4-flash` 仍可使用，但對應的模型已退役 | 已查證（Models & Pricing，2026-11-11） |
+| DeepSeek-V4-Pro GA（2026-08-13）：1M context、384K 輸出、JSON Output、Tool Calls | 已查證（2026-11-11） |
+| `deepseek-chat`／`deepseek-reasoner` 於 2026-07-24 退役 | 已查證（V4 Preview 公告，2026-11-11） |
 | `deepseek-ai` GitHub：命名 V4-Pro／V4-Flash；無 V4 程式碼 repo；`deepseek-harness` plugin 架構 | 已查證 |
-| 模型授權條款、strict tool calling | 待驗證 |
+| 模型授權條款：MIT License | 已查證（Hugging Face 模型卡，2026-11-11） |
+| strict tool calling：Beta，要用 `https://api.deepseek.com/beta`，每個 function 都設 `strict: true` | 已查證（Tool Calls 指南，2026-11-11） |
+| Claude Code：`ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`，模型設 `deepseek-flash[1m]` 等 | 已查證（Claude Code 設定頁，2026-11-11） |
 | chat.deepseek.com 自訂指令／專案 | 待驗證（未查證到） |
 | 第一方 skills 機制 | 無 |
 
@@ -40,7 +43,7 @@ platform: deepseek
 
 ## 4. 執行步驟、證據要求及缺少資料時的處理方式
 
-S1–S8；每區塊帶 `confidence`、`basis`、`missing_inputs`、`requires_human`；缺 scope 停止；缺 topology 跳過 S4；其他依替代規則標示。API 腳本第二段以 `response_format={"type":"json_object"}` 取得 JSON（JSON Output 支援依官方公告摘要，部分查證）。
+S1–S8；每區塊帶 `confidence`、`basis`、`missing_inputs`、`requires_human`；缺 scope 停止；缺 topology 跳過 S4；其他依替代規則標示。API 腳本第二段以 `response_format={"type":"json_object"}` 取得 JSON（JSON Output 已查證，2026-11-11）。
 
 ## 5. 輸出格式與完整範例
 
@@ -92,8 +95,8 @@ python3 skills/deepseek/api-workflow.py
 1. *模型 ID 不存在？* 舊名稱已退役；以官方模型列表更新 `DEEPSEEK_MODEL`。
 2. *`response_format` 被拒絕？* 表示該模型或端點不支援 JSON Output。腳本會捕捉例外、印出警告，並自動改以提示詞要求純 JSON 重試一次；仍解析失敗時存原始回應。也可一開始就加 `--no-json-mode`。
 3. *chat.deepseek.com 沒有自訂指令？* 每次新對話貼提示詞；或改用 API 腳本。
-4. *可以用 V4-Flash？* 可，改環境變數；重跑驗收確認分級一致。
-5. *strict 工具呼叫可用嗎？* 待驗證；本流程不依賴它。
+4. *可以用 Flash？* 可，把模型的環境變數設成 `deepseek-flash`（舊名 `deepseek-v4-flash` 仍可使用，但對應的模型已退役，改由 DeepSeek-V4.1-Flash-1017 處理）；重跑驗收確認分級一致。
+5. *strict 工具呼叫可用嗎？* 可，是 Beta：要用 `https://api.deepseek.com/beta`，每個 function 都設 `strict: true`（已查證，2026-11-11）。本流程不依賴它。
 
 ## 9. 簡單、可重現的驗收方式
 

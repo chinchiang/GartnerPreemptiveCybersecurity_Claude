@@ -11,7 +11,7 @@ metadata:
 # 先制型曝險分析（Preemptive Exposure Analysis）— DeepSeek 後端版
 
 > 本 skill 採 Agent Skills 開放標準（agentskills.io）的 SKILL.md 格式。DeepSeek **沒有第一方的 skills 機制**（chat.deepseek.com 未查證到自訂指令或 skills 功能；`deepseek-harness` 採 plugin 架構），因此本檔的用途是放進**支援 Agent Skills 的 host** 執行，並以 DeepSeek 模型作為後端：
-> - Claude Code：透過 DeepSeek 的 Anthropic 相容介面（官方公告摘要指出 V4 同時提供 OpenAI ChatCompletions 與 Anthropic 介面；在 Claude Code 內的實際設定方式**待驗證**，以 api-docs.deepseek.com 為準）。
+> - Claude Code：透過 DeepSeek 的 Anthropic 相容介面（官方 Claude Code 設定頁：`ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`，模型設 `deepseek-flash[1m]` 等，2026-11-11 查證；以 api-docs.deepseek.com 為準）。
 > - OpenClaw、Deep Code（DeepSeek terminal assistant）：兩者列於 agentskills.io 的支援客戶端清單；skill 目錄位置以各 host 官方文件為準。
 > - 自建 harness／`deepseek-harness` plugin：把本檔內容注入 system prompt。
 >

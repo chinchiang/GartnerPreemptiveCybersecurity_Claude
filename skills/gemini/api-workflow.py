@@ -20,8 +20,9 @@ Gemini（Google）API 工作流程：先制型曝險分析（Preemptive Exposure
   - client.interactions.create 的 model／input／system_instruction／generation_config／previous_interaction_id
     與 response_format 依 ai.google.dev 的 text-generation、structured-output 文件撰寫（已查證）；
     structured-output 的支援關鍵字清單 2026-11-06 查證（allOf 沒有列出；minLength／maxLength 被伺服器忽略）。
-    「不帶 schema 的 JSON 模式」（帶 schema 被拒絕時的退路）與「延續對話時是否保留 system_instruction」文件沒寫
-    （待驗證，所以兩段都帶）。
+    「不帶 schema 的 JSON 模式」（帶 schema 被拒絕時的退路）文件沒寫（待驗證，2026-11-11 重讀仍沒寫）。
+    延續對話時 system_instruction 不會保留：Interactions 總覽寫它只套用在當次的 interaction，每次都要重送
+    （2026-11-11 查證），所以兩段都帶。
   - 模型 ID 預設 gemini-3.8-flash（官方建議新專案使用）；旗艦推理模型是 gemini-4-argon。
     gemini-3.8-flash 的輸出上限是 65,536 token（模型頁，2026-11-06 查證）。
   - 思考（thinking 文件，2026-11-06 查證）：思考 token 計入 max_output_tokens；gemini-3.8-flash 預設 medium，
@@ -125,7 +126,7 @@ class GeminiAdapter:
             analysis_workflow.require_complete("chat_completions", getattr(reply.choices[0], "finish_reason", None), stage, args)
             return reply.choices[0].message.content or ""
         # 第 1 段送報告的提示詞；第 2 段只送最後一則 user 訊息，以 previous_interaction_id 延續第 1 段。
-        # system_instruction 兩段都帶：延續對話時會不會保留它，官方文件沒寫（待驗證）
+        # system_instruction 兩段都帶：previous_interaction_id 只保留對話歷史，system_instruction 每次都要重送（Interactions 總覽，2026-11-11 查證）
         # 思考 token 計入 max_output_tokens（thinking 文件，2026-11-06 查證）：JSON 段只是把報告轉成 JSON，思考等級設 low，
         # 把上限留給輸出；報告段維持模型預設（gemini-3.8-flash 是 medium，不能關閉，也不支援 minimal）
         generation_config = {"max_output_tokens": args.max_tokens}

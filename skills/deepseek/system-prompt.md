@@ -7,7 +7,7 @@ version: 1.0.0
 # DeepSeek 系統提示詞
 
 > **用法**：
-> - **DeepSeek API（OpenAI 相容）**：作為 `system` 訊息（見 `api-workflow.py`）。不依賴特定模型版本；模型 ID 以官方文件為準（撰寫時公告摘要顯示 `deepseek-v4-pro`／`deepseek-v4-flash`，**部分查證**）。
+> - **DeepSeek API（OpenAI 相容）**：作為 `system` 訊息（見 `api-workflow.py`）。不依賴特定模型版本；模型 ID 以官方文件為準（2026-11-11 的官方 Models & Pricing 頁列 `deepseek-v4-pro` 與 `deepseek-flash`；舊名 `deepseek-v4-flash` 仍可使用，但對應的模型已退役）。
 > - **chat.deepseek.com**：未查證到原生自訂指令或專案功能（**待驗證**）。請於每次新對話的第一則訊息貼入下方文字，再附上資料檔內容。
 > - **skills-capable host**（OpenClaw、Deep Code、Claude Code 相容端點等）：不需要本檔，直接使用 `preemptive-exposure-analysis/SKILL.md`。
 >

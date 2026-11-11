@@ -1,6 +1,6 @@
 // 由 scripts/build-data.mjs 自動產生，請勿手動編輯。
 window.BUILD_MANIFEST = {
- "contentHash": "37dd233eca86",
+ "contentHash": "547b92cb760d",
  "research": [
   {
    "id": "00-method",
@@ -84,12 +84,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/chatgpt/README.md",
    "platform": "chatgpt",
-   "bytes": 5927
+   "bytes": 6217
   },
   {
    "path": "skills/chatgpt/api-workflow.py",
    "platform": "chatgpt",
-   "bytes": 6846
+   "bytes": 6887
   },
   {
    "path": "skills/chatgpt/custom-gpt-instructions.md",
@@ -139,7 +139,7 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/claude/README.md",
    "platform": "claude",
-   "bytes": 3514
+   "bytes": 3645
   },
   {
    "path": "skills/claude/preemptive-exposure-analysis/SKILL.md",
@@ -184,17 +184,17 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/README.md",
    "platform": "deepseek",
-   "bytes": 3457
+   "bytes": 4150
   },
   {
    "path": "skills/deepseek/api-workflow.py",
    "platform": "deepseek",
-   "bytes": 6709
+   "bytes": 6839
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/SKILL.md",
    "platform": "deepseek",
-   "bytes": 14404
+   "bytes": 14407
   },
   {
    "path": "skills/deepseek/preemptive-exposure-analysis/references/acceptance.md",
@@ -229,17 +229,17 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/deepseek/system-prompt.md",
    "platform": "deepseek",
-   "bytes": 9219
+   "bytes": 9288
   },
   {
    "path": "skills/gemini/README.md",
    "platform": "gemini",
-   "bytes": 6927
+   "bytes": 7596
   },
   {
    "path": "skills/gemini/api-workflow.py",
    "platform": "gemini",
-   "bytes": 16387
+   "bytes": 16582
   },
   {
    "path": "skills/gemini/preemptive-exposure-analysis/SKILL.md",
@@ -289,22 +289,22 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/glm/README.md",
    "platform": "glm",
-   "bytes": 3472
+   "bytes": 3743
   },
   {
    "path": "skills/glm/api-workflow.py",
    "platform": "glm",
-   "bytes": 8578
+   "bytes": 8702
   },
   {
    "path": "skills/glm/claude-code-settings.example.json",
    "platform": "glm",
-   "bytes": 1156
+   "bytes": 1186
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/SKILL.md",
    "platform": "glm",
-   "bytes": 13787
+   "bytes": 13802
   },
   {
    "path": "skills/glm/preemptive-exposure-analysis/references/acceptance.md",
@@ -344,12 +344,12 @@ window.BUILD_MANIFEST = {
   {
    "path": "skills/grok/README.md",
    "platform": "grok",
-   "bytes": 3230
+   "bytes": 3700
   },
   {
    "path": "skills/grok/api-workflow.py",
    "platform": "grok",
-   "bytes": 7892
+   "bytes": 8199
   },
   {
    "path": "skills/grok/requirements.txt",
