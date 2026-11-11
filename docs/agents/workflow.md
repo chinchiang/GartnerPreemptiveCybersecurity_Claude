@@ -19,6 +19,8 @@
 
 測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
 
+CI 的 Python 測試在 verify job，不在 unit job：Python 版本與步驟以 `ci.yml` 為準，寫 CI 的事實之前先看它或 job log。行為依 Python 版本而異時，CI 有的版本都要跑；Windows 本機有 `py -3.12`、`py -3.13`，沒有 3.11。遞迴上限就依版本而異（實測）：`json.loads` 在 3.12、3.13 約 3000 層；`json.dumps(indent=2)` 在 3.12 約 1000 層就超過，3.13 到 2500 層仍寫得出來。深層巢狀的測試案例用字串拼接，或用共用案例的 `nest` 欄位產生，不要經過測試自己的序列化。
+
 本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，解壓到 `scratch/node22/`（例如 `scratch/node22/node-v22.23.4-linux-x64/bin/node`）。全套檢查沒給 `--node22` 時會自動找那裡，有多個版本取最新的：
 
 ```bash
@@ -30,6 +32,8 @@ curl -fsSLO "https://nodejs.org/dist/latest-v22.x/$f" && grep " $f\$" SHASUMS256
 
 改到行程、路徑、shell 相關的行為時，Windows 也要跑：CI 的 unit job 另以 `windows-latest` 跑 Node 24。在 WSL 本機可以直接用 Windows 版的 `node.exe`（WSL 的 PATH 上就有）執行 `node.exe --test scripts/*.test.mjs`；repo 是以 `\\wsl.localhost\…` 的 UNC 路徑開啟的，測試的暫存目錄在 Windows 的 `%TEMP%`。
 
+
+完整的瀏覽器檢查不要跟完整的 Python 測試同時跑：資源不夠時，會在關閉瀏覽器那一步逾時。JS 單元測試可以跟 Python 同時跑。完整的 Python 測試單獨跑約 140～600 秒，跟其他工作同時跑時曾經跑到 1020 秒，背景執行時要等它結束，再跑瀏覽器檢查。
 完整的瀏覽器檢查（`node scripts/verify.mjs`）在 Windows 這一側可以本機執行，不必 push 之後等 CI：
 
 | 環境 | 狀態 |
@@ -84,6 +88,8 @@ gh run download <之前的 run-id> -n verify-report-and-screenshots -D "$D/<之�
 md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
 ```
 
+目前看過的 `io.png` 雜訊版本（`md5sum` 的前 8 碼）：`65e1f5ac`（已提交）與 `62320169`，PR #284、#285 都出現過。頁面內容改了之後，這兩個值就不再適用。
+
 兩個都成立（沒改到來源，而且以前出現過）才是雜訊，保留已提交的版本，並在 PR 說明寫出對照的 md5 與 run id。有一個不成立，就照上表的「無法自動判斷」處理：看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
 
 換了截圖之後（另一個 commit），等 CI 跑完再執行一次 `--pr <n>`，確認新的兩次執行都分到「不用動」。
@@ -95,10 +101,29 @@ md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
 - **`curl` 連 HTTPS 失敗，出現 `CRYPT_E_REVOCATION_OFFLINE`**：Schannel 連不到憑證撤銷伺服器。讀公開文件時加 `--ssl-no-revoke`，憑證照常驗證，只略過撤銷檢查。WebFetch 回的是小模型的摘要，逐字引文要用 `curl` 下載的原始 HTML 核對（#289 的「SpaceXSI」就是這樣確認的）。
 - **`python3 skills/<平臺>/api-workflow.py --dry-run` 以結束碼 1 結束**：cp950 的主控台印不出輸出。指令前面加 `PYTHONIOENCODING=utf-8`；`main` 上也一樣，不是改動造成的。
 - **node 讀不到 Git Bash 的 `/tmp` 路徑**：用 `cygpath -m <路徑>` 轉成 Windows 路徑再傳給 node，或把暫存檔放在 `scratch/`。
+- **`run_in_background` 跑 `python3 -m unittest …` 會提早回報「已結束」**：Python 還在跑、log 還沒寫完，通知就到了（`until grep …; do sleep; done` 的迴圈也一樣）。指令寫成 `python3 … > <log> 2>&1; echo "exit=$?" >> <log>`，以 log 裡出現 `exit=` 那一行為準，不看通知；前景等用 `until grep -q '^exit=' <log>; do sleep 10; done`。要確認行程還在，用 `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python3.exe'\" | Select-Object ProcessId,CreationDate"`；`tasklist` 在背景迴圈裡會讓迴圈提早結束，不可靠。
+
+## 給使用者執行的腳本與手動驗收
+
+- **使用者在 PowerShell 打 `bash` 會叫到 WSL**，代理這邊的 Git Bash 叫到的是 Git 的 bash。給使用者跑的腳本，兩種都要能跑：路徑轉換用 `wslpath`（WSL）或 `cygpath`（Git Bash）；Windows 看得到的暫存目錄是 `%TEMP%`，WSL 的 `/tmp` 不行；WSL 裡沒有 node，有 `python3`。
+- **給使用者的腳本要實際執行過**，不能只跑 `bash -n`：CRLF、找不到指令、路徑格式這些錯，只在執行時才出現。WSL 那一側用 `wsl.exe -e bash -c 'cd <repo 的 /mnt 路徑> && …'` 跑，再用 PowerShell 確認 Windows 那一側看得到結果。
+- **wizard 要把「要輸入的句子」和「給你的提醒」在畫面上分清楚**：使用者可能把提醒一起打進對話（#209 第 3 次）。紀錄照實寫出實際的輸入。
+- **對話驗證這類手動驗收，工作區要跟 repo、wizard 和參考答案完全隔開**：模型會主動探索目錄（#209 第 1 輪執行了 7 次 `Get-ChildItem`，還讀了 wizard）。每次對話前確認模型的工作區路徑；讀回應時，再用回應裡的線索核對它跑在哪裡，例如 Antigravity CLI 開頭的畫面會顯示工作區路徑，`validate_inputs.py` 的訊息也要跟本機對同一個工作區跑出的參考訊息逐字相同（#209 第 2 次就是這樣發現 8a～8c 跑錯了工作區）。
 
 ## 搜尋：用 `rg`
 
 搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 與 Gemini 技能 `scripts/` 的複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與詞彙表測試都會跟著略過。
+
+`rg` 預設不搜隱藏目錄：`.out-of-scope/`、`.github/` 要加 `rg --hidden`，或改用 `git grep`。驗收條件寫成 `rg` 時要注意這一點。
+
+## 改檔案：用 Edit／Write，不用 heredoc
+
+多行的修改，或內容含 `\`、反引號、`${…}`、`$`、大量引號時，用 Edit 或 Write，不用 heredoc、`node -e` 或 `python3 -c`：heredoc 會吃掉行尾的反斜線，長腳本可能整段解析失敗；`node -e` 裡含 `\r\n` 或正規表示式反斜線的字串很容易寫錯；在 node 的模板字串裡插入含反引號的文字也要跳脫。一次改很多處時，把修改寫成 `scratch/` 裡的腳本，每筆原文必須恰好出現一處。突變清單的原文也用腳本從檔案裡取，不要手抄。
+
+## 查證外部 SDK
+
+- 核對 SDK 的型別或行為，用鎖定檔的版本（`.github/model-acceptance/*-requirements.txt`），不要用本機剛好裝的版本。
+- `pip download` 很慢（前景曾經超過 3 分鐘），用 `run_in_background` 跑。下載到 `scratch/<n>/` 的獨立目錄，加 `--no-deps`；只讀檔，不執行。
 
 ## 突變測試：`scripts/mutate.mjs`
 
@@ -126,6 +151,10 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
+- **每一步都等使用者明說**：push、開 PR、在議題或 PR 留言、合併，都要使用者明說才做。合併時 CI 還沒跑完，就先等，不要合併。
+- **PR 的驗證表寫最終工作樹的結果**：改完 code-review 的修正之後，對最終的工作樹重跑完整的 JS、Python 與突變測試，再單獨跑 `verify.mjs`。修正前那一輪的結果另外註明。
+- **code-review 的發現要抽查**：有些要換環境才重現得了（#278 的第 1 項要用 `py -3.12`），有些會推翻原本的設計（#281 的第 8 項讓修法整個換掉）；要換設計之前，先問使用者。技能可能回來兩份審查（#158 一次回來 3 項與 9 項，內容不重複），兩份都要處理，PR 說明分開列。
+- **只改說明文字的 PR**：可以不跑 code-review，但 PR 說明要照實寫明沒跑。Python 測試也可以不重跑，條件是先用 `rg` 確認 `tests/python/` 沒有測試讀到改過的檔案，並在 PR 說明寫明；其他驗證照樣跑。
 - **更新 PR 說明**：用 `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<檔>`。`gh pr edit` 在本 repo 會因 Projects classic 的 GraphQL 錯誤而失敗。
 - **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。它只認 PR 說明裡的 `Closes #<n>`，不認 commit 訊息裡的（commit 訊息的 `Closes` 合併後仍會關閉 issue，只是合併前查不到），所以 PR 說明也要寫 `Closes #<n>`。開 PR 或更新說明後要等幾秒再查，馬上查可能還是空的。
 - **分支保護**：`main` 的 ruleset 在 `.github/rulesets/main.json`（套用方式與狀態見部署指南第 3 節）：只能經 PR 合併、`ci.yml` 的 10 個檢查都要通過、分支必須跟上 `main`，沒有略過名單，`gh pr merge --admin` 也不能略過。`mergeStateStatus` 是 `BEHIND` 時，先 `git merge main` 再 push，等 CI 重跑。
@@ -134,6 +163,8 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
   gh pr merge <n> --merge --subject "Merge pull request #<n>: <標題>" --body "<標題>" --match-head-commit <完整 40 碼 SHA>
   ```
   `--match-head-commit` 只接受完整的 SHA，短 SHA 會被拒。
+
+  刪遠端分支之前，先確認 PR 已經合併（`gh pr view <n> --json state` 是 `MERGED`）：PR 還開著時刪掉 head 分支，PR 會自動關閉，修改不會進 `main`。
 
   CI 還沒跑完、或看起來卡住時：
   - **等待 CI**：用 `run_in_background` 跑 `gh pr checks <n> --watch --interval 30`，列表裡沒有 pending 就結束，完成時會收到通知，再用 `gh pr checks <n>` 看每個工作的結果。`browser` 是 `needs: [unit, verify]`，那兩個跑完才出現在列表裡：開 PR 當下數到的工作數會比較少，`--watch` 也可能在它出現前就結束。結束後確認列表裡有 `browser`，沒有就再跑一次；回報以最後一次的 `gh pr checks <n>` 為準。要在前景等時，改用每 20 秒查一次的迴圈（結束碼 8 代表還有 pending，最多 20 次，約 8 分鐘，在工具 10 分鐘的上限內；跑完還有 pending 就再執行一次）：
