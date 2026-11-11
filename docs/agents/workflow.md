@@ -58,34 +58,27 @@ CI 的 browser job 在完整驗證成功後，用 `scripts/screenshot-diff.mjs` 
 | 不同 | 其中一次跟已提交的相同 | 雜訊，保留已提交的版本 |
 | 不同 | 兩次都跟已提交的不同 | 無法自動判斷：可能畫面有變又剛好碰上雜訊，要看圖，或重跑 CI（對外動作，先取得同意） |
 
-下面的指令只列出不是「不用動」的截圖，並標出屬於哪一種：
+CI 跑完之後，用 `scripts/screenshot-crosscheck.mjs` 照上表分類：
 
 ```bash
-gh run list --workflow=ci.yml --commit <完整 SHA> --json databaseId,event --jq '.[] | "\(.event) \(.databaseId)"'
+node scripts/screenshot-crosscheck.mjs --pr <n>                  # PR head
+node scripts/screenshot-crosscheck.mjs --pr <n> --sha <commit>   # PR 裡較早的 commit
 ```
 
-GitHub API 的 `head_sha` 篩選偶爾會回傳空的結果，不會報錯（#118 實測：同一個 SHA 連續查，有時是 0 筆）。沒有輸出時再跑一次就好；也可以從 `gh pr checks <n>` 列出的連結取 run id（網址 `/runs/` 後面那段數字）。拿到兩個 run id 之後：
+它會找出那個 commit 在 PR 分支上的 push 與 pull_request 兩次 `ci.yml` 執行，兩次都要已經跑完、而且通過；接著下載 artifact 到 `scratch/screenshot-crosscheck/pr-<n>-<sha7>/`，每次執行一個子目錄（含重跑的次數，已經下載過就沿用），再跟那個 commit 已提交的截圖比對。比對用 `git show`，不看工作樹，所以不必先 checkout。`head_sha` 篩選偶爾會回傳空的結果、不報錯（#118），它會自動重試。stdout 印出的 markdown 直接貼進 PR 說明的 Merge Danger，內容有：
+- 依結論分組的截圖，以及三邊檔名的差異：只有一次執行產生、已提交但這次沒有產生。
+- 「畫面有變」的截圖各自列出 PR 改到的來源。
+- 每張不是「不用動」的截圖，跟已提交版本的像素差異。
+
+「PR 改到的來源」算到那個 commit 為止（`git diff <base>...<commit>`）。它只報告，不換截圖也不 commit。只有一次執行可用時（例如只 push、沒開 PR，或一次的 artifact 過了保留期限），它會寫明缺哪一次，退回單次比對；跟已提交的不同的截圖，換之前要先看圖，確認不是零星的像素差異。
+
+兩次執行剛好拿到同一個雜訊版本時，會被分成「畫面有變」，其實畫面沒變。雜訊不是每次都不同，而是在少數幾個固定版本之間輪流出現：`io.png`（`#/io` 頁）在 PR #173 與 #174 的六次執行裡只出現過兩個版本，各 3 次，彼此只差 2 個像素，每個色彩通道差 1～2 個色階。PR #173 的兩次執行各拿到一個；#174 的第一個提交兩次都拿到已提交的那一個，第二個提交兩次都拿到另一個，就被列成「畫面有變」。所以「畫面有變」的截圖，換之前先確認兩件事：
+
+1. **PR 有沒有改到那一頁的來源**：工具會列出來。依據是 `scripts/screenshot-crosscheck.mjs` 的 `SCREENSHOT_SOURCES`（每張截圖讀哪些 `data/*.js`）；改了 `assets/` 或 `index.html` 算影響每一頁。沒改到來源的截圖，會分到「畫面有變，但 PR 沒改到那一頁的來源，要比對以前的 run」那一組。
+2. **這個版本以前出現過沒有**：工具不做這一步。下載之前幾次 CI 執行的 artifact，對照 `md5sum`：
 
 ```bash
 D=scratch/<目錄>
-gh run download <push 的 run-id> -n verify-report-and-screenshots -D "$D/push"
-gh run download <pull_request 的 run-id> -n verify-report-and-screenshots -D "$D/pr"
-for push in "$D"/push/verify-screenshots/*.png; do
-  n=${push##*/}; pr="$D/pr/verify-screenshots/$n"; committed="verify-screenshots/$n"
-  if cmp -s "$push" "$pr"; then cmp -s "$push" "$committed" || echo "畫面有變，換成新版：$n"
-  elif cmp -s "$push" "$committed" || cmp -s "$pr" "$committed"; then echo "雜訊，保留已提交的：$n"
-  else echo "無法自動判斷，要看圖：$n"; fi
-done
-```
-
-迴圈以 push 那次的截圖為準。只出現在 pr 那次的截圖，以及網站拿掉、已提交的版本該刪除的截圖，它都不會列出，要用 `ls` 另外比對三邊的檔名。
-
-兩次執行剛好拿到同一個雜訊版本時，迴圈會把它列成「畫面有變」，其實畫面沒變。雜訊不是每次都不同，而是在少數幾個固定版本之間輪流出現：`io.png`（`#/io` 頁）在 PR #173 與 #174 的六次執行裡只出現過兩個版本，各 3 次，彼此只差 2 個像素，每個色彩通道差 1～2 個色階。PR #173 的兩次執行各拿到一個；#174 的第一個提交兩次都拿到已提交的那一個，第二個提交兩次都拿到另一個，迴圈就把它列成「畫面有變」。所以列成「畫面有變」的截圖，換之前先確認兩件事：
-
-1. **PR 有沒有改到那一頁的來源**：截圖檔名是 `scripts/verify.mjs` 的 `ROUTES` 去掉 `#/`（`io.png` 是 `#/io`）。頁面內容來自 `data/` 對應的檔案，或建置時從 `docs/`、`skills/` 寫進 `data/` 的內容；版面來自 `assets/` 與 `index.html`。用 `git diff main...HEAD --name-only` 看有沒有碰到。
-2. **這個版本以前出現過沒有**：下載之前幾次 CI 執行的 artifact，對照 `md5sum`：
-
-```bash
 gh run list --workflow=ci.yml --limit 10 --json databaseId,event,headSha --jq '.[] | "\(.databaseId) \(.event) \(.headSha[0:7])"'
 gh run download <之前的 run-id> -n verify-report-and-screenshots -D "$D/<之前的 run-id>"
 md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
@@ -93,12 +86,7 @@ md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
 
 兩個都成立（沒改到來源，而且以前出現過）才是雜訊，保留已提交的版本，並在 PR 說明寫出對照的 md5 與 run id。有一個不成立，就照上表的「無法自動判斷」處理：看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
 
-只有一次執行可用時（例如只 push、沒開 PR），沒辦法交叉比對，就退回單次比對，換之前先看圖，確認不是零星的像素差異：
-
-```bash
-gh run download <run-id> -n verify-report-and-screenshots -D scratch/<目錄>
-for f in scratch/<目錄>/verify-screenshots/*.png; do cmp -s "$f" "verify-screenshots/${f##*/}" || echo "不同：${f##*/}"; done
-```
+換了截圖之後（另一個 commit），等 CI 跑完再執行一次 `--pr <n>`，確認新的兩次執行都分到「不用動」。
 
 ## Windows 本機（Git Bash）
 

@@ -102,14 +102,16 @@ function pixelColumns(old, now) {
   return [String(count), String(maxDelta), `(${bbox[0]}, ${bbox[1]})–(${bbox[2]}, ${bbox[3]})`];
 }
 
-function readCommitted(cwd) {
+// rev 已提交的截圖（檔名 → Buffer）；screenshot-crosscheck.mjs 用它讀 PR 裡指定的 commit
+export function readCommitted(cwd, rev = 'HEAD') {
   const git = (args, encoding) => execFileSync('git', args, { cwd, encoding, maxBuffer: 256 * 1024 * 1024 });
   // -z：不加 -z 時，git 會把非 ASCII 的檔名加上引號、轉成八進位（core.quotePath）
-  const names = git(['ls-tree', '-z', '--name-only', 'HEAD', `${DIR}/`], 'utf8').split('\0').filter(n => n.endsWith('.png'));
-  return new Map(names.map(n => [n.slice(DIR.length + 1), git(['show', `HEAD:${n}`])]));
+  const names = git(['ls-tree', '-z', '--name-only', rev, `${DIR}/`], 'utf8').split('\0').filter(n => n.endsWith('.png'));
+  return new Map(names.map(n => [n.slice(DIR.length + 1), git(['show', `${rev}:${n}`])]));
 }
 
-function readProduced(runDir) {
+// 執行目錄（底下有 verify-screenshots/）產生的截圖（檔名 → Buffer）
+export function readProduced(runDir) {
   const dir = join(runDir, DIR);
   return new Map(readdirSync(dir).filter(n => n.endsWith('.png')).map(n => [n, readFileSync(join(dir, n))]));
 }
