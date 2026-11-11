@@ -12,12 +12,12 @@ platform: grok
 
 | 項目 | 狀態 |
 |---|---|
-| 模型：Grok 4.x（SDK 範例 `grok-4.6`、`grok-4.20`） | 已查證（`xai-org/xai-sdk-python`） |
+| 模型：Grok 4.x（官方模型頁建議一般用途用 `grok-4.7`，`grok-4.6` 仍列在模型頁、沒有標成退役；SDK 範例 `grok-4.6`、`grok-4.20`；模型頁沒有單獨的 `grok-4.20`，只有 `grok-4.20-0309-reasoning` 等） | 已查證（`xai-org/xai-sdk-python`；docs.x.ai 模型頁 2026-11-11） |
 | xAI API：function calling、structured outputs、伺服器端工具（web_search、x_search、code_execution） | 已查證（SDK README 與範例） |
-| grok.com：自訂指令、Workspaces、Custom Agents、Tasks | **待驗證**（官方頁面無法開啟；僅第三方描述） |
+| grok.com：自訂指令、Workspaces、Custom Agents、Tasks | **待驗證**（要登入 grok.com；僅第三方描述） |
 | 原生 skills／SKILL.md | **無**（agentskills.io 清單無 xAI 產品） |
-| Grok 5 | 待驗證 |
-| OpenAI 相容端點 | 待驗證 |
+| Grok 5 | 官方模型頁沒有（2026-11-11） |
+| OpenAI 相容端點 `https://api.x.ai/v1` | 已查證（docs.x.ai REST API reference 寫「compatible with the OpenAI REST API」，quickstart 以 OpenAI SDK 搭配這個 base URL，2026-11-11）；腳本的 `--compat` 沒有實測 |
 
 **能力限制**：沒有原生技能格式，等效方案為 system prompt + function calling。伺服器端工具預設關閉。模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
 

@@ -11,9 +11,9 @@ role: readme
 
 | 層 | 名稱 | 說明 | 查證狀態（依 `docs/evidence/ai-platform-skills-evidence.md`，2026-09-09；模型依 `docs/evidence/openai-gpt-6-models-evidence.md`，2026-10-21） |
 |---|---|---|---|
-| 模型 | GPT-6 家族 | 官方模型頁建議不確定時從 `gpt-6-astra` 開始（腳本預設）；在意成本可改 `gpt-6.1-sol` | VERIFIED（developers.openai.com/api/docs/models）；ChatGPT 選單內的模型顯示名稱 UNVERIFIED |
+| 模型 | GPT-6 家族 | 官方模型頁建議不確定時從 `gpt-6-astra` 開始（腳本預設）；兼顧能力與成本選 `gpt-6.1-sol`，成本敏感選 `gpt-6-luna`；旗艦另有 `gpt-6.1-terra` | VERIFIED（developers.openai.com/api/docs/models，2026-11-11）；ChatGPT 選單內的模型顯示名稱 UNVERIFIED |
 | 應用 | **ChatGPT app** | Custom Instructions（全域偏好）、Projects（指令 + 檔案的工作容器）、Custom GPTs（可分享的「指令 + Knowledge + Actions」包；預定 2026-12-11 退場，見第 2 節） | PARTIALLY VERIFIED（官方說明頁存在但無法抓取）；字數／檔案數上限 UNVERIFIED |
-| 應用 | **Codex**（CLI／IDE／桌面／雲端） | 支援 Agent Skills 開放標準；從 `.agents/skills`（repo 層）與 `$HOME/.agents/skills`（使用者層）讀取 `SKILL.md`；`$skill-name` 叫用 | Agent Skills 標準與 `openai/skills`、`openai/plugins` repo：VERIFIED；路徑細節：PARTIALLY VERIFIED |
+| 應用 | **Codex**（CLI／IDE／桌面／雲端） | 支援 Agent Skills 開放標準；從 repo 內各層的 `.agents/skills`、`$HOME/.agents/skills`（使用者層）與 `/etc/codex/skills`（admin 層）讀取 `SKILL.md`；`/skills` 或打 `$` 叫用 | Agent Skills 標準與 `openai/skills`、`openai/plugins` repo：VERIFIED；路徑細節：VERIFIED（2026-11-11，learn.chatgpt.com/docs/build-skills） |
 | 應用 | **OpenAI API（Responses API）** | `client.responses.create(model=..., input=...)`，官方 SDK 建議優先於 Chat Completions | VERIFIED（SDK README） |
 
 沒有證據顯示 ChatGPT 聊天應用（非 Codex）能直接讀取 `SKILL.md`；因此聊天應用一律以「貼入指令 + 上傳 Knowledge 檔案」的方式承載本任務。
@@ -43,7 +43,7 @@ role: readme
 | Responses API 呼叫方式 | VERIFIED | https://github.com/openai/openai-python |
 | 模型 ID `gpt-6-astra`（預設）、`gpt-6.1-sol`（在意成本時） | VERIFIED | https://developers.openai.com/api/docs/models |
 | Codex 支援 Agent Skills；`openai/skills` 已標示 deprecated 並改指向 `openai/plugins` | VERIFIED | https://github.com/openai/skills 、https://github.com/openai/plugins |
-| Codex 讀取 `.agents/skills` 與 `$HOME/.agents/skills` | PARTIALLY VERIFIED | https://developers.openai.com/codex/skills（搜尋摘要） |
+| Codex 讀取 `.agents/skills` 與 `$HOME/.agents/skills`（另有 `/etc/codex/skills`；頁面沒有 `~/.codex/skills`） | VERIFIED（2026-11-11） | https://learn.chatgpt.com/docs/build-skills（原網址 developers.openai.com/codex/skills 轉到此頁） |
 | Custom GPT：每個 GPT 最多 20 個檔案、單檔 512 MB／2M tokens | PARTIALLY VERIFIED | https://help.openai.com/en/articles/8555545-file-uploads-faq（搜尋摘要） |
 | Projects 檔案數上限、指令字數上限 | UNVERIFIED | 僅第三方來源 |
 | ChatGPT 選單內的模型名稱 | UNVERIFIED | 僅第三方來源；請以 platform.openai.com 與 ChatGPT 介面為準 |

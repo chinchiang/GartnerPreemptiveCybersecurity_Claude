@@ -12,12 +12,12 @@ platform: chatgpt
 
 | 項目 | 狀態 |
 |---|---|
-| 模型：GPT-6 家族（官方模型頁建議不確定時從 `gpt-6-astra` 開始；在意成本可改 `gpt-6.1-sol`） | 已查證（developers.openai.com，2026-10-21）；ChatGPT 選單顯示名稱待驗證 |
+| 模型：GPT-6 家族（官方模型頁建議不確定時從 `gpt-6-astra` 開始；兼顧能力與成本選 `gpt-6.1-sol`，成本敏感選 `gpt-6-luna`；旗艦另有 `gpt-6.1-terra`） | 已查證（developers.openai.com，2026-11-11）；ChatGPT 選單顯示名稱待驗證 |
 | ChatGPT Custom Instructions／Projects／Custom GPTs 存在 | 部分查證（官方說明頁存在，沙箱內無法開啟） |
 | Custom GPT Knowledge：每個 GPT 20 個檔案、單檔 512 MB／2M tokens | 部分查證（搜尋摘要） |
 | Custom GPT 預定 2026-12-11 退場（FedRAMP 與核准延後的企業版工作區 2027-02-11）；個人帳號（Free、Go、Plus、Pro）已不能新建 GPT | 已查證（OpenAI 說明中心 20001519 與 8554397 的 Internet Archive 快照，約 2026-10-29 與 2026-09-29 更新；help.openai.com 直接連線回 403）；實際日期以帳號或工作區收到的通知為準 |
 | Projects 檔案數與指令字數上限 | 待驗證 |
-| Codex 支援 Agent Skills（`.agents/skills`、`$HOME/.agents/skills`） | 標準與 `openai/skills`→`openai/plugins` 已查證；路徑部分查證 |
+| Codex 支援 Agent Skills（repo 內各層的 `.agents/skills`、`$HOME/.agents/skills`、`/etc/codex/skills`） | 已查證（路徑 2026-11-11，learn.chatgpt.com/docs/build-skills；頁面沒有 `~/.codex/skills`） |
 | Responses API `client.responses.create` | 已查證（SDK README） |
 
 **能力限制**：ChatGPT 聊天應用沒有證據能直接載入 SKILL.md，因此以「貼入指令 + 附加檔案」承載（Project 是 Project 檔案，已經有的 Custom GPT 是 Knowledge）；Custom GPT 的 Actions 預設不啟用；模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
@@ -118,7 +118,7 @@ cp -r skills/chatgpt/preemptive-exposure-analysis .agents/skills/preemptive-expo
 codex
 ```
 
-在 Codex 中輸入：`$preemptive-exposure-analysis 請分析 examples/synthetic-org`。使用者層級可放 `$HOME/.agents/skills/`（路徑部分查證，請以 developers.openai.com/codex/skills 為準）。
+在 Codex 中輸入：`$preemptive-exposure-analysis 請分析 examples/synthetic-org`。使用者層級可放 `$HOME/.agents/skills/`（已查證，2026-11-11；以 learn.chatgpt.com/docs/build-skills 為準，原網址 developers.openai.com/codex/skills 會轉到這頁）。
 
 **B2. API 腳本**
 

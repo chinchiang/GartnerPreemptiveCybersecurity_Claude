@@ -11,12 +11,14 @@ role: readme
 
 | 項目 | 內容 | 狀態 |
 |---|---|---|
-| V4 Preview | 官方 API 公告頁 `api-docs.deepseek.com/news/news260424/`（2026-04-24）：模型 `deepseek-v4-pro`、`deepseek-v4-flash`；同時提供 OpenAI ChatCompletions 與 Anthropic 介面 | **部分查證**（官方 URL 與搜尋摘要；頁面在研究環境內無法開啟） |
-| V4-Pro GA | `api-docs.deepseek.com/news/news260813/`（2026-08-13）：模型 ID 不變；1M context、最大輸出 384K；支援 JSON Output、Tool Calls、Chat Prefix Completion（Beta）、FIM（Beta） | 部分查證 |
-| 舊模型名稱 | `deepseek-chat`、`deepseek-reasoner` 於 2026-07-24 退役（官方 change log 摘要） | 部分查證 |
+| V4 Preview | 官方 API 公告頁 `api-docs.deepseek.com/news/news260424/`（2026-04-24）：模型 `deepseek-v4-pro`、`deepseek-v4-flash`；同時提供 OpenAI ChatCompletions 與 Anthropic 介面 | **已查證**（2026-11-11） |
+| V4-Pro GA | `api-docs.deepseek.com/news/news260813/`（2026-08-13）：模型 ID 不變；1M context、最大輸出 384K；支援 JSON Output、Tool Calls、Chat Prefix Completion（Beta）、FIM（Beta） | 已查證（2026-11-11） |
+| 現在的模型 ID | Models & Pricing（`api-docs.deepseek.com/quick_start/pricing`）：`deepseek-v4-pro`（DeepSeek-V4-Pro-0813）、`deepseek-flash`（DeepSeek-V4.1-Flash-1017）；舊名 `deepseek-v4-flash` 仍可使用，但對應的模型已退役 | 已查證（2026-11-11） |
+| 舊模型名稱 | `deepseek-chat`、`deepseek-reasoner` 於 2026-07-24 15:59（UTC）後完全退役（V4 Preview 公告與 change log） | 已查證（2026-11-11） |
 | GitHub 佐證 | `deepseek-ai/awesome-deepseek-agent` 以 "DeepSeek-V4-Pro or DeepSeek-V4-Flash" 為主要模型；`deepseek-ai` 組織**沒有** V4 程式碼 repo（最新為 DeepSeek-V3.2-Exp） | **已查證** |
-| Hugging Face 模型卡 | `deepseek-ai/DeepSeek-V4-Pro-0813`（1.6T 總參數、49B 啟用、1M context） | 部分查證；**授權條款待驗證** |
-| 嚴格工具呼叫（strict）| 無證據 | 待驗證 |
+| Hugging Face 模型卡 | `deepseek-ai/DeepSeek-V4-Pro-0813`（1.6T 總參數、49B 啟用、1M context，數字由 V4 Preview 公告確認）；「licensed under the MIT License」 | 已查證（2026-11-11） |
+| 嚴格工具呼叫（strict）| Tool Calls 指南：Beta，要用 `https://api.deepseek.com/beta`，每個 function 都設 `strict: true` | 已查證（2026-11-11） |
+| Claude Code 設定 | Claude Code 設定頁：`ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`、`ANTHROPIC_MODEL=deepseek-flash[1m]` 等 | 已查證（2026-11-11） |
 | 聊天應用自訂指令／專案 | chat.deepseek.com 未查證到原生功能 | 待驗證 |
 | 技能機制 | 沒有第一方 skills；`deepseek-harness`（dsh）為 plugin 架構、developer preview | 已查證 |
 
@@ -29,13 +31,13 @@ role: readme
 | 情境 | 檔案 | 做法 |
 |---|---|---|
 | 以 API 自動化 | `api-workflow.py` + `requirements.txt` | 兩段式：Markdown 報告 → `response_format={"type":"json_object"}` 的 JSON |
-| 在 skills-capable host 內 | `preemptive-exposure-analysis/SKILL.md` | 放入 OpenClaw、Deep Code（皆列於 agentskills.io 支援清單）或 Claude Code（透過 Anthropic 相容介面，設定方式待驗證） |
+| 在 skills-capable host 內 | `preemptive-exposure-analysis/SKILL.md` | 放入 OpenClaw、Deep Code（皆列於 agentskills.io 支援清單）或 Claude Code（透過 Anthropic 相容介面，設定方式見第 1 節，已查證） |
 | 在 chat.deepseek.com 對話中 | `system-prompt.md` | 貼在新對話第一則訊息（無原生自訂指令可用） |
 
 ## 4. 能力限制與治理考量
 
 - DeepSeek API 由中國大陸公司營運；企業使用者需依資料出境與資料分類政策評估是否可送出資產、弱點與身分資料。
-- 授權條款、strict tool calling、聊天應用功能皆待驗證；請以 api-docs.deepseek.com 為準。
+- 授權條款（MIT）、strict tool calling 已在 2026-11-11 查證；聊天應用功能要登入，仍待驗證；請以 api-docs.deepseek.com 為準。
 - 語言模型不能驗證實際曝險、不執行掃描、不保證防止攻擊。
 
 ## 5. 目錄內容

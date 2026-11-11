@@ -1,9 +1,9 @@
 # Reusable "Skills" / Custom Instructions / Workflows Across Six AI Platforms — Evidence File
 
-**Accessed date for all sources:** 2026-09-09, except section 6 (Gemini), added 2026-10-22
+**Accessed date for all sources:** 2026-09-09, except section 6 (Gemini), added 2026-10-22, and section 7, a re-check on 2026-11-11 (#289)
 **Scope:** ChatGPT (OpenAI), Claude (Anthropic), Grok (xAI), GLM (Zhipu / Z.ai), DeepSeek, Gemini (Google) — plus the Agent Skills open standard (agentskills.io).
 
-> **中文說明**：本檔是研究代理在 2026-09-09 逐條記錄的英文原始證據（第 6 節 Gemini 於 2026-10-22 新增，當時官方頁面都能開啟）（平臺能力、官方文件可達性、查證等級），供核對網站「平臺比較」與「證據與來源」表使用；正體中文整理版見 `docs/research/07-platforms.md` 與各平臺教學。注意：agentskills.io 採用清單宣告 50 筆、本檔只擷取到 45 筆，因此「xAI／Z.ai／DeepSeek 不在清單上」屬部分查證。
+> **中文說明**：本檔是研究代理在 2026-09-09 逐條記錄的英文原始證據（第 6 節 Gemini 於 2026-10-22 新增，當時官方頁面都能開啟）（平臺能力、官方文件可達性、查證等級），供核對網站「平臺比較」與「證據與來源」表使用；正體中文整理版見 `docs/research/07-platforms.md` 與各平臺教學。第 7 節是 2026-11-11 的重新查證（#289）：多數在 2026-09-09 打不開的官方文件都能開啟了，結論與第 0～6 節不同時以第 7 節為準；第 0～6 節保留當時的紀錄，不改寫。例如 agentskills.io 的採用清單：第 0 節記的「宣告 50 筆、擷取到 45 筆」，第 7 節核對資料檔是 46 筆，「xAI／Z.ai／DeepSeek 不在清單上」已查證。
 
 ## Verification method and an important caveat
 
@@ -31,7 +31,7 @@ Evidence tiers used below:
 
 The data file reports **50 entries**; 45 could be extracted from the fetch. Entries include (vendor in parentheses where the file gives one): Junie (JetBrains), ZeroClaw, Gemini CLI (Google), Autohand Code CLI, OpenCode (SST), OpenHands, Mux (Coder), Cursor, Amp, Letta, Firebender, Goose (Block), GitHub Copilot (Microsoft/GitHub), VS Code (Microsoft), **Claude Code (Anthropic)**, **Claude (Anthropic)**, **"ChatGPT & Codex" (OpenAI, https://chatgpt.com/codex/)**, Piebald, Factory, pi, Databricks Genie Code, Agentman, TRAE, Spring AI, Roo Code, Mistral AI Vibe, Command Code, Ona, VT Code, Qodo, Laravel Boost, Emdash, Snowflake Cortex Code, Kiro, Workshop, Google AI Edge Gallery, nanobot, fast-agent, bub, Tabnine, Vita, Superconductor, **Deep Code ("DeepSeek terminal assistant")**, Pulumi Neo, Hermes Agent (Nous Research), OpenClaw.
 
-**Not present in the extracted list:** any xAI/Grok product, any Zhipu/Z.ai product, and DeepSeek's own first-party apps (only the third-party "Deep Code" terminal assistant references DeepSeek). Five entries of the 50 were not extracted, so absence is strong but not absolute — marked PARTIALLY VERIFIED for those three vendors.
+**Not present in the extracted list:** any xAI/Grok product, any Zhipu/Z.ai product, and DeepSeek's own first-party apps (only the third-party "Deep Code" terminal assistant references DeepSeek). Five entries of the 50 were not extracted, so absence is strong but not absolute — marked PARTIALLY VERIFIED for those three vendors. *(Superseded 2026-11-11, see section 7: the data file has 46 entries, the same 46 listed above; the three vendors are absent — VERIFIED.)*
 
 Third-party counts ("32 adopters as of March 2026", "40+ by mid-2026") are UNVERIFIED and superseded by the 50-entry data file above.
 
@@ -285,7 +285,62 @@ Ship a standard Agent Skill folder for Antigravity and Gemini CLI (installed int
 
 ---
 
+## 7. Re-check on 2026-11-11 (#289)
+
+Method: pages were downloaded with `curl --ssl-no-revoke` (this machine's Schannel could not reach the certificate revocation server; certificates were still validated) or read with WebFetch. Quotes below are verbatim from the downloaded HTML unless marked (WebFetch). Still unreachable: `help.openai.com` (403 with both methods) and `x.ai` (403). Logged-in app pages (grok.com, chat.z.ai, 智譜清言, chat.deepseek.com, gemini.google.com settings) were not checked.
+
+### Agent Skills adopters — VERIFIED
+
+- `agentskills.io` now opens; the Client Showcase is rendered in the browser from `docs/snippets/clients.jsx` (GitHub `agentskills/agentskills`, last commit 2026-08-09). The file has **46** entries — the same 46 names listed in section 0. No xAI/Grok, Zhipu/Z.ai, or DeepSeek first-party product. The "50 entries" in section 0 does not match the file.
+
+### ChatGPT / Codex
+
+- **Models — VERIFIED (`developers.openai.com/api/docs/models`):** "If you're not sure where to start, use GPT-6 Astra, our flagship model for complex reasoning and coding. Choose GPT-6.1 Sol to balance intelligence and cost, or GPT-6 Luna for cost-sensitive, high-volume workloads." Flagship model IDs: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`.
+- **Codex skills — VERIFIED:** `developers.openai.com/codex/skills` redirects (308) to `learn.chatgpt.com/docs/build-skills`. "Codex reads skills from repository, user, admin, and system locations." "Codex scans `.agents/skills` in every directory from your current working directory up to the repository root." Locations: `$REPO_ROOT/.agents/skills`, `$HOME/.agents/skills`, `/etc/codex/skills`, and skills bundled with Codex. "In Codex CLI or the IDE extension, run `/skills` or type `$` to mention a skill." The page does not mention `~/.codex/skills`.
+- **Custom GPT / Custom Instructions limits — still BLOCKED** (`help.openai.com`, 403).
+
+### Claude — VERIFIED (`platform.claude.com/docs/en/about-claude/models/overview`)
+
+- "If you’re unsure which model to use, start with Claude Opus 5.5 for most workloads." Current models: `claude-fable-5-2`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` (all 1M context, 128K max output). Legacy models (still available) include Claude Fable 5.1, Fable 5, Opus 5, Opus 4.8, 4.7, 4.6, 4.5, Sonnet 5, Sonnet 4.6, Haiku 4.5.
+
+### Grok — VERIFIED (`docs.x.ai`)
+
+- **Models (`docs.x.ai/developers/models`):** "Your choice depends on your use case. We have dedicated models and APIs for audio, image, and video capabilities. For everything else, including code, use Grok 4.7. It is the most capable model we’ve built." Text models: `grok-4.7`, `grok-4.6`, `grok-4.5`, `grok-4.3`, `grok-4.20-0309-reasoning`, `grok-4.20-0309-non-reasoning`, `grok-build-0.1`, `grok-4.20-multi-agent-0309`, each 500k context. `grok-4.6` carries no deprecation label. No bare `grok-4.20` and no Grok 5. The script default stays `grok-4.6` (maintainer decision, 2026-11-11).
+- **Tools (`docs.x.ai/developers/tools/overview`):** built-in tools Web Search, X Search, Code Interpreter, Image Generation, Collections Search; function calling: "Custom functions you define that the model can invoke".
+- **Naming:** the docs site title is "SpaceXSI Docs" and the release-notes page names the organization "SpaceX Super Intelligence"; "SpaceXAI" (section 3) does not appear. The date of the rename is not stated.
+
+### GLM / Z.ai
+
+- **API — VERIFIED (`docs.z.ai/guides/llm/glm-5`, WebFetch):** OpenAI SDK base URL `https://api.z.ai/api/paas/v4/`; GLM-5 context 200K, max output 128K; Function Call supported.
+- **Anthropic-compatible endpoint — VERIFIED (`docs.z.ai/devpack/tool/claude`, WebFetch):** `ANTHROPIC_BASE_URL` = `https://api.z.ai/api/anthropic`.
+- **Models — VERIFIED (`docs.z.ai/guides/overview/pricing`, WebFetch):** Latest Models GLM-5.3, GLM-5.3-Flash, GLM-5.3-FlashX; text models also list GLM-5.2, GLM-5.1, GLM-5, GLM-4.7, GLM-4.6. No recommendation or deprecation labels.
+- **License — VERIFIED (Hugging Face `zai-org/GLM-5.3`, WebFetch):** "GLM-5.3 License", a custom license (not MIT or Apache); a Model-as-a-Service licensee whose revenue exceeds 10 billion US dollars over 12 months "must pass Z.AI's security review before using the Software or its derivative works for any commercial purpose".
+- **BigModel base URL — not stated** on `docs.bigmodel.cn` (home and model overview; `open.bigmodel.cn` docs redirect there).
+
+### DeepSeek — VERIFIED (`api-docs.deepseek.com`, `huggingface.co`)
+
+- **Models & Pricing:** `deepseek-flash` (DeepSeek-V4.1-Flash-1017) and `deepseek-v4-pro` (DeepSeek-V4-Pro-0813); 1M context; max output 384K; Json Output and Tool Calls supported. "The legacy names deepseek-v4-flash and deepseek-v4-flash-vision-exp are still accepted, but the corresponding models have been retired".
+- **V4 Preview (2026-04-24):** V4-Pro "1.6T total / 49B active params"; V4-Flash "284B total / 13B active params"; "deepseek-chat & deepseek-reasoner will be fully retired and inaccessible after Jul 24th, 2026, 15:59 (UTC Time)."
+- **Strict tool calling (Tool Calls guide):** "strict Mode (Beta)"; requires `base_url="https://api.deepseek.com/beta"` and every function's `strict` set to `true`.
+- **Claude Code (Agent Integrations → Claude Code):** `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`, `ANTHROPIC_MODEL=deepseek-flash[1m]`, plus `ANTHROPIC_DEFAULT_*_MODEL` variables.
+- **License (Hugging Face `deepseek-ai/DeepSeek-V4-Pro-0813`):** "This repository and the model weights are licensed under the MIT License."
+
+### Gemini
+
+- **Models — VERIFIED (`ai.google.dev/gemini-api/docs/models` → 301 to `aistudio.google.com/docs/models`, WebFetch):** "For any new projects, use our latest models: 3.5 Flash-Lite or 3.8 Flash." `gemini-3.8-flash` is labeled New.
+- **`system_instruction` with `previous_interaction_id` — VERIFIED (`aistudio.google.com/docs/interactions-overview`):** "The `previous_interaction_id` parameter preserves only the conversation history (inputs and outputs)"; `tools`, `system_instruction`, and `generation_config` are interaction-scoped: "you must re-specify these parameters in each new interaction if you want them to apply."
+- **Skills in the Gemini API — VERIFIED absent:** the docs index (`aistudio.google.com/llms.txt`) lists only the `google-gemini/gemini-skills` repo and plugin for coding assistants; there is no Skills feature in the API itself.
+- **Still not documented:** JSON mode without a schema (structured-output page) and `json_object` on the OpenAI-compatible endpoint (0 occurrences). Skills in the Gemini app: no official page found.
+
+### Impact Radar reprint (G-IR) — VERIFIED
+
+- The SimSpace URL now returns the PDF; page 1 reads "7 October 2025 - ID G00830315", matching the user-provided PDF. The PDF was not committed.
+
+---
+
 ## Cross-platform summary (as of 2026-09-09)
+
+> 2026-11-11 的重新查證見第 7 節；本表保留 2026-09-09 的判定。
 
 | Platform | Native reusable-skill format | SKILL.md (agentskills.io) support | Chat-app "project" container | Evidence tier |
 |---|---|---|---|---|
@@ -357,3 +412,26 @@ Ship a standard Agent Skill folder for Antigravity and Gemini CLI (installed int
 | Gemini API OpenAI compatibility | https://ai.google.dev/gemini-api/docs/openai | 2026-10-14 | 2026-10-22 | VERIFIED; base URL, beta |
 | googleapis/python-genai README | https://github.com/googleapis/python-genai | n/a | 2026-10-22 | VERIFIED; GEMINI_API_KEY / GOOGLE_API_KEY precedence |
 | Gemini API libraries | https://ai.google.dev/gemini-api/docs/libraries | 2026-10-15 | 2026-10-22 | VERIFIED; google-genai; legacy library deprecated 2025-11-30 |
+| Agent Skills client showcase data (re-check) | https://github.com/agentskills/agentskills/blob/main/docs/snippets/clients.jsx | last commit 2026-08-09 | 2026-11-11 | VERIFIED; 46 entries |
+| agentskills.io (site, re-check) | https://agentskills.io | n/a | 2026-11-11 | VERIFIED; opens; showcase rendered from clients.jsx |
+| OpenAI API models (re-check) | https://developers.openai.com/api/docs/models | n/a | 2026-11-11 | VERIFIED; Astra / 6.1 Sol / 6.1 Terra / Luna |
+| Codex "Build skills" (re-check) | https://learn.chatgpt.com/docs/build-skills | n/a | 2026-11-11 | VERIFIED; redirected from developers.openai.com/codex/skills |
+| Creating and editing GPTs (re-check) | https://help.openai.com/en/articles/8554397-creating-and-editing-gpts | n/a | 2026-11-11 | BLOCKED; 403 |
+| Claude models overview (re-check) | https://platform.claude.com/docs/en/about-claude/models/overview | n/a | 2026-11-11 | VERIFIED; Fable 5.2 / Opus 5.5 / Sonnet 5.5 / Haiku 5.5 |
+| xAI models | https://docs.x.ai/developers/models | n/a | 2026-11-11 | VERIFIED; "use Grok 4.7"; grok-4.6 listed |
+| xAI tools overview (re-check) | https://docs.x.ai/developers/tools/overview | n/a | 2026-11-11 | VERIFIED; built-in tools, function calling |
+| xAI release notes | https://docs.x.ai/developers/release-notes | n/a | 2026-11-11 | VERIFIED; "SpaceX Super Intelligence" |
+| Z.ai GLM-5 docs (re-check) | https://docs.z.ai/guides/llm/glm-5 | n/a | 2026-11-11 | VERIFIED (WebFetch); base URL, 200K / 128K, Function Call |
+| Z.ai Claude Code setup | https://docs.z.ai/devpack/tool/claude | n/a | 2026-11-11 | VERIFIED (WebFetch); api.z.ai/api/anthropic |
+| Z.ai pricing / model list | https://docs.z.ai/guides/overview/pricing | n/a | 2026-11-11 | VERIFIED (WebFetch); GLM-5.3 family, GLM-4.6 / 4.7 listed |
+| zai-org/GLM-5.3 license (HF) | https://huggingface.co/zai-org/GLM-5.3/blob/main/LICENSE | n/a | 2026-11-11 | VERIFIED (WebFetch); GLM-5.3 License |
+| DeepSeek V4 Preview Release (re-check) | https://api-docs.deepseek.com/news/news260424 | 2026-04-24 | 2026-11-11 | VERIFIED; 1.6T / 49B; legacy names retired 2026-07-24 |
+| DeepSeek-V4-Pro GA Release (re-check) | https://api-docs.deepseek.com/news/news260813/ | 2026-08-13 | 2026-11-11 | VERIFIED |
+| DeepSeek Models & Pricing | https://api-docs.deepseek.com/quick_start/pricing | n/a | 2026-11-11 | VERIFIED; deepseek-flash, deepseek-v4-pro |
+| DeepSeek Tool Calls | https://api-docs.deepseek.com/guides/tool_calls | n/a | 2026-11-11 | VERIFIED; strict mode (Beta) |
+| DeepSeek Claude Code integration | https://api-docs.deepseek.com/quick_start/agent_integrations/claude_code | n/a | 2026-11-11 | VERIFIED; ANTHROPIC_BASE_URL |
+| deepseek-ai/DeepSeek-V4-Pro-0813 (HF, re-check) | https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813 | n/a | 2026-11-11 | VERIFIED; MIT License |
+| Gemini API models (re-check) | https://aistudio.google.com/docs/models | n/a | 2026-11-11 | VERIFIED (WebFetch); recommendation unchanged |
+| Gemini Interactions API overview | https://aistudio.google.com/docs/interactions-overview | n/a | 2026-11-11 | VERIFIED; system_instruction is interaction-scoped |
+| Gemini docs index | https://aistudio.google.com/llms.txt | n/a | 2026-11-11 | VERIFIED; no API Skills feature |
+| G-IR SimSpace reprint | https://simspace.com/wp-content/uploads/2026/04/Emerging_Tech_Impact_830315_ndx.pdf | 2025-10-07 | 2026-11-11 | VERIFIED; ID G00830315 matches |

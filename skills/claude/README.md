@@ -9,7 +9,7 @@ role: readme
 
 | 層級 | 內容 | 查證狀態（2026-09-09） |
 |---|---|---|
-| 模型 | Claude Fable 5.1（`claude-fable-5-1`）、Claude Opus 5（`claude-opus-5`）、Claude Sonnet 5（`claude-sonnet-5`）、Claude Haiku 4.5（`claude-haiku-4-5-20251001`）；5 系列 1M context | 已查證（platform.claude.com 模型總覽） |
+| 模型 | Claude Fable 5.2（`claude-fable-5-2`）、Claude Opus 5.5（`claude-opus-5-5`）、Claude Sonnet 5.5（`claude-sonnet-5-5`）、Claude Haiku 5.5（`claude-haiku-5-5`），都是 1M context；官方建議不確定時從 Opus 5.5 開始。Fable 5.1、Opus 5、Sonnet 5、Haiku 4.5 等列為舊版、仍可使用 | 已查證（platform.claude.com 模型總覽，2026-11-11） |
 | 承載應用 | claude.ai（網頁／桌面／行動）、Claude Code（終端、IDE、桌面、瀏覽器）、Claude Developer Platform（Messages API + Skills API `/v1/skills`）、Claude Agent SDK | 已查證 |
 | 原生技能機制 | **Agent Skills**（`SKILL.md` + 選用 `scripts/`、`references/`、`assets/`），遵循 agentskills.io 開放標準 | 已查證 |
 | 技能可用位置 | claude.ai：Settings > Features 上傳 zip（Pro/Max/Team/Enterprise，需啟用 code execution，技能為個人所有）；API：`/v1/skills` 上傳，搭配 code execution 工具，工作區共用；Claude Code：`~/.claude/skills/`（個人）或 `.claude/skills/`（專案）；Agent SDK：`settingSources` 載入 | 已查證 |

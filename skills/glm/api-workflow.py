@@ -4,7 +4,7 @@ GLM（Zhipu AI / Z.ai）API 工作流程：先制型曝險分析（Preemptive Ex
 
 用途
   以 skills/shared/core-prompt.md 作為 system prompt，讀入 examples/synthetic-org/ 的 9 個輸入檔，
-  透過 GLM 的 OpenAI 相容端點（預設）或 Anthropic 相容端點（--anthropic-compatible，待驗證）
+  透過 GLM 的 OpenAI 相容端點（預設）或 Anthropic 相容端點（--anthropic-compatible；端點已查證，本腳本沒有實測）
   產出 Markdown 報告與符合 output-schema.json 的 JSON。
   載入輸入、授權範圍守門、組提示詞、兩段式對話、解析與存檔都由 skills/shared/analysis_workflow.py
   （分析工作流程核心）負責；本檔只是 GLM 的模型 adapter（兩種端點各一種呼叫方式）。
@@ -19,14 +19,14 @@ GLM（Zhipu AI / Z.ai）API 工作流程：先制型曝險分析（Preemptive Ex
   GLM_API_KEY        必要（--dry-run 時不需要）
   GLM_BASE_URL       預設 https://api.z.ai/api/paas/v4（國際版 Z.ai API Platform）
                      中國大陸 BigModel 可改為 https://open.bigmodel.cn/api/paas/v4
-                     ※ 正確的 base URL 請以 docs.z.ai 或 open.bigmodel.cn 官方文件為準（本檔撰寫時官方站台無法直接查證）。
-  GLM_MODEL          預設 glm-5.3（※ 模型 ID 請以官方模型列表確認；zai-org/GLM-5 README 記載 GLM-5.3 / GLM-5.3-Flash）
-  GLM_ANTHROPIC_BASE_URL  預設 https://api.z.ai/api/anthropic（僅 --anthropic-compatible 使用；PARTIALLY VERIFIED）
+                     ※ Z.ai 的 base URL 已依 docs.z.ai 查證（2026-11-11）；BigModel 的 base URL 官方文件沒寫，請以官方為準。
+  GLM_MODEL          預設 glm-5.3（※ docs.z.ai 價格頁的 Latest Models 是 GLM-5.3、GLM-5.3-Flash、GLM-5.3-FlashX，2026-11-11 查證）
+  GLM_ANTHROPIC_BASE_URL  預設 https://api.z.ai/api/anthropic（僅 --anthropic-compatible 使用；docs.z.ai 已查證）
 
 用法
   python3 skills/glm/api-workflow.py --dry-run                 # 只跑流程、印出提示詞，不呼叫 API、不需 SDK
   python3 skills/glm/api-workflow.py                           # OpenAI 相容端點（需 pip install openai）
-  python3 skills/glm/api-workflow.py --anthropic-compatible    # Anthropic 相容端點（需 pip install anthropic；待驗證）
+  python3 skills/glm/api-workflow.py --anthropic-compatible    # Anthropic 相容端點（需 pip install anthropic；本腳本沒有實測）
   python3 skills/glm/api-workflow.py --input-dir /path/to/dir  # 以自己的資料夾取代合成資料
   python3 skills/glm/api-workflow.py --dry-run --exclude threat_intel   # 模擬缺漏（驗收第 6 項）
   python3 skills/glm/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
@@ -50,9 +50,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
 import analysis_workflow  # noqa: E402
 
-DEFAULT_BASE_URL = "https://api.z.ai/api/paas/v4"           # 請以 docs.z.ai 官方文件確認
-ALT_BASE_URL_CN = "https://open.bigmodel.cn/api/paas/v4"    # BigModel（中國大陸）替代端點，請以官方文件確認
-DEFAULT_ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"  # PARTIALLY VERIFIED（第三方引述 docs.z.ai）
+DEFAULT_BASE_URL = "https://api.z.ai/api/paas/v4"           # docs.z.ai GLM-5 頁（2026-11-11 查證）
+ALT_BASE_URL_CN = "https://open.bigmodel.cn/api/paas/v4"    # BigModel（中國大陸）替代端點；官方文件沒寫，請以官方為準
+DEFAULT_ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"  # docs.z.ai/devpack/tool/claude（2026-11-11 查證）
 
 
 class GlmAdapter:
@@ -73,13 +73,13 @@ class GlmAdapter:
     def add_arguments(self, parser):
         parser.add_argument("--max-tokens", type=int, default=16000, help="每段回應的最大輸出 token")
         parser.add_argument("--anthropic-compatible", action="store_true",
-                            help="改用 Anthropic 相容端點（https://api.z.ai/api/anthropic；待驗證）")
+                            help="改用 Anthropic 相容端點（https://api.z.ai/api/anthropic；本腳本沒有實測）")
 
     def describe(self, args):
         return [f"OpenAI 相容端點：{os.environ.get('GLM_BASE_URL', DEFAULT_BASE_URL)}"
                 + ("" if args.anthropic_compatible else "（本次使用）")
                 + f"；中國大陸 BigModel 可設 GLM_BASE_URL={ALT_BASE_URL_CN}",
-                f"Anthropic 相容端點（待驗證）：{os.environ.get('GLM_ANTHROPIC_BASE_URL', DEFAULT_ANTHROPIC_BASE_URL)}"
+                f"Anthropic 相容端點（本腳本沒有實測）：{os.environ.get('GLM_ANTHROPIC_BASE_URL', DEFAULT_ANTHROPIC_BASE_URL)}"
                 + ("（本次使用）" if args.anthropic_compatible else "")]
 
     def generated_by(self, args):
@@ -113,7 +113,7 @@ class GlmAdapter:
         return self._clients["openai"]
 
     def _anthropic_client(self):
-        """Anthropic 相容端點（GLM Coding Plan 所用）。狀態：PARTIALLY VERIFIED／待驗證。
+        """Anthropic 相容端點（GLM Coding Plan 所用）。端點已依 docs.z.ai 查證（2026-11-11），本腳本沒有實測。
         注意：第三方引述的 Z.ai 條款指出 Coding Plan 額度僅限在 Z.ai 認可的 coding 工具內使用；
         以此端點跑本腳本是否符合方案條款，請自行向 Z.ai 官方確認。"""
         if "anthropic" not in self._clients:

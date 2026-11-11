@@ -4,7 +4,7 @@ Grok（xAI）API 工作流程：先制型曝險分析（Preemptive Exposure Anal
 
 用途
   以 skills/shared/core-prompt.md 作為 system prompt，讀入 examples/synthetic-org/ 的 9 個輸入檔，
-  透過 xAI API（xai_sdk，預設）或 OpenAI 相容端點（--compat，待驗證）產出 Markdown 報告與符合
+  透過 xAI API（xai_sdk，預設）或 OpenAI 相容端點（--compat，沒有實測）產出 Markdown 報告與符合
   output-schema.json 的 JSON。
   載入輸入、授權範圍守門、組提示詞、兩段式對話、解析與存檔都由 skills/shared/analysis_workflow.py
   （分析工作流程核心）負責；本檔只是 Grok 的模型 adapter（兩種呼叫方式各一種）。
@@ -18,17 +18,18 @@ Grok（xAI）API 工作流程：先制型曝險分析（Preemptive Exposure Anal
     依 github.com/xai-org/xai-sdk-python 的 README 與 src/xai_sdk/chat.py 撰寫（已查證），
     但 SDK 版本更新後可能變動，執行前請對照官方 README。
   - 模型 ID 預設 grok-4.6（SDK README 範例值）；請以 docs.x.ai 模型列表確認。
-  - --compat：OpenAI 相容端點（https://api.x.ai/v1）的相容性「待驗證」，僅作為替代路徑。
+  - --compat：OpenAI 相容端點（https://api.x.ai/v1）。docs.x.ai 的 REST API reference 寫「compatible with the OpenAI REST API」，
+    quickstart 以 OpenAI SDK 搭配 base_url https://api.x.ai/v1（2026-11-11 查證）；本腳本這條路徑沒有實測，僅作為替代路徑。
 
 環境變數（勿寫入程式碼、勿提交到 git）
   XAI_API_KEY          必要（--dry-run 時不需要）
   XAI_MODEL            預設 grok-4.6
-  XAI_COMPAT_BASE_URL  預設 https://api.x.ai/v1（僅 --compat 使用；待驗證）
+  XAI_COMPAT_BASE_URL  預設 https://api.x.ai/v1（僅 --compat 使用；官方文件已查證）
 
 用法
   python3 skills/grok/api-workflow.py --dry-run            # 只跑流程、印出提示詞，不呼叫 API、不需 SDK
   python3 skills/grok/api-workflow.py                      # xai_sdk（pip install -r skills/grok/requirements.txt）
-  python3 skills/grok/api-workflow.py --compat             # OpenAI 相容端點（同一份 requirements 已含 openai；待驗證）
+  python3 skills/grok/api-workflow.py --compat             # OpenAI 相容端點（同一份 requirements 已含 openai；沒有實測）
   python3 skills/grok/api-workflow.py --input-dir <dir>    # 自己的資料夾
   python3 skills/grok/api-workflow.py --dry-run --exclude threat_intel   # 模擬缺漏（驗收第 6 項）
   python3 skills/grok/api-workflow.py --dry-run --exclude scope          # 模擬缺 scope（驗收第 7 項，應中止）
@@ -54,7 +55,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
 import analysis_workflow  # noqa: E402
 
-COMPAT_BASE_URL = "https://api.x.ai/v1"  # OpenAI 相容端點（待驗證）
+COMPAT_BASE_URL = "https://api.x.ai/v1"  # OpenAI 相容端點（docs.x.ai quickstart，2026-11-11 查證；本腳本沒有實測）
 
 
 class GrokAdapter:
@@ -73,12 +74,12 @@ class GrokAdapter:
         self._clients = {}   # 兩種呼叫方式各自建立、各自快取 client
 
     def add_arguments(self, parser):
-        parser.add_argument("--compat", action="store_true", help="改用 OpenAI 相容端點（待驗證）")
+        parser.add_argument("--compat", action="store_true", help="改用 OpenAI 相容端點（沒有實測）")
 
     def describe(self, args):
         compat_url = os.environ.get("XAI_COMPAT_BASE_URL", COMPAT_BASE_URL)
         return ["xai_sdk" + ("" if args.compat else "（本次使用）") + "；未啟用伺服器端工具",
-                f"OpenAI 相容端點（待驗證）：{compat_url}" + ("（本次使用）" if args.compat else "")]
+                f"OpenAI 相容端點（沒有實測）：{compat_url}" + ("（本次使用）" if args.compat else "")]
 
     def generated_by(self, args):
         path = "OpenAI 相容端點" if args.compat else "xai_sdk"
@@ -114,7 +115,7 @@ class GrokAdapter:
         return self._clients["xai_sdk"]
 
     def _openai_client(self):
-        """替代路徑：OpenAI 相容端點（相容性待驗證）。"""
+        """替代路徑：OpenAI 相容端點（官方文件寫相容，2026-11-11 查證；本腳本沒有實測）。"""
         if "openai" not in self._clients:
             try:
                 from openai import OpenAI  # type: ignore  # 延遲載入：--dry-run 不需要 SDK
