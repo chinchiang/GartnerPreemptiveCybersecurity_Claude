@@ -100,6 +100,14 @@ gh run download <run-id> -n verify-report-and-screenshots -D scratch/<目錄>
 for f in scratch/<目錄>/verify-screenshots/*.png; do cmp -s "$f" "verify-screenshots/${f##*/}" || echo "不同：${f##*/}"; done
 ```
 
+## Windows 本機（Git Bash）
+
+直接在 Windows 那一側操作時（不經 WSL）：
+
+- **`curl` 連 HTTPS 失敗，出現 `CRYPT_E_REVOCATION_OFFLINE`**：Schannel 連不到憑證撤銷伺服器。讀公開文件時加 `--ssl-no-revoke`，憑證照常驗證，只略過撤銷檢查。WebFetch 回的是小模型的摘要，逐字引文要用 `curl` 下載的原始 HTML 核對（#289 的「SpaceXSI」就是這樣確認的）。
+- **`python3 skills/<平臺>/api-workflow.py --dry-run` 以結束碼 1 結束**：cp950 的主控台印不出輸出。指令前面加 `PYTHONIOENCODING=utf-8`；`main` 上也一樣，不是改動造成的。
+- **node 讀不到 Git Bash 的 `/tmp` 路徑**：用 `cygpath -m <路徑>` 轉成 Windows 路徑再傳給 node，或把暫存檔放在 `scratch/`。
+
 ## 搜尋：用 `rg`
 
 搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 與 Gemini 技能 `scripts/` 的複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與詞彙表測試都會跟著略過。
