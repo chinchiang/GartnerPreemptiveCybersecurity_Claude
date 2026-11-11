@@ -16,6 +16,8 @@
 
 執行 `handoff` 時，交接檔一律儲存至 `scratch/handoff-<timestamp>.md`，取代技能預設的暫存路徑；完成後提供實際路徑。系統暫存目錄（例如 Windows 的 `%TEMP%`）在關機或清理時可能被刪除，`scratch/` 已列在 `.gitignore`，不會被提交。
 
+交接檔只寫現況、下一步與待決定的事；可以重複用的做法寫進 `docs/agents/workflow.md`，審查要判斷的規則寫進 `CODING_STANDARDS.md`。`scratch/` 不會跟著 push，所以「現況」第一行寫出產生交接檔的機器與作業系統，並列出下一步會用到的 `scratch/` 檔案。
+
 ## 文件讀取時機
 
 ### 議題追蹤（Issue tracking）

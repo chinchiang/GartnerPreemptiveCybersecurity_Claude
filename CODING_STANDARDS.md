@@ -6,6 +6,7 @@
 
 - 部署指南第 5 節維護表（`docs/guides/deployment.md`）裡對應的那一列，「改哪裡」「之後要做什麼」都要跟著改。新增 `scripts/` 的 `.mjs`，或改了它的用途時，檔頭第一行「`檔名 — 一句說明`」要寫得準確：第 1 節的 `scripts/` 清單由建置從這一行產生。格式和漏列由測試守住，審查時要判斷的是那句說明有沒有寫對。
 - 文件裡寫死的數字要一起改齊，例如驗收的項數、檢查的項數、筆數。審查時用 `rg` 搜出所有出現的地方逐一核對。
+- 改了某個平臺的查證狀態（`data/platforms.js`、`data/sources.js`、教學或 README 的查證表），同一個技能包裡的其他說法也要一起改：`api-workflow.py` 的 docstring、註解與 `--help`／`--dry-run` 印出的字串，以及 `SKILL.md`、`system-prompt.md`、README 的其他節。審查時用 `git grep -n -E "待驗證|PARTIALLY|部分查證" -- skills/<平臺> ':!*/references/*'` 掃出每一處逐一核對（`references/` 是建置產生的複本，要改的是母本）。#289 的 code-review 抓到的 10 項大多是這類。
 
 ## 2. 測試的預期值有獨立的來源
 
