@@ -36,6 +36,14 @@
 
 執行測試、建置、驗證，或處理提交（Commit）與拉取請求（Pull Request，PR）前，先讀 `docs/agents/workflow.md`。
 
+### 給使用者執行的腳本與手動驗收（Manual acceptance）
+
+寫給使用者執行的腳本（例如 wizard），或進行對話驗證前，先讀 `docs/agents/manual-acceptance.md`。
+
+### 外部 SDK（External SDK）
+
+核對平臺 SDK 的型別或行為，或下載 SDK 前，先讀 `docs/agents/external-sdk.md`。
+
 ### 變更審查（Change review）
 
 審查變更時，先讀 `CODING_STANDARDS.md`，逐條套用。
