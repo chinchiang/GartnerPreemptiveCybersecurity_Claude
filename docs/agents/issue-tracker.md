@@ -5,7 +5,7 @@
 ## 慣例
 
 - **建立 issue**：`gh issue create --title "..." --body "..."`；多行內容用 heredoc。
-- **讀取 issue**：`gh issue view <number> --comments`，並一併取得標籤。
+- **讀取 issue**：`gh issue view <number> --json title,state,body,labels,comments --jq '.title, .state, ([.labels[].name] | join(",")), .body, (.comments[].body)'`，依序印出標題、狀態、標籤、本文與留言，內容是原文、不經 JSON 跳脫。一律用 `--json` 讀：輸出不是 TTY 時（代理的 shell 就是），`gh` 的留言選項只印留言，沒有留言就什麼都不印，結束碼照樣是 0（#298）。
 - **列出 issue**：`gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`，依需要加上 `--label`、`--state` 篩選。
 - **留言**：`gh issue comment <number> --body "..."`
 - **加上／移除標籤**：`gh issue edit <number> --add-label "..."`／`--remove-label "..."`
@@ -18,7 +18,7 @@
 
 設為 `yes` 時，PR 走與 issue 相同的標籤與狀態，改用對應的 `gh pr` 指令：
 
-- **讀取 PR**：`gh pr view <number> --comments`，diff 用 `gh pr diff <number>`。
+- **讀取 PR**：`gh pr view <number> --json title,state,body,labels,comments --jq '.title, .state, ([.labels[].name] | join(",")), .body, (.comments[].body)'`，理由同上；diff 用 `gh pr diff <number>`。
 - **列出待 triage 的外部 PR**：`gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments`，只保留 `authorAssociation` 為 `CONTRIBUTOR`、`FIRST_TIME_CONTRIBUTOR`、`NONE` 的項目（排除 `OWNER`／`MEMBER`／`COLLABORATOR`）。
 - **留言／標籤／關閉**：`gh pr comment`、`gh pr edit --add-label`／`--remove-label`、`gh pr close`。
 
@@ -30,7 +30,7 @@ GitHub 的 issue 與 PR 共用同一組編號，單寫 `#42` 可能是兩者之�
 
 ## 技能說「取得相關 ticket」時
 
-執行 `gh issue view <number> --comments`。
+執行「慣例」裡「讀取 issue」那一條的指令。
 
 ## Wayfinding 操作
 
