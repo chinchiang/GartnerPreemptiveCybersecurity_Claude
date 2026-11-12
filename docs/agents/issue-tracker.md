@@ -5,7 +5,9 @@
 ## 慣例
 
 - **建立 issue**：`gh issue create --title "..." --body "..."`；多行內容用 heredoc。
-- **讀取 issue**：`gh issue view <number> --json title,state,body,labels,comments --jq '.title, .state, ([.labels[].name] | join(",")), .body, (.comments[].body)'`，依序印出標題、狀態、標籤、本文與留言，內容是原文、不經 JSON 跳脫。一律用 `--json` 讀：輸出不是 TTY 時（代理的 shell 就是），`gh` 的留言選項只印留言，沒有留言就什麼都不印，結束碼照樣是 0（#298）。
+- **讀取 issue**：`gh issue view <number> --json number,title,state,body,labels,comments --jq '"===== #\(.number) \(.title)", "state: \(.state)", "labels: \([.labels[].name] | join(",") | if . == "" then "(none)" else . end)", "===== body", .body, ((.comments | length) as $n | .comments | to_entries[] | "===== comment \(.key + 1)/\($n) \(.value.author.login) \(.value.createdAt)", .value.body), "===== end"'`
+  - **輸出**：本文與每則留言各自由一行 `=====` 起頭，最後一行是 `===== end`，內容是原文，用 `grep -n '^====='` 切開。分隔行不用 `## `，因為本文與留言裡常有 `## ` 開頭的標題（#300）。
+  - **理由**：輸出不是 TTY 時（代理的 shell 就是），`gh` 的留言選項只印留言，沒有留言就什麼都不印，結束碼照樣是 0，所以一律用 `--json` 讀（#298）。
 - **列出 issue**：`gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`，依需要加上 `--label`、`--state` 篩選。
 - **留言**：`gh issue comment <number> --body "..."`
 - **加上／移除標籤**：`gh issue edit <number> --add-label "..."`／`--remove-label "..."`
@@ -18,7 +20,7 @@
 
 設為 `yes` 時，PR 走與 issue 相同的標籤與狀態，改用對應的 `gh pr` 指令：
 
-- **讀取 PR**：`gh pr view <number> --json title,state,body,labels,comments --jq '.title, .state, ([.labels[].name] | join(",")), .body, (.comments[].body)'`，理由同上；diff 用 `gh pr diff <number>`。
+- **讀取 PR**：「讀取 issue」那一條的指令，把 `gh issue view` 換成 `gh pr view`，其餘（`--json` 的欄位、`--jq`）照抄；diff 用 `gh pr diff <number>`。
 - **列出待 triage 的外部 PR**：`gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments`，只保留 `authorAssociation` 為 `CONTRIBUTOR`、`FIRST_TIME_CONTRIBUTOR`、`NONE` 的項目（排除 `OWNER`／`MEMBER`／`COLLABORATOR`）。
 - **留言／標籤／關閉**：`gh pr comment`、`gh pr edit --add-label`／`--remove-label`、`gh pr close`。
 
