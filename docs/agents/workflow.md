@@ -171,6 +171,10 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
     ```
     gh run rerun <run-id> --failed
     ```
+  - **Install Playwright 那一步幾秒內就失敗**：訊息是 `Playwright does not support chromium on ubuntu<版本>`，代表 runner image 換了 Playwright 不支援的版本，不是逾時，不要重跑。用下面的指令比對失敗的 run 與上一次通過的 run 的 runner image，把 `ci.yml` 的 browser job 釘在通過的那個版本，再開 issue 追蹤升級 Playwright，升級之後改回 `ubuntu-latest`。
+    ```
+    gh run view <run-id> --log | grep -m1 -E '^browser.*Image: '
+    ```
 
 ## Triage
 
