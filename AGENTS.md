@@ -26,7 +26,7 @@
 
 ### 議題分流（Triage）
 
-進行議題分流或設定分流標籤前，先讀 `docs/agents/triage-labels.md`。
+進行議題分流、開議題、寫 brief、設定分流標籤，或在議題留言前，先讀 `docs/agents/triage-labels.md` 與 `docs/agents/workflow.md` 的 Triage 一節。
 
 ### 領域文件（Domain documentation）
 
