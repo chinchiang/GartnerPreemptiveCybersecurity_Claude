@@ -38,8 +38,8 @@ curl -fsSLO "https://nodejs.org/dist/latest-v22.x/$f" && grep " $f\$" SHASUMS256
 
 | 環境 | 狀態 |
 |---|---|
-| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 要有 `npm ci` 裝的 `playwright@1.56.1`（clone 之後沒有，要先裝；它是純 JS，見下段），`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1194。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。結果和 CI 一致（報告除了執行時間逐行相同） |
-| WSL（Ubuntu 26.04） | 還不能用。Playwright 1.56.1 不支援這個版本，`install-deps` 會拒絕，要手動 `sudo apt install libnss3 libnspr4 libasound2t64`；再用 Linux 版 node 同目錄的 npm（`~/.local/opt/node-v24.19.0-linux-x64/bin/npm`，PATH 上的 `npm` 是 Windows 版）執行 `npx playwright install chromium-headless-shell`。尚未實測（#73） |
+| Windows（Git Bash、PowerShell） | 可用。`node_modules/` 要有 `npm ci` 裝的 `playwright@1.65.0`（clone 之後沒有，要先裝；它是純 JS，見下段），`%LOCALAPPDATA%\ms-playwright\` 有它要的 chromium 1254。換了 lockfile 的版本就重跑 `npm ci` 與 `npx playwright install chromium`。升級前的版本實測過，結果和 CI 一致（報告除了執行時間逐行相同）；1.65.0 尚未在 Windows 實測（#312） |
+| WSL（Ubuntu 26.04） | 尚未實測（#73）。Playwright 1.61.0 起支援 Ubuntu 26.04（#312 查過 npm 上各版的 `playwright-core`），1.65.0 也支援；PATH 上的 `npm` 是 Windows 版，要改用 Linux 版 node 同目錄的 npm（例如 `~/.local/opt/node-v24.19.0-linux-x64/bin/npm`） |
 
 只改到部分情境時，可以先用 `node.exe scripts/verify.mjs --only <情境>[,<情境>]` 在本機迭代：只跑指定的瀏覽器情境（名稱見 `scripts/verify.mjs` 的 `SCENARIOS`，有空白的名稱要加引號），不跑靜態檢查、不寫報告。PR 之前仍要跑完整驗證。
 
