@@ -73,7 +73,9 @@ test('手寫的檔案不使用專指的 _Avoid_ 詞（建置產生的檔案依 .
   const root = fileURLToPath(new URL('..', import.meta.url));
   const read = (path) => readFileSync(root + path, 'utf8');
   const ignored = ignoreMatcher(read('.ignore'));
-  const tracked = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).stdout.split('\n');
+  const ls = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' });
+  assert.equal(ls.status, 0, `git ls-files 失敗，掃不到檔案：${ls.stderr}`);
+  const tracked = ls.stdout.split('\n');
   const files = tracked.filter(p => TEXT_FILE.test(p) && !NOT_SCANNED.includes(p) && !ignored(p)).map(path => ({ path, content: read(path) }));
   const hits = avoidHits(avoidTerms(read('GLOSSARY.md')), files, { excluded: EXCLUDED, allowed: ALLOWED });
   assert.deepEqual(hits.map(h => `${h.file}:${h.line} ${h.term}（改用「${h.entry}」）`), []);
