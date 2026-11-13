@@ -105,7 +105,7 @@ md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
 
 ## 搜尋：用 `rg`
 
-搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 與 Gemini 技能 `scripts/` 的複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與詞彙表測試都會跟著略過。
+搜尋用 `rg`（ripgrep），它會套用 `.ignore`，略過建置產生的檔案（`data/` 裡建置寫入的六個、`downloads/`、各平臺 `references/` 的複本、Claude 與 Gemini 技能 `scripts/` 的複本）；要改的是母本或來源。這裡的 `grep` 是 ugrep，和 `git grep` 一樣不讀 `.ignore`，會被內嵌整份文件的 `data/*.js` 淹沒。新增生成檔時，把它加進 `.ignore`，搜尋與對整個 repo 的檢查（`scripts/repo-files.mjs` 的 `handwrittenTextFiles`）都會跟著略過。
 
 `rg` 預設不搜隱藏目錄：`.out-of-scope/`、`.github/` 要加 `rg --hidden`，或改用 `git grep`。驗收條件寫成 `rg` 時要注意這一點。
 

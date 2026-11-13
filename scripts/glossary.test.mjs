@@ -4,26 +4,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { avoidTerms, ignoreMatcher, avoidHits } from './glossary.mjs';
+import { avoidTerms, avoidHits } from './glossary.mjs';
+import { handwrittenTextFiles } from './repo-files.mjs';
 
 test('從詞彙表解析出每個詞條的 _Avoid_ 詞', () => {
   const md = '# 詞彙表\n\n## Language\n\n**母本**：\n唯一來源檔案。\n_Avoid_: 原始檔、主檔\n\n**複本**：\n建置產生的檔案；\n不得手改。\n_Avoid_: 副本\n';
   assert.deepEqual(avoidTerms(md), [
     { entry: '母本', term: '原始檔' }, { entry: '母本', term: '主檔' }, { entry: '複本', term: '副本' }
   ]);
-});
-
-test('解析 .ignore 的小子集：目錄（結尾斜線）、* 萬用字元（不跨 /）、完整路徑；註解與空行略過', () => {
-  const ignored = ignoreMatcher('# 註解\n\ndata/case.js\ndownloads/\nskills/*/x/references/\n');
-  for (const path of ['data/case.js', 'downloads/skills-glm.zip', 'downloads/a/b.zip', 'skills/glm/x/references/a.md']) {
-    assert.equal(ignored(path), true, path);
-  }
-  for (const path of ['data/process.js', 'data/case.json', 'mydownloads/a.zip', 'skills/glm/y/references/a.md',
-                      'skills/a/b/x/references/a.md', '# 註解']) {
-    assert.equal(ignored(path), false, path);
-  }
 });
 
 test('找出命中：排除的一般詞彙不檢查；允許片語只遮掉它涵蓋的那一處；回報檔案與行號', () => {
@@ -65,18 +54,13 @@ const ALLOWED = [
   { term: '信心', phrase: '低信心情資', reason: '同上：confidence 低的威脅情資' },
   { term: '信心', phrase: '舊稱「信心」', reason: '說明改名前的名稱（#152），讓讀過舊文件或舊輸出的人對得上' }
 ];
-const TEXT_FILE = /\.(md|mjs|js|py|yml|json|html)$/;
 // 不掃描：詞彙表本身（_Avoid_ 詞的定義處），以及這支測試（單元測試的輸入與上面兩份清單本來就寫著 _Avoid_ 詞）
 const NOT_SCANNED = ['GLOSSARY.md', 'scripts/glossary.test.mjs'];
 
 test('手寫的檔案不使用專指的 _Avoid_ 詞（建置產生的檔案依 .ignore 略過）', () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const read = (path) => readFileSync(root + path, 'utf8');
-  const ignored = ignoreMatcher(read('.ignore'));
-  const ls = spawnSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' });
-  assert.equal(ls.status, 0, `git ls-files 失敗，掃不到檔案：${ls.stderr}`);
-  const tracked = ls.stdout.split('\n');
-  const files = tracked.filter(p => TEXT_FILE.test(p) && !NOT_SCANNED.includes(p) && !ignored(p)).map(path => ({ path, content: read(path) }));
+  const files = handwrittenTextFiles(root).filter(p => !NOT_SCANNED.includes(p)).map(path => ({ path, content: read(path) }));
   const hits = avoidHits(avoidTerms(read('GLOSSARY.md')), files, { excluded: EXCLUDED, allowed: ALLOWED });
   assert.deepEqual(hits.map(h => `${h.file}:${h.line} ${h.term}（改用「${h.entry}」）`), []);
 });
