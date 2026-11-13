@@ -21,7 +21,7 @@
 
 CI 的 Python 測試在 verify job，不在 unit job：Python 版本與步驟以 `ci.yml` 為準，寫 CI 的事實之前先看它或 job log。行為依 Python 版本而異時，CI 有的版本都要跑；Windows 本機有 `py -3.12`、`py -3.13`，沒有 3.11。遞迴上限就依版本而異（實測）：`json.loads` 在 3.12、3.13 約 3000 層；`json.dumps(indent=2)` 在 3.12 約 1000 層就超過，3.13 到 2500 層仍寫得出來。深層巢狀的測試案例用字串拼接，或用共用案例的 `nest` 欄位產生，不要經過測試自己的序列化。
 
-本機的 `node` 可能比 `engines` 的下限 22 新。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），兩版都要跑：CI 的 unit job 以 matrix 跑 22 與 24；本機沒有 22 時，從 nodejs.org 下載官方 tarball、核對 SHA256，解壓到 `scratch/node22/`（例如 `scratch/node22/node-v22.23.4-linux-x64/bin/node`）。全套檢查沒給 `--node22` 時會自動找那裡，有多個版本取最新的：
+先用 `node --version` 看 PATH 上的版本，再決定另外要補跑哪一版。改到依 Node 版本而異的行為時（例如 `node --test` 在非 TTY 時的預設輸出：22 是 TAP、24 是 spec），22 與 24 都要跑：CI 的 unit job 以 matrix 跑 22 與 24。本機就是 22 時，24 交給 CI（WSL 上先看 `node.exe --version`，它可能就是 24）；全套檢查加上 `--node22 "$(command -v node)"`，Node 22 那一步才不會因為找不到 `scratch/node22/` 而略過。本機不是 22 時，從 nodejs.org 下載 22 的官方 tarball、核對 SHA256，解壓到 `scratch/node22/`（例如 `scratch/node22/node-v22.23.4-linux-x64/bin/node`）；全套檢查沒給 `--node22` 時會自動找那裡，有多個版本取最新的：
 
 ```bash
 mkdir -p scratch/node22 && cd scratch/node22
@@ -131,7 +131,7 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 
 ## 改了來源就重建，產物一起提交
 
-改了什麼來源要重建、要一起提交哪些產物，以部署指南第 5 節的維護表為準（`docs/guides/deployment.md`）。原則是：改完來源就執行 `node scripts/build-data.mjs`，把產生的變動一起提交；CI 建置後會檢查整份工作樹必須沒有變動（生成檔為什麼要提交，見 ADR 0001）。
+改了什麼來源要重建、要一起提交哪些產物，以部署指南第 5 節的維護表為準（`docs/guides/deployment.md`）。原則是：改完來源，先執行 `node scripts/build-data.mjs`，再跑 `node --test scripts/*.test.mjs`，把產生的變動一起提交；CI 建置後會檢查整份工作樹必須沒有變動（生成檔為什麼要提交，見 ADR 0001）。順序反了時，「已提交的建置產物……跟用 repo 的來源重新建置的結果逐位元組相同」那一條會失敗，原因是產物還沒重建，不是程式壞了。
 
 合併衝突若發生在生成檔（`data/*.js`、ZIP、複本），以重建解決：`git checkout --theirs <檔>`，重建，再 `git add`。手寫檔照實解。
 
