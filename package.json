@@ -17,6 +17,6 @@
     "snapshot": "node scripts/run-demo.mjs > examples/demo-snapshot.txt"
   },
   "devDependencies": {
-    "playwright": "1.56.1"
+    "playwright": "1.65.0"
   }
 }

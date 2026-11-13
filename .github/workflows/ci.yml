@@ -123,8 +123,7 @@ jobs:
         run: node scripts/build-worker.mjs && node --check backend/dist/worker.js
 
   browser:
-    # Playwright 1.56.1 不支援 Ubuntu 26.04（ubuntu-latest 在 2026-11-13 換成 26.04）；升級 Playwright 之後改回 ubuntu-latest（#310）
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: [unit, verify]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
