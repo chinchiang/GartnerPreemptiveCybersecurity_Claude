@@ -212,4 +212,12 @@ describe('後端代理（backend/worker.js）的請求與上游處理', () => {
     assert.equal(r.status, 200);
     assert.equal(JSON.parse(upstream[0][1].body).max_completion_tokens, 8000);
   });
+
+  test('排除清單：excluded_assets 是 ["A01"] 時照常送出，A01 不在送出的資料裡（#164）', async () => {
+    const withExcluded = { ...scope, authorized_scope: { ...scope.authorized_scope, excluded_assets: ['A01'] } };
+    const bundle = { scope: withExcluded, assets: [{ asset_id: 'A01', name: 'vpn-gw-01' }, { asset_id: 'A02', name: 'erp-app-01' }] };
+    const r = await send(request(JSON.stringify({ bundle })));
+    assert.equal(r.status, 200);
+    assert.deepEqual(JSON.parse(sentJson(upstream[0])).assets.map(a => a.asset_id), ['A02']);
+  });
 });

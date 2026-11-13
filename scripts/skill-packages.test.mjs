@@ -128,7 +128,7 @@ for (const platform of ['chatgpt', 'deepseek', 'gemini', 'glm', 'grok']) {
 const masters = [
   { path: 'skills/shared/acceptance.md', content: '# 驗收清單\n\n| # | 檢查 |\n' },
   { path: 'skills/shared/analysis_workflow.py', content: '"""分析工作流程核心。"""\n\nimport json\n' },
-  { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入",\n  "properties": { "scope": { "type": "object", "required": ["organization"], "properties": { "organization": { "type": "string", "minLength": 1 } } } }\n}\n' },
+  { path: 'skills/shared/input-schema.json', content: '{\n  "title": "輸入",\n  "properties": { "scope": { "type": "object", "required": ["organization"], "properties": { "organization": { "type": "string", "minLength": 1 } } }, "assets": { "type": "array" } }\n}\n' },
   { path: 'skills/shared/output-schema.json', content: '{\n  "title": "輸出"\n}\n' },
   { path: 'skills/shared/scoring-rules.md', content: '# 示範評分規則\n\n規則內容。\n' },
   { path: 'skills/shared/task-spec.md', content: '---\ntitle: 共用任務規格\nrole: shared-spec\n---\n\n# 共用任務規格\n' },
@@ -150,11 +150,13 @@ const RULE_NOTE_REWRITES = RULE_NOTE_TARGETS.filter(path => path !== 'skills/sha
 const rewriteMd = (path) => `# ${path}\n\n## 安全與授權邊界\n\n- 未提供 scope 就拒絕分析。\n${OLD_RULE_LINE}\n${OLD_DATA_LINE}\n- 不執行攻擊指令。\n`;
 // 授權範圍守門的 JS 解讀（assets/scope-gate.js）：手寫的程式＋scope 定義的嵌入區塊（見 docs/adr/0004）
 const SCOPE_MARKER = '  // 以下區塊由 scripts/build-data.mjs 從 skills/shared/input-schema.json 的 properties.scope 產生，請改母本後執行 npm run build，勿手動編輯';
-const gateJs = (block) => `(function () {\n${SCOPE_MARKER}\n  const SCOPE_SCHEMA = ${block};\n  const api = { scopeSchema: () => SCOPE_SCHEMA };\n})();\n`;
+// 輸入類別（送往模型前的篩選只保留這些頂層鍵，#164）：input-schema.json 頂層 properties 的鍵
+const CATEGORY_MARKER = '  // 以下區塊由 scripts/build-data.mjs 從 skills/shared/input-schema.json 的頂層 properties 的鍵產生，請改母本後執行 npm run build，勿手動編輯';
+const gateJs = (block, categories = CATEGORY_BLOCK) => `(function () {\n${SCOPE_MARKER}\n  const SCOPE_SCHEMA = ${block};\n${CATEGORY_MARKER}\n  const INPUT_CATEGORIES = ${categories};\n  const api = { scopeSchema: () => SCOPE_SCHEMA };\n})();\n`;
 // generatedFiles 的輸入：母本（含核心提示詞）＋含嵌入區塊的手寫檔（平臺系統提示詞、SKILL.md、改寫版、scope-gate.js）
 const sources = [
   ...masters,
-  { path: 'assets/scope-gate.js', content: gateJs('{ "舊的": "scope 定義" }') },
+  { path: 'assets/scope-gate.js', content: gateJs('{ "舊的": "scope 定義" }', '["舊的"]') },
   { path: 'skills/shared/core-prompt.md', content: `---\ntitle: 核心提示詞\n---\n\n\`\`\`text\n你是先制型曝險分析助理。\n${OLD_RULE_LINE}\n${DATA_LINE}\n\`\`\`\n` },
   ...RULE_NOTE_REWRITES.map(path => ({ path, content: rewriteMd(path) })),
   ...['grok', 'glm', 'deepseek'].map(p => ({ path: `skills/${p}/system-prompt.md`, content: systemPromptMd(p) })),
@@ -403,6 +405,8 @@ const SCOPE_BLOCK = `{
       }
     }
   }`;
+// 輸入類別：上面 masters 裡 input-schema.json 頂層 properties 的鍵，依 schema 的順序（手寫的預期值）
+const CATEGORY_BLOCK = '["scope","assets"]';
 const withGate = (content) => sources.map(f => f.path === 'assets/scope-gate.js' ? { ...f, content } : f);
 
 test('scope-gate.js 的 SCOPE_SCHEMA 嵌入區塊換成 input-schema.json 的 scope 定義，標註與其餘手寫內容不變', () => {
@@ -433,4 +437,24 @@ test('scope-gate.js 多了一個下面沒接 const SCOPE_SCHEMA 的標註時也�
 test('scope-gate.js 的標註下不是緊接 const SCOPE_SCHEMA = 時中止，錯誤訊息指出標註下找不到區塊', () => {
   const notConst = gateJs('{}').replace('  const SCOPE_SCHEMA = {};', '  let SCOPE_SCHEMA = {};');
   assert.throws(() => generatedFiles(withGate(notConst)), { message: /assets\/scope-gate\.js.*找不到.*const SCOPE_SCHEMA/ });
+});
+
+test('scope-gate.js 的 INPUT_CATEGORIES 嵌入區塊換成 input-schema.json 頂層 properties 的鍵（依 schema 的順序），標註與其餘手寫內容不變', () => {
+  const gate = copyAt(generatedFiles(sources), 'assets/scope-gate.js').content;
+  assert.equal(gate, gateJs(SCOPE_BLOCK, CATEGORY_BLOCK));
+  assert.ok(gate.includes(`${CATEGORY_MARKER}\n  const INPUT_CATEGORIES = ["scope","assets"];\n`));
+});
+
+test('scope-gate.js 沒有 INPUT_CATEGORIES 的嵌入區塊標註時中止，錯誤訊息指出檔案與數量', () => {
+  assert.throws(() => generatedFiles(withGate(gateJs('{}').replace(`${CATEGORY_MARKER}\n`, ''))), { message: /assets\/scope-gate\.js.*0 個.*INPUT_CATEGORIES/ });
+});
+
+test('scope-gate.js 有兩個 INPUT_CATEGORIES 的嵌入區塊標註時中止，不會只換掉第一個', () => {
+  const twice = gateJs('{}') + `${CATEGORY_MARKER}\n  const INPUT_CATEGORIES = [];\n`;
+  assert.throws(() => generatedFiles(withGate(twice)), { message: /assets\/scope-gate\.js.*2 個.*INPUT_CATEGORIES/ });
+});
+
+test('scope-gate.js 的 INPUT_CATEGORIES 標註下不是緊接 const INPUT_CATEGORIES = 時中止，錯誤訊息指出標註下找不到區塊', () => {
+  const notConst = gateJs('{}').replace(`  const INPUT_CATEGORIES = ${CATEGORY_BLOCK};`, `  let INPUT_CATEGORIES = ${CATEGORY_BLOCK};`);
+  assert.throws(() => generatedFiles(withGate(notConst)), { message: /assets\/scope-gate\.js.*找不到.*const INPUT_CATEGORIES/ });
 });

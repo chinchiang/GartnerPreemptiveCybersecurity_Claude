@@ -15,6 +15,7 @@ import worker from '../backend/worker.js';
 
 const require = createRequire(import.meta.url);
 const DEMO = require('../assets/demo.js');
+const GATE = require('../assets/scope-gate.js');
 const base = JSON.parse(readFileSync(new URL('../examples/synthetic-org/scope.json', import.meta.url), 'utf8'));
 const { cases } = JSON.parse(readFileSync(new URL('../tests/fixtures/scope-cases.json', import.meta.url), 'utf8'));
 
@@ -30,6 +31,13 @@ function applyCase(scope, { set = {}, remove = [] }) {
 for (const c of cases) {
   test(`示範引擎守門：${c.name}`, () => {
     assert.deepEqual(DEMO.scopeProblems(applyCase(base, c)), c.problems);
+  });
+}
+
+// 排除清單格式（#164）：沒寫 excluded_assets_problems 的案例視為 []；Python 那邊（tests/python/test_scope_gate.py）用同一份案例
+for (const c of cases) {
+  test(`排除清單格式：${c.name}`, () => {
+    assert.deepEqual(GATE.excludedAssetsProblems(applyCase(base, c).authorized_scope), c.excluded_assets_problems ?? []);
   });
 }
 
@@ -87,6 +95,13 @@ describe('後端代理（backend/worker.js）', () => {
   for (const c of cases) {
     test(`後端代理守門：${c.name}`, async () => {
       const r = await analyze(applyCase(base, c));
+      if (c.problems.length === 0 && c.excluded_assets_problems?.length) {
+        // 排除清單格式不合格：照常送出會讓使用者以為已經排除的資產被送往模型，所以拒絕（#164）
+        assert.equal(r.status, 400);
+        assert.equal(upstreamRequests.length, 0);
+        assert.match(await r.text(), /excluded_assets/);
+        return;
+      }
       if (c.problems.length === 0) {
         assert.equal(r.status, 200);
         assert.equal(upstreamRequests.length, 1);

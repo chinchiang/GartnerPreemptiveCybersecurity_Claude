@@ -17,6 +17,6 @@
 
 ## Consequences
 
-- 腳本預檢多兩種發現：`EXCLUDED_ASSET`（排除清單覆蓋允許清單，異常，列在 `assets.csv`）與 `INVALID_EXCLUDED_ASSETS`（`excluded_assets` 不是非空白字串的陣列，必要問題，列在 `scope.json`）。依 #59，必要問題只讓 Claude／Gemini 技能的 `validate_inputs.py` 以結束碼 1 結束，API 腳本仍不阻擋；格式不符的項目不會被排除。
-- JS 端（示範引擎、後端代理）遇到格式不符的 `excluded_assets` 視同空清單，不另外警告。後端代理部署前的輸入檢查列在 #151。
+- 腳本預檢多兩種發現：`EXCLUDED_ASSET`（排除清單覆蓋允許清單，異常，列在 `assets.csv`）與 `INVALID_EXCLUDED_ASSETS`（`excluded_assets` 不是非空白字串的陣列，必要問題，列在 `scope.json`）。格式合不合格只由 schema 裡 `excluded_assets` 的定義決定，兩份 schema 解讀各自套用（Python 核心的 `excluded_assets_problems`、`assets/scope-gate.js` 的 `excludedAssetsProblems`），由 `tests/fixtures/scope-cases.json` 的 `excluded_assets_problems` 守住一致（#164）。依 #59，必要問題只讓 Claude／Gemini 技能的 `validate_inputs.py` 以結束碼 1 結束，API 腳本仍不阻擋；格式不符的項目不會被排除。
+- JS 端遇到格式不符的 `excluded_assets`：選用後端代理回 400、不送往模型（代理沒有警告管道，照常送出會讓使用者以為已經排除的資產被送出，#164）；示範引擎照舊視同空清單、不另外警告（它的資料固定是合成資料）。送往模型前的篩選（`scopedBundle`）本身也照舊視同空清單。
 - 合成資料不加 `excluded_assets`，示範快照與驗收預期不變。

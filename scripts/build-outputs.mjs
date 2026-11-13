@@ -94,7 +94,7 @@ export function buildOutputs(files) {
     return { id, path: f.path, title: meta.title || id, order: Number(meta.order || 99), platform: meta.platform || '', body };
   }).sort((a, b) => a.order - b.order);
 
-  // 技能包組裝器的產物（複本、嵌入區塊、規則說明行、scope-gate.js 的 scope 定義）；data/skills.js 與 ZIP 收的是改寫後的 skills/
+  // 技能包組裝器的產物（複本、嵌入區塊、規則說明行、scope-gate.js 的 scope 定義與輸入類別）；data/skills.js 與 ZIP 收的是改寫後的 skills/
   const generated = generatedFiles(files);
   const skillFiles = under(files, 'skills', generated).map(f => {
     const name = posix.basename(f.path);

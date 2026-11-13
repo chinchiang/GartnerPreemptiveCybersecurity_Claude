@@ -147,6 +147,17 @@ def scope_problems(scope, input_schema: dict) -> list:
     return _check(scope if isinstance(scope, dict) else {}, input_schema["properties"]["scope"], "")
 
 
+def excluded_assets_problems(authorized, input_schema: dict) -> list:
+    """排除清單的格式（#164）：authorized_scope 有 excluded_assets 時，依 schema 裡它的定義判定；不合格回傳
+    ["authorized_scope.excluded_assets"]，沒有這個鍵或合格回傳 []。規則只來自 input-schema.json（與 JS 的 excludedAssetsProblems 相同，
+    由 tests/fixtures/scope-cases.json 守住一致）；excluded_assets 不是必填，所以不在授權範圍守門裡（docs/adr/0004、0007）。"""
+    if not isinstance(authorized, dict) or "excluded_assets" not in authorized:
+        return []
+    node = input_schema["properties"]["scope"]["properties"]["authorized_scope"]["properties"]["excluded_assets"]
+    _assert_supported(node, "authorized_scope.excluded_assets")
+    return _check(authorized["excluded_assets"], node, "authorized_scope.excluded_assets")
+
+
 # schema 的「至少一個非空白字元」：明確列出空白字元，取 Python 與 JS 兩邊 \s 的聯集。
 # 不用 \S：Python 把 U+001C–U+001F、U+0085 當空白而 JS 不當，JS 把 U+FEFF 當空白而 Python 不當
 NON_BLANK_PATTERN = r"[^\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]"
@@ -469,10 +480,8 @@ def _file_status_findings(inputs: Inputs, input_schema: dict) -> list:
     無法解析、schema 是物件但資料不是物件（這兩種不列在提示詞，見 NOT_IN_PROMPT）。"""
     loaded = {f["name"]: f for f in inputs.files}
     findings = []
-    authorized = inputs.scope.get("authorized_scope") if isinstance(inputs.scope.get("authorized_scope"), dict) else {}
-    value = authorized.get("excluded_assets")
-    # 排除清單寫錯格式時排除不會生效：這是必要問題，不能默默放行而讓使用者以為已經排除
-    if "excluded_assets" in authorized and not (isinstance(value, list) and all(isinstance(v, str) and re.search(NON_BLANK_PATTERN, v) for v in value)):
+    # 排除清單寫錯格式時排除不會生效：這是必要問題，不能默默放行而讓使用者以為已經排除；格式只由 schema 判定
+    if excluded_assets_problems(inputs.scope.get("authorized_scope"), input_schema):
         findings.append(PreflightFinding("scope.json", PreflightKind.INVALID_EXCLUDED_ASSETS, PROBLEM,
                                          "excluded_assets 須為非空白字串的陣列；格式不符的項目不會被排除"))
     for name, category, _, _ in INPUT_FILES:

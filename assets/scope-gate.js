@@ -1,5 +1,6 @@
 /* 授權範圍守門的 JS schema 解讀（見 GLOSSARY.md「授權範圍守門」、docs/adr/0004）。
-   規則只來自 skills/shared/input-schema.json 的 scope 定義：建置把它以嵌入區塊寫在下面，這個檔案本身就帶著規則，
+   規則只來自 skills/shared/input-schema.json 的 scope 定義：建置把它以嵌入區塊寫在下面（另一個嵌入區塊是頂層的輸入類別，
+   送往模型前的篩選只保留這些鍵），這個檔案本身就帶著規則，
    瀏覽器（file://）、Node 的 require／vm 與選用後端代理都不用另外供應 schema。
    示範引擎（assets/demo.js）與選用後端代理（backend/worker.js）共用；Python 分析工作流程核心是另一份對等的解讀。 */
 (function () {
@@ -100,6 +101,8 @@
       }
     }
   };
+  // 以下區塊由 scripts/build-data.mjs 從 skills/shared/input-schema.json 的頂層 properties 的鍵產生，請改母本後執行 npm run build，勿手動編輯
+  const INPUT_CATEGORIES = ["scope","assets","vulnerabilities","exposures","identities","misconfigurations","controls","threat_intel","topology"];
 
   const join = (prefix, key) => (prefix ? `${prefix}.${key}` : key);
 
@@ -230,6 +233,22 @@
   /** 嵌入的 scope 定義（複本，改了也不影響守門）。 */
   const scopeSchema = () => JSON.parse(JSON.stringify(SCOPE_SCHEMA));
 
+  /** 嵌入的輸入類別：input-schema.json 頂層 properties 的鍵，依 schema 的順序（複本）。 */
+  const inputCategories = () => [...INPUT_CATEGORIES];
+
+  /** 排除清單的格式（#164）：authorized_scope 有 excluded_assets 時，依 schema 裡它的定義判定；不合格回傳 ['authorized_scope.excluded_assets']，
+      沒有這個鍵或合格回傳 []。規則只來自 schema（與 Python 核心的 excluded_assets_problems 相同）；excluded_assets 不是必填，
+      所以不在授權範圍守門（scopeProblems）裡（docs/adr/0004、0007）。 */
+  const excludedAssetsNode = () => SCOPE_SCHEMA.properties.authorized_scope.properties.excluded_assets;
+  function excludedAssetsProblems(authorized) {
+    if (!isPlainObject(authorized) || !Object.prototype.hasOwnProperty.call(authorized, 'excluded_assets')) return [];
+    return problemsAgainst(authorized.excluded_assets, excludedAssetsNode(), 'authorized_scope.excluded_assets');
+  }
+
+  /** 排除清單格式的規則說明（例如「excluded_assets 須為陣列，且每項為非空白字串」），由同一段定義產生；後端代理的 400 訊息用它。
+      包成只有它一個必填欄位的物件，句子才會帶欄位名稱。 */
+  const excludedAssetsRuleNote = () => ruleNoteAgainst({ type: 'object', required: ['excluded_assets'], properties: { excluded_assets: excludedAssetsNode() } });
+
   /** 排除清單：excluded_assets 裡的字串（不是陣列就是空的）。與 Python 核心的 excluded_asset_ids 相同。 */
   const excludedAssets = (authorized) => new Set(Array.isArray(authorized && authorized.excluded_assets)
     ? authorized.excluded_assets.filter(v => typeof v === 'string') : []);
@@ -240,9 +259,9 @@
     return new Set(authorized.in_scope_assets.filter(id => !excluded.has(id)));
   }
 
-  /** 送往模型前依授權清單排除資產與結構化關聯；不修改原始資料。 */
+  /** 送往模型前依授權清單排除資產與結構化關聯；只保留 input-schema.json 頂層定義的輸入類別，其他鍵一律丟掉（#164）。不修改原始資料。 */
   function scopedBundle(bundle) {
-    const data = JSON.parse(JSON.stringify(bundle));
+    const data = Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(bundle))).filter(([key]) => INPUT_CATEGORIES.includes(key)));
     const allowed = allowedAssets(data.scope.authorized_scope);
     const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
     const rows = v => Array.isArray(v) ? v.filter(object) : [];
@@ -269,7 +288,7 @@
     return data;
   }
 
-  const api = { scopedBundle, allowedAssets, excludedAssets, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, scopeRuleNote, ruleNoteAgainst };
+  const api = { scopedBundle, allowedAssets, excludedAssets, excludedAssetsProblems, excludedAssetsRuleNote, scopeProblems, requiredScopeFields, problemsAgainst, scopeSchema, inputCategories, scopeRuleNote, ruleNoteAgainst };
   if (typeof window !== 'undefined') window.SCOPE_GATE = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

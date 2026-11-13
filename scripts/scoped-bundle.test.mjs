@@ -34,6 +34,12 @@ test('後端實際送出的每份 bundle 都符合共用案例，不傳出不合
         method: 'POST', headers: { origin: 'https://allowed.invalid', 'cf-connecting-ip': `192.0.2.${i + 1}` },
         body: JSON.stringify({ bundle: { ...c.bundle, scope: caseScope } })
       }), { ALLOWED_ORIGIN: 'https://allowed.invalid', MODEL: 'fake', PROVIDER_API_KEY: 'fake' });
+      if (c.proxy_rejects) {
+        // 排除清單格式不合格：代理拒絕、不送出（#164）；篩選本身照舊，由上一支測試檢查
+        assert.equal(response.status, 400, c.name);
+        assert.equal(sent, undefined, c.name);
+        continue;
+      }
       assert.equal(response.status, 200, c.name);
       assert.deepEqual(sent, { ...c.expected, scope: caseScope }, c.name);
     }

@@ -1,7 +1,7 @@
 /**
  * skill-packages.mjs — 技能包組裝器
  * 技能包組裝器（見 GLOSSARY.md）：決定每個技能包包含哪些母本、複本、嵌入區塊與依賴，並寫出規則說明行與其他嵌入區塊
- * （例如 assets/scope-gate.js 帶的 scope 定義）。
+ * （例如 assets/scope-gate.js 帶的 scope 定義與輸入類別）。
  * interface 以純函式為主——輸入 repo 檔案內容（母本與含嵌入區塊的手寫檔）、回傳結果，
  * 寫檔交給呼叫端（建置由 build-outputs.mjs 收進產物清單、build-data.mjs 寫出；build-worker.mjs），因此不碰磁碟就能測試（scripts/skill-packages.test.mjs）。
  * 唯一的例外是 sourceFilesFrom(root)：從磁碟讀出組裝器的輸入，由建置的讀檔函式（build-outputs.mjs 的 inputFilesFrom）呼叫；
@@ -74,7 +74,7 @@ export function packageFiles(platform, files) {
 }
 
 // 回傳建置要寫入的所有產物 [{ path, content }]：各平臺 references/ 與 scripts/ 的複本，以及含嵌入區塊的手寫檔
-// （含 assets/scope-gate.js 的 scope 定義）。建置在原地改寫、且會提交的檔案都從這裡產生。
+// （含 assets/scope-gate.js 的 scope 定義與輸入類別）。建置在原地改寫、且會提交的檔案都從這裡產生。
 // files：repo 檔案清單，須含 skills/shared/ 的母本、對照表 embeds 宣告的手寫檔，以及 assets/scope-gate.js。
 export function generatedFiles(files) {
   const replaceWith = (list, rewrites) => list.map(f => rewrites.find(r => r.path === f.path) || f);
@@ -187,20 +187,30 @@ function embeddedFiles(files) {
   }));
 }
 
-// scope 定義（授權範圍守門的規則來源，見 docs/adr/0004）：把 input-schema.json 的 properties.scope 寫進 assets/scope-gate.js
-// 標註下緊接的 const SCOPE_SCHEMA = …; 區塊，縮排沿用 const 那一行。標註行全檔須恰好一行（數的是標註，不是區塊，
-// 多出一行沒接區塊的標註也要中止）；JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判。
+// assets/scope-gate.js 帶的兩個嵌入區塊，都從 input-schema.json 產生：
+// - SCOPE_SCHEMA：properties.scope（授權範圍守門的規則來源，見 docs/adr/0004）
+// - INPUT_CATEGORIES：頂層 properties 的鍵，依 schema 的順序（送往模型前的篩選只保留這些輸入類別，#164）
+// 各自寫在自己的標註下緊接的 const <名稱> = …; 區塊，縮排沿用 const 那一行。標註行全檔須恰好一行（數的是標註，不是區塊，
+// 多出一行沒接區塊的標註也要中止）；兩個標註的開頭不同，不會互相數到。JSON 字串裡不會出現換行，所以區塊結尾的「;＋換行」不會誤判。
 // input-schema.json 是否存在，generatedFiles 先跑的 ruleNoteFiles 已經檢查過。
 const SCOPE_GATE = 'assets/scope-gate.js';
-const scopeMarker = `// 以下區塊由 ${MARKER_SOURCE} 從 ${INPUT_SCHEMA}`;
-const scopeBlock = () => new RegExp(`(${escapeRe(scopeMarker)}[^\\n]*\\n(\\s*)const SCOPE_SCHEMA = )[\\s\\S]*?;\\n`, 'g');
+const GATE_BLOCKS = [
+  { name: 'SCOPE_SCHEMA', schemaPart: '的 properties.scope', value: (schema) => JSON.stringify(schema.properties.scope, null, 2) },
+  { name: 'INPUT_CATEGORIES', schemaPart: '的頂層 properties 的鍵', value: (schema) => JSON.stringify(Object.keys(schema.properties)) }
+];
+// 標註行：「以下區塊由 build-data.mjs 從 input-schema.json ＋ schemaPart（取的是 schema 的哪一部分）」，其後是產生與勿手動編輯的說明
+const gateMarker = ({ schemaPart }) => `// 以下區塊由 ${MARKER_SOURCE} 從 ${INPUT_SCHEMA} ${schemaPart}`;
+const gateBlock = (block) => new RegExp(`(${escapeRe(gateMarker(block))}[^\\n]*\\n(\\s*)const ${block.name} = )[\\s\\S]*?;\\n`, 'g');
 function scopeGateFile(files) {
   const gate = files.find(f => f.path === SCOPE_GATE);
-  if (!gate) throw new Error(`${SCOPE_GATE} 不存在，但它要帶授權範圍守門的 scope 定義`);
-  exactlyOne(gate.content.split('\n').filter(line => line.trimStart().startsWith(scopeMarker)).length,
-    n => `${SCOPE_GATE} 有 ${n} 個 SCOPE_SCHEMA 的嵌入區塊標註，必須恰好一個，才知道要換哪個區塊`);
-  const scope = JSON.parse(files.find(f => f.path === INPUT_SCHEMA).content).properties.scope;
-  return { path: SCOPE_GATE, content: replaceExactlyOnce(gate.content, scopeBlock(),
-    (_, head, indent) => `${head}${JSON.stringify(scope, null, 2).replace(/\n/g, `\n${indent}`)};\n`,
-    () => `${SCOPE_GATE} 找不到 SCOPE_SCHEMA 的嵌入區塊標註下緊接的 const SCOPE_SCHEMA = …; 區塊`) };
+  if (!gate) throw new Error(`${SCOPE_GATE} 不存在，但它要帶授權範圍守門的 scope 定義與輸入類別`);
+  const schema = JSON.parse(files.find(f => f.path === INPUT_SCHEMA).content);
+  const content = GATE_BLOCKS.reduce((text, block) => {
+    exactlyOne(text.split('\n').filter(line => line.trimStart().startsWith(gateMarker(block))).length,
+      n => `${SCOPE_GATE} 有 ${n} 個 ${block.name} 的嵌入區塊標註，必須恰好一個，才知道要換哪個區塊`);
+    return replaceExactlyOnce(text, gateBlock(block),
+      (_, head, indent) => `${head}${block.value(schema).replace(/\n/g, `\n${indent}`)};\n`,
+      () => `${SCOPE_GATE} 找不到 ${block.name} 的嵌入區塊標註下緊接的 const ${block.name} = …; 區塊`);
+  }, gate.content);
+  return { path: SCOPE_GATE, content };
 }

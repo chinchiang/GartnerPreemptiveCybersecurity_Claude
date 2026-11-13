@@ -1,7 +1,8 @@
 """授權範圍守門：五支 api-workflow.py 與 Claude、Gemini 技能的 validate_inputs.py，對共用案例的判定必須與 JS 的守門（assets/scope-gate.js，網站示範引擎與選用後端代理共用）一致。
 
 案例在 tests/fixtures/scope-cases.json（JS 那邊由 scripts/scope-cases.test.mjs 套在示範引擎與選用後端代理上）。
-這裡只看腳本的外部行為：結束碼與輸出訊息。執行：python3 -m unittest discover -s tests/python
+這裡主要看腳本的外部行為：結束碼與輸出訊息。排除清單格式（excluded_assets_problems，#164）另外直接比對核心的判定，
+跟 JS 的 excludedAssetsProblems 用同一份預期值。執行：python3 -m unittest discover -s tests/python
 """
 import copy
 import json
@@ -17,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SYNTHETIC = ROOT / "examples" / "synthetic-org"
 CASES = json.loads((ROOT / "tests" / "fixtures" / "scope-cases.json").read_text(encoding="utf-8"))["cases"]
 API_PLATFORMS = ["chatgpt", "grok", "glm", "deepseek", "gemini"]
+sys.path.insert(0, str(ROOT / "skills" / "shared"))
+import analysis_workflow as aw  # noqa: E402
+INPUT_SCHEMA = json.loads((ROOT / "skills" / "shared" / "input-schema.json").read_text(encoding="utf-8"))
+INVALID_EXCLUDED_MESSAGE = "excluded_assets 須為非空白字串的陣列；格式不符的項目不會被排除"
 SKILL_FOLDER_PLATFORMS = ["claude", "gemini"]   # validate_inputs.py 是 skills/shared/ 母本的複本，兩份各跑一次
 
 
@@ -56,6 +61,13 @@ class ScopeGateTest(unittest.TestCase):
                                   capture_output=True, text=True, encoding="utf-8", cwd=tmp,
                                   env={**os.environ, "PYTHONUTF8": "1"})  # 子程序也用 UTF-8 輸出（繁中 Windows 預設 cp950）
 
+    def test_core_excluded_assets_problems_follow_shared_cases(self):
+        # 沒寫 excluded_assets_problems 的案例視為 []；JS 那邊是 scope-cases.test.mjs 的「排除清單格式」
+        for case in CASES:
+            with self.subTest(case=case["name"]):
+                authorized = apply_case(self.base, case).get("authorized_scope")
+                self.assertEqual(aw.excluded_assets_problems(authorized, INPUT_SCHEMA), case.get("excluded_assets_problems", []))
+
     def test_api_workflows_follow_shared_cases(self):
         for platform in API_PLATFORMS:
             script = ROOT / "skills" / platform / "api-workflow.py"
@@ -82,6 +94,10 @@ class ScopeGateTest(unittest.TestCase):
                         self.assertEqual(r.returncode, 3, f"應以 3 中止：{out[-300:]}")
                         for field in case["problems"]:
                             self.assertIn(field, out)
+                    elif case.get("excluded_assets_problems"):
+                        # 排除清單格式不合格是必要問題：validate_inputs.py 以 1 結束（#59；API 腳本照常分析，見上一支）
+                        self.assertEqual(r.returncode, 1, out[-500:])
+                        self.assertIn(INVALID_EXCLUDED_MESSAGE, out)
                     else:
                         self.assertEqual(r.returncode, 0, out[-500:])
 

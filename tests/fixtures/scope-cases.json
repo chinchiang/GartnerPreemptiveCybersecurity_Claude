@@ -1,5 +1,5 @@
 {
-  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。規則只來自 skills/shared/input-schema.json 的 scope 定義，由兩份 schema 解讀判定（Python 分析工作流程核心；assets/scope-gate.js，網站示範引擎與選用後端代理共用，見 docs/adr/0004）。這份案例套在核心、五支 api-workflow.py、兩份 validate_inputs.py（Claude 與 Gemini 技能）、網站示範引擎與選用後端代理上，判定必須一致。目前的規則：organization 須含非空白字元（不 trim）；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 必須是非空陣列，且每項為非空白字串（重複不擋）；兩個 *_authorized 必須是布林值。",
+  "_note": "授權範圍守門的共用測試案例。每個案例是對 examples/synthetic-org/scope.json 的修改：set 以點分隔路徑設值，remove 刪除欄位；problems 是應被指出的欄位（空陣列＝可以分析）。規則只來自 skills/shared/input-schema.json 的 scope 定義，由兩份 schema 解讀判定（Python 分析工作流程核心；assets/scope-gate.js，網站示範引擎與選用後端代理共用，見 docs/adr/0004）。這份案例套在核心、五支 api-workflow.py、兩份 validate_inputs.py（Claude 與 Gemini 技能）、網站示範引擎與選用後端代理上，判定必須一致。目前的規則：organization 須含非空白字元（不 trim）；analysis_date 須為 YYYY-MM-DD 的有效日期；in_scope_assets、audience 必須是非空陣列，且每項為非空白字串（重複不擋）；兩個 *_authorized 必須是布林值。另外，excluded_assets_problems 是排除清單格式的判定（#164）：authorized_scope 有 excluded_assets 時，依 schema 裡 excluded_assets 的定義（陣列，且每項為非空白字串）判定，不合格就指出 authorized_scope.excluded_assets；沒寫這個欄位的案例視為 []。excluded_assets 不是必填，所以 problems 不受影響（docs/adr/0004、0007）；由 Python 核心的 excluded_assets_problems 與 assets/scope-gate.js 的 excludedAssetsProblems 判定，後端代理遇到不合格就回 400，Python 腳本預檢列為必要問題、照常分析。",
   "cases": [
     { "name": "合成資料原樣", "set": {}, "remove": [], "problems": [] },
     { "name": "issue #26 的重現範例", "set": { "authorized_scope.in_scope_assets": [], "authorized_scope.active_testing_authorized": "no", "reporting.audience": [] }, "remove": [],
@@ -35,6 +35,13 @@
     { "name": "audience 含數字", "set": { "reporting.audience": ["CISO", 1] }, "remove": [], "problems": ["reporting.audience"] },
     { "name": "audience 含只有空白的項目", "set": { "reporting.audience": ["  "] }, "remove": [], "problems": ["reporting.audience"] },
     { "name": "organization 只有 U+FEFF（JS 的 \\s 當空白、Python 的不當）", "set": { "organization": "\ufeff" }, "remove": [], "problems": ["organization"] },
-    { "name": "in_scope_assets 含只有 U+0085 的項目（Python 的 \\s 當空白、JS 的不當）", "set": { "authorized_scope.in_scope_assets": ["A01", "\u0085"] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] }
+    { "name": "in_scope_assets 含只有 U+0085 的項目（Python 的 \\s 當空白、JS 的不當）", "set": { "authorized_scope.in_scope_assets": ["A01", "\u0085"] }, "remove": [], "problems": ["authorized_scope.in_scope_assets"] },
+    { "name": "沒有 excluded_assets（排除清單合格）", "set": {}, "remove": ["authorized_scope.excluded_assets"], "problems": [], "excluded_assets_problems": [] },
+    { "name": "excluded_assets 是空陣列（排除清單合格）", "set": { "authorized_scope.excluded_assets": [] }, "remove": [], "problems": [], "excluded_assets_problems": [] },
+    { "name": "excluded_assets 是 [\"A01\"]（排除清單合格）", "set": { "authorized_scope.excluded_assets": ["A01"] }, "remove": [], "problems": [], "excluded_assets_problems": [] },
+    { "name": "excluded_assets 是字串 A01 而不是陣列（排除清單不合格）", "set": { "authorized_scope.excluded_assets": "A01" }, "remove": [], "problems": [], "excluded_assets_problems": ["authorized_scope.excluded_assets"] },
+    { "name": "excluded_assets 含只有空白的項目（排除清單不合格）", "set": { "authorized_scope.excluded_assets": [" "] }, "remove": [], "problems": [], "excluded_assets_problems": ["authorized_scope.excluded_assets"] },
+    { "name": "excluded_assets 含數字（排除清單不合格）", "set": { "authorized_scope.excluded_assets": [1] }, "remove": [], "problems": [], "excluded_assets_problems": ["authorized_scope.excluded_assets"] },
+    { "name": "excluded_assets 是 null（排除清單不合格）", "set": { "authorized_scope.excluded_assets": null }, "remove": [], "problems": [], "excluded_assets_problems": ["authorized_scope.excluded_assets"] }
   ]
 }

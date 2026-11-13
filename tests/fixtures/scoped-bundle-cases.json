@@ -1069,6 +1069,8 @@
   },
   {
     "name": "排除清單不是陣列，視同空的",
+    "proxy_rejects": true,
+    "proxy_rejects_reason": "excluded_assets 格式不合格：篩選照舊視同空清單（示範引擎、Python），選用後端代理則回 400、不送出（#164）",
     "bundle": {
       "scope": {
         "authorized_scope": {
@@ -1196,6 +1198,45 @@
           }
         ]
       }
+    }
+  },
+  {
+    "name": "不認得的頂層鍵（只保留 input-schema.json 頂層 properties 定義的輸入類別，#164）",
+    "only": "js",
+    "only_reason": "Python 只讀 9 個已知的輸入檔（INPUT_FILES），不會讀到未知的類別；Python 那邊改以 raw-inventory.json 不會進提示詞驗證",
+    "bundle": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ],
+      "raw_inventory": [
+        {
+          "asset_id": "OUT-OF-SCOPE-99"
+        }
+      ],
+      "notes": "UNKNOWN-KEY-SENTINEL"
+    },
+    "expected": {
+      "scope": {
+        "authorized_scope": {
+          "in_scope_assets": [
+            "A01"
+          ]
+        }
+      },
+      "assets": [
+        {
+          "asset_id": "A01"
+        }
+      ]
     }
   }
 ]

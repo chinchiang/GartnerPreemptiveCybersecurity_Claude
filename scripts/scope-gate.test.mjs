@@ -15,6 +15,16 @@ test('嵌入的 scope 定義等於母本 input-schema.json 的 properties.scope�
   assert.deepEqual(GATE.scopeSchema(), schema.properties.scope);
 });
 
+test('嵌入的輸入類別等於母本 input-schema.json 頂層 properties 的鍵，依 schema 的順序（#164；手改嵌入區塊或改了母本忘了重建都會失敗）', () => {
+  const schema = JSON.parse(readFileSync(new URL('../skills/shared/input-schema.json', import.meta.url), 'utf8'));
+  assert.deepEqual(GATE.inputCategories(), Object.keys(schema.properties));
+  assert.deepEqual(GATE.inputCategories(), ['scope', 'assets', 'vulnerabilities', 'exposures', 'identities', 'misconfigurations', 'controls', 'threat_intel', 'topology']);
+});
+
+test('排除清單的規則說明由 schema 裡 excluded_assets 的定義產生，句子帶欄位名稱（#164，後端代理的 400 訊息用它）', () => {
+  assert.equal(GATE.excludedAssetsRuleNote(), 'excluded_assets 須為陣列，且每項為非空白字串');
+});
+
 test('必填欄位清單來自 schema，順序與 Python 的 required_scope_fields 相同', () => {
   assert.deepEqual(GATE.requiredScopeFields(), [
     'organization', 'analysis_date', 'authorized_scope.in_scope_assets',

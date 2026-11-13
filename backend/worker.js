@@ -84,6 +84,9 @@ export default {
     let body; try { body = JSON.parse(text); } catch { return new Response('Bad JSON', { status: 400, headers: cors }); }
     const problems = GATE.scopeProblems(body?.bundle?.scope);
     if (problems.length) return new Response(`缺少 scope 或必填欄位不合格：${problems.join('、')}；無授權範圍不得分析`, { status: 400, headers: cors });
+    // 排除清單寫錯格式時排除不會生效；代理沒有警告管道，照常送出會讓使用者以為已經排除的資產被送往模型，所以拒絕（#164）
+    const excludedProblems = GATE.excludedAssetsProblems(body.bundle.scope.authorized_scope);
+    if (excludedProblems.length) return new Response(`排除清單格式不合格：${excludedProblems.join('、')}（${GATE.excludedAssetsRuleNote()}）；排除不會生效，不得送出`, { status: 400, headers: cors });
     const user = `請依系統指令進行先制型曝險分析。輸入：\n\`\`\`json\n${JSON.stringify(GATE.scopedBundle(body.bundle))}\n\`\`\``;
     const { provider, base, outputParam, maxOutput, timeoutMs } = config;
     const [url, init] = provider === 'anthropic'
