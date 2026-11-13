@@ -88,7 +88,7 @@ gh run download <之前的 run-id> -n verify-report-and-screenshots -D "$D/<之�
 md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
 ```
 
-目前看過的 `io.png` 雜訊版本（`md5sum` 的前 8 碼）：`65e1f5ac`（已提交）與 `62320169`，PR #284、#285 都出現過。頁面內容改了之後，這兩個值就不再適用。
+目前已提交的 `io.png`（`md5sum` 的前 8 碼）是 `03119ac9`：Playwright 1.65.0（Chromium 158）的版本，#312 換的；這個版本的雜訊版本還沒觀察到。之前 Chromium 141 時看過的 `65e1f5ac` 與 `62320169` 已經不適用。頁面內容或瀏覽器版本改了之後，這些值就不再適用；看到新的雜訊版本時補在這裡。
 
 兩個都成立（沒改到來源，而且以前出現過）才是雜訊，保留已提交的版本，並在 PR 說明寫出對照的 md5 與 run id。有一個不成立，就照上表的「無法自動判斷」處理：看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
 
