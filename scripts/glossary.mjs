@@ -17,15 +17,6 @@ export function avoidTerms(md) {
   return terms;
 }
 
-// .ignore 的小子集（本 repo 用到的寫法）：結尾斜線＝目錄底下全部；* 對應一段路徑裡的任意字元（不跨 /）；其餘是完整路徑。
-// 回傳 (path) => 是否略過；path 是相對於 repo 根目錄、以 / 分隔的路徑
-export function ignoreMatcher(ignoreText) {
-  const escape = (s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-  const patterns = ignoreText.replace(/\r\n/g, '\n').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'))
-    .map(p => new RegExp('^' + escape(p).replace(/\*/g, '[^/]*') + (p.endsWith('/') ? '' : '$')));
-  return (path) => patterns.some(re => re.test(path));
-}
-
 // 手寫檔案裡專指的 _Avoid_ 詞：回傳 [{ file, line, term, entry }]，同一行同一個詞只回報一次。
 // excluded：{ 詞: 理由 }，有其他正當意思的一般詞彙，不檢查。
 // allowed：[{ term, phrase, reason }]，正當的片語；只遮掉片語涵蓋的那一處，同一行另有沒被涵蓋的出現就照樣回報。
