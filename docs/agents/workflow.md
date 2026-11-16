@@ -149,11 +149,8 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 
 ## Commit 與 PR
 
-- **開工**：依序做下面四步；第 2、3 步不成立就停下來回報。PR #305 就是在 2026-11-13 從 10-31 的 `main` 開分支，重做了 2026-11-05 已由 #191 完成的 #164。
-  1. `git fetch origin`。
-  2. `gh issue view <n> --json state` 是 `OPEN`。已關閉的議題常保留 `ready-for-agent`，所以看狀態，不看標籤。
-  3. `git log origin/main --grep '#<n>([^0-9]|$)' -E` 沒有輸出：`main` 上還沒有這個議題的 commit。`([^0-9]|$)` 讓 `#32` 不會命中 `#321`。
-  4. `git switch -c <n>-<slug> --no-track origin/main`。`--no-track` 讓上游留空，不會指到 `origin/main`；第一次 push 用 `git push -u origin <分支>`。
+- **開工**：跑 `node scripts/issue-start.mjs --issue <n> --slug <slug>`，可以先加 `--dry-run`。它依序檢查工作樹、`git fetch origin`、議題是 `OPEN`（看狀態，不看標籤：已關閉的議題常保留 `ready-for-agent`）、沒有連到 OPEN 或 MERGED 的 PR、`origin/main` 上沒有提到 `#<n>` 的 commit、分支還不存在。都通過才用 `--no-track` 從 `origin/main` 開 `<n>-<slug>`，第一次 push 用 `git push -u origin <分支>`；不通過時以 3 結束、列出原因，停下來回報。PR #305 就是在 2026-11-13 從 10-31 的 `main` 開分支，重做了 2026-11-05 已由 #191 完成的 #164。
+  - 議題分好幾次做（例如 #8），`main` 上本來就有提到它的 commit 時，工具會停下：由使用者決定要不要繼續，要繼續就手動開分支，`git fetch origin && git switch -c <n>-<slug> --no-track origin/main`。工具因為 `gh` 失敗而無法執行時，也用這一行，並先手動確認議題是 `OPEN`。
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
 - **PR 說明的 Before**：把舊版的腳本解到暫存目錄，`d=$(mktemp -d); git archive <rev> scripts | tar -x -C "$d"`，在 repo 根目錄執行 `node "$d/scripts/<腳本>"`。#321 就是這樣用 `main` 的 `screenshot-crosscheck.mjs` 跑 `--pr 314`。腳本用 cwd 讀檔、跑 `git` 時，讀到的是工作樹；用 `import.meta.url` 算 repo 根目錄的腳本（例如 `verify.mjs`），根目錄會變成 `"$d"`，這類腳本的 Before 改成把整份 `git archive <rev>` 解到 `"$d"`，在 `"$d"` 裡跑（`node_modules/` 不在裡面；`verify.mjs --static` 不需要它）。
