@@ -19,7 +19,7 @@
 
 **在 repo 外驗證目前的修改**：`d=$(mktemp -d); git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -x -C "$d"`，在 `"$d"` 裡跑。它帶上未提交的修改與新檔，不帶 `.gitignore` 排除的 `scratch/` 和 `.git`。這台的 stash hook 會擋下 stash 的大多數子指令（見下一段），所以用這個做法複製工作樹（#322）。有刪了還沒提交的檔案時，第一個 `tar` 找不到它（英文環境的訊息是 `Cannot stat`），其他檔案照樣複製，但整條管線的結束碼是最後一個 `tar` 的 0：先 `set -o pipefail` 再跑，或看 stderr；要完整複製，就先提交或還原那個刪除。
 
-**這台的 stash hook**：`~/.claude/hooks/block-bare-git-stash.py` 是使用者層級的設定，不在 repo 裡，每次執行 Bash 指令前都會檢查。它把整段指令依換行與 `;`、`|`、`&&` 切成多段，逐段切成詞；某一段的 `git` 後面接 `stash`，子指令又不在允許清單（`list`、`show`、`apply <SHA>`、`drop stash@{n}`、`push … -m <訊息>`）裡，就擋下整個指令。heredoc 的每一行是沒有引號的文字，也會被當成一段切詞檢查：#322 的 commit 訊息用 heredoc 寫，其中一行提到了被擋的子指令，commit 因此被擋。用引號包住的參數（`-m '…'`、`--body "…"`、`grep` 的樣式）整個算一個詞，不會被擋。heredoc 裡要提到被擋的子指令時，把 `git` 與 `stash` 分開寫（例如只寫「stash create」），或用 Write 寫成檔案，再用 `-F`／`--body-file` 傳入。
+**這台的 stash hook**：`~/.claude/hooks/block-bare-git-stash.py`（使用者層級的設定，不在 repo 裡；規則以它的檔頭為準）把整段 Bash 指令依換行與 `;`、`|`、`&&`、`||` 切成多段，再逐段切成詞；某一段的 `git` 後面接 `stash`，子指令又不在允許清單（`list`、`show`、`apply <SHA>`、`drop stash@{n}`、`push … -m <訊息>`）裡，就擋下整個指令。切段在切詞之前，所以引號擋不住換行與這些符號：heredoc、多行的 `-m '…'` 與 `--body "…"` 都會逐行檢查，只有單行、引號裡也沒有 `;`、`|`、`&&` 的參數（例如 `grep` 的樣式）才整個算一個詞。#322 的 commit 訊息用 heredoc 寫，其中一行提到了被擋的子指令，commit 因此被擋。commit 訊息與 PR 說明要提到被擋的子指令時，把 `git` 與 `stash` 分開寫（例如只寫「stash create」），或用 Write 寫成檔案，再用 `-F`／`--body-file` 傳入。
 
 測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
 
@@ -211,4 +211,4 @@ brief 的 Desired behavior 每一條都要有對應的驗收條件，文件同�
 
 開 issue 前也要逐條比對 Desired behavior 與驗收條件有沒有互相衝突，例如一邊要求寫出某個字、另一邊禁止它出現。衝突在 brief 裡就解決：改寫要求，或放寬驗收條件。#298 的 Desired behavior 要求寫出 `gh` 的留言選項名稱，驗收條件卻禁止檔案裡出現那個選項，實作時只好改寫成「`gh` 的留言選項」，那段說明就用 `grep` 搜不到了。
 
-議題要改給代理看的文件（CODING_STANDARDS §8 的範圍）時，驗收條件也用 §8 檢查一次：只檢查有寫到那個概念，不指定會跟其他文件重複的字串。#322 的驗收第 8 條要求 `AGENTS.md` 出現 `gh pr view`，PR #324 的審查指出這句跟 `docs/agents/issue-tracker.md` 的查法重複，卻因為驗收條件而不能改。
+議題要改給代理看的文件（CODING_STANDARDS §8 的範圍）時，驗收條件也用 §8 檢查一次：只檢查有寫到那個概念，不指定會跟其他文件重複的字串。#322 的驗收第 8 條指定 `AGENTS.md` 要出現 `gh pr view`，PR #324 的審查因此質疑這句跟 `docs/agents/issue-tracker.md` 的查法重複；那次判斷兩者用途不同而保留，但要不要那幾個字，應該交給實作與審查判斷，不由驗收條件指定。
