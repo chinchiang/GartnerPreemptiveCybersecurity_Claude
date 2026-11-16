@@ -129,6 +129,8 @@ Windows 上測試指令由 `cmd.exe` 執行，主流程（抓到／存活／逾�
 node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) && node.exe --test scripts/x.test.mjs" --markdown
 ```
 
+檢查寫在測試裡時（例如測試自己比對資料檔跟已提交的檔案一致），突變只能改測試檔，改完測試照樣通過。把判定抽成實作的純函式，測試用手寫的資料呼叫它，讀工作樹的那個測試只斷言它回傳沒有問題；突變改的是那個純函式。#321 的 `noiseListProblems` 就是這樣做的。
+
 ## 共用內容維護
 
 修改共用內容時，編輯 `skills/shared/` 的母本，再依下一節重建複本與嵌入區塊；這兩類建置產物由建置更新，手寫檔案的其餘部分照常編輯。
@@ -143,8 +145,16 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 
 ## Commit 與 PR
 
+- **開工**：依序做下面四步，每一步都成立才開分支；第 2、3 步不成立就停下來回報。PR #305 就是在 2026-11-13 從 10-31 的 `main` 開分支，重做了 2026-11-05 已由 #191 完成的 #164。
+  1. `git fetch origin`。
+  2. `gh issue view <n> --json state` 是 `OPEN`。已關閉的議題常保留 `ready-for-agent`，所以看狀態，不看標籤。
+  3. `git log origin/main --grep '#<n>'` 沒有輸出：`main` 上還沒有這個議題的 commit。
+  4. `git switch -c <n>-<slug> --no-track origin/main`。`--no-track` 讓上游留空，不會指到 `origin/main`；第一次 push 用 `git push -u origin <分支>`。
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。
+- **跑舊版或 repo 外的程式**：把那個版本的檔案複製到暫存目錄再跑。
+  - **PR 說明的 Before**：`d=$(mktemp -d); git archive <rev> scripts | tar -x -C "$d"`，在 repo 根目錄執行 `node "$d/scripts/<腳本>"`，讀檔與 `git` 用的仍是工作樹。#321 就是這樣用 `main` 的 `screenshot-crosscheck.mjs` 跑 `--pr 314`。
+  - **在 repo 外驗證目前的修改**：`d=$(mktemp -d); git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -x -C "$d"`，在 `"$d"` 裡跑。它帶上未提交的修改與新檔，不帶 `.gitignore` 排除的 `scratch/` 和 `.git`。有刪了還沒提交的檔案時，`tar` 找不到它（英文環境的訊息是 `Cannot stat`），以 2 結束，其他檔案照樣複製；先提交或還原那個刪除。不用 `git stash create`：這台的 hook 會擋下所有 `git stash` 指令（#322）。
 - **每一步都等使用者明說**：push、開 PR、在議題或 PR 留言、合併，都要使用者明說才做。合併時 CI 還沒跑完，就先等，不要合併。
 - **PR 的驗證表寫最終工作樹的結果**：改完 code-review 的修正之後，對最終的工作樹重跑完整的 JS、Python 與突變測試，再單獨跑 `verify.mjs`。修正前那一輪的結果另外註明。
 - **code-review 的發現要抽查**：有些要換環境才重現得了（#278 的第 1 項要用 `py -3.12`），有些會推翻原本的設計（#281 的第 8 項讓修法整個換掉）；要換設計之前，先問使用者。技能可能回來兩份審查（#158 一次回來 3 項與 9 項，內容不重複），兩份都要處理，PR 說明分開列。
