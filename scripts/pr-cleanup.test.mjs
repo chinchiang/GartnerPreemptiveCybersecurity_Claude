@@ -13,7 +13,7 @@ test('cleanupPlan：PR 不是 MERGED 時拒絕，一步都不做（還開著的 
 });
 
 test('cleanupPlan：工作樹不乾淨時拒絕（切換分支會帶著或擋下未提交的修改）', () => {
-  assert.deepEqual(cleanupPlan(ctx({ dirty: true })), { refuse: '工作樹有未提交的修改（git status --porcelain 有輸出）：先提交或收起來', steps: [] });
+  assert.deepEqual(cleanupPlan(ctx({ dirty: true })), { refuse: '工作樹有未提交的修改（git status --porcelain 有輸出）：先提交或還原', steps: [] });
 });
 
 test('cleanupPlan：MERGED 而且工作樹乾淨時，依序刪遠端分支、切回 main、pull --ff-only、git branch -d（不用 -D）', () => {
