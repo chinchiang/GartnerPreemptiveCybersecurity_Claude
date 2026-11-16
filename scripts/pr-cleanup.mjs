@@ -14,7 +14,7 @@ import { parsePrNumber } from './pr-number.mjs';
 // ctx：{ state, dirty, branch, current, remoteExists, localExists }。回傳 { refuse, steps }：refuse 是拒絕的原因（steps 是空的）
 export function cleanupPlan({ state, dirty, branch, current, remoteExists, localExists }) {
   if (state !== 'MERGED') return { refuse: `PR 的 state 是 ${state}，不是 MERGED：合併之後再收尾`, steps: [] };
-  if (dirty) return { refuse: '工作樹有未提交的修改（git status --porcelain 有輸出）：先提交或收起來', steps: [] };
+  if (dirty) return { refuse: '工作樹有未提交的修改（git status --porcelain 有輸出）：先提交或還原', steps: [] };
   return { refuse: null, steps: [
     { args: ['git', 'push', 'origin', '--delete', branch], skip: remoteExists ? null : '遠端已經沒有這個分支' },
     { args: ['git', 'checkout', 'main'], skip: current === 'main' ? '已經在 main 上' : null },

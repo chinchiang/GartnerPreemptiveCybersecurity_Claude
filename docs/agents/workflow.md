@@ -149,7 +149,7 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 
 ## Commit 與 PR
 
-- **開工**：跑 `node scripts/issue-start.mjs --issue <n> --slug <slug>`，可以先加 `--dry-run`。它依序檢查工作樹、`git fetch origin`、議題是 `OPEN`（看狀態，不看標籤：已關閉的議題常保留 `ready-for-agent`）、沒有連到 OPEN 或 MERGED 的 PR、`origin/main` 上沒有提到 `#<n>` 的 commit、分支還不存在。都通過才用 `--no-track` 從 `origin/main` 開 `<n>-<slug>`，第一次 push 用 `git push -u origin <分支>`；不通過時以 3 結束、列出原因，停下來回報。PR #305 就是在 2026-11-13 從 10-31 的 `main` 開分支，重做了 2026-11-05 已由 #191 完成的 #164。
+- **開工**：跑 `node scripts/issue-start.mjs --issue <n> --slug <slug>`，可以先加 `--dry-run`。它確認議題還沒做、工作樹乾淨，都通過才用 `--no-track` 從 `origin/main` 開 `<n>-<slug>`（檢查的項目見 `--help`）；不通過時以 3 結束、列出原因，停下來回報。PR #305 就是在 2026-11-13 從 10-31 的 `main` 開分支，重做了 2026-11-05 已由 #191 完成的 #164。
   - 議題分好幾次做（例如 #8），`main` 上本來就有提到它的 commit 時，工具會停下：由使用者決定要不要繼續，要繼續就手動開分支，`git fetch origin && git switch -c <n>-<slug> --no-track origin/main`。工具因為 `gh` 失敗而無法執行時，也用這一行，並先手動確認議題是 `OPEN`。
 - **Commit 訊息**：正體中文標題，下面條列說明，結尾附 `Co-Authored-By` 行；關閉 issue 時寫 `Closes #<n>`。
 - **PR 說明**：照 `pr` 技能的 Summary／Evidence／Merge Danger 格式；草稿與規格一樣放在 `scratch/`。

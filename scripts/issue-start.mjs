@@ -20,11 +20,14 @@ export function issueCommits(n, log) {
   return log.filter(c => mention.test(c.message)).map(c => ({ sha: c.sha, subject: c.message.split('\n')[0] }));
 }
 
+// 分支名稱與 PR 清單的寫法：startPlan 與 CLI 共用
+const branchName = (issue, slug) => `${issue}-${slug}`;
+const prList = (prs) => prs.map(p => `#${p.number}（${p.state}）`).join('、');
+
 // ctx：各項查詢的結果。回傳 { problems, notes, command, push }：problems 是不通過的原因，空的時候 command 是開分支的指令
 export function startPlan({ issue, slug, dirty, state, linkedPrs, mainCommits, branchExists }) {
-  const branch = `${issue}-${slug}`;
+  const branch = branchName(issue, slug);
   const problems = [], notes = [];
-  const prList = (prs) => prs.map(p => `#${p.number}（${p.state}）`).join('、');
   if (dirty) problems.push('工作樹有未提交的修改（git status --porcelain 有輸出）：先提交或還原');
   if (state !== 'OPEN') problems.push(`議題 #${issue} 的 state 是 ${state}，不是 OPEN`);
   // 沒合併就關閉的 PR（例如 #164 的 #305）不代表做過，只列出來
@@ -70,7 +73,7 @@ function cli(argv) {
   const args = parseArgs(argv);
   if (args.help) { console.log(USAGE); return 0; }
   if (args.error) { console.error(`${args.error}\n${USAGE}`); return 2; }
-  const { issue, slug } = args, branch = `${issue}-${slug}`;
+  const { issue, slug } = args, branch = branchName(issue, slug);
 
   const dirty = run('git', ['status', '--porcelain']).trim() !== '';
   run('git', ['fetch', 'origin']);
@@ -88,10 +91,11 @@ function cli(argv) {
     },
   };
   const plan = startPlan(ctx);
-  const prs = ctx.linkedPrs.map(p => `#${p.number}（${p.state}）`).join('、') || '沒有';
+  const prs = prList(ctx.linkedPrs) || '沒有';
   console.log([
     `議題 #${issue}：${ctx.state}`,
     `- 工作樹：${dirty ? '有未提交的修改' : '乾淨'}`,
+    '- git fetch origin：完成',
     `- 連到的 PR：${prs}`,
     `- origin/main 上提到 #${issue} 的 commit：${ctx.mainCommits.length ? ctx.mainCommits.map(c => c.sha).join('、') : '沒有'}`,
     `- 分支 ${branch}：${ctx.branchExists.local || ctx.branchExists.remote ? '已經存在' : '還不存在'}`,
