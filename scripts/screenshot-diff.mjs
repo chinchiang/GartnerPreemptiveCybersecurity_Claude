@@ -76,7 +76,7 @@ function decodePng(buf) {
   return { width, height, data };
 }
 
-const md5 = (buf) => createHash('md5').update(buf).digest('hex');
+export const md5 = (buf) => createHash('md5').update(buf).digest('hex');
 
 // 每張不同的截圖一列：[檔名, 已提交的 md5, 這次的 md5, 不同像素數, 最大通道差, 差異範圍]；位元組相同的不列
 export function compareScreenshots(committed, produced) {

@@ -76,21 +76,27 @@ node scripts/screenshot-crosscheck.mjs --pr <n> --sha <commit>   # PR 裡較早�
 
 「PR 改到的來源」算到那個 commit 為止（`git diff <base>...<commit>`）。它只報告，不換截圖也不 commit。只有一次執行可用時（例如只 push、沒開 PR，或一次的 artifact 過了保留期限），它會寫明缺哪一次，退回單次比對；跟已提交的不同的截圖，換之前要先看圖，確認不是零星的像素差異。
 
-兩次執行剛好拿到同一個雜訊版本時，會被分成「畫面有變」，其實畫面沒變。雜訊不是每次都不同，而是在少數幾個固定版本之間輪流出現：`io.png`（`#/io` 頁）在 PR #173 與 #174 的六次執行裡只出現過兩個版本，各 3 次，彼此只差 2 個像素，每個色彩通道差 1～2 個色階。PR #173 的兩次執行各拿到一個；#174 的第一個提交兩次都拿到已提交的那一個，第二個提交兩次都拿到另一個，就被列成「畫面有變」。所以「畫面有變」的截圖，換之前先確認兩件事：
+雜訊不是每次都不同，而是在少數幾個固定版本之間輪流出現：`io.png`（`#/io` 頁）在 PR #173 與 #174 的六次執行裡只出現過兩個版本，彼此只差 2 個像素。兩次執行剛好拿到同一個雜訊版本時，照上表會分到「畫面有變」；各拿到一個、都跟已提交的不同時，會分到「無法自動判斷」。其實畫面都沒變。所以工具另外讀 `verify-screenshots/noise.json`，記錄每張截圖的已知版本：
 
-1. **PR 有沒有改到那一頁的來源**：工具會列出來。依據是 `scripts/screenshot-crosscheck.mjs` 的 `SCREENSHOT_SOURCES`（每張截圖讀哪些 `data/*.js`）；改了 `assets/` 或 `index.html` 算影響每一頁。沒改到來源的截圖，會分到「畫面有變，但 PR 沒改到那一頁的來源，要比對以前的 run」那一組。
-2. **這個版本以前出現過沒有**：工具不做這一步。下載之前幾次 CI 執行的 artifact，對照 `md5sum`：
+- **格式**：`{ "<截圖名，不含 .png>": ["<32 位 md5>", …] }`。每張列出已提交的版本，加上確認過的雜訊版本。沒觀察到雜訊的截圖可以不列；只列了已提交版本的（例如 `io`）不會判出雜訊，看到雜訊版本時直接補上。
+- **判成雜訊的條件**：PR 沒改到那一頁的來源，而且已提交的與兩次執行的版本都在清單裡。這時工具分到「雜訊，保留已提交的版本」，並標明「已知雜訊版本」。
+  - 「來源」依 `scripts/screenshot-crosscheck.mjs` 的 `SCREENSHOT_SOURCES`（每張截圖讀哪些 `data/*.js`）；改了 `assets/` 或 `index.html` 算影響每一頁。
+  - PR 改到來源時不用清單。
+- **讀工作樹的版本**，不是 PR 的 commit：已知雜訊是累積下來的認識，對舊的 PR 也適用。
+
+分到「畫面有變，但 PR 沒改到那一頁的來源，要比對以前的 run」或「無法自動判斷」的截圖，版本不在清單裡。換之前，下載之前幾次 CI 執行的 artifact，用 `md5sum` 對照這個版本以前出現過沒有：
 
 ```bash
 D=scratch/<目錄>
 gh run list --workflow=ci.yml --limit 10 --json databaseId,event,headSha --jq '.[] | "\(.databaseId) \(.event) \(.headSha[0:7])"'
 gh run download <之前的 run-id> -n verify-report-and-screenshots -D "$D/<之前的 run-id>"
-md5sum "$D"/*/verify-screenshots/io.png verify-screenshots/io.png
+md5sum "$D"/*/verify-screenshots/<截圖>.png verify-screenshots/<截圖>.png
 ```
 
-目前已提交的 `io.png`（`md5sum` 的前 8 碼）是 `03119ac9`：Playwright 1.65.0（Chromium 158）的版本，#312 換的；這個版本的雜訊版本還沒觀察到。之前 Chromium 141 時看過的 `65e1f5ac` 與 `62320169` 已經不適用。頁面內容或瀏覽器版本改了之後，這些值就不再適用；看到新的雜訊版本時補在這裡。
+- **以前出現過，而且 PR 沒改到來源**：是雜訊。保留已提交的版本，把這個版本的 md5 補進 `noise.json`，跟 PR 一起提交，並在 PR 說明寫出對照的 run id。看圖確認是雜訊時也一樣補進去。
+- **有一個不成立**：照上表的「無法自動判斷」處理，看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
 
-兩個都成立（沒改到來源，而且以前出現過）才是雜訊，保留已提交的版本，並在 PR 說明寫出對照的 md5 與 run id。有一個不成立，就照上表的「無法自動判斷」處理：看圖，或重跑 CI（對外動作，先取得同意）。以前的 artifact 可能已過了保留期限；`gh run download` 也可能回 `HTTP 503: Egress is over the account limit`（帳號的傳出流量超過上限），這時同樣照「無法自動判斷」處理，先回報，不要合併。
+換了某張截圖時，把它在 `noise.json` 的清單重設成只有新的版本：舊畫面的雜訊版本不適用新的畫面。沒有重設，一致性測試會失敗。
 
 換了截圖之後（另一個 commit），等 CI 跑完再執行一次 `--pr <n>`，確認新的兩次執行都分到「不用動」。
 

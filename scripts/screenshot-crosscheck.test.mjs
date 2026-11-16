@@ -3,12 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { crosscheck, renderMarkdown, SCREENSHOT_SOURCES, pickRuns, runProblem, cacheDir, usableRuns } from './screenshot-crosscheck.mjs';
+import { crosscheck, renderMarkdown, SCREENSHOT_SOURCES, readKnownVersions, noiseListProblems, pickRuns, runProblem, cacheDir, usableRuns } from './screenshot-crosscheck.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CLI = fileURLToPath(new URL('./screenshot-crosscheck.mjs', import.meta.url));
@@ -53,6 +54,52 @@ test('crosscheck：兩次執行不同、其中一次跟已提交的相同，是�
   assert.deepEqual(verdicts(rows), { 'a.png': 'noise', 'b.png': 'noise', 'c.png': 'undecided' });
 });
 
+// noise.json 的已知版本：短字串 'A'、'B'、'C' 的 md5（用 md5sum 算出的字面值）
+const MD5 = { A: '7fc56270e7a70fa81a5935b72eacbe29', B: '9d5ed678fe57bcca610140957afab571', C: '0d61f8370cad1d412f80b84d143e1257' };
+
+test('crosscheck：兩次執行相同、跟已提交的不同，PR 沒改到來源，但已提交的與這次的版本都在 noise.json：已知雜訊', () => {
+  const rows = crosscheck({ push: shots({ 'io.png': 'B' }), pr: shots({ 'io.png': 'B' }), committed: shots({ 'io.png': 'A' }),
+    changedFiles: ['data/platforms.js'], knownVersions: { io: [MD5.A, MD5.B] } });
+  assert.equal(rows[0].verdict, 'noise');
+  assert.equal(rows[0].known, true);
+});
+
+test('crosscheck：兩次執行不同、都跟已提交的不同，但兩次與已提交的版本都在 noise.json：已知雜訊（原本是無法自動判斷）', () => {
+  const rows = crosscheck({ push: shots({ 'io.png': 'B' }), pr: shots({ 'io.png': 'C' }), committed: shots({ 'io.png': 'A' }),
+    changedFiles: [], knownVersions: { io: [MD5.A, MD5.B, MD5.C] } });
+  assert.equal(rows[0].verdict, 'noise');
+  assert.equal(rows[0].known, true);
+});
+
+test('crosscheck：版本都在 noise.json，但 PR 改到那一頁的來源（含 assets/、index.html）：不用清單，照原本的分類', () => {
+  for (const file of ['data/io.js', 'assets/styles.css', 'index.html']) {
+    const same = crosscheck({ push: shots({ 'io.png': 'B' }), pr: shots({ 'io.png': 'B' }), committed: shots({ 'io.png': 'A' }),
+      changedFiles: [file], knownVersions: { io: [MD5.A, MD5.B, MD5.C] } });
+    assert.equal(same[0].verdict, 'changed', file);
+    const differ = crosscheck({ push: shots({ 'io.png': 'B' }), pr: shots({ 'io.png': 'C' }), committed: shots({ 'io.png': 'A' }),
+      changedFiles: [file], knownVersions: { io: [MD5.A, MD5.B, MD5.C] } });
+    assert.equal(differ[0].verdict, 'undecided', file);
+  }
+});
+
+test('crosscheck：已提交的、push 的或 pull_request 的版本有一個不在 noise.json，或清單只列了別張截圖：照原本的分類', () => {
+  const io = (push, pr, list) => crosscheck({ push: shots({ 'io.png': push }), pr: shots({ 'io.png': pr }), committed: shots({ 'io.png': 'A' }),
+    changedFiles: [], knownVersions: list })[0].verdict;
+  assert.equal(io('B', 'B', { io: [MD5.B] }), 'changed-untouched', '已提交的不在清單');
+  assert.equal(io('B', 'C', { io: [MD5.B, MD5.C] }), 'undecided', '已提交的不在清單（兩次不同）');
+  assert.equal(io('B', 'C', { io: [MD5.A, MD5.B] }), 'undecided', 'pull_request 的不在清單');
+  assert.equal(io('C', 'B', { io: [MD5.A, MD5.B] }), 'undecided', 'push 的不在清單');
+  assert.equal(io('B', 'B', { case: [MD5.A, MD5.B] }), 'changed-untouched', '清單只列了別張截圖');
+  assert.equal(io('B', 'B', undefined), 'changed-untouched', '沒有給清單');
+});
+
+test('crosscheck：noise.json 不用在單次比對與還沒提交過的截圖上', () => {
+  const single = crosscheck({ push: shots({ 'io.png': 'B' }), pr: null, committed: shots({ 'io.png': 'A' }), changedFiles: [], knownVersions: { io: [MD5.A, MD5.B] } });
+  assert.equal(single[0].verdict, 'single-run-diff');
+  const fresh = crosscheck({ push: shots({ 'io.png': 'B' }), pr: shots({ 'io.png': 'C' }), committed: shots({}), changedFiles: [], knownVersions: { io: [MD5.B, MD5.C] } });
+  assert.equal(fresh[0].verdict, 'undecided');
+});
+
 test('crosscheck：只有一次執行產生的截圖、已提交但兩次都沒產生的截圖，各自列出；依檔名排序', () => {
   const rows = crosscheck({
     push: shots({ 'b.png': 'A', 'c.png': 'A' }),
@@ -77,6 +124,44 @@ test('對照表：verify.mjs 的 ROUTES 與已提交的每張截圖都有對應�
   assert.ok(routes.length >= 9 && committed.length >= 13, `讀到 ${routes.length} 條路由、${committed.length} 張截圖`);
   for (const r of routes) assert.ok(names.includes(r.replace('#/', '')), `ROUTES 的 ${r} 不在對照表`);
   assert.deepEqual(names, [...committed].sort());
+});
+
+test('noiseListProblems：key 不在對照表、值不是 32 位小寫十六進位或不是非空陣列、已提交的 md5 不在清單、沒有已提交的截圖，各自列出', () => {
+  const committedMd5 = (name) => ({ io: MD5.A, 'case-interactive': MD5.B }[name] ?? null);
+  assert.deepEqual(noiseListProblems({ io: [MD5.A, MD5.C], 'case-interactive': [MD5.B] }, committedMd5), []);
+  assert.deepEqual(noiseListProblems({
+    nope: [MD5.A],
+    io: [MD5.A, MD5.A.toUpperCase(), 'abc'],
+    'case-interactive': [MD5.C],
+    case: [MD5.A],
+    home: [],
+    skills: MD5.A,
+  }, committedMd5), [
+    'nope：不在 SCREENSHOT_SOURCES',
+    `io：${MD5.A.toUpperCase()} 不是 32 位小寫十六進位的 md5`,
+    'io：abc 不是 32 位小寫十六進位的 md5',
+    `case-interactive：已提交的 case-interactive.png 的 md5 ${MD5.B} 不在清單裡（換了截圖要把清單重設成新的版本）`,
+    'case：沒有已提交的 case.png',
+    'home：清單要是非空的陣列',
+    'skills：清單要是非空的陣列',
+  ]);
+});
+
+// noise.json 讀工作樹：換了截圖卻沒更新清單時會失敗，舊的版本不會默默留著
+test('noise.json：工作樹的清單符合 noiseListProblems 的每一條，而且至少列了 case-interactive 與 io', () => {
+  const noise = readKnownVersions(ROOT);
+  assert.ok('case-interactive' in noise && 'io' in noise, `讀到 ${Object.keys(noise).join('、')}`);
+  const committedMd5 = (name) => { try { return createHash('md5').update(readFileSync(join(ROOT, 'verify-screenshots', `${name}.png`))).digest('hex'); } catch { return null; } };
+  assert.deepEqual(noiseListProblems(noise, committedMd5), []);
+});
+
+test('readKnownVersions：讀 <root>/verify-screenshots/noise.json；檔案不存在時是空清單', () => {
+  const root = mkdtempSync(join(tmpdir(), 'noise-'));
+  assert.deepEqual(readKnownVersions(root), {});
+  mkdirSync(join(root, 'verify-screenshots'));
+  writeFileSync(join(root, 'verify-screenshots', 'noise.json'), '{ "io": ["03119ac9ed0c7306aa1691255d727913"] }\n');
+  assert.deepEqual(readKnownVersions(root), { io: ['03119ac9ed0c7306aa1691255d727913'] });
+  rmSync(root, { recursive: true, force: true });
 });
 
 test('對照表：每個資料檔都存在於 repo', () => {
@@ -150,6 +235,25 @@ test('renderMarkdown：依結論分組列出截圖與改到的來源，附像素
     '| `home` | 畫面有變 | 212 | 201 | (1050, 853)–(1069, 878) |',
     '| `io` | 雜訊 | 2 | 2 | (10, 10)–(11, 10) |',
     '| `skills` | 畫面有變，PR 沒改到來源 | 3 | 1 | (1, 1)–(3, 1) |',
+    '',
+  ].join('\n'));
+});
+
+test('renderMarkdown：因為 noise.json 判成雜訊的截圖，清單與差異表都標明已知雜訊版本，跟其中一次跟已提交相同的雜訊分得出來', () => {
+  const md = renderMarkdown({ pr: 314, sha: '52205a52ca7e83e20b70f5049443854f1cf2e02a', runs: { push: 111, pull_request: 222 }, rows: [
+    { name: 'case-interactive.png', verdict: 'noise', known: true, pixel: px('28', '1', '(330, 7218)–(931, 7508)') },
+    { name: 'io.png', verdict: 'noise', pixel: px('2', '2', '(10, 10)–(11, 10)') },
+    { name: 'case.png', verdict: 'unchanged' },
+  ] });
+  assert.equal(md, [
+    '- **截圖交叉比對**（PR head `52205a5`；push run 111、pull_request run 222；`node scripts/screenshot-crosscheck.mjs --pr 314`）：',
+    '  - **雜訊，保留已提交的版本**：`case-interactive`（已知雜訊版本，`verify-screenshots/noise.json`）、`io`',
+    '  - 其餘 1 張跟已提交的相同。',
+    '',
+    '| 截圖 | 結論 | 不同像素數 | 最大通道差 | 差異範圍 |',
+    '|---|---|---|---|---|',
+    '| `case-interactive` | 雜訊（已知雜訊版本） | 28 | 1 | (330, 7218)–(931, 7508) |',
+    '| `io` | 雜訊 | 2 | 2 | (10, 10)–(11, 10) |',
     '',
   ].join('\n'));
 });
