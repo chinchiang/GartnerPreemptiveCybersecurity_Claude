@@ -12,10 +12,9 @@
 import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parsePrNumber } from './pr-number.mjs';
-import { compareScreenshots, readCommitted, readProduced } from './screenshot-diff.mjs';
+import { compareScreenshots, md5, readCommitted, readProduced } from './screenshot-diff.mjs';
 
 const DIR = 'verify-screenshots';
 const ARTIFACT = 'verify-report-and-screenshots';
@@ -51,12 +50,10 @@ function touchedSources(name, changedFiles) {
   return changedFiles.filter(f => affectsEveryPage(f) || sources.includes(f));
 }
 
-const md5 = (buf) => createHash('md5').update(buf).digest('hex');
-
-// 已知雜訊：PR 沒改到那一頁的來源，而且已提交的與兩次執行的版本都在 noise.json 的清單裡。PR 改到來源時一律不用清單
-function isKnownNoise(name, changedFiles, knownVersions, versions) {
+// 已知雜訊：PR 沒改到那一頁的來源（touched 是 touchedSources 的結果），而且已提交的與兩次執行的版本都在 noise.json 的清單裡。PR 改到來源時一律不用清單
+function isKnownNoise(name, touched, knownVersions, versions) {
   const known = knownVersions[name.replace(/\.png$/, '')] || [];
-  return !touchedSources(name, changedFiles).length && versions.every(x => x && known.includes(md5(x)));
+  return !touched.length && versions.every(x => x && known.includes(md5(x)));
 }
 
 // knownVersions 是 verify-screenshots/noise.json 的內容：{ <截圖名，不含 .png>: [<md5>, …] }，列出每張截圖已提交的與看過的雜訊版本
@@ -76,11 +73,11 @@ export function crosscheck({ push, pr, committed, changedFiles, knownVersions = 
       if (c && p.equals(c)) rows.push({ name, verdict: 'unchanged' });
       else {
         const touched = touchedSources(name, changedFiles);
-        if (isKnownNoise(name, changedFiles, knownVersions, [c, p, q])) rows.push({ name, verdict: 'noise', known: true });
+        if (isKnownNoise(name, touched, knownVersions, [c, p, q])) rows.push({ name, verdict: 'noise', known: true });
         else rows.push({ name, verdict: touched.length ? 'changed' : 'changed-untouched', touched });
       }
     } else if (c && (p.equals(c) || q.equals(c))) rows.push({ name, verdict: 'noise' });
-    else if (isKnownNoise(name, changedFiles, knownVersions, [c, p, q])) rows.push({ name, verdict: 'noise', known: true });
+    else if (isKnownNoise(name, touchedSources(name, changedFiles), knownVersions, [c, p, q])) rows.push({ name, verdict: 'noise', known: true });
     else rows.push({ name, verdict: 'undecided' });
   }
   for (const row of rows) row.pixel = pixelAgainstCommitted(row, push.get(row.name), pr?.get(row.name), committed.get(row.name));
@@ -228,7 +225,7 @@ function resolvePr({ pr, sha }) {
   return { ...view, sha: target };
 }
 
-// 已知雜訊版本讀工作樹（目前 checkout 的版本），不是 PR 的 commit：已知雜訊是累積下來的認識，對舊的 PR 也適用。檔案不存在時是空清單
+// 讀 <root>/verify-screenshots/noise.json（CLI 傳工作樹：理由見檔頭）；檔案不存在時是空清單
 export function readKnownVersions(root) {
   const file = join(root, NOISE_FILE);
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
