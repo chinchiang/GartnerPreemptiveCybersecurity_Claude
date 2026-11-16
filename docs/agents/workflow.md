@@ -17,7 +17,9 @@
 
 **全套檢查**（PR 的 Evidence 用）：`scripts/full-check.mjs` 依序跑本機 `node`、Node 22、`node.exe`（Windows）三個環境的單元測試、Python 測試、靜態驗證與重建，`--browser` 另外用 `node.exe` 跑完整的瀏覽器檢查（跑完把報告與截圖還原）。摘要寫到 `<前綴>.txt`、每一步的完整輸出寫到 `<前綴>-<步驟>.log`；前綴用掉了會自動換下一個號碼。結束碼 0 全過、1 有失敗（含讀不到摘要、逾時、重建改動了工作樹）、2 參數有誤、3 只有略過。PR 說明的 Evidence 引用摘要檔的內容，並註明那是哪個 commit 跑的（摘要第一行有 HEAD 的 SHA）。只支援 Linux／macOS，在 Windows 那一側執行會以 2 結束。
 
-**在 repo 外驗證目前的修改**：`d=$(mktemp -d); git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -x -C "$d"`，在 `"$d"` 裡跑。它帶上未提交的修改與新檔，不帶 `.gitignore` 排除的 `scratch/` 和 `.git`。這台的 PreToolUse hook 會擋下指令文字裡含 `git stash` 的指令，所以用這個做法複製工作樹（#322）。有刪了還沒提交的檔案時，第一個 `tar` 找不到它（英文環境的訊息是 `Cannot stat`），其他檔案照樣複製，但整條管線的結束碼是最後一個 `tar` 的 0：先 `set -o pipefail` 再跑，或看 stderr；要完整複製，就先提交或還原那個刪除。
+**在 repo 外驗證目前的修改**：`d=$(mktemp -d); git ls-files -z --cached --others --exclude-standard | tar --null -T - -cf - | tar -x -C "$d"`，在 `"$d"` 裡跑。它帶上未提交的修改與新檔，不帶 `.gitignore` 排除的 `scratch/` 和 `.git`。這台的 stash hook 會擋下 stash 的大多數子指令（見下一段），所以用這個做法複製工作樹（#322）。有刪了還沒提交的檔案時，第一個 `tar` 找不到它（英文環境的訊息是 `Cannot stat`），其他檔案照樣複製，但整條管線的結束碼是最後一個 `tar` 的 0：先 `set -o pipefail` 再跑，或看 stderr；要完整複製，就先提交或還原那個刪除。
+
+**這台的 stash hook**：`~/.claude/hooks/block-bare-git-stash.py`（使用者層級的設定，不在 repo 裡；規則以它的檔頭為準）把整段 Bash 指令依換行與 `;`、`|`、`&&`、`||` 切成多段，再逐段切成詞；某一段的 `git` 後面接 `stash`，子指令又不在允許清單（`list`、`show`、`apply <SHA>`、`drop stash@{n}`、`push … -m <訊息>`）裡，就擋下整個指令。切段在切詞之前，所以引號擋不住換行與這些符號：heredoc、多行的 `-m '…'` 與 `--body "…"` 都會逐行檢查，只有單行、引號裡也沒有 `;`、`|`、`&&` 的參數（例如 `grep` 的樣式）才整個算一個詞。#322 的 commit 訊息用 heredoc 寫，其中一行提到了被擋的子指令，commit 因此被擋。commit 訊息與 PR 說明要提到被擋的子指令時，把 `git` 與 `stash` 分開寫（例如只寫「stash create」），或用 Write 寫成檔案，再用 `-F`／`--body-file` 傳入。
 
 測試裡以子行程執行 `node --test` 時，env 要拿掉 `NODE_TEST_CONTEXT`：外層的 `node --test` 會設它，內層繼承之後改用子行程模式，測試失敗也以 0 結束。
 
@@ -197,6 +199,8 @@ issue 與留言開頭附 AI 產生的聲明，依情境寫：triage 時（例如
 
 brief 與驗收條件裡的預期值（報告某一列的說明、計數、突變抓不抓得到）要從實際輸出取得：已提交的 `verify-report.md`，或實際跑一次 `node.exe scripts/verify.mjs --only <情境>`、`node scripts/mutate.mjs`，並寫明來源；只能推算的值標成「預測」。推算的算法常和檢查實際數的東西不同（#104 因此差了一倍）。
 
+brief 的 Current behavior 引用過去的議題或 PR 時（誰的 brief 寫了什麼、審查抓到什麼、哪個 PR 改了什麼），先用 `gh issue view`、`gh pr view` 讀原文再寫，例子見 CODING_STANDARDS §8 的「引用屬實」。
+
 驗收條件引用具體的 run、commit 或 artifact 時，先確認用 brief 規定的介面拿得到，並寫明它什麼時候會失效（例如 artifact 的保留期限）。#292 的驗收條件要用 `--pr 290` 看到兩次指定的 run，但那兩次屬於 PR 較早的 commit，`--pr` 只會比對 PR head，實作時只好另外加 `--sha`。
 
 brief 要求的行為，先對照被改 module 檔頭寫的契約（例如輸入的換行、由誰讀檔）。兩者衝突時，在 brief 裡一起決定是改契約還是改要求。#135 的 brief 要求 CRLF 的測試，卻沒對照技能包組裝器 #135 之前的檔頭寫的「所有輸入只認 LF」，實作途中才補留言決定。
@@ -206,3 +210,5 @@ brief 的 Desired behavior 每一條都要有對應的驗收條件，文件同�
 開 issue 前，把每一條 `grep`／`sed` 驗收指令對現在的檔案試跑一次，確認兩件事：樣式抓得到要改的那幾行；改之前應該失敗的條件現在真的失敗，沒有因為檔案裡已經有同一個字而先通過，先通過就換成那一節還沒有的字。#298 的驗收條件用 `sed -n '/取得相關 ticket/,/^$/p'` 抓那一節，範圍碰到標題下的第一個空行就停了，抓不到底下那行指令。
 
 開 issue 前也要逐條比對 Desired behavior 與驗收條件有沒有互相衝突，例如一邊要求寫出某個字、另一邊禁止它出現。衝突在 brief 裡就解決：改寫要求，或放寬驗收條件。#298 的 Desired behavior 要求寫出 `gh` 的留言選項名稱，驗收條件卻禁止檔案裡出現那個選項，實作時只好改寫成「`gh` 的留言選項」，那段說明就用 `grep` 搜不到了。
+
+議題要改給代理看的文件（CODING_STANDARDS §8 的範圍）時，驗收條件也用 §8 檢查一次：只檢查有寫到那個概念，不指定會跟其他文件重複的字串。#322 的驗收第 8 條指定 `AGENTS.md` 要出現 `gh pr view`，PR #324 的審查因此質疑這句跟 `docs/agents/issue-tracker.md` 的查法重複；那次判斷兩者用途不同而保留，但要不要那幾個字，應該交給實作與審查判斷，不由驗收條件指定。
