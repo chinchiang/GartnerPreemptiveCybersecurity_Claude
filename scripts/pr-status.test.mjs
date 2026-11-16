@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { mergeReadiness, keepWaiting } from './pr-status.mjs';
+import { mergeReadiness, keepWaiting, runnerImage, crosscheckSection } from './pr-status.mjs';
 
 // gh pr view --json number,title,state,mergeStateStatus,headRefOid 與 gh pr checks --json name,bucket 的手寫輸入
 const SHA = '52205a52ca7e83e20b70f5049443854f1cf2e02a';
@@ -85,4 +85,37 @@ test('pr-status CLI：缺 --pr、--pr 不是正整數、不認得的參數時以
 test('mergeReadiness：標題有反引號、雙引號、$ 或單引號時，合併指令用單引號包住，貼進 shell 不會被展開或斷掉', () => {
   const { command } = mergeReadiness({ view: view({ title: '`gh` 的 "--json" 與 $HOME、it\'s（#1）' }), checks: allPass() });
   assert.equal(command, `gh pr merge 314 --merge --subject 'Merge pull request #314: \`gh\` 的 "--json" 與 $HOME、it'\\''s（#1）' --body '\`gh\` 的 "--json" 與 $HOME、it'\\''s（#1）' --match-head-commit 52205a52ca7e83e20b70f5049443854f1cf2e02a`);
+});
+
+// gh run view <run> --job <job> --log 的手寫片段（格式取自 PR #314 的 browser job 43450561668 的 Set up job）
+const LOG = [
+  'browser\tSet up job\t2026-11-13T15:15:07.0488012Z ##[group]Runner Image Provisioner',
+  'browser\tSet up job\t2026-11-13T15:15:07.0494824Z ##[group]Runner Image',
+  'browser\tSet up job\t2026-11-13T15:15:07.0495235Z Image: ubuntu-26.04',
+  'browser\tSet up job\t2026-11-13T15:15:07.0497892Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261111.82',
+].join('\n');
+test('runnerImage：抓內容以 Image: 起頭的整行（不含 job 名稱、步驟與時間戳），不誤抓 Runner Image、Image Release:', () => {
+  assert.equal(runnerImage(LOG), 'Image: ubuntu-26.04');
+});
+test('runnerImage：Image: 後面有空白時抓到行尾，不只第一個字；CRLF 的 \\r 去掉', () => {
+  assert.equal(runnerImage('browser\tSet up job\t2026-11-13T15:15:07.0495235Z Image: Ubuntu 26.04 LTS (preview)\r\nbrowser\tSet up job\t2026-11-13T15:15:07.0497892Z next'),
+    'Image: Ubuntu 26.04 LTS (preview)');
+});
+test('runnerImage：Image: 出現在內容中間的行（例如前面步驟印出的指令）不算，只認內容以 Image: 起頭的', () => {
+  assert.equal(runnerImage(`browser\tSet up job\t2026-11-13T15:15:07.0400000Z ##[debug]grep -m1 'Image: '\n${LOG}`), 'Image: ubuntu-26.04');
+});
+test('runnerImage：log 裡沒有 Image: 那一行時回傳 null', () => {
+  assert.equal(runnerImage(LOG.split('\n').filter(l => !l.endsWith('Image: ubuntu-26.04')).join('\n')), null);
+  assert.equal(runnerImage(''), null);
+});
+
+test('crosscheckSection：screenshot-crosscheck 成功時原樣附上 stdout（去掉頭尾空白）', () => {
+  assert.equal(crosscheckSection({ status: 0, signal: null, stdout: '- **截圖交叉比對**：相同\n', stderr: '下載中…\n' }), '- **截圖交叉比對**：相同');
+});
+test('crosscheckSection：失敗時附上結束碼與完整的多行 stderr（縮排的程式碼區塊），不只最後一行', () => {
+  assert.equal(crosscheckSection({ status: 1, signal: null, stdout: '', stderr: 'screenshot-crosscheck：gh run download 失敗\nHTTP 404: Not Found\nartifact verification-run 已過期\n' }),
+    '- **截圖交叉比對**：沒有完成（結束碼 1），stderr：\n  ```\n  screenshot-crosscheck：gh run download 失敗\n  HTTP 404: Not Found\n  artifact verification-run 已過期\n  ```');
+});
+test('crosscheckSection：被訊號結束時寫出訊號；stderr 沒有輸出時照實寫', () => {
+  assert.equal(crosscheckSection({ status: null, signal: 'SIGTERM', stdout: '', stderr: '' }), '- **截圖交叉比對**：沒有完成（訊號 SIGTERM），stderr 沒有輸出');
 });

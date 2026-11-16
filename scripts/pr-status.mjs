@@ -42,6 +42,21 @@ export function mergeReadiness({ view, checks }) {
   return { reasons, command: reasons.length ? null : command };
 }
 
+// gh run view --job --log 的每一行是「job 名稱<TAB>步驟<TAB>時間戳 內容」；回傳第一個內容以 Image: 起頭的那一行（時間戳之後的整段，例如 Image: ubuntu-26.04），沒有就回傳 null。
+// 只認內容起頭的 Image:，所以 Runner Image、Image Release: 那幾行不會誤抓
+export function runnerImage(log) {
+  return log.match(/^[^\t\n]*\t[^\t\n]*\t\S+ (Image: [^\r\n]*)/m)?.[1].trimEnd() ?? null;
+}
+
+// screenshot-crosscheck.mjs 子行程的結果（spawnSync 的 { status, signal, stdout, stderr }）→ 附在狀態裡的那一段：成功時原樣附上 stdout；
+// 失敗時附上結束碼（或訊號）與完整的 stderr，放在縮排的程式碼區塊裡，多行錯誤原樣保留
+export function crosscheckSection({ status, signal, stdout, stderr }) {
+  if (status === 0) return stdout.trim();
+  const ended = status === null ? `訊號 ${signal}` : `結束碼 ${status}`;
+  const err = (stderr || '').trimEnd();
+  return `- **截圖交叉比對**：沒有完成（${ended}）${err ? `，stderr：\n  \`\`\`\n${err.split('\n').map(l => `  ${l}`).join('\n')}\n  \`\`\`` : '，stderr 沒有輸出'}`;
+}
+
 // --wait 要不要再等：還有檢查在跑，或 browser 還不到 2 次（unit 與 verify 跑完、browser 還沒排進來時，gh pr checks 沒有 pending）
 export function keepWaiting(checks) {
   return checks.some(c => c.bucket === 'pending') || browserChecks(checks).length < BROWSER_RUNS;
@@ -108,14 +123,13 @@ function cli(argv) {
     let image = '（job 還沒跑完）';
     if (job && c.bucket !== 'pending') {
       // gh api 的 jobs/<id>/logs 會因為 log 裡有終端機跳脫序列而拒絕輸出，改用 gh run view --job（只抓這個 job 的 log）
-      try { image = gh('run', 'view', run, '--job', job, '--log').match(/Image: \S+/)?.[0] || '（log 裡沒有 Image: 那一行）'; }
+      try { image = runnerImage(gh('run', 'view', run, '--job', job, '--log')) ?? '（log 裡沒有 Image: 那一行）'; }
       catch (e) { image = `（讀不到 job log：${e.stderr?.toString().trim() || e.message}）`; }
     }
     return { run, event: c.event || '?', bucket: c.bucket, image };
   });
-  // 截圖交叉比對的判定只有 screenshot-crosscheck.mjs 一份：原樣附上它的輸出，它失敗時附上錯誤訊息
-  const cc = spawnSync(process.execPath, [fileURLToPath(new URL('./screenshot-crosscheck.mjs', import.meta.url)), '--pr', String(args.pr)], { encoding: 'utf8' });
-  const crosscheck = cc.status === 0 ? cc.stdout.trim() : `- **截圖交叉比對**：沒有完成（結束碼 ${cc.status}）：${(cc.stderr.trim().split('\n').pop() || '')}`;
+  // 截圖交叉比對的判定只有 screenshot-crosscheck.mjs 一份：原樣附上它的輸出，它失敗時附上完整的 stderr
+  const crosscheck = crosscheckSection(spawnSync(process.execPath, [fileURLToPath(new URL('./screenshot-crosscheck.mjs', import.meta.url)), '--pr', String(args.pr)], { encoding: 'utf8' }));
 
   const { reasons, command } = mergeReadiness({ view, checks });
   const buckets = Object.entries(checks.reduce((m, c) => ({ ...m, [c.bucket]: (m[c.bucket] || 0) + 1 }), {})).map(([b, n]) => `${b} ${n}`).join(', ') || '（還沒有檢查）';
