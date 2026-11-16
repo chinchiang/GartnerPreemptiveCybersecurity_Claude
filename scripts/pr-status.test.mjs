@@ -34,6 +34,15 @@ test('mergeReadiness：有檢查還在跑、有檢查失敗時，各自列出檢
     reasons: ['還有檢查在跑：verify', '有檢查沒通過：unit (ubuntu-latest, 22)（fail）、browser（cancel）'], command: null });
 });
 
+test('mergeReadiness：browser 出現 2 次但有 skipping 時不印合併指令（每次都要 pass）；其他檢查 skipping 不擋', () => {
+  const checks = [check('unit (ubuntu-latest, 22)', 'skipping'), check('verify'), check('browser', 'skipping'), check('browser')];
+  assert.deepEqual(mergeReadiness({ view: view(), checks }), { reasons: ['browser 有 1 次是 skipping，每次都要 pass'], command: null });
+  const both = [check('verify'), check('browser', 'skipping'), check('browser', 'skipping')];
+  assert.deepEqual(mergeReadiness({ view: view(), checks: both }), { reasons: ['browser 有 2 次是 skipping，每次都要 pass'], command: null });
+  const otherSkipped = [check('unit (ubuntu-latest, 22)', 'skipping'), check('verify'), check('browser'), check('browser')];
+  assert.equal(mergeReadiness({ view: view(), checks: otherSkipped }).reasons.length, 0);
+});
+
 test('mergeReadiness：mergeStateStatus 是 BEHIND 時，寫出要先跟上 main', () => {
   assert.deepEqual(mergeReadiness({ view: view({ mergeStateStatus: 'BEHIND' }), checks: allPass() }),
     { reasons: ['mergeStateStatus 是 BEHIND：先 git merge main 再 push，等 CI 重跑'], command: null });

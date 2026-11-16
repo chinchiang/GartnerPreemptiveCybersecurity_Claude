@@ -7,6 +7,7 @@
 // 結束碼：0 完成（或 --dry-run 印完）；3 先決條件不成立；1 gh 或 git 失敗、找不到 PR；2 參數有誤。
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { parsePrNumber } from './pr-number.mjs';
 
 // ---------- 判斷：不碰 gh、git 與網路 ----------
 
@@ -39,8 +40,9 @@ function parseArgs(argv) {
     else return { error: `不認得的參數或缺少值：${flag}` };
   }
   if (!opts.pr) return { error: '缺少 --pr' };
-  if (!/^[1-9]\d*$/.test(opts.pr)) return { error: `--pr 要是正整數：${opts.pr}` };
-  return { pr: Number(opts.pr), dryRun: opts.dryRun };
+  const pr = parsePrNumber(opts.pr);
+  if (pr === null) return { error: `--pr 要是正整數：${opts.pr}` };
+  return { pr, dryRun: opts.dryRun };
 }
 
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });

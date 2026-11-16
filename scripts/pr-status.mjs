@@ -3,16 +3,21 @@
 //
 // 照 docs/agents/workflow.md 的「Commit 與 PR」：印出 state、mergeStateStatus、head 的完整 SHA、closingIssuesReferences、checks 的摘要、
 // 每次 browser 的 run 與 runner image（那個 job 的 log 裡的 Image: 那一行），並以子行程執行 screenshot-crosscheck.mjs，原樣附上它的輸出。
-// OPEN、沒有 pending 與失敗的檢查、browser 出現 2 次、mergeStateStatus 是 CLEAN 都成立，才印出照 workflow.md 格式組好的合併指令；
+// OPEN、沒有 pending 與失敗的檢查、browser 出現 2 次而且每次都 pass、mergeStateStatus 是 CLEAN 都成立，才印出照 workflow.md 格式組好的合併指令；
 // 截圖的結論不擋（雜訊由人判斷）。只回報：這支程式不合併。--wait 每 30 秒查一次，最多 30 分鐘；進度印到 stderr。
 // 結束碼：0 印出了合併指令；3 還不能合併（含已經合併、已經關閉、--wait 逾時）；1 gh 失敗或找不到 PR；2 參數有誤。
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { parsePrNumber } from './pr-number.mjs';
 
 // ---------- 判斷：不碰 gh、git 與網路 ----------
 
 // 合併指令裡的標題要貼進 shell：照 workflow.md 用雙引號；標題有 " $ ` \ 時，雙引號裡會被展開或斷掉，改用單引號（' 寫成 '\''）
 const shellArg = (s) => /["$`\\]/.test(s) ? `'${s.replace(/'/g, `'\\''`)}'` : `"${s}"`;
+
+// browser 是 needs: [unit, verify]，比其他檢查晚出現；push 與 pull_request 各一次（截圖交叉比對要兩次）
+const BROWSER_RUNS = 2;
+const browserChecks = (checks) => checks.filter(c => c.name === 'browser');
 
 // view：gh pr view --json number,title,state,mergeStateStatus,headRefOid；checks：gh pr checks --json name,bucket。
 // 回傳 { reasons, command }：reasons 是還不能合併的原因，空的時候 command 是照 docs/agents/workflow.md 格式組好的合併指令，否則是 null
@@ -25,10 +30,12 @@ export function mergeReadiness({ view, checks }) {
   // gh pr checks 的 bucket：pass、fail、pending、skipping、cancel；skipping 不算沒通過
   const failed = checks.filter(c => c.bucket === 'fail' || c.bucket === 'cancel');
   if (failed.length) reasons.push(`有檢查沒通過：${failed.map(c => `${c.name}（${c.bucket}）`).join('、')}`);
-  // browser 是 needs: [unit, verify]，比其他檢查晚出現；push 與 pull_request 各一次（截圖交叉比對要兩次）
-  const browser = checks.filter(c => c.name === 'browser').length;
-  if (!browser) reasons.push('browser 還沒出現');
-  else if (browser < 2) reasons.push(`browser 只出現 ${browser} 次，要 2 次（push 與 pull_request）`);
+  const browser = browserChecks(checks);
+  if (!browser.length) reasons.push('browser 還沒出現');
+  else if (browser.length < BROWSER_RUNS) reasons.push(`browser 只出現 ${browser.length} 次，要 ${BROWSER_RUNS} 次（push 與 pull_request）`);
+  // browser 每次都要 pass：skipping 代表截圖沒有產生，交叉比對無從比起（pending、fail、cancel 上面已經列過）
+  const skipped = browser.filter(c => c.bucket === 'skipping');
+  if (skipped.length) reasons.push(`browser 有 ${skipped.length} 次是 skipping，每次都要 pass`);
   if (view.mergeStateStatus === 'BEHIND') reasons.push('mergeStateStatus 是 BEHIND：先 git merge main 再 push，等 CI 重跑');
   else if (view.mergeStateStatus !== 'CLEAN') reasons.push(`mergeStateStatus 是 ${view.mergeStateStatus}，要是 CLEAN`);
   const command = `gh pr merge ${view.number} --merge --subject ${shellArg(`Merge pull request #${view.number}: ${view.title}`)} --body ${shellArg(view.title)} --match-head-commit ${view.headRefOid}`;
@@ -37,7 +44,7 @@ export function mergeReadiness({ view, checks }) {
 
 // --wait 要不要再等：還有檢查在跑，或 browser 還不到 2 次（unit 與 verify 跑完、browser 還沒排進來時，gh pr checks 沒有 pending）
 export function keepWaiting(checks) {
-  return checks.some(c => c.bucket === 'pending') || checks.filter(c => c.name === 'browser').length < 2;
+  return checks.some(c => c.bucket === 'pending') || browserChecks(checks).length < BROWSER_RUNS;
 }
 
 // ---------- CLI：gh 的呼叫都在這裡 ----------
@@ -56,8 +63,9 @@ function parseArgs(argv) {
     else return { error: `不認得的參數或缺少值：${flag}` };
   }
   if (!opts.pr) return { error: '缺少 --pr' };
-  if (!/^[1-9]\d*$/.test(opts.pr)) return { error: `--pr 要是正整數：${opts.pr}` };
-  return { pr: Number(opts.pr), wait: opts.wait };
+  const pr = parsePrNumber(opts.pr);
+  if (pr === null) return { error: `--pr 要是正整數：${opts.pr}` };
+  return { pr, wait: opts.wait };
 }
 
 const WAIT_INTERVAL_MS = 30_000, WAIT_LIMIT_MS = 30 * 60_000;
@@ -82,7 +90,7 @@ function cli(argv) {
   if (args.wait) {
     const start = Date.now();
     while (keepWaiting(checks) && Date.now() - start < WAIT_LIMIT_MS) {
-      const browser = checks.filter(c => c.name === 'browser').length, pending = checks.filter(c => c.bucket === 'pending').length;
+      const browser = browserChecks(checks).length, pending = checks.filter(c => c.bucket === 'pending').length;
       log(`等 CI：pending ${pending}、browser ${browser} 次；30 秒後再查`);
       sleep(WAIT_INTERVAL_MS);
       checks = prChecks(args.pr);
@@ -95,7 +103,7 @@ function cli(argv) {
   const closing = JSON.parse(gh('api', 'graphql', '-f', `query={repository(owner:"${repo.owner.login}",name:"${repo.name}"){pullRequest(number:${args.pr}){closingIssuesReferences(first:20){nodes{number}}}}}`))
     .data.repository.pullRequest.closingIssuesReferences.nodes.map(n => `#${n.number}`);
   // browser 每一次的 run id 與 job id 取自 checks 的連結（…/actions/runs/<run>/job/<job>）；runner image 只讀那個 job 的 log
-  const browserRuns = checks.filter(c => c.name === 'browser').map(c => {
+  const browserRuns = browserChecks(checks).map(c => {
     const [, run, job] = c.link.match(/\/runs\/(\d+)\/job\/(\d+)/) || [];
     let image = '（job 還沒跑完）';
     if (job && c.bucket !== 'pending') {
