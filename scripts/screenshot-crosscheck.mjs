@@ -5,11 +5,14 @@
 // verify-report-and-screenshots artifact 到 --out（預設 scratch/screenshot-crosscheck/pr-<n>-<sha7>/，每次執行一個子目錄、
 // 已經下載過就沿用），跟那個 commit 已提交的截圖（git show，不看工作樹）比對，依結論分組，畫面有變的列出 PR 到那個 commit 為止
 // 改到的來源（SCREENSHOT_SOURCES）。執行要是那個 PR 分支上、已經跑完而且通過的；只有一次可用時退回單次比對。只報告：不改 verify-screenshots/、不 commit；換不換截圖由人或代理決定。
+// PR 沒改到那一頁的來源、而且已提交的與兩次執行的版本都在 verify-screenshots/noise.json 時判成已知雜訊；noise.json 讀工作樹（目前 checkout 的版本），
+// 不是 PR 的 commit：已知雜訊是累積下來的認識，對舊的 PR 也適用。檔案不存在時當成空清單。
 // markdown 印到 stdout（貼進 PR 說明的 Merge Danger），進度與錯誤印到 stderr。
 // 結束碼：比對完是 0（不論結果）；參數有誤是 2；gh 或 git 失敗、找不到 PR、執行或 artifact 是 1。
-import { existsSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parsePrNumber } from './pr-number.mjs';
 import { compareScreenshots, readCommitted, readProduced } from './screenshot-diff.mjs';
@@ -17,6 +20,7 @@ import { compareScreenshots, readCommitted, readProduced } from './screenshot-di
 const DIR = 'verify-screenshots';
 const ARTIFACT = 'verify-report-and-screenshots';
 const EVENTS = ['push', 'pull_request'];
+export const NOISE_FILE = `${DIR}/noise.json`;
 
 // 每張截圖（檔名不含 .png）的頁面讀哪些資料檔：assets/app.js 各個 view 用到的 D.*，對應到定義那個 window.* 的 data/*.js。
 // 截圖由 scripts/verify.mjs 拍：ROUTES 去掉 #/ 各一張，另有 home、home-last-updated（#/）、mobile-platforms（#/platforms）、
@@ -47,7 +51,16 @@ function touchedSources(name, changedFiles) {
   return changedFiles.filter(f => affectsEveryPage(f) || sources.includes(f));
 }
 
-export function crosscheck({ push, pr, committed, changedFiles }) {
+const md5 = (buf) => createHash('md5').update(buf).digest('hex');
+
+// 已知雜訊：PR 沒改到那一頁的來源，而且已提交的與兩次執行的版本都在 noise.json 的清單裡。PR 改到來源時一律不用清單
+function isKnownNoise(name, changedFiles, knownVersions, versions) {
+  const known = knownVersions[name.replace(/\.png$/, '')] || [];
+  return !touchedSources(name, changedFiles).length && versions.every(x => x && known.includes(md5(x)));
+}
+
+// knownVersions 是 verify-screenshots/noise.json 的內容：{ <截圖名，不含 .png>: [<md5>, …] }，列出每張截圖已提交的與看過的雜訊版本
+export function crosscheck({ push, pr, committed, changedFiles, knownVersions = {} }) {
   const rows = [];
   const byShot = (a, b) => (a.replace(/\.png$/, '') < b.replace(/\.png$/, '') ? -1 : 1); // 照截圖名稱排，home 在 home-last-updated 前面
   for (const name of [...new Set([...push.keys(), ...(pr?.keys() || []), ...committed.keys()])].sort(byShot)) {
@@ -63,9 +76,11 @@ export function crosscheck({ push, pr, committed, changedFiles }) {
       if (c && p.equals(c)) rows.push({ name, verdict: 'unchanged' });
       else {
         const touched = touchedSources(name, changedFiles);
-        rows.push({ name, verdict: touched.length ? 'changed' : 'changed-untouched', touched });
+        if (isKnownNoise(name, changedFiles, knownVersions, [c, p, q])) rows.push({ name, verdict: 'noise', known: true });
+        else rows.push({ name, verdict: touched.length ? 'changed' : 'changed-untouched', touched });
       }
     } else if (c && (p.equals(c) || q.equals(c))) rows.push({ name, verdict: 'noise' });
+    else if (isKnownNoise(name, changedFiles, knownVersions, [c, p, q])) rows.push({ name, verdict: 'noise', known: true });
     else rows.push({ name, verdict: 'undecided' });
   }
   for (const row of rows) row.pixel = pixelAgainstCommitted(row, push.get(row.name), pr?.get(row.name), committed.get(row.name));
@@ -110,16 +125,32 @@ export function renderMarkdown({ pr, sha, pinned = false, runs, rows }) {
   for (const [verdict, [group]] of Object.entries(VERDICTS)) {
     const these = listed.filter(r => r.verdict === verdict);
     if (!these.length) continue;
-    const items = these.map(r => shotName(r.name) + (r.touched?.length ? `（${r.touched.map(f => `\`${f}\``).join('、')}）` : ''));
+    const items = these.map(r => shotName(r.name) + (r.touched?.length ? `（${r.touched.map(f => `\`${f}\``).join('、')}）` : '')
+      + (r.known ? `（已知雜訊版本，\`${NOISE_FILE}\`）` : ''));
     lines.push(`  - **${group}**：${items.join('、')}`);
   }
   if (same) lines.push(`  - 其餘 ${same} 張跟已提交的相同。`);
   lines.push('', '| 截圖 | 結論 | 不同像素數 | 最大通道差 | 差異範圍 |', '|---|---|---|---|---|');
   for (const r of listed) {
     const { count = '—', maxDelta = '—', bbox = '—' } = r.pixel || {};
-    lines.push(`| ${shotName(r.name)} | ${VERDICTS[r.verdict][1]} | ${count} | ${maxDelta} | ${bbox} |`);
+    lines.push(`| ${shotName(r.name)} | ${VERDICTS[r.verdict][1]}${r.known ? '（已知雜訊版本）' : ''} | ${count} | ${maxDelta} | ${bbox} |`);
   }
   return lines.join('\n') + '\n';
+}
+
+// noise.json 的一致性：每個 key 都是對照表裡的截圖、每個值是非空的 32 位小寫十六進位 md5 陣列、已提交的那張截圖的 md5 在清單裡。
+// committedMd5(name) 回傳工作樹已提交的 <name>.png 的 md5，沒有那張就是 null。回傳問題清單，空的表示一致；換了截圖卻沒重設清單時，最後一條會列出來
+export function noiseListProblems(noise, committedMd5) {
+  const problems = [];
+  for (const [name, list] of Object.entries(noise)) {
+    if (!(name in SCREENSHOT_SOURCES)) { problems.push(`${name}：不在 SCREENSHOT_SOURCES`); continue; }
+    if (!Array.isArray(list) || !list.length) { problems.push(`${name}：清單要是非空的陣列`); continue; }
+    for (const h of list) if (!/^[0-9a-f]{32}$/.test(h)) problems.push(`${name}：${h} 不是 32 位小寫十六進位的 md5`);
+    const hash = committedMd5(name);
+    if (hash === null) problems.push(`${name}：沒有已提交的 ${name}.png`);
+    else if (!list.includes(hash)) problems.push(`${name}：已提交的 ${name}.png 的 md5 ${hash} 不在清單裡（換了截圖要把清單重設成新的版本）`);
+  }
+  return problems;
 }
 
 // ---------- CLI 外層的判斷：不碰 gh、git、網路與檔案系統 ----------
@@ -197,6 +228,12 @@ function resolvePr({ pr, sha }) {
   return { ...view, sha: target };
 }
 
+// 已知雜訊版本讀工作樹（目前 checkout 的版本），不是 PR 的 commit：已知雜訊是累積下來的認識，對舊的 PR 也適用。檔案不存在時是空清單
+export function readKnownVersions(root) {
+  const file = join(root, NOISE_FILE);
+  return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+}
+
 // 本機沒有那個 commit 時，依序 fetch 給的 ref，再確認一次
 function ensureCommit(oid, refs) {
   const has = () => { try { git(['cat-file', '-e', `${oid}^{commit}`]); return true; } catch { return false; } };
@@ -254,7 +291,7 @@ function main(argv) {
   const { push, pr: prShots, runs } = usableRuns(found, results);
   ensureCommit(sha, [`refs/pull/${args.pr}/head`]);
   ensureCommit(pr.baseRefOid, [pr.baseRefName]);
-  const rows = crosscheck({ push, pr: prShots, committed: readCommitted(process.cwd(), sha),
+  const rows = crosscheck({ push, pr: prShots, committed: readCommitted(process.cwd(), sha), knownVersions: readKnownVersions(process.cwd()),
     // 改過的檔案算到這個 commit 為止（--sha 時不是 PR head 的 diff）；用 git，不必下載整份 PR diff
     changedFiles: git(['diff', '--name-only', '-z', `${pr.baseRefOid}...${sha}`]).split('\0').filter(Boolean) });
   process.stdout.write(renderMarkdown({ pr: args.pr, sha, pinned: !!args.sha, runs, rows }));
