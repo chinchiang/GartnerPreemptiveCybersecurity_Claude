@@ -11,6 +11,7 @@ import { existsSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { parsePrNumber } from './pr-number.mjs';
 import { compareScreenshots, readCommitted, readProduced } from './screenshot-diff.mjs';
 
 const DIR = 'verify-screenshots';
@@ -171,10 +172,11 @@ function parseArgs(argv) {
     else return { error: `不認得的參數或缺少值：${flag}` };
   }
   if (!opts.pr) return { error: '缺少 --pr' };
-  if (!/^[1-9]\d*$/.test(opts.pr)) return { error: `--pr 要是正整數：${opts.pr}` };
+  const pr = parsePrNumber(opts.pr);
+  if (pr === null) return { error: `--pr 要是正整數：${opts.pr}` };
   if (opts.sha !== undefined) opts.sha = opts.sha.toLowerCase(); // git 也接受大寫
   if (opts.sha !== undefined && !/^[0-9a-f]{7,40}$/.test(opts.sha)) return { error: `--sha 要是 7～40 位十六進位的 commit：${opts.sha}` };
-  return { pr: Number(opts.pr), sha: opts.sha, out: opts.out };
+  return { pr, sha: opts.sha, out: opts.out };
 }
 
 const run = (cmd, args, encoding = 'utf8') => execFileSync(cmd, args, { encoding, maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });

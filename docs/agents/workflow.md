@@ -146,23 +146,22 @@ node.exe scripts/mutate.mjs scratch/<清單>.json --test "pushd $(wslpath -w .) 
 - **更新 PR 說明**：用 `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<檔>`。`gh pr edit` 在本 repo 會因 Projects classic 的 GraphQL 錯誤而失敗。
 - **確認會關閉哪些 issue**：用 GraphQL 查 `pullRequest.closingIssuesReferences`。它只認 PR 說明裡的 `Closes #<n>`，不認 commit 訊息裡的（commit 訊息的 `Closes` 合併後仍會關閉 issue，只是合併前查不到），所以 PR 說明也要寫 `Closes #<n>`。開 PR 或更新說明後要等幾秒再查，馬上查可能還是空的。
 - **分支保護**：`main` 的 ruleset 在 `.github/rulesets/main.json`（套用方式與狀態見部署指南第 3 節）：只能經 PR 合併、`ci.yml` 的 10 個檢查都要通過、分支必須跟上 `main`，沒有略過名單，`gh pr merge --admin` 也不能略過。`mergeStateStatus` 是 `BEHIND` 時，先 `git merge main` 再 push，等 CI 重跑。
-- **合併**：先確認 `gh pr checks <n>` 全綠、`mergeStateStatus` 是 `CLEAN`，再照 repo 的格式合併：
+- **合併前的確認**：跑 `node scripts/pr-status.mjs --pr <n>`。它一次印出這些狀態：
+  - `state`、`mergeStateStatus`、head 的完整 SHA、`closingIssuesReferences`。
+  - checks 的摘要，以及每次 `browser` 的 run 與 runner image。
+  - 截圖交叉比對的結果。
+
+  條件都滿足時才印出合併指令，以 0 結束；還不能合併時列出原因，以 3 結束。CI 還沒跑完時，用 `run_in_background` 跑 `--wait`：它會等到沒有 pending，而且 `browser` 出現 2 次，完成時會收到通知。`browser` 是 `needs: [unit, verify]`，會晚出現，`gh pr checks --watch` 可能在它出現前就結束，所以要靠 `--wait` 等。截圖的結論不擋合併指令，雜訊照上面「截圖交叉比對」一節判斷。合併指令的格式（工具照這個組）：
   ```
   gh pr merge <n> --merge --subject "Merge pull request #<n>: <標題>" --body "<標題>" --match-head-commit <完整 40 碼 SHA>
   ```
   `--match-head-commit` 只接受完整的 SHA，短 SHA 會被拒。
 
-  刪遠端分支之前，先確認 PR 已經合併（`gh pr view <n> --json state` 是 `MERGED`）：PR 還開著時刪掉 head 分支，PR 會自動關閉，修改不會進 `main`。
+- **合併後的收尾**：跑 `node scripts/pr-cleanup.mjs --pr <n>`，先加 `--dry-run` 看會做什麼。它在 PR 的 `state` 是 `MERGED`、工作樹乾淨時，才依序刪遠端的 head 分支、`git checkout main`、`git pull --ff-only`、`git branch -d`。PR 還開著時刪掉 head 分支，PR 會自動關閉，修改不會進 `main`，所以一定要先確認合併。
 
-  CI 還沒跑完、或看起來卡住時：
-  - **等待 CI**：用 `run_in_background` 跑 `gh pr checks <n> --watch --interval 30`，列表裡沒有 pending 就結束，完成時會收到通知，再用 `gh pr checks <n>` 看每個工作的結果。`browser` 是 `needs: [unit, verify]`，那兩個跑完才出現在列表裡：開 PR 當下數到的工作數會比較少，`--watch` 也可能在它出現前就結束。結束後確認列表裡有 `browser`，沒有就再跑一次；回報以最後一次的 `gh pr checks <n>` 為準。要在前景等時，改用每 20 秒查一次的迴圈（結束碼 8 代表還有 pending，最多 20 次，約 8 分鐘，在工具 10 分鐘的上限內；跑完還有 pending 就再執行一次）：
-    ```
-    for i in $(seq 20); do gh pr checks <n> >/dev/null; [ $? -eq 8 ] || break; sleep 20; done; gh pr checks <n>
-    ```
-    結束後只要看結論與 `browser` 有沒有出現時，用這行摘要，不必讀完整的列表：
-    ```
-    gh pr checks <n> --json name,bucket --jq '(group_by(.bucket) | map("\(.[0].bucket) \(length)") | join(", ")), "browser: \([.[] | select(.name=="browser")] | length)"'
-    ```
+  工具失敗時，例如 `gh` 版本不同，改用 `gh pr checks <n> --json name,bucket,link,event` 與 `gh pr view <n> --json state,mergeStateStatus,headRefOid` 手動確認同樣的條件。
+
+  CI 看起來卡住時：
   - **check 一直停在 pending**：`gh pr checks` 的狀態會落後，job 早就完成了還顯示 pending。用 jobs API 看實際的狀態和每個步驟；job id 是 `gh pr checks` 連結裡 `/job/` 後面那段數字。如果所有步驟都已經 `completed`，就是狀態還沒更新，等一下再查。`gh run view <run-id>` 也可能先回報完成、個別 job 卻還在跑，一樣以 jobs API 為準。
     ```
     gh api repos/<owner>/<repo>/actions/jobs/<job-id> --jq '"\(.status) \(.conclusion)", (.steps[] | "  \(.status) \(.conclusion) \(.name)")'
